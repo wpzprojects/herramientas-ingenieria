@@ -1,20 +1,25 @@
 // Router SPA minimalista basado en hash (#/seccion/pantalla/:param).
 // Un modulo por pantalla, cada uno exporta render(container, params).
 
+// Representa cualquier path (patron de ruta o hash actual) como su lista de
+// segmentos no vacios -- "/", "/calculos/" y "/calculos" quedan todos
+// canonicalizados de forma consistente ([] vs ["calculos"]), evitando el
+// caso especial roto de tratar "/" como cadena vacia en un extremo y como
+// "/" en el otro.
+function segmentsOf(path) {
+  return path.split("/").filter(Boolean);
+}
+
 function compile(pattern) {
   const names = [];
-  const regexStr = pattern
-    .replace(/\/+$/, "")
-    .split("/")
-    .map((seg) => {
-      if (seg.startsWith(":")) {
-        names.push(seg.slice(1));
-        return "([^/]+)";
-      }
-      return seg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    })
-    .join("/");
-  return { regex: new RegExp(`^${regexStr}$`), names };
+  const regexParts = segmentsOf(pattern).map((seg) => {
+    if (seg.startsWith(":")) {
+      names.push(seg.slice(1));
+      return "([^/]+)";
+    }
+    return seg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  });
+  return { regex: new RegExp(`^/${regexParts.join("/")}$`), names };
 }
 
 const routeTable = [
@@ -44,8 +49,7 @@ const routeTable = [
 
 function currentPath() {
   const hash = location.hash || "#/";
-  const path = hash.slice(1) || "/";
-  return path.replace(/\/+$/, "") || "/";
+  return `/${segmentsOf(hash.slice(1)).join("/")}`;
 }
 
 function match(path) {

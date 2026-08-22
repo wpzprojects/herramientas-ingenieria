@@ -77,7 +77,8 @@ export async function render(container) {
       ? distinct(tabla.filter((r) => r.categoria === categoria && r.unidad_origen === origen), "unidad_destino")
       : [];
     selDestino.innerHTML = destinos.length
-      ? `<option value="">Seleccione…</option>` + destinos.map((u) => `<option value="${u}">${u}</option>`).join("")
+      ? `<option value="">Seleccione…</option>` +
+        destinos.map((u) => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join("")
       : `<option value="">Seleccione una unidad origen primero</option>`;
     selDestino.disabled = !destinos.length;
     wrap.innerHTML = "";

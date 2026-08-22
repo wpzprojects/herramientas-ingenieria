@@ -1,5 +1,12 @@
 """Verificacion estatica ligera (sin Node): balance de llaves/parentesis y
-resolucion de rutas de import relativas, sobre todos los .js del proyecto."""
+resolucion de rutas de import relativas, sobre todos los .js del proyecto.
+
+Limitacion conocida: el lexer es ingenuo y no reconoce literales de regex
+(/"/g, /'/g, etc.) como distintos de strings -- una comilla dentro de un
+literal de regex puede producir un falso positivo de "desbalance". Antes de
+confiar en un reporte de error de este script, revisa el archivo a mano; la
+prueba autoritativa real es tools/verify_static.py + de verdad cargar la app
+en un navegador (ver README)."""
 import re
 from pathlib import Path
 
