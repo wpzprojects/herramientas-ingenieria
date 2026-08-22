@@ -1,0 +1,9 @@
+# Extraccion de trabajo del .msapp original (se regenera con un simple
+# unzip del .msapp; ver README.md). El .msapp en si SI se versiona como
+# fuente de verdad/provenance de los datos.
+APP_PowerApps/_extracted/
+
+# SO / editor
+.DS_Store
+Thumbs.db
+.vscode/

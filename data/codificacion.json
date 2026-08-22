@@ -1,0 +1,1796 @@
+[
+  {
+    "id": 1,
+    "codigo": "CO-YYYY-LT1-ID-GN-D001",
+    "entregable": "Informe de Criterios de Diseño",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 2,
+    "codigo": "CO-YYYY-LT1-ID-GN-D002",
+    "entregable": "Informe de selección de ruta",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 3,
+    "codigo": "CO-YYYY-LT1-ID-GN-D003",
+    "entregable": "Informe de Parámetros Meteorológicos",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 4,
+    "codigo": "CO-YYYY-LT1-ID-CV-D101",
+    "entregable": "Informe de Levantamiento Topográfico (Convencional o LiDAR)",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 5,
+    "codigo": "CO-YYYY-LT1-ID-CV-P102",
+    "entregable": "Plano de levantamiento Topográfico (Convencional o LiDAR)",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 6,
+    "codigo": "CO-YYYY-LT1-IB-CV-D103",
+    "entregable": "Informe de Estudio de Suelos (Por zonas)",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 7,
+    "codigo": "CO-YYYY-LT1-ID-CV-D103",
+    "entregable": "Informe de Estudio de Suelos y Geología (Análisis de estabilidad geológica y geomorfológica en sitios de torre)",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 8,
+    "codigo": "CO-YYYY-LT1-ID-CV-D104",
+    "entregable": "Informe de Replanteo",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 9,
+    "codigo": "CO-YYYY-LT1-ID-CV-D105",
+    "entregable": "Informe de levantamiento con georadar",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 10,
+    "codigo": "CO-YYYY-LT1-IB-EM-D301",
+    "entregable": "Informe de Medida de Resistividad del Terreno (por zonas)",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 11,
+    "codigo": "CO-YYYY-LT1-ID-EM-D301",
+    "entregable": "Informe de Medida de Resistividad del Terreno (en cada sitio de torre)",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 12,
+    "codigo": "CO-YYYY-LT1-ID-EM-D302",
+    "entregable": "Memoria de Cálculo - Selección técnico-enconómica del Conductor de Fase",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 13,
+    "codigo": "CO-YYYY-LT1-ID-EM-D303",
+    "entregable": "Memoria de Cálculo - Selección técnico-enconómica del Cable de Guarda",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 14,
+    "codigo": "CO-YYYY-LT1-ID-EM-D304",
+    "entregable": "Memoria de Cálculo - Coordinación de aislamiento, Distancias Eléctricas y Apantallamiento",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 15,
+    "codigo": "CO-YYYY-LT1-ID-EM-P305",
+    "entregable": "Plano de Dimensionamiento Eléctrico de Estructuras",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 16,
+    "codigo": "CO-YYYY-LT1-IB-EM-D306",
+    "entregable": "Memoria de cálculo - Sistema de Puesta a tierra (Preliminar)",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 17,
+    "codigo": "CO-YYYY-LT1-ID-EM-D306",
+    "entregable": "Memoria de cálculo - Sistema de Puesta a tierra",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 18,
+    "codigo": "CO-YYYY-LT1-ID-EM-P307",
+    "entregable": "Plano - Sistema de Puesta a tierra de estructuras (Preliminar)",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 19,
+    "codigo": "CO-YYYY-LT1-ID-EM-P307",
+    "entregable": "Plano - Sistema de Puesta a tierra de estructuras",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 20,
+    "codigo": "CO-YYYY-LT1-ID-EM-D308",
+    "entregable": "Informe de Parámetros Eléctricos",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 21,
+    "codigo": "CO-YYYY-LT1-ID-EM-P309",
+    "entregable": "Plano de Secuencia de Fases de la Línea",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 22,
+    "codigo": "CO-YYYY-LT1-ID-EM-D310",
+    "entregable": "Memoria de Cálculo Canalizaciones Subterráneas",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 23,
+    "codigo": "CO-YYYY-LT1-ID-EM-311",
+    "entregable": "Disponible",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 24,
+    "codigo": "CO-YYYY-LT1-ID-EM-312",
+    "entregable": "Disponible",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 25,
+    "codigo": "CO-YYYY-LT1-ID-EM-313",
+    "entregable": "Disponible",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 26,
+    "codigo": "CO-YYYY-LT1-ID-EM-314",
+    "entregable": "Disponible",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 27,
+    "codigo": "CO-YYYY-LT1-ID-EM-D315",
+    "entregable": "Estudio de Transposición",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 28,
+    "codigo": "CO-YYYY-LT1-ID-EM-D316",
+    "entregable": "Informe de Inducciones Electromagnéticas",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 29,
+    "codigo": "CO-YYYY-LT1-ID-EM-D317",
+    "entregable": "Disponible",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 30,
+    "codigo": "CO-YYYY-LT1-ID-EM-D318",
+    "entregable": "Disponible",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 31,
+    "codigo": "CO-YYYY-LT1-ID-EM-D319",
+    "entregable": "Disponible",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 32,
+    "codigo": "CO-YYYY-LT1-IB-EM-D320",
+    "entregable": "Memoria de Cálculos Electromecánicos, Arboles de carga y Selección de estructuras, herrajes y aisladores (Preliminar)",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 33,
+    "codigo": "CO-YYYY-LT1-ID-EM-D320",
+    "entregable": "Memoria de Cálculos Mecánicos, Arboles de carga y Selección de estructuras, herrajes y aisladores",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 34,
+    "codigo": "CO-YYYY-LT1-ID-EM-P321",
+    "entregable": "Plano de Siluetas",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 35,
+    "codigo": "CO-YYYY-LT1-ID-EM-P322",
+    "entregable": "Plano de Árboles de Cargas",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 36,
+    "codigo": "CO-YYYY-LT1-ID-EM-P323",
+    "entregable": "Plano de Cadenas, Herrajes y Accesorios",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 37,
+    "codigo": "CO-YYYY-LT1-ID-EM-D324",
+    "entregable": "Informe de Plantillado Preliminar",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 38,
+    "codigo": "CO-YYYY-LT1-ID-EM-D324",
+    "entregable": "Informe de Plantillado",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 39,
+    "codigo": "CO-YYYY-LT1-ID-EM-P325",
+    "entregable": "Plano de Plantillado Preliminar (Trazado inicial con cartografía IGAC) - Incluye modelo PLSCADD",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 40,
+    "codigo": "CO-YYYY-LT1-ID-EM-P325",
+    "entregable": "Plano Planta Perfil Definitivo - Incluye modelo PLSCADD",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 41,
+    "codigo": "CO-YYYY-LT1-ID-EM-P326",
+    "entregable": "Plano de Localización General Preliminar",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 42,
+    "codigo": "CO-YYYY-LT1-ID-EM-P326",
+    "entregable": "Plano de Planta General Definitivo",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 43,
+    "codigo": "CO-YYYY-LT1-ID-EM-P327",
+    "entregable": "Plano de Diagonales y Extensiones de Patas",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 44,
+    "codigo": "CO-YYYY-LT1-ID-EM-D328",
+    "entregable": "Tablas de Tendido y Regulación",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 45,
+    "codigo": "CO-YYYY-LT1-ID-EM-P329",
+    "entregable": "Plano de Plazas de Tendido",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 46,
+    "codigo": "CO-YYYY-LT1-ID-EM-D330",
+    "entregable": "Memoria de cálculo - Sistema de amortiguamiento",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 47,
+    "codigo": "CO-YYYY-LT1-ID-EM-P331",
+    "entregable": "Plano de Placas de Identificación y Señalización",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 48,
+    "codigo": "CO-YYYY-LT1-ID-EM-P332",
+    "entregable": "Plano de detalle transición aeréa-subterránea",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 49,
+    "codigo": "CO-YYYY-LT1-ID-ES-D201",
+    "entregable": "Memoria de Diseño Estructural (por tipo de Torre) - Incluye Modelo Tower de la estructura",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 50,
+    "codigo": "CO-YYYY-LT1-ID-ES-P202",
+    "entregable": "Planos de Taller de las estructuras",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 51,
+    "codigo": "CO-YYYY-LT1-IB-CV-D106",
+    "entregable": "Memoria de Cálculo de Cimentaciones Preliminar",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 52,
+    "codigo": "CO-YYYY-LT1-ID-CV-D106",
+    "entregable": "Memoria de Cálculo de Cimentaciones",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 53,
+    "codigo": "CO-YYYY-LT1-ID-CV-P107",
+    "entregable": "Plano de Cimentaciones Preliminar",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 54,
+    "codigo": "CO-YYYY-LT1-ID-CV-P107",
+    "entregable": "Plano de Cimentaciones",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 55,
+    "codigo": "CO-YYYY-LT1-ID-CV-P108",
+    "entregable": "Plano de Localización de Accesos",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 56,
+    "codigo": "CO-YYYY-LT1-ID-CV-D109",
+    "entregable": "Diseño de Obras para Adecuaciones de Accesos y ocupaciones de cauces",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 57,
+    "codigo": "CO-YYYY-LT1-ID-CV-D110",
+    "entregable": "Memoria de Cálculo de Obras Civiles Complementarias (obras de estabilización y protección)",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 58,
+    "codigo": "CO-YYYY-LT1-ID-CV-P111",
+    "entregable": "Plano de Obras Civiles Complementarias (obras de estabilización y protección)",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 59,
+    "codigo": "CO-YYYY-LT1-ID-CV-P112",
+    "entregable": "Plano de detalles de canalizaciones subterráneas",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 60,
+    "codigo": "CO-YYYY-LT1-ID-CV-P113",
+    "entregable": "Plano de detalles de construcción de cajas",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 61,
+    "codigo": "CO-YYYY-LT1-IB-GN-D004",
+    "entregable": "Información técnica DAA alternativa de ruta 1",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 62,
+    "codigo": "CO-YYYY-LT1-IB-GN-D005",
+    "entregable": "Información técnica DAA alternativa de ruta 2",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 63,
+    "codigo": "CO-YYYY-LT1-IB-GN-D006",
+    "entregable": "Información técnica DAA alternativa de ruta 3",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 64,
+    "codigo": "CO-YYYY-LT1-IB-GN-D007",
+    "entregable": "Informe técnico comparativo de las alternativas de corredor",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 65,
+    "codigo": "CO-YYYY-LT1-ID-GN-D008",
+    "entregable": "Documento de Descripción Técnica del Proyecto para Presentación del EIA",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 66,
+    "codigo": "CO-YYYY-LT1-ID-GN-D009",
+    "entregable": "Tabla de Estructuras Preliminar",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 67,
+    "codigo": "CO-YYYY-LT1-ID-GN-D009",
+    "entregable": "Tabla de Estructuras",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 68,
+    "codigo": "CO-YYYY-LT1-ID-GN-D010",
+    "entregable": "Formulario de Cantidades de Materiales, Obra Civil y Montaje Electromecánico Preliminar",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 69,
+    "codigo": "CO-YYYY-LT1-ID-GN-D010",
+    "entregable": "Formulario de Cantidades de Materiales, Obra Civil y Montaje Electromecánico ",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 70,
+    "codigo": "CO-YYYY-LT1-ID-GN-D011",
+    "entregable": "Especificaciones Técnicas de Suministros de Materiales",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 71,
+    "codigo": "CO-YYYY-LT1-ID-GN-D012",
+    "entregable": "Características Técnicas Garantizadas",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 72,
+    "codigo": "CO-YYYY-LT1-ID-GN-D013",
+    "entregable": "Especificación Técnicas de Construcción y Montaje",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 73,
+    "codigo": "CO-YYYY-LT1-ID-EM-D333",
+    "entregable": "Análisis de Riesgos de Origen Eléctrico y Medidas para Mitagarlos",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 74,
+    "codigo": "CO-YYYY-LT1-ID-EM-D334",
+    "entregable": "Relación de Requerimientos Generales y Planos y Documentos de Soporte del Diseño (Numeral 10 y 22.1 del RETIE)",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 75,
+    "codigo": "CO-YYYY-LT1-ID-GN-D014",
+    "entregable": "Informe Final de Diseño",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 76,
+    "codigo": "CO-YYYY-LT1-ID-GN-D015",
+    "entregable": "Documentación requerida para tramitar los permisos de cruce de vía o uso de zona de vía, con las entidades competentes de conformidad con los requerimientos de las mismas (informes, planos, tablas, cronogramas, presupuestos, carta de solicitud, archivos shape y toda la documentación requerida por la entidad de conformidad con la norma y/o estándar aplicable de la misma)",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 77,
+    "codigo": "CO-YYYY-LT1-ID-GN-D016",
+    "entregable": "Documentación requerida para solicitudes de evaluación de obstáculos por la Aeronáutica Civil de conformidad con los requerimientos de la misma (informes, planos, tablas, cronogramas, presupuestos, carta de solicitud, archivos shape  y toda la documentación requerida por la entidad de conformidad con la norma y/o estándar aplicable de la misma) ",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 78,
+    "codigo": "CO-YYYY-LT1-ID-GN-D017",
+    "entregable": "Documentación requerida para cruces con infraestructura eléctrica existente de otros operadores, de conformidad con los requerimientos de los mismos (informes, planos, tablas, cronogramas, presupuestos, carta de solicitud, archivos shape  y toda la documentación requerida por la entidad de conformidad con la norma y/o estándar aplicable de la misma)",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 79,
+    "codigo": "CO-YYYY-LT1-ID-GN-D018",
+    "entregable": "Documentación requerida para solicitudes de cruces con oleoductos/gasoductos con las entidades competentes de conformidad con los requerimientos de las mismas (informes, planos, tablas, cronogramas, presupuestos, carta de solicitud, archivos shape  y toda la documentación requerida por la entidad de conformidad con la norma y/o estándar aplicable de la misma) ",
+    "especialidad": "Lineas"
+  },
+  {
+    "id": 80,
+    "codigo": "CO-YYYY-SE1-ID-GN-D001",
+    "entregable": "Listado de Planos y Documentos",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 81,
+    "codigo": "CO-YYYY-SE1-ID-EL-D300",
+    "entregable": "Criterios de diseño - Electromecánicos",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 82,
+    "codigo": "CO-YYYY-SE1-ID-EL-P301",
+    "entregable": "Diagrama unifilar general",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 83,
+    "codigo": "CO-YYYY-SE1-ID-EL-D302",
+    "entregable": "Estudio de flujo de cargas - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 84,
+    "codigo": "CO-YYYY-SE1-ID-EL-D303",
+    "entregable": "Estudio de corto circuito - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 85,
+    "codigo": "CO-YYYY-SE1-ID-EL-D304",
+    "entregable": "Estudio de coordinación de aislamiento - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 86,
+    "codigo": "CO-YYYY-SE1-ID-EL-D305",
+    "entregable": "Campos eléctricos y magnéticos - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 87,
+    "codigo": "CO-YYYY-SE1-ID-EL-D306",
+    "entregable": "memoria de cálculo de cargabilidad CT's y PT's ",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 88,
+    "codigo": "CO-YYYY-SE1-ID-EL-D307",
+    "entregable": "Estudio de Transitorios Electromagnéticos",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 89,
+    "codigo": "CO-YYYY-SE1-ID-EL-D308",
+    "entregable": "Estudio de Tensiones Transitorias de Alta Frecuencia (VFTs)",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 90,
+    "codigo": "CO-YYYY-SE1-ID-EL-D309",
+    "entregable": "Estudio de Tensión Transitoria de Reestablecimiento (Para especificación de interruptores)",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 91,
+    "codigo": "CO-YYYY-SE1-ID-EL-310",
+    "entregable": "Disponible",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 92,
+    "codigo": "CO-YYYY-SE1-ID-EL-311",
+    "entregable": "Disponible",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 93,
+    "codigo": "CO-YYYY-SE1-ID-EL-312",
+    "entregable": "Disponible",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 94,
+    "codigo": "CO-YYYY-SE1-ID-EL-313",
+    "entregable": "Disponible",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 95,
+    "codigo": "CO-YYYY-SE1-ID-EL-314",
+    "entregable": "Disponible",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 96,
+    "codigo": "CO-YYYY-SE1-ID-EL-D315",
+    "entregable": "Distancias mínimas y de seguridad - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 97,
+    "codigo": "CO-YYYY-SE1-ID-EL-D316",
+    "entregable": "Conductores, barras y aisladores - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 98,
+    "codigo": "CO-YYYY-SE1-ID-EL-P317",
+    "entregable": "Disposición física - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 99,
+    "codigo": "CO-YYYY-SE1-ID-EL-P318",
+    "entregable": "Detalles de conexión de equipos - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 100,
+    "codigo": "CO-YYYY-SE1-ID-EL-P319",
+    "entregable": "Disposición física - Disposición de conectores",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 101,
+    "codigo": "CO-YYYY-SE1-ID-EL-D320",
+    "entregable": "Ductos, bandejas y cárcamos - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 102,
+    "codigo": "CO-YYYY-SE1-ID-EL-P321",
+    "entregable": "Trayectoria de cárcamos, ductos y bandejas - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 103,
+    "codigo": "CO-YYYY-SE1-ID-EL-P322",
+    "entregable": "Detalles de conexión a tierra y tuberías de equipos - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 104,
+    "codigo": "CO-YYYY-SE1-ID-EL-P323",
+    "entregable": "Distribución de gabinetes en edificio de control - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 105,
+    "codigo": "CO-YYYY-SE1-ID-EL-P324",
+    "entregable": "Distribución de gabinetes en caseta de relés - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 106,
+    "codigo": "CO-YYYY-SE1-ID-EL-P325",
+    "entregable": "Plano de Composición general de cadenas de aisladores",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 107,
+    "codigo": "CO-YYYY-SE1-ID-EL-P326",
+    "entregable": "Placas de nomenclatura operativa y señalización",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 108,
+    "codigo": "CO-YYYY-SE1-ID-EL-327",
+    "entregable": "Disponible",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 109,
+    "codigo": "CO-YYYY-SE1-ID-EL-328",
+    "entregable": "Disponible",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 110,
+    "codigo": "CO-YYYY-SE1-ID-EL-329",
+    "entregable": "Disponible",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 111,
+    "codigo": "CO-YYYY-SE1-ID-EL-330",
+    "entregable": "Disponible",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 112,
+    "codigo": "CO-YYYY-SE1-ID-EL-D331",
+    "entregable": "Malla de tierra - Instructivo para la medida de la resistividad del terreno",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 113,
+    "codigo": "CO-YYYY-SE1-ID-EL-D332",
+    "entregable": "Malla de tierra - Medida de la resistividad del terreno",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 114,
+    "codigo": "CO-YYYY-SE1-ID-EL-D333",
+    "entregable": "Malla de tierra - memoria  de cálculo ",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 115,
+    "codigo": "CO-YYYY-SE1-ID-EL-P334",
+    "entregable": "Malla de tierra - Planta y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 116,
+    "codigo": "CO-YYYY-SE1-ID-EL-P335",
+    "entregable": "Malla de tierra - Listado de materiales",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 117,
+    "codigo": "CO-YYYY-SE1-ID-EL-D336",
+    "entregable": "Apantallamiento - memoria de cálculo ",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 118,
+    "codigo": "CO-YYYY-SE1-ID-EL-P337",
+    "entregable": "Apantallamiento - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 119,
+    "codigo": "CO-YYYY-SE1-ID-EL-P338",
+    "entregable": "Apantallamiento - Listado de materiales",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 120,
+    "codigo": "CO-YYYY-SE1-ID-EL-D339",
+    "entregable": "Instalaciones eléctricas exteriores y alumbrado exterior y perimetral - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 121,
+    "codigo": "CO-YYYY-SE1-ID-EL-P340",
+    "entregable": "Instalaciones eléctricas exteriores y alumbrado exterior y perimetral - Disposición general, detalles y cantidades",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 122,
+    "codigo": "CO-YYYY-SE1-ID-EL-D341",
+    "entregable": "Edificio de control y celdas MT - Instalaciones eléctricas - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 123,
+    "codigo": "CO-YYYY-SE1-ID-EL-P342",
+    "entregable": "Edificio de control y celdas MT - Instalaciones eléctricas - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 124,
+    "codigo": "CO-YYYY-SE1-ID-EL-D343",
+    "entregable": "Edificio de control y celdas MT - Instalaciones eléctricas - Listado de materiales",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 125,
+    "codigo": "CO-YYYY-SE1-ID-EL-D344",
+    "entregable": "Edificio de celdas MT - Instalaciones eléctricas - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 126,
+    "codigo": "CO-YYYY-SE1-ID-EL-P345",
+    "entregable": "Edificio de celdas MT - Instalaciones eléctricas - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 127,
+    "codigo": "CO-YYYY-SE1-ID-EL-D346",
+    "entregable": "Edificio de celdas MT - Instalaciones eléctricas - Listado de materiales",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 128,
+    "codigo": "CO-YYYY-SE1-ID-EL-D347",
+    "entregable": "Edificio GIS  - Instalaciones eléctricas - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 129,
+    "codigo": "CO-YYYY-SE1-ID-EL-P348",
+    "entregable": "Edificio GIS  - Instalaciones eléctricas - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 130,
+    "codigo": "CO-YYYY-SE1-ID-EL-D349",
+    "entregable": "Edificio GIS  - Instalaciones eléctricas - Listado de materiales",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 131,
+    "codigo": "CO-YYYY-SE1-ID-EL-D350",
+    "entregable": "Portería - Instalaciones eléctricas - Memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 132,
+    "codigo": "CO-YYYY-SE1-ID-EL-P351",
+    "entregable": "Portería - Instalaciones eléctricas - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 133,
+    "codigo": "CO-YYYY-SE1-ID-EL-D352",
+    "entregable": "Portería - Instalaciones eléctricas - Listado de materiales",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 134,
+    "codigo": "CO-YYYY-SE1-ID-EL-D353",
+    "entregable": "Edificio de control y protección - Instalaciones eléctricas - Memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 135,
+    "codigo": "CO-YYYY-SE1-ID-EL-P354",
+    "entregable": "Edificio de control y protección - Instalaciones eléctricas - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 136,
+    "codigo": "CO-YYYY-SE1-ID-EL-D355",
+    "entregable": "Edificio de control y protección - Instalaciones eléctricas - Listado de materiales",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 137,
+    "codigo": "CO-YYYY-SE1-ID-EL-D356",
+    "entregable": "Caseta de control distribuido - Instalaciones eléctricas - Memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 138,
+    "codigo": "CO-YYYY-SE1-ID-EL-P357",
+    "entregable": "Caseta de control distribuido - Instalaciones eléctricas - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 139,
+    "codigo": "CO-YYYY-SE1-ID-EL-D358",
+    "entregable": "Caseta de control distribuido - Instalaciones eléctricas - Listado de materiales",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 140,
+    "codigo": "CO-YYYY-SE1-ID-EL-359",
+    "entregable": "Disponible",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 141,
+    "codigo": "CO-YYYY-SE1-ID-EL-360",
+    "entregable": "Disponible",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 142,
+    "codigo": "CO-YYYY-SE1-ID-EL-D361",
+    "entregable": "Especificación Técnica de Montaje Electromecánico, Pruebas y Puesta en Servicio",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 143,
+    "codigo": "CO-YYYY-SE1-ID-EL-D362",
+    "entregable": "Formulario Cantidades y precios - Suministro y montaje electromecanico",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 144,
+    "codigo": "CO-YYYY-SE1-IB-SA-D401",
+    "entregable": "Servicios auxiliares - Corriente Alterna - Memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 145,
+    "codigo": "CO-YYYY-SE1-IB-SA-P402",
+    "entregable": "Servicios auxiliares - Diagrama unifilar Corriente Alterna ",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 146,
+    "codigo": "CO-YYYY-SE1-IB-SA-D403",
+    "entregable": "Servicios auxiliares - Corriente Continua - Memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 147,
+    "codigo": "CO-YYYY-SE1-IB-SA-P404",
+    "entregable": "Servicios auxiliares - Diagrama unifilar Corriente Continua ",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 148,
+    "codigo": "CO-YYYY-SE1-IB-SA-D405",
+    "entregable": "Servicios auxiliares - Cables de media tensión - Memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 149,
+    "codigo": "CO-YYYY-SE1-IB-SA-P406",
+    "entregable": "Servicios Auxiliares - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 150,
+    "codigo": "CO-YYYY-SE1-IB-SA-D407",
+    "entregable": "Servicios auxiliares - Cálculo, Especificaciones y Carácterísticas técnicas de Grupo Electrógeno (En caso de aplicar)",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 151,
+    "codigo": "CO-YYYY-SE1-IB-SA-D408",
+    "entregable": "Servicios auxiliares - Especificaciones técnicas",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 152,
+    "codigo": "CO-YYYY-SE1-IB-CP-D500",
+    "entregable": "Criterios de Diseño - Sistema de automatización y comunicaciones",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 153,
+    "codigo": "CO-YYYY-SE1-IB-CP-P501",
+    "entregable": "Sistema de Automatización - Arquitectura ",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 154,
+    "codigo": "CO-YYYY-SE1-IB-CP-P502",
+    "entregable": "Sistema de Automatización - Listado de señales ",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 155,
+    "codigo": "CO-YYYY-SE1-IB-CP-P503",
+    "entregable": "Sistema de comunicación - Arquitectura",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 156,
+    "codigo": "CO-YYYY-SE1-IB-CP-D504",
+    "entregable": "Sistema de comunicaciones - Diseño Fibra Óptica",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 157,
+    "codigo": "CO-YYYY-SE1-IB-CP-D505",
+    "entregable": "Sistema de automatización y comunicaciones - Especificaciones técnicas",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 158,
+    "codigo": "CO-YYYY-SE1-IB-CP-D506",
+    "entregable": "Definición de Sistema de Protección, Medida y Registro - Memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 159,
+    "codigo": "CO-YYYY-SE1-IB-CP-P507",
+    "entregable": "Diagrama unifilar de alta tensión - Protección y medida - ",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 160,
+    "codigo": "CO-YYYY-SE1-IB-CP-P508",
+    "entregable": "Diagramas de principio  básicos y Definitivos ",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 161,
+    "codigo": "CO-YYYY-SE1-ID-CP-D509",
+    "entregable": "Manuales de operación de la Subestación",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 162,
+    "codigo": "CO-YYYY-SE1-ID-CV-D100",
+    "entregable": "Criterios de diseño - Obras civiles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 163,
+    "codigo": "CO-YYYY-SE1-ID-CV-D101",
+    "entregable": "Levantamiento topográfico - Términos de referencia",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 164,
+    "codigo": "CO-YYYY-SE1-ID-CV-D102",
+    "entregable": "Estudio de suelos - Términos de referencia",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 165,
+    "codigo": "CO-YYYY-SE1-ID-CV-D103",
+    "entregable": "Estudio de inundabilidad - Términos de referencia",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 166,
+    "codigo": "CO-YYYY-SE1-ID-CV-D104",
+    "entregable": "Levantamiento Topográfico - Informe",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 167,
+    "codigo": "CO-YYYY-SE1-ID-CV-P105",
+    "entregable": "Levantamiento Topográfico - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 168,
+    "codigo": "CO-YYYY-SE1-ID-CV-D106",
+    "entregable": "Estudio de suelos - Informe",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 169,
+    "codigo": "CO-YYYY-SE1-ID-CV-D107",
+    "entregable": "Estudio de inundabilidad - Informe",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 170,
+    "codigo": "CO-YYYY-SE1-ID-CV-P108",
+    "entregable": "Adecuación terreno - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 171,
+    "codigo": "CO-YYYY-SE1-ID-CV-P109",
+    "entregable": "Demoliciones - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 172,
+    "codigo": "CO-YYYY-SE1-ID-CV-P110",
+    "entregable": "Localización del proyecto - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 173,
+    "codigo": "CO-YYYY-SE1-ID-CV-D111",
+    "entregable": "Vías internas - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 174,
+    "codigo": "CO-YYYY-SE1-ID-CV-P112",
+    "entregable": "Vías internas - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 175,
+    "codigo": "CO-YYYY-SE1-ID-CV-D113",
+    "entregable": "Vías de acceso - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 176,
+    "codigo": "CO-YYYY-SE1-ID-CV-P114",
+    "entregable": "Vías de acceso - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 177,
+    "codigo": "CO-YYYY-SE1-ID-CV-D115",
+    "entregable": "Drenaje pluvial - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 178,
+    "codigo": "CO-YYYY-SE1-ID-CV-P116",
+    "entregable": "Drenaje pluvial - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 179,
+    "codigo": "CO-YYYY-SE1-ID-CV-P117",
+    "entregable": "Cárcamos y ductos - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 180,
+    "codigo": "CO-YYYY-SE1-ID-CV-P118",
+    "entregable": "Planta general - Cimentaciones - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 181,
+    "codigo": "CO-YYYY-SE1-ID-CV-D119",
+    "entregable": "Soportes de equipos - Cimentaciones - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 182,
+    "codigo": "CO-YYYY-SE1-ID-CV-P120",
+    "entregable": "Soportes de equipos  - Cimentaciones - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 183,
+    "codigo": "CO-YYYY-SE1-ID-CV-D121",
+    "entregable": "Pórticos - Cimentaciones - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 184,
+    "codigo": "CO-YYYY-SE1-ID-CV-P122",
+    "entregable": "Pórticos - Cimentaciones - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 185,
+    "codigo": "CO-YYYY-SE1-ID-CV-D123",
+    "entregable": "GIS - Cimentación - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 186,
+    "codigo": "CO-YYYY-SE1-ID-CV-P124",
+    "entregable": "GIS - Cimentación - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 187,
+    "codigo": "CO-YYYY-SE1-ID-CV-D125",
+    "entregable": "Equipos inductivos - Foso - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 188,
+    "codigo": "CO-YYYY-SE1-ID-CV-P126",
+    "entregable": "Equipos inductivos - Foso - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 189,
+    "codigo": "CO-YYYY-SE1-ID-CV-D127",
+    "entregable": "Equipos inductivos - Muro cortafuego - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 190,
+    "codigo": "CO-YYYY-SE1-ID-CV-P128",
+    "entregable": "Equipos inductivos - Muro cortafuego - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 191,
+    "codigo": "CO-YYYY-SE1-ID-CV-D129",
+    "entregable": "Equipos inductivos - Tanque contenedor de aceite - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 192,
+    "codigo": "CO-YYYY-SE1-ID-CV-P130",
+    "entregable": "Equipos inductivos - Tanque contenedor de aceite - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 193,
+    "codigo": "CO-YYYY-SE1-ID-CV-P131",
+    "entregable": "Equipos inductivos - Caseta para extintor rodante - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 194,
+    "codigo": "CO-YYYY-SE1-ID-CV-D132",
+    "entregable": "Transformador SSAA - Foso - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 195,
+    "codigo": "CO-YYYY-SE1-ID-CV-P133",
+    "entregable": "Transformador SSAA - Foso - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 196,
+    "codigo": "CO-YYYY-SE1-ID-CV-D134",
+    "entregable": "Planta de emergencia - Cimentación y estructura - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 197,
+    "codigo": "CO-YYYY-SE1-ID-CV-P135",
+    "entregable": "Planta de emergencia - Cimentación y estructura - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 198,
+    "codigo": "CO-YYYY-SE1-ID-CV-P136",
+    "entregable": "Portería - Arquitectura - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 199,
+    "codigo": "CO-YYYY-SE1-ID-CV-D137",
+    "entregable": "Portería - Estructura - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 200,
+    "codigo": "CO-YYYY-SE1-ID-CV-P138",
+    "entregable": "Portería - Estructura - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 201,
+    "codigo": "CO-YYYY-SE1-ID-CV-D139",
+    "entregable": "Portería - Aire acondicionado - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 202,
+    "codigo": "CO-YYYY-SE1-ID-CV-P140",
+    "entregable": "Portería - Aire acondicionado - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 203,
+    "codigo": "CO-YYYY-SE1-ID-CV-P141",
+    "entregable": "Edificio de CD - Arquitectura - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 204,
+    "codigo": "CO-YYYY-SE1-ID-CV-D142",
+    "entregable": "Edificio de CD - Estructura - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 205,
+    "codigo": "CO-YYYY-SE1-ID-CV-P143",
+    "entregable": "Edificio de CD - Estructura - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 206,
+    "codigo": "CO-YYYY-SE1-ID-CV-P144",
+    "entregable": "Edificio de CD - Cárcamos y ductos - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 207,
+    "codigo": "CO-YYYY-SE1-ID-CV-D145",
+    "entregable": "Edificio de CD - Aire acondicionado - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 208,
+    "codigo": "CO-YYYY-SE1-ID-CV-P146",
+    "entregable": "Edificio de CD - Aire acondicionado - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 209,
+    "codigo": "CO-YYYY-SE1-ID-CV-P147",
+    "entregable": "Edificio de MT - Arquitectura - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 210,
+    "codigo": "CO-YYYY-SE1-ID-CV-D148",
+    "entregable": "Edificio de MT - Estructura - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 211,
+    "codigo": "CO-YYYY-SE1-ID-CV-P149",
+    "entregable": "Edificio de MT - Estructura - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 212,
+    "codigo": "CO-YYYY-SE1-ID-CV-P150",
+    "entregable": "Edificio de MT - Cárcamos y ductos - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 213,
+    "codigo": "CO-YYYY-SE1-ID-CV-D151",
+    "entregable": "Edificio de MT - Aire acondicionado - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 214,
+    "codigo": "CO-YYYY-SE1-ID-CV-P152",
+    "entregable": "Edificio de MT - Aire acondicionado - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 215,
+    "codigo": "CO-YYYY-SE1-ID-CV-P153",
+    "entregable": "Edificio de CYP - Arquitectura - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 216,
+    "codigo": "CO-YYYY-SE1-ID-CV-D154",
+    "entregable": "Edificio de CYP - Estructura - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 217,
+    "codigo": "CO-YYYY-SE1-ID-CV-P155",
+    "entregable": "Edificio de CYP - Estructura - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 218,
+    "codigo": "CO-YYYY-SE1-ID-CV-P156",
+    "entregable": "Edificio de CYP - Cárcamos y ductos - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 219,
+    "codigo": "CO-YYYY-SE1-ID-CV-D157",
+    "entregable": "Edificio de CYP - Aire acondicionado - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 220,
+    "codigo": "CO-YYYY-SE1-ID-CV-P158",
+    "entregable": "Edificio de CYP - Aire acondicionado - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 221,
+    "codigo": "CO-YYYY-SE1-ID-CV-P159",
+    "entregable": "Edificio de CYP y celdas MT - Arquitectura - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 222,
+    "codigo": "CO-YYYY-SE1-ID-CV-D160",
+    "entregable": "Edificio de CYP y celdas MT- Estructura - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 223,
+    "codigo": "CO-YYYY-SE1-ID-CV-P161",
+    "entregable": "Edificio de CYP y celdas MT- Estructura - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 224,
+    "codigo": "CO-YYYY-SE1-ID-CV-P162",
+    "entregable": "Edificio de CYP y celdas MT- Cárcamos y ductos - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 225,
+    "codigo": "CO-YYYY-SE1-ID-CV-D163",
+    "entregable": "Edificio de CYP y celdas MT- Aire acondicionado - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 226,
+    "codigo": "CO-YYYY-SE1-ID-CV-P164",
+    "entregable": "Edificio de CYP y celdas MT- Aire acondicionado - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 227,
+    "codigo": "CO-YYYY-SE1-ID-CV-P165",
+    "entregable": "Edificio GIS - Arquitectura - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 228,
+    "codigo": "CO-YYYY-SE1-ID-CV-D166",
+    "entregable": "Edificio GIS - Estructura - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 229,
+    "codigo": "CO-YYYY-SE1-ID-CV-P167",
+    "entregable": "Edificio GIS - Estructura - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 230,
+    "codigo": "CO-YYYY-SE1-ID-CV-P168",
+    "entregable": "Edificio GIS - Cárcamos y ductos - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 231,
+    "codigo": "CO-YYYY-SE1-ID-CV-D169",
+    "entregable": "Edificio GIS - Sistema de ventilación - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 232,
+    "codigo": "CO-YYYY-SE1-ID-CV-P170",
+    "entregable": "Edificio GIS - Sistema de ventilación - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 233,
+    "codigo": "CO-YYYY-SE1-ID-CV-D171",
+    "entregable": "Detección y extinción de incendios - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 234,
+    "codigo": "CO-YYYY-SE1-ID-CV-P172",
+    "entregable": "Detección y extinción de incendios - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 235,
+    "codigo": "CO-YYYY-SE1-ID-CV-P173",
+    "entregable": "Detección de intrusos - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 236,
+    "codigo": "CO-YYYY-SE1-ID-CV-D174",
+    "entregable": "Red de agua potable y aguas residuales - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 237,
+    "codigo": "CO-YYYY-SE1-ID-CV-P175",
+    "entregable": "Red de agua potable y aguas residuales - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 238,
+    "codigo": "CO-YYYY-SE1-ID-CV-P176",
+    "entregable": "Cerramiento y puerta de acceso - Disposición general y detalles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 239,
+    "codigo": "CO-YYYY-SE1-ID-CV-D177",
+    "entregable": "Cantidades - Obras civiles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 240,
+    "codigo": "CO-YYYY-SE1-ID-CV-D178",
+    "entregable": "Especificaciones técnicas - Obras civiles",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 241,
+    "codigo": "CO-YYYY-SE1-ID-ES-D200",
+    "entregable": "Criterios de diseño - Estructuras metálicas",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 242,
+    "codigo": "CO-YYYY-SE1-ID-ES-P201",
+    "entregable": "Pórticos - Isométrico de cargas y localización de templas",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 243,
+    "codigo": "CO-YYYY-SE1-ID-ES-D202",
+    "entregable": "Pórticos - Flechas y tensiones mecánicas de conductores - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 244,
+    "codigo": "CO-YYYY-SE1-ID-ES-D203",
+    "entregable": "Pórticos - Guía de obra civil - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 245,
+    "codigo": "CO-YYYY-SE1-ID-ES-D204",
+    "entregable": "Pórticos - Estructura - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 246,
+    "codigo": "CO-YYYY-SE1-ID-ES-P205",
+    "entregable": "Pórticos - Estructura - Plano guía de fabricación",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 247,
+    "codigo": "CO-YYYY-SE1-ID-ES-P206",
+    "entregable": "Pórticos - Estructura - Pernos de anclaje y plantilla para instalación",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 248,
+    "codigo": "CO-YYYY-SE1-ID-ES-D207",
+    "entregable": "Soportes de equipos - Guía de obra civil - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 249,
+    "codigo": "CO-YYYY-SE1-ID-ES-D208",
+    "entregable": "Soportes de equipos - Tensiones mecánicas de conexionado entre equipos - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 250,
+    "codigo": "CO-YYYY-SE1-ID-ES-D209",
+    "entregable": "Soportes de equipos - Estructura - memoria de cálculo",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 251,
+    "codigo": "CO-YYYY-SE1-ID-ES-P210",
+    "entregable": "Soportes de equipos - Estructura - Plano guía de fabricación",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 252,
+    "codigo": "CO-YYYY-SE1-ID-ES-P211",
+    "entregable": "Soportes de equipos - Estructura - Pernos de anclaje y plantilla para instalación",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 253,
+    "codigo": "CO-YYYY-SE1-ID-ES-D212",
+    "entregable": "Soportes de equipos - Lista de tornillería de fijación equipo/estructura",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 254,
+    "codigo": "CO-YYYY-SE1-ID-ES-D213",
+    "entregable": "Cantidades - Estructuras metálicas",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 255,
+    "codigo": "CO-YYYY-SE1-ID-ES-D214",
+    "entregable": "Especificaciones técnicas - Estructuras metálicas",
+    "especialidad": "Subestaciones"
+  },
+  {
+    "id": 256,
+    "codigo": "CO-YYYY-LD1-ID-GN-D001",
+    "entregable": "Informe de Criterios de Diseño y Parámetros meteorológicos",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 257,
+    "codigo": "CO-YYYY-LD1-ID-GN-D002",
+    "entregable": "Informe de selección de ruta",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 258,
+    "codigo": "CO-YYYY-LD1-ID-CV-D101",
+    "entregable": "Informe de Levantamiento Topográfico",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 259,
+    "codigo": "CO-YYYY-LD1-ID-CV-P102",
+    "entregable": "Plano de levantamiento topográfico",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 260,
+    "codigo": "CO-YYYY-LD1-ID-CV-D103",
+    "entregable": "Informe de Estudio de Suelos",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 261,
+    "codigo": "CO-YYYY-LD1-ID-CV-D104",
+    "entregable": "Informe de Replanteo",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 262,
+    "codigo": "CO-YYYY-LD1-ID-EL-D301",
+    "entregable": "Informe de resistividad, memoria de cálculo de sistema de puesta a tierra y esquema SPT",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 263,
+    "codigo": "CO-YYYY-LD1-ID-EL-D302",
+    "entregable": "Memoria de cálculo - Selección técnico-económica de conductores y verificación teniendo en cuenta tiempos de disparo, corriente de cortocircuito y capacidad de corriente del conductor ",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 264,
+    "codigo": "CO-YYYY-LD1-ID-EL-D303",
+    "entregable": "Memoria de cálculo - Cálculos de regulación y cálculos de pérdidas de energía",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 265,
+    "codigo": "CO-YYYY-LD1-ID-EL-D304",
+    "entregable": "Estudio de flujo de carga y cortocircuito",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 266,
+    "codigo": "CO-YYYY-LD1-ID-EL-D305",
+    "entregable": "Memoria de Cálculo - Coordinación de aislamiento",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 267,
+    "codigo": "CO-YYYY-LD1-ID-EL-D306",
+    "entregable": "Informe de verificación de distancias eléctricas",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 268,
+    "codigo": "CO-YYYY-LD1-ID-EL-D307",
+    "entregable": "Análisis de nivel de riesgo por rayos y medidas de protección",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 269,
+    "codigo": "CO-YYYY-LD1-ID-EL-D308",
+    "entregable": "Memoria de cálculo - diseño de sistema de apantallamiento",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 270,
+    "codigo": "CO-YYYY-LD1-ID-EL-P309",
+    "entregable": "Informe de Diseño Preliminar",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 271,
+    "codigo": "CO-YYYY-LD1-ID-EL-D310",
+    "entregable": "Memoria de cálculo mecánico - Cálculo y selección de apoyos, conductores y retenidas",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 272,
+    "codigo": "CO-YYYY-LD1-ID-EL-P311",
+    "entregable": "Planos de siluetas y detalles de estructuras",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 273,
+    "codigo": "CO-YYYY-LD1-ID-EL-P312",
+    "entregable": "Plano de Árboles de Cargas",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 274,
+    "codigo": "CO-YYYY-LD1-ID-EL-D313",
+    "entregable": "Memoria de Cálculo - Verificación Mecánica y Selección de Aisladores, Herrajes y Accesorios",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 275,
+    "codigo": "CO-YYYY-LD1-ID-EL-P314",
+    "entregable": "Plano de cadenas de ensambles, herrajes y accesorios",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 276,
+    "codigo": "CO-YYYY-LD1-ID-EL-D315",
+    "entregable": "Informe de Plantillado",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 277,
+    "codigo": "CO-YYYY-LD1-ID-EL-P316",
+    "entregable": "Plano de Planta General",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 278,
+    "codigo": "CO-YYYY-LD1-ID-EL-P317",
+    "entregable": "Plano Planta Perfil (Plantillado definitivo)",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 279,
+    "codigo": "CO-YYYY-LD1-ID-EL-D318",
+    "entregable": "Tablas de tendido",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 280,
+    "codigo": "CO-YYYY-LD1-ID-EL-D319",
+    "entregable": "Informe - Descripción y esquemas de placas de identificación y señalización",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 281,
+    "codigo": "CO-YYYY-LD1-ID-EL-D320",
+    "entregable": "Plano de desmantelamiento (en los casos en que aplique)",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 282,
+    "codigo": "CO-YYYY-LD1-ID-ES-D201",
+    "entregable": "Memoria de cálculo de estructuras",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 283,
+    "codigo": "CO-YYYY-LD1-ID-ES-P202",
+    "entregable": "Plano de taller de estructuras",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 284,
+    "codigo": "CO-YYYY-LD1-ID-CV-D105",
+    "entregable": "Memoria de Cálculo de Cimentaciones",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 285,
+    "codigo": "CO-YYYY-LD1-ID-CV-P106",
+    "entregable": "Plano de Cimentaciones",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 286,
+    "codigo": "CO-YYYY-LD1-ID-CV-D107",
+    "entregable": "Informe de definición de accesos",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 287,
+    "codigo": "CO-YYYY-LD1-ID-CV-D108",
+    "entregable": "Memoria de cálculo de canalizaciones, bancos de ductos, cárcamos, cajas de inspección, cruces subterráneos de vías y andenes y obras civiles complementarias.",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 288,
+    "codigo": "CO-YYYY-LD1-ID-CV-P109",
+    "entregable": "Plano de disposición general de canalizaciones, bancos de ductos, cárcamos, cajas de inspección, cruces subterráneos de vías y andenes y obras civiles complementarias.",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 289,
+    "codigo": "CO-YYYY-LD1-ID-GN-D003",
+    "entregable": "Tabla de información de apoyos",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 290,
+    "codigo": "CO-YYYY-LD1-ID-GN-D004",
+    "entregable": "Formulario de Materiales, Cantidades de Obra y Presupuesto",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 291,
+    "codigo": "CO-YYYY-LD1-ID-GN-D005",
+    "entregable": "Especificaciones Técnicas de Suministros de Materiales",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 292,
+    "codigo": "CO-YYYY-LD1-ID-GN-D006",
+    "entregable": "Características Técnicas Garantizadas",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 293,
+    "codigo": "CO-YYYY-LD1-ID-GN-D007",
+    "entregable": "Especificación Técnicas de Construcción y Montaje",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 294,
+    "codigo": "CO-YYYY-LD1-ID-EL-D321",
+    "entregable": "Análisis de Riesgos de Origen Eléctrico y Medidas para Mitagarlos",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 295,
+    "codigo": "CO-YYYY-LD1-ID-EL-D322",
+    "entregable": "Relación de Requerimientos Generales y Planos y Documentos de Soporte del Diseño (Numeral 10)",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 296,
+    "codigo": "CO-YYYY-LD1-ID-GN-D008",
+    "entregable": "Documentación técnica requerida para trámites con otros operadores",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 297,
+    "codigo": "CO-YYYY-LD1-ID-GN-D009",
+    "entregable": "Documentación técnica requerida para solicitudes de cruces de vía con las entidades competentes (informes y planos) ",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 298,
+    "codigo": "CO-YYYY-LD1-ID-GN-D010",
+    "entregable": "Documentación técnica requerida para solicitudes de cruces con oleoductos/gasoductos con las entidades competentes (informes y planos)",
+    "especialidad": "Redes"
+  },
+  {
+    "id": 299,
+    "codigo": "CO-YYYY-LD1-ID-GN-D011",
+    "entregable": "Documentación técnica requerida para trámites de ocupación de espacio público (Informes y planos)",
+    "especialidad": "Redes"
+  }
+]

@@ -1,0 +1,105 @@
+:root {
+  --font-sans: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", "Consolas", "SFMono-Regular", monospace;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 1px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.14), 0 4px 10px rgba(15, 23, 42, 0.08);
+
+  --sidebar-w: 250px;
+  --topbar-h: 56px;
+
+  /* --- paleta clara (por defecto) --- */
+  --bg: #f3f6fa;
+  --bg-elevated: #ffffff;
+  --bg-sunken: #e8edf4;
+  --bg-input: #ffffff;
+  --text: #16202f;
+  --text-muted: #5b6b83;
+  --text-faint: #8996ab;
+  --border: #d8e0eb;
+  --border-strong: #b9c5d6;
+
+  --accent: #0a66c2;
+  --accent-strong: #084a8f;
+  --accent-soft: #e4f0ff;
+  --accent-contrast: #ffffff;
+
+  --success: #17845c;
+  --success-soft: #e2f6ee;
+  --warning: #a8660e;
+  --warning-soft: #fdf1de;
+  --danger: #c22b34;
+  --danger-soft: #fbe6e6;
+
+  --focus-ring: #0a66c2;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0c1420;
+    --bg-elevated: #131d2c;
+    --bg-sunken: #0a121d;
+    --bg-input: #101a28;
+    --text: #e7edf6;
+    --text-muted: #97a5bd;
+    --text-faint: #64738c;
+    --border: #253451;
+    --border-strong: #33456a;
+
+    --accent: #5aa8ff;
+    --accent-strong: #8ec2ff;
+    --accent-soft: #14263f;
+    --accent-contrast: #06121f;
+
+    --success: #35c48a;
+    --success-soft: #0f2a20;
+    --warning: #eab04a;
+    --warning-soft: #33230a;
+    --danger: #f2766c;
+    --danger-soft: #3a1414;
+
+    --focus-ring: #5aa8ff;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0c1420;
+  --bg-elevated: #131d2c;
+  --bg-sunken: #0a121d;
+  --bg-input: #101a28;
+  --text: #e7edf6;
+  --text-muted: #97a5bd;
+  --text-faint: #64738c;
+  --border: #253451;
+  --border-strong: #33456a;
+
+  --accent: #5aa8ff;
+  --accent-strong: #8ec2ff;
+  --accent-soft: #14263f;
+  --accent-contrast: #06121f;
+
+  --success: #35c48a;
+  --success-soft: #0f2a20;
+  --warning: #eab04a;
+  --warning-soft: #33230a;
+  --danger: #f2766c;
+  --danger-soft: #3a1414;
+
+  --focus-ring: #5aa8ff;
+  color-scheme: dark;
+}

@@ -1,0 +1,114 @@
+// Service worker: cachea toda la app (shell + datos + imagenes normativas)
+// en la instalacion para que funcione 100% offline desde el primer uso, y
+// sirve cache-first con relleno en segundo plano (stale-while-revalidate)
+// para lo que no estuviera precacheado.
+
+const CACHE_VERSION = "v1";
+const CACHE_NAME = `herramientas-ingenieria-${CACHE_VERSION}`;
+
+const SCOPE = self.registration.scope;
+const u = (p) => new URL(p, SCOPE).toString();
+
+const APP_SHELL = [
+  "./",
+  "index.html",
+  "manifest.webmanifest",
+  "css/tokens.css",
+  "css/app.css",
+  "js/app.js",
+  "js/router.js",
+  "js/nav.js",
+  "js/icons.js",
+  "js/util/format.js",
+  "js/calc/ampacidad-aerea.js",
+  "js/calc/ampacidad-subterranea.js",
+  "js/calc/cortocircuito.js",
+  "js/calc/perdidas.js",
+  "js/calc/regulacion.js",
+  "js/calc/ocupacion-ductos.js",
+  "js/calc/unidades.js",
+  "js/calc/coordenadas.js",
+  "js/views/inicio.js",
+  "js/views/calculos.js",
+  "js/views/catalogos.js",
+  "js/views/normatividad.js",
+  "js/views/varios.js",
+  "js/views/ayuda.js",
+  "js/views/calc-ampacidad-aerea.js",
+  "js/views/calc-ampacidad-subterranea.js",
+  "js/views/calc-cortocircuito.js",
+  "js/views/calc-perdidas.js",
+  "js/views/calc-regulacion.js",
+  "js/views/calc-ocupacion-ductos.js",
+  "js/views/catalogo-conductores.js",
+  "js/views/detalle-conductor.js",
+  "js/views/normativa-imagen.js",
+  "js/views/resoluciones.js",
+  "js/views/detalle-resolucion.js",
+  "js/views/conversion-unidades.js",
+  "js/views/conversion-coordenadas.js",
+  "js/views/codificacion.js",
+  "icons/icon.svg",
+  "icons/icon-192.png",
+  "icons/icon-512.png",
+  "icons/icon-maskable-512.png",
+  "data/conductores-desnudos.json",
+  "data/conductores-semiaislados.json",
+  "data/conductores-xlpe.json",
+  "data/tuberias.json",
+  "data/construccion-cable-subterraneo.json",
+  "data/codificacion.json",
+  "data/resoluciones.json",
+  "data/factores-conversion.json",
+  "assets/normativa/tabla-3-10-1-a.jpg",
+  "assets/normativa/tabla-3-10-2-a.jpg",
+  "assets/normativa/tabla-3-10-3-a.jpg",
+  "assets/normativa/tabla-3-10-4-a.jpg",
+  "assets/normativa/tabla-3-10-4-b.jpg",
+  "assets/normativa/tabla-3-10-5-b.jpg",
+  "assets/normativa/tabla-3-10-5-c.jpg",
+  "assets/normativa/tabla-3-19-1-a.jpg",
+  "assets/normativa/figura-3-19-1-a.jpg",
+  "assets/normativa/numeral-3-20-6-3-g.jpg",
+  "assets/normativa/tabla-300-5.jpg",
+  "assets/normativa/tabla-300-50.jpg",
+  "assets/normativa/capacidad-corriente-conductores-ntc.jpg",
+  "assets/normativa/tabla-3-22-1-c.jpg",
+].map(u);
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => cache.addAll(APP_SHELL))
+      .then(() => self.skipWaiting())
+      .catch((err) => console.warn("[sw] fallo precacheando el shell completo:", err))
+  );
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener("fetch", (event) => {
+  const req = event.request;
+  if (req.method !== "GET" || !req.url.startsWith(self.location.origin)) return;
+
+  event.respondWith(
+    caches.open(CACHE_NAME).then(async (cache) => {
+      const cached = await cache.match(req);
+      const network = fetch(req)
+        .then((res) => {
+          if (res && res.ok) cache.put(req, res.clone());
+          return res;
+        })
+        .catch(() => cached);
+      return cached || network;
+    })
+  );
+});

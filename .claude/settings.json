@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mv tools/_check_coordenadas.py tools/verify_coordenadas.py)",
+      "Bash(python tools/verify_coordenadas.py)",
+      "Bash(python tools/verify_calc.py)",
+      "Bash(python3 -c ' *)",
+      "Bash(python -c ' *)"
+    ]
+  }
+}
