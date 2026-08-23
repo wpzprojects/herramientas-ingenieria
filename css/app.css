@@ -65,6 +65,7 @@ button { font-family: inherit; }
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
+#app:focus { outline: none; }
 
 .app-body { flex: 1 1 auto; display: flex; min-height: 0; }
 
