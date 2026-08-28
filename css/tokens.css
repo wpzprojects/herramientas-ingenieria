@@ -50,56 +50,56 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0c1420;
-    --bg-elevated: #131d2c;
-    --bg-sunken: #0a121d;
-    --bg-input: #101a28;
-    --text: #e7edf6;
-    --text-muted: #97a5bd;
-    --text-faint: #64738c;
-    --border: #253451;
-    --border-strong: #33456a;
+    --bg: #1e1e1e;
+    --bg-elevated: #2b2b2b;
+    --bg-sunken: #171717;
+    --bg-input: #262626;
+    --text: #f0f0f0;
+    --text-muted: #a8a8a8;
+    --text-faint: #767676;
+    --border: #3a3a3a;
+    --border-strong: #4d4d4d;
 
-    --accent: #5aa8ff;
-    --accent-strong: #8ec2ff;
-    --accent-soft: #14263f;
+    --accent: #4c9eff;
+    --accent-strong: #7ab6ff;
+    --accent-soft: #26313f;
     --accent-contrast: #06121f;
 
-    --success: #35c48a;
-    --success-soft: #0f2a20;
-    --warning: #eab04a;
-    --warning-soft: #33230a;
+    --success: #4cc38a;
+    --success-soft: #1c2b23;
+    --warning: #e0a84c;
+    --warning-soft: #2e2618;
     --danger: #f2766c;
-    --danger-soft: #3a1414;
+    --danger-soft: #301c1c;
 
-    --focus-ring: #5aa8ff;
+    --focus-ring: #4c9eff;
     color-scheme: dark;
   }
 }
 
 :root[data-theme="dark"] {
-  --bg: #0c1420;
-  --bg-elevated: #131d2c;
-  --bg-sunken: #0a121d;
-  --bg-input: #101a28;
-  --text: #e7edf6;
-  --text-muted: #97a5bd;
-  --text-faint: #64738c;
-  --border: #253451;
-  --border-strong: #33456a;
+  --bg: #1e1e1e;
+  --bg-elevated: #2b2b2b;
+  --bg-sunken: #171717;
+  --bg-input: #262626;
+  --text: #f0f0f0;
+  --text-muted: #a8a8a8;
+  --text-faint: #767676;
+  --border: #3a3a3a;
+  --border-strong: #4d4d4d;
 
-  --accent: #5aa8ff;
-  --accent-strong: #8ec2ff;
-  --accent-soft: #14263f;
+  --accent: #4c9eff;
+  --accent-strong: #7ab6ff;
+  --accent-soft: #26313f;
   --accent-contrast: #06121f;
 
-  --success: #35c48a;
-  --success-soft: #0f2a20;
-  --warning: #eab04a;
-  --warning-soft: #33230a;
+  --success: #4cc38a;
+  --success-soft: #1c2b23;
+  --warning: #e0a84c;
+  --warning-soft: #2e2618;
   --danger: #f2766c;
-  --danger-soft: #3a1414;
+  --danger-soft: #301c1c;
 
-  --focus-ring: #5aa8ff;
+  --focus-ring: #4c9eff;
   color-scheme: dark;
 }
