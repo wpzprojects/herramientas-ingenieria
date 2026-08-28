@@ -4,7 +4,7 @@
 export const sidebarLinks = [
   { key: "calculos", title: "Cálculos", icon: "calculator", hash: "#/calculos" },
   { key: "catalogos", title: "Catálogos", icon: "book", hash: "#/catalogos" },
-  { key: "normatividad", title: "Normatividad", icon: "archive", hash: "#/normatividad" },
+  { key: "normatividad", title: "Normatividad", icon: "shield", hash: "#/normatividad" },
   { key: "varios", title: "Varios", icon: "grid", hash: "#/varios" },
   { key: "ayuda", title: "Ayuda", icon: "help", hash: "#/ayuda" },
 ];
@@ -20,15 +20,15 @@ export const sectionMenus = {
   calculos: [
     { title: "Ocupación de ductos", desc: "Porcentaje de ocupación de un ducto según NTC-2050.", icon: "layers", hash: "#/calculos/ocupacion-ductos" },
     { title: "Pérdidas", desc: "Corriente, potencia y % de pérdidas de una línea trifásica.", icon: "bolt", hash: "#/calculos/perdidas" },
-    { title: "Regulación", desc: "Caída de tensión y reactancia inductiva del conductor.", icon: "ruler", hash: "#/calculos/regulacion" },
-    { title: "Cortocircuito", desc: "Capacidad de corriente de cortocircuito admisible.", icon: "bolt", hash: "#/calculos/cortocircuito" },
-    { title: "Ampacidad aérea", desc: "Corriente admisible de conductores aéreos (IEEE Std 738).", icon: "bolt", hash: "#/calculos/ampacidad-aerea" },
-    { title: "Ampacidad subterránea", desc: "Corriente admisible de cables en banco de ductos (IEC 60287-1-1).", icon: "bolt", hash: "#/calculos/ampacidad-subterranea" },
+    { title: "Regulación", desc: "Caída de tensión y reactancia inductiva del conductor.", icon: "activity", hash: "#/calculos/regulacion" },
+    { title: "Cortocircuito", desc: "Capacidad de corriente de cortocircuito admisible.", icon: "alertTriangle", hash: "#/calculos/cortocircuito" },
+    { title: "Ampacidad aérea", desc: "Corriente admisible de conductores aéreos (IEEE Std 738).", icon: "powerTower", hash: "#/calculos/ampacidad-aerea" },
+    { title: "Ampacidad subterránea", desc: "Corriente admisible de cables en banco de ductos (IEC 60287-1-1).", icon: "underground", hash: "#/calculos/ampacidad-subterranea" },
   ],
   catalogos: [
-    { title: "Conductores desnudos", desc: "ACSR, AAAC, ACAR, AAC, ACSS — 342 referencias.", icon: "grid", hash: "#/catalogos/desnudos" },
-    { title: "Conductores semiaislados", desc: "Bicapa / Tricapa AAAC-ACSR — 70 referencias.", icon: "grid", hash: "#/catalogos/semiaislados" },
-    { title: "Conductores XLPE (MT)", desc: "Cables aislados de media tensión — 195 referencias.", icon: "grid", hash: "#/catalogos/xlpe" },
+    { title: "Conductores desnudos", desc: "ACSR, AAAC, ACAR, AAC, ACSS — 342 referencias.", icon: "conductorBare", hash: "#/catalogos/desnudos" },
+    { title: "Conductores semiaislados", desc: "Bicapa / Tricapa AAAC-ACSR — 70 referencias.", icon: "conductorSemi", hash: "#/catalogos/semiaislados" },
+    { title: "Conductores XLPE (MT)", desc: "Cables aislados de media tensión — 195 referencias.", icon: "conductorXlpe", hash: "#/catalogos/xlpe" },
   ],
   normatividad: [
     { title: "Distancias de seguridad", desc: "Tablas RETIE 3.10.x de distancias mínimas de seguridad.", icon: "ruler", hash: "#/normatividad/distancias-seguridad" },
