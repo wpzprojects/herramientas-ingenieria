@@ -192,7 +192,7 @@ export async function render(container) {
         <div class="tab-panel" data-panel="resultado">
           <div class="result-panel">
             <div style="display:flex; gap: var(--space-6); align-items: center; flex-wrap: wrap;">
-              <div style="width:140px;height:140px;border-radius:50%;flex:0 0 auto;background:conic-gradient(${donutColor} 0% ${pct}%, var(--bg-sunken) ${pct}% 100%);"></div>
+              <div style="width:140px;height:140px;border-radius:50%;flex:0 0 auto;background:conic-gradient(${donutColor} 0% ${pct}%, var(--donut-track) ${pct}% 100%);"></div>
               <div style="flex: 1 1 240px;">
                 <div class="result-metric">
                   <div class="value">${fmtPercent(data.ocupacionPct)} <span class="badge ${data.cumple ? "badge-success" : "badge-danger"}">${data.cumple ? "Cumple" : "No cumple"}</span></div>
