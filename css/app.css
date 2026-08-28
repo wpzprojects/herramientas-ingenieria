@@ -99,7 +99,7 @@ button { font-family: inherit; }
 
 /* ---------- typography helpers ---------- */
 .page-title { font-size: 1.5rem; font-weight: 800; margin-bottom: var(--space-1); }
-.page-subtitle { color: var(--text-muted); margin-bottom: var(--space-5); max-width: 65ch; }
+.page-subtitle { color: var(--text-muted); margin-bottom: var(--space-5); }
 .section-title { font-size: 1.05rem; font-weight: 700; margin: var(--space-6) 0 var(--space-3); }
 .text-muted { color: var(--text-muted); }
 .text-sm { font-size: 0.85rem; }
@@ -118,6 +118,7 @@ button { font-family: inherit; }
   box-shadow: var(--shadow-sm);
 }
 .card + .card { margin-top: var(--space-4); }
+#resultado-wrap:not(:empty) { margin-top: var(--space-4); }
 
 .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-4); }
 .menu-tile {
