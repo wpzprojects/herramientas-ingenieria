@@ -56,7 +56,7 @@ APP_PowerApps/                             # app original de Power Apps (fuente 
 
 ## Iconos / logo
 
-`icons/icon-192.png`, `icon-512.png`, `icon-maskable-512.png` e `icons/icon.svg` son un placeholder generado con `tools/generate_icons.py` (sin dependencias externas). Reemplázalos cuando haya un logo definitivo y vuelve a ejecutar el script si quieres regenerar variantes, o simplemente sobrescribe los PNG/SVG manualmente manteniendo los mismos nombres de archivo.
+`icons/icon-192.png`, `icon-512.png` e `icon-maskable-512.png` se generan a partir del logo definitivo `assets/IconoAPP.png` con `tools/generate_icons_from_source.py`. Vuelve a ejecutar el script si el logo cambia.
 
 ## Publicar en GitHub Pages
 
