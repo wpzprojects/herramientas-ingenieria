@@ -8,7 +8,7 @@ export async function render(container) {
   const especialidades = distinct(rows, "especialidad");
 
   container.innerHTML = `
-    <div class="breadcrumb"><a href="#/varios">Varios</a> <span>/</span> <span>Codificación de entregables</span></div>
+    <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/varios">Varios</a> <span>/</span> <span>Codificación de entregables</span></div>
     <h1 class="page-title">Codificación de entregables</h1>
     <p class="page-subtitle">Catálogo consultable de códigos estándar de documentos y planos por especialidad.</p>
 

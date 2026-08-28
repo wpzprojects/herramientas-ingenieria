@@ -53,7 +53,7 @@ export async function render(container, params) {
 
   if (!tema) {
     container.innerHTML = `
-      <div class="breadcrumb"><a href="#/normatividad">Normatividad</a></div>
+      <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/normatividad">Normatividad</a></div>
       <div class="empty-state">
         <h2>Tema no encontrado</h2>
         <p class="text-muted">No existe contenido normativo para <code>${params?.tema ?? ""}</code>.</p>
@@ -72,7 +72,7 @@ export async function render(container, params) {
       : "";
 
   container.innerHTML = `
-    <div class="breadcrumb"><a href="#/normatividad">Normatividad</a> <span>/</span> <span>${tema.titulo}</span></div>
+    <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/normatividad">Normatividad</a> <span>/</span> <span>${tema.titulo}</span></div>
     <h1 class="page-title">${tema.titulo}</h1>
     <p class="page-subtitle">${tema.subtitulo}</p>
     <div id="imagenes-wrap"></div>

@@ -109,6 +109,8 @@ export async function render(container, params) {
   if (!row) {
     container.append(
       el("nav", { class: "breadcrumb" }, [
+        el("a", { href: "#/" }, "Inicio"),
+        el("span", {}, "/"),
         el("a", { href: "#/catalogos" }, "Catálogos"),
         el("span", {}, "/"),
         el("a", { href: `#/catalogos/${params.familia}` }, cfg.tituloFamilia),
@@ -126,13 +128,14 @@ export async function render(container, params) {
 
   container.append(
     el("nav", { class: "breadcrumb" }, [
+      el("a", { href: "#/" }, "Inicio"),
+      el("span", {}, "/"),
       el("a", { href: "#/catalogos" }, "Catálogos"),
       el("span", {}, "/"),
       el("a", { href: `#/catalogos/${params.familia}` }, cfg.tituloFamilia),
       el("span", {}, "/"),
       el("span", {}, titulo),
     ]),
-    el("p", {}, el("a", { class: "btn btn-ghost", href: `#/catalogos/${params.familia}` }, "← Volver al catálogo")),
     el("h1", { class: "page-title" }, titulo)
   );
 

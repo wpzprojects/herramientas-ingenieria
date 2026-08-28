@@ -44,7 +44,7 @@ export async function render(container) {
   const nivelesKv = distinct(cables, "nivel_aislamiento_kv");
 
   container.innerHTML = `
-    <div class="breadcrumb"><a href="#/calculos">Cálculos</a> <span>/</span> <span>Ampacidad subterránea</span></div>
+    <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/calculos">Cálculos</a> <span>/</span> <span>Ampacidad subterránea</span></div>
     <h1 class="page-title">Ampacidad de cables subterráneos</h1>
     <p class="page-subtitle">Corriente admisible en régimen permanente de un cable en banco de ductos, según IEC 60287-1-1.</p>
 

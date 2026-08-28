@@ -24,7 +24,7 @@ export async function render(container) {
   const tipos = distinct(conductores, "tipo");
 
   container.innerHTML = `
-    <div class="breadcrumb"><a href="#/calculos">Cálculos</a> <span>/</span> <span>Ampacidad aérea</span></div>
+    <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/calculos">Cálculos</a> <span>/</span> <span>Ampacidad aérea</span></div>
     <h1 class="page-title">Ampacidad de conductores aéreos</h1>
     <p class="page-subtitle">Corriente admisible en régimen permanente de un conductor aéreo, según el balance térmico IEEE Std 738.</p>
 

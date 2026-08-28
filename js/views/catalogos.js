@@ -10,7 +10,11 @@ export async function render(container, params) {
   const meta = sectionMeta.catalogos;
   const items = sectionMenus.catalogos;
 
-  container.append(el("h1", { class: "page-title" }, meta.title), el("p", { class: "page-subtitle" }, meta.subtitle));
+  container.append(
+    el("nav", { class: "breadcrumb" }, [el("a", { href: "#/" }, "Inicio"), el("span", {}, "/"), el("span", {}, meta.title)]),
+    el("h1", { class: "page-title" }, meta.title),
+    el("p", { class: "page-subtitle" }, meta.subtitle)
+  );
 
   const grid = el("div", { class: "menu-grid" });
   items.forEach((item) => {

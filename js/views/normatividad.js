@@ -9,6 +9,7 @@ export function render(container) {
   const items = sectionMenus.normatividad;
 
   container.innerHTML = `
+    <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <span>${meta.title}</span></div>
     <h1 class="page-title">${meta.title}</h1>
     <p class="page-subtitle">${meta.subtitle}</p>
     <div class="menu-grid">

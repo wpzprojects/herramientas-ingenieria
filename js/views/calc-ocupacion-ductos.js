@@ -36,7 +36,7 @@ export async function render(container) {
   const tipos = distinct(tuberias, "tipo");
 
   container.innerHTML = `
-    <div class="breadcrumb"><a href="#/calculos">Cálculos</a> <span>/</span> <span>Ocupación de ductos</span></div>
+    <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/calculos">Cálculos</a> <span>/</span> <span>Ocupación de ductos</span></div>
     <h1 class="page-title">Ocupación de ductos</h1>
     <p class="page-subtitle">Porcentaje de ocupación de un ducto según el número y diámetro de los conductores, validado contra los límites de la NTC-2050.</p>
 

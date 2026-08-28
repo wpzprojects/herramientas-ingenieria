@@ -19,7 +19,7 @@ export async function render(container) {
   const xlpe = await loadData("conductores-xlpe");
 
   container.innerHTML = `
-    <div class="breadcrumb"><a href="#/calculos">Cálculos</a> <span>/</span> <span>Cortocircuito</span></div>
+    <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/calculos">Cálculos</a> <span>/</span> <span>Cortocircuito</span></div>
     <h1 class="page-title">Capacidad de corriente de cortocircuito</h1>
     <p class="page-subtitle">Corriente de cortocircuito admisible de un conductor según el límite térmico durante el tiempo de despeje de la falla.</p>
 

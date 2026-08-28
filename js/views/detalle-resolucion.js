@@ -10,7 +10,7 @@ export async function render(container, { id }) {
 
   if (!row) {
     container.innerHTML = `
-      <div class="breadcrumb"><a href="#/normatividad/resoluciones">Resoluciones</a></div>
+      <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/normatividad">Normatividad</a> <span>/</span> <a href="#/normatividad/resoluciones">Resoluciones</a></div>
       <div class="empty-state">
         <h2>Resolución no encontrada</h2>
         <p class="text-muted">No existe una resolución con id <code>${id}</code>.</p>
@@ -22,6 +22,7 @@ export async function render(container, { id }) {
 
   container.innerHTML = `
     <div class="breadcrumb">
+      <a href="#/">Inicio</a> <span>/</span>
       <a href="#/normatividad">Normatividad</a> <span>/</span>
       <a href="#/normatividad/resoluciones">Resoluciones</a> <span>/</span>
       <span>${row.resolucion}</span>

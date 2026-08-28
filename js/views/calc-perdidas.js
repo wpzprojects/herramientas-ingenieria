@@ -22,7 +22,7 @@ export async function render(container) {
   const xlpe = await loadData("conductores-xlpe");
 
   container.innerHTML = `
-    <div class="breadcrumb"><a href="#/calculos">Cálculos</a> <span>/</span> <span>Pérdidas</span></div>
+    <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/calculos">Cálculos</a> <span>/</span> <span>Pérdidas</span></div>
     <h1 class="page-title">Pérdidas de potencia</h1>
     <p class="page-subtitle">Corriente, potencia y porcentaje de pérdidas de una línea trifásica, ajustado por factor de carga.</p>
 

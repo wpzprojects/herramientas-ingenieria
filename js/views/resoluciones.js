@@ -8,7 +8,7 @@ export async function render(container) {
   const anios = distinct(rows, "fecha");
 
   container.innerHTML = `
-    <div class="breadcrumb"><a href="#/normatividad">Normatividad</a> <span>/</span> <span>Resoluciones</span></div>
+    <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/normatividad">Normatividad</a> <span>/</span> <span>Resoluciones</span></div>
     <h1 class="page-title">Resoluciones del sector</h1>
     <p class="page-subtitle">Normativa CREG relevante para el diseño de líneas y redes de distribución, con resumen y alcance.</p>
 

@@ -103,7 +103,13 @@ export async function render(container, params) {
   const rows = await loadData(cfg.dataFile);
 
   container.append(
-    el("nav", { class: "breadcrumb" }, [el("a", { href: "#/catalogos" }, "Catálogos"), el("span", {}, "/"), el("span", {}, cfg.titulo)]),
+    el("nav", { class: "breadcrumb" }, [
+      el("a", { href: "#/" }, "Inicio"),
+      el("span", {}, "/"),
+      el("a", { href: "#/catalogos" }, "Catálogos"),
+      el("span", {}, "/"),
+      el("span", {}, cfg.titulo),
+    ]),
     el("h1", { class: "page-title" }, cfg.titulo),
     el("p", { class: "page-subtitle" }, cfg.subtitulo)
   );

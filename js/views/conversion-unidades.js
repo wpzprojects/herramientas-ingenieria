@@ -10,7 +10,7 @@ export async function render(container) {
   const categorias = distinct(tabla, "categoria");
 
   container.innerHTML = `
-    <div class="breadcrumb"><a href="#/varios">Varios</a> <span>/</span> <span>Conversión de unidades</span></div>
+    <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/varios">Varios</a> <span>/</span> <span>Conversión de unidades</span></div>
     <h1 class="page-title">Conversión de unidades</h1>
     <p class="page-subtitle">Longitud, fuerza, área, presión, ángulos, temperatura y más.</p>
 

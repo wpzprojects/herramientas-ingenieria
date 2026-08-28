@@ -46,6 +46,13 @@
 
   --focus-ring: #0e7c7b;
   color-scheme: light;
+
+  --topbar-bg: linear-gradient(135deg, #0e7c7b, #0a5f5e);
+  --topbar-text: #ffffff;
+  --topbar-hover: rgba(255, 255, 255, 0.16);
+  --topbar-border: transparent;
+  --topbar-badge-bg: rgba(255, 255, 255, 0.18);
+  --topbar-badge-fg: #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -74,6 +81,13 @@
 
     --focus-ring: #4c9eff;
     color-scheme: dark;
+
+    --topbar-bg: var(--bg-elevated);
+    --topbar-text: var(--text);
+    --topbar-hover: var(--bg-sunken);
+    --topbar-border: var(--border);
+    --topbar-badge-bg: linear-gradient(135deg, var(--accent), var(--accent-strong));
+    --topbar-badge-fg: var(--accent-contrast);
   }
 }
 
@@ -102,4 +116,11 @@
 
   --focus-ring: #4c9eff;
   color-scheme: dark;
+
+  --topbar-bg: var(--bg-elevated);
+  --topbar-text: var(--text);
+  --topbar-hover: var(--bg-sunken);
+  --topbar-border: var(--border);
+  --topbar-badge-bg: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  --topbar-badge-fg: var(--accent-contrast);
 }
