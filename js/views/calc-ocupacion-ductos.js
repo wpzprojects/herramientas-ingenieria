@@ -38,7 +38,7 @@ export async function render(container) {
   container.innerHTML = `
     <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/calculos">Cálculos</a> <span>/</span> <span>Ocupación de ductos</span></div>
     <h1 class="page-title">Ocupación de ductos</h1>
-    <p class="page-subtitle">Porcentaje de ocupación de un ducto según el número y diámetro de los conductores, validado contra los límites de la NTC-2050.</p>
+    <p class="page-subtitle">Porcentaje de ocupación de ductos según el número y diámetro de los conductores, validado contra los límites de la NTC-2050.</p>
 
     <form class="card" id="form-calc" novalidate>
       <div class="grid-2">
