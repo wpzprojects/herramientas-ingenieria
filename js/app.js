@@ -30,7 +30,7 @@ function applyTheme(theme) {
   );
   document
     .getElementById("theme-color-meta")
-    .setAttribute("content", theme === "dark" ? "#0c1420" : "#0a66c2");
+    .setAttribute("content", theme === "dark" ? "#1e1e1e" : "#0e7c7b");
 }
 
 applyTheme(localStorage.getItem(THEME_KEY) || systemTheme());

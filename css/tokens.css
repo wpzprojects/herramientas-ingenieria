@@ -32,9 +32,9 @@
   --border: #d8e0eb;
   --border-strong: #b9c5d6;
 
-  --accent: #0a66c2;
-  --accent-strong: #084a8f;
-  --accent-soft: #e4f0ff;
+  --accent: #0e7c7b;
+  --accent-strong: #0a5f5e;
+  --accent-soft: #e0f2f1;
   --accent-contrast: #ffffff;
 
   --success: #17845c;
@@ -44,7 +44,7 @@
   --danger: #c22b34;
   --danger-soft: #fbe6e6;
 
-  --focus-ring: #0a66c2;
+  --focus-ring: #0e7c7b;
   color-scheme: light;
 }
 
