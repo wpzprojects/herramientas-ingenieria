@@ -5,6 +5,7 @@
 import { sectionMenus, sectionMeta } from "../nav.js";
 
 const SECCIONES = ["calculos", "catalogos", "normatividad", "varios"];
+const APP_VERSION = "1.0.0";
 
 export function render(container) {
   container.innerHTML = `
@@ -14,8 +15,7 @@ export function render(container) {
     <div class="callout callout-info">
       Esta aplicación funciona 100% offline una vez cargada por primera vez: es instalable como
       PWA y todos los catálogos, tablas normativas y datos de cálculo viven embebidos en la app,
-      sin necesitar conexión a internet (con la única excepción del enlace externo opcional de
-      Google Colab en la herramienta de conversión de coordenadas).
+      sin necesitar conexión a internet.
     </div>
 
     ${SECCIONES.map((key) => {
@@ -37,5 +37,20 @@ export function render(container) {
           </ul>
         </div>`;
     }).join("")}
+
+    <div class="card dev-card">
+      <div class="dev-header">
+        <span class="dev-avatar">WP</span>
+        <div>
+          <p class="dev-name">Wilsson Uriel Perez Valero</p>
+          <p class="dev-role">Autor de Herramientas de Ingeniería</p>
+        </div>
+      </div>
+      <div class="dev-contact">
+        <a href="mailto:wperez.net@hotmail.com">wperez.net@hotmail.com</a>
+        <a href="tel:+573104762477">+57 310 476 2477</a>
+      </div>
+      <p class="dev-footer">Colombia · 2026 · v${APP_VERSION}</p>
+    </div>
   `;
 }
