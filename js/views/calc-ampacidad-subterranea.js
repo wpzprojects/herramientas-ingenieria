@@ -21,19 +21,19 @@ const FORMULAS_HTML = `Metodología IEC 60287-1-1 (régimen permanente):
        activo y los demás ductos del banco
   Δθ = salto térmico admisible entre el conductor y el terreno
 
-Limitaciones conocidas (heredadas de la aplicación original):
+Limitaciones conocidas:
   • No distingue formación en trébol vs. formación plana — usa la misma
     fórmula de proximidad para ambas.
   • Solo calcula régimen permanente (no transitorio ni secado del suelo).`;
 
 const HINTS = {
   puestaTierra:
-    "Unipuntual: mayor pérdida por circulación, instalación más simple. Ambos extremos: menor resistencia pero con pérdidas por corrientes inducidas. Cross-bonding: transposición de pantallas, minimiza pérdidas en líneas largas.",
+    "Unipuntual: en un extremo del cable.",
   tempTerreno: "Valores típicos: 15-20°C en clima frío, 25-30°C en clima cálido/tropical.",
-  rhoSuelo: "Valores típicos: suelo húmedo/arcilloso ≈ 0.8-1.2 K·m/W, suelo seco/arenoso ≈ 2-3 K·m/W.",
-  uDucto: "Valores típicos: PVC ≈ 0.3 K·m/W; ductos de fibra o metálicos suelen ser más bajos; concreto es variable.",
-  separacionFases: "Depende de la norma y la constructabilidad; valores típicos entre 0.04 y 0.10 m entre fases.",
-  separacionDuctos: "Depende de la norma y la constructabilidad; valores típicos entre 0.15 y 0.30 m entre ductos.",
+  rhoSuelo: "Tipos de suelo: Saturado / muy húmedo: 0.5-0.7; Arena o arcilla húmeda: 0.7-1.0; Tierra común compactada: 1.0-1.2; Arena seca: 2.0-3.0; Roca/suelo muy seco: 2.5-3.5",
+  uDucto: "Típicos: PVC ≈ 0.3 - 0.4 K·m/W; Fibra de vidrio: 0.2 - 0.3; Metálico: 0.05 - 0.1; Cualquier ducto embebido en concreto: 0.1 - 0.2",
+  separacionFases: "Valores típicos entre 0.04 y 0.10 m entre fases.",
+  separacionDuctos: "Depende de la norma; valores típicos entre 0.15 y 0.30 m",
 };
 
 export async function render(container) {
