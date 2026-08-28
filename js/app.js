@@ -10,8 +10,40 @@ const backdrop = document.getElementById("sidebar-backdrop");
 const mount = document.getElementById("app");
 
 document.getElementById("brand-mark").innerHTML = icon("bolt");
-document.getElementById("help-link").innerHTML = icon("help");
 navToggle.innerHTML = icon("menu");
+
+// --- Tema claro/oscuro ---
+const THEME_KEY = "theme";
+const themeToggle = document.getElementById("theme-toggle");
+const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
+
+function systemTheme() {
+  return prefersDark.matches ? "dark" : "light";
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  themeToggle.innerHTML = icon(theme === "dark" ? "sun" : "moon");
+  themeToggle.setAttribute(
+    "aria-label",
+    theme === "dark" ? "Cambiar a tema claro" : "Cambiar a tema oscuro"
+  );
+  document
+    .getElementById("theme-color-meta")
+    .setAttribute("content", theme === "dark" ? "#0c1420" : "#0a66c2");
+}
+
+applyTheme(localStorage.getItem(THEME_KEY) || systemTheme());
+
+themeToggle.addEventListener("click", () => {
+  const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  localStorage.setItem(THEME_KEY, next);
+  applyTheme(next);
+});
+
+prefersDark.addEventListener("change", () => {
+  if (!localStorage.getItem(THEME_KEY)) applyTheme(systemTheme());
+});
 
 navList.innerHTML = sidebarLinks
   .map(

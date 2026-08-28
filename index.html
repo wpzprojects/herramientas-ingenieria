@@ -5,14 +5,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Herramientas de Ingeniería</title>
 <meta name="description" content="Calculadoras y catálogos de ingeniería para líneas y redes de distribución eléctrica: ampacidad, cortocircuito, pérdidas, regulación, conductores y normatividad." />
-<meta name="theme-color" content="#0a66c2" media="(prefers-color-scheme: light)" />
-<meta name="theme-color" content="#0c1420" media="(prefers-color-scheme: dark)" />
+<meta name="theme-color" content="#0a66c2" id="theme-color-meta" />
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="icon" href="icons/icon-192.png" type="image/png" />
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="Herramientas" />
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem("theme");
+      var theme = saved || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    } catch (e) {}
+  })();
+</script>
 <link rel="stylesheet" href="css/tokens.css" />
 <link rel="stylesheet" href="css/app.css" />
 </head>
@@ -25,7 +33,7 @@
       <span>Herramientas de Ingeniería</span>
     </a>
     <div class="topbar-actions">
-      <a class="icon-btn" href="#/ayuda" aria-label="Ayuda" id="help-link"></a>
+      <button class="icon-btn" id="theme-toggle" aria-label="Cambiar tema claro/oscuro"></button>
     </div>
   </header>
   <div class="app-body">
