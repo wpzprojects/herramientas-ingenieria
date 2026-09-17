@@ -20,6 +20,37 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   antes de "corregir" comportamientos que parezcan bugs (algunos son intencionales,
   replicando el comportamiento original).
 
+## Convenciones de UI/CSS
+
+- Iconos (`js/icons.js`): SVG inline propios, sin CDN (requisito de offline). El estilo
+  visual replica Tabler Icons (outline, stroke-width 2 envuelto en `<g>` para los iconos
+  "tablerizados"). Un mismo nombre de icono (`calculator`, `book`, `archive`, `grid`...)
+  se reutiliza entre el sidebar (`js/nav.js`) y las tarjetas de Home (`js/views/inicio.js`)
+  para que coincidan visualmente sin duplicar definiciones.
+- `.content` (`css/app.css`) ya NO tiene `max-width`/centrado: ocupa todo el ancho
+  disponible junto al sidebar en todas las vistas (se quitó el `max-width:1100px` el
+  2026-09-17 porque dejaba un espacio vacío grande a la derecha en pantallas anchas).
+- Tarjetas del Home usan layout horizontal (icono circular a la izquierda, texto a la
+  derecha) vía las clases modificadoras `.menu-grid--home` / `.menu-tile--row`, para no
+  afectar el layout vertical por defecto de `.menu-tile` que usan los submenús
+  (Cálculos/Catálogos/Normatividad/Varios).
+- Modo oscuro: `--bg` es `#0f0f0f` (antes `#1e1e1e`, se oscureció ~50% el 2026-09-17).
+
+## Verificación visual de cambios de UI
+
+En este entorno (Windows, bash de Git) no hay Node/npx/chromium-cli disponibles para
+Playwright. Para verificar visualmente un cambio de UI: levantar `python -m http.server`
+en el directorio del proyecto y tomar un screenshot con Edge headless vía PowerShell:
+
+```
+& "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --headless --disable-gpu `
+  --screenshot="$env:TEMP\out.png" --window-size=960,700 --virtual-time-budget=4000 `
+  "http://localhost:PUERTO/index.html#/ruta"
+```
+
+Luego leer la imagen con la herramienta de lectura de archivos. Recordar detener el
+servidor de prueba al terminar.
+
 ## Flujo de trabajo con git
 
 - Después de cada commit, hacer `git push` de inmediato sin pedir confirmación.
