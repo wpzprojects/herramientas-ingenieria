@@ -33,15 +33,16 @@ const TILES = [
 
 export function render(container) {
   container.innerHTML = `
-    <h1 class="page-title">Herramientas de Ingeniería</h1>
     <p class="page-subtitle">Calculadoras, catálogos y normatividad para ingeniería de líneas y redes de distribución eléctrica.</p>
-    <div class="menu-grid">
+    <div class="menu-grid menu-grid--home">
       ${TILES.map(
         (t) => `
-        <a class="menu-tile" href="${t.hash}">
+        <a class="menu-tile menu-tile--row" href="${t.hash}">
           <span class="tile-icon">${icon(t.icon)}</span>
-          <span class="tile-title">${t.title}</span>
-          <span class="tile-desc">${t.desc}</span>
+          <span class="tile-body">
+            <span class="tile-title">${t.title}</span>
+            <span class="tile-desc">${t.desc}</span>
+          </span>
         </a>`
       ).join("")}
     </div>

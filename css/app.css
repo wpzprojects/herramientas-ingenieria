@@ -142,6 +142,17 @@ button { font-family: inherit; }
 .menu-tile .tile-title { font-weight: 700; }
 .menu-tile .tile-desc { color: var(--text-muted); font-size: 0.85rem; line-height: 1.4; }
 
+/* Variante horizontal para las tarjetas principales del Home: icono circular
+   a la izquierda, titulo y descripcion apilados a la derecha. */
+.menu-grid--home { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.menu-tile--row {
+  flex-direction: row; align-items: center; gap: var(--space-4);
+}
+.menu-tile--row .tile-icon {
+  flex: none; width: 48px; height: 48px; border-radius: 50%;
+}
+.menu-tile--row .tile-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); }
 @media (max-width: 720px) {

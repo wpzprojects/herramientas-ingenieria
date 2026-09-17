@@ -16,8 +16,7 @@ const FORMULAS_HTML = `Metodologia IEEE Std 738 (balance termico en regimen perm
 
 Nota: Qse (radiación solar total) y θ (ángulo efectivo de incidencia solar) se
 ingresan manualmente en esta calculadora. El cálculo de posición solar del
-estándar completo (a partir de fecha, hora y latitud) no está implementado,
-igual que en la aplicación original.`;
+estándar completo (a partir de fecha, hora y latitud) no está implementado.`;
 
 export async function render(container) {
   const conductores = await loadData("conductores-desnudos");

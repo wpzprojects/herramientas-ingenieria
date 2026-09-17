@@ -2,10 +2,7 @@
 // que la PWA funcione 100% offline sin cargar fuentes de icono remotas.
 const paths = {
   bolt: "M13 2 4 14h6l-1 8 9-12h-6l1-8Z",
-  calculator: "M5 3h14a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Zm2 3v4h10V6H7Zm0 6.5v2h2v-2H7Zm4 0v2h2v-2h-2Zm4 0v2h2v-2h-2ZM7 16v2h2v-2H7Zm4 0v2h2v-2h-2Zm4 0v5h2v-5h-2Z",
-  book: "M6 4a2 2 0 0 1 2-2h10a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H8a2 2 0 0 0-2 2V4ZM6 4v16",
   shield: "M12 2 4 5v6c0 5 3.5 9 8 11 4.5-2 8-6 8-11V5l-8-3Z",
-  grid: "M4 4h7v7H4V4Zm9 0h7v7h-7V4ZM4 13h7v7H4v-7Zm9 0h7v7h-7v-7Z",
   layers: "m12 2 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5m-18 5 9 5 9-5",
   help: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Zm0-6.2v-.3c0-1 .6-1.6 1.4-2.2.9-.7 1.5-1.3 1.5-2.4 0-1.5-1.2-2.4-2.8-2.4-1.4 0-2.5.7-2.9 2m2.8 7.7h.01",
   chevronLeft: "m15 18-6-6 6-6",
@@ -13,7 +10,6 @@ const paths = {
   ruler: "M3 8h18v8H3V8Zm3 0v3m3-3v5m3-5v3m3-3v5m3-5v3",
   compass: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Zm3.5-14.5-2.2 5.7-5.7 2.2 2.2-5.7 5.7-2.2Z",
   hash: "M5 9h14M5 15h14M9 4 7 20m8-16-2 16",
-  archive: "M3 5h18v4H3V5Zm1 4h16v10H4V9Zm5 3h6",
   map: "m9 3-6 2v16l6-2 6 2 6-2V3l-6 2-6-2Zm0 0v16m6-14v16",
   code: "m8 5-6 7 6 7m8-14 6 7-6 7",
   home: "m3 11 9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9Z",
@@ -37,6 +33,16 @@ const shapes = {
   conductorBare: '<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/>',
   conductorSemi: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/>',
   conductorXlpe: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="3"/>',
+  // Iconos siguientes replican, trazo a trazo, los de Tabler Icons (licencia MIT)
+  // para que el estilo visual coincida sin depender de su CDN (ver icon()).
+  calculator:
+    '<g stroke-width="2"><path d="M4 5a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2l0 -14"/><path d="M8 8a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1v1a1 1 0 0 1 -1 1h-6a1 1 0 0 1 -1 -1l0 -1"/><path d="M8 14l0 .01"/><path d="M12 14l0 .01"/><path d="M16 14l0 .01"/><path d="M8 17l0 .01"/><path d="M12 17l0 .01"/><path d="M16 17l0 .01"/></g>',
+  book:
+    '<g stroke-width="2"><path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0"/><path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0"/><path d="M3 6l0 13"/><path d="M12 6l0 13"/><path d="M21 6l0 13"/></g>',
+  archive:
+    '<g stroke-width="2"><path d="M5 4h4l3 3h7a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-11a2 2 0 0 1 2 -2"/></g>',
+  grid:
+    '<g stroke-width="2"><path d="M4 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4"/><path d="M14 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4"/><path d="M4 15a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4"/><path d="M14 15a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4"/></g>',
 };
 
 export function icon(name, cls = "") {
