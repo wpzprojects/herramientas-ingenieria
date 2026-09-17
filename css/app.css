@@ -96,7 +96,7 @@ button { font-family: inherit; }
 .nav-link:hover { background: var(--bg-sunken); color: var(--text); }
 .nav-link.active { background: var(--accent-soft); color: var(--accent-strong); }
 
-.content { flex: 1 1 auto; min-width: 0; padding: var(--space-5); max-width: 1100px; margin: 0 auto; width: 100%; }
+.content { flex: 1 1 auto; min-width: 0; padding: var(--space-5); width: 100%; }
 
 /* ---------- typography helpers ---------- */
 .page-title { font-size: 1.5rem; font-weight: 800; margin-bottom: var(--space-1); }
