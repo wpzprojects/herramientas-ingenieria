@@ -43,7 +43,7 @@ export function render(container) {
         <span class="dev-avatar">WP</span>
         <div>
           <p class="dev-name">Wilsson Uriel Perez Valero</p>
-          <p class="dev-role">Autor de Herramientas de Ingeniería</p>
+          <p class="dev-role">Herramientas de Ingeniería</p>
         </div>
       </div>
       <div class="dev-contact">
