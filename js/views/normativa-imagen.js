@@ -63,14 +63,6 @@ export async function render(container, params) {
     return;
   }
 
-  const calloutHtml =
-    params.tema === "corriente-ntc"
-      ? `<div class="callout callout-info">
-           Esta información también está disponible de forma digitalizada y filtrable en el
-           <a href="#/catalogos/desnudos">Catálogo de conductores desnudos</a>.
-         </div>`
-      : "";
-
   container.innerHTML = `
     <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/normatividad">Normatividad</a> <span>/</span> <span>${tema.titulo}</span></div>
     <h1 class="page-title">${tema.titulo}</h1>
@@ -89,7 +81,6 @@ export async function render(container, params) {
         </select>
       </div>
       <div class="image-frame" id="frame-imagen"></div>
-      ${calloutHtml}
     `;
 
     const sel = wrap.querySelector("#sel-tabla");
@@ -117,7 +108,6 @@ export async function render(container, params) {
           )
           .join("")}
       </div>
-      ${calloutHtml}
     `;
   }
 }
