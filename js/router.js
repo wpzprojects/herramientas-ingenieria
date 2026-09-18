@@ -44,6 +44,8 @@ const routeTable = [
   ["/varios/codificacion", () => import("./views/codificacion.js")],
   ["/varios/conversion-coordenadas", () => import("./views/conversion-coordenadas.js")],
   ["/varios/conversion-unidades", () => import("./views/conversion-unidades.js")],
+  ["/ia", () => import("./views/ia.js")],
+  ["/ia/configuracion", () => import("./views/ia-configuracion.js")],
   ["/ayuda", () => import("./views/ayuda.js")],
 ].map(([pattern, load]) => ({ ...compile(pattern), pattern, load }));
 

@@ -6,6 +6,7 @@ export const sidebarLinks = [
   { key: "catalogos", title: "Catálogos", icon: "book", hash: "#/catalogos" },
   { key: "normatividad", title: "Normatividad", icon: "archive", hash: "#/normatividad" },
   { key: "varios", title: "Varios", icon: "grid", hash: "#/varios" },
+  { key: "ia", title: "Inteligencia artificial", icon: "sparkles", hash: "#/ia" },
   { key: "ayuda", title: "Ayuda", icon: "help", hash: "#/ayuda" },
 ];
 
@@ -14,6 +15,7 @@ export const sectionMeta = {
   catalogos: { title: "Catálogos", subtitle: "Consulta técnica de conductores por familia, con filtros y ficha de detalle." },
   normatividad: { title: "Normatividad", subtitle: "Referencia normativa RETIE / NTC 2050 y resoluciones del sector eléctrico." },
   varios: { title: "Varios", subtitle: "Herramientas de apoyo: conversión de unidades, coordenadas y codificación." },
+  ia: { title: "Inteligencia artificial", subtitle: "Asistentes con IA (Google Gemini): análisis de escenarios con las calculadoras y corrección de redacción." },
 };
 
 export const sectionMenus = {
@@ -41,5 +43,8 @@ export const sectionMenus = {
     { title: "Codificación de entregables", desc: "Catálogo consultable de códigos de documentos y planos.", icon: "hash", hash: "#/varios/codificacion" },
     { title: "Conversión de coordenadas", desc: "WGS84 / MAGNA-SIRGAS ↔ UTM (proyección Transversa de Mercator).", icon: "compass", hash: "#/varios/conversion-coordenadas" },
     { title: "Conversión de unidades", desc: "Longitud, fuerza, área, presión, ángulos, temperatura y más.", icon: "ruler", hash: "#/varios/conversion-unidades" },
+  ],
+  ia: [
+    { title: "Configuración de IA", desc: "Clave de API de Gemini, modelo y datos guardados en este navegador.", icon: "settings", hash: "#/ia/configuracion" },
   ],
 };
