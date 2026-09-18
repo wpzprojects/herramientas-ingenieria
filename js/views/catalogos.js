@@ -16,13 +16,15 @@ export async function render(container, params) {
     el("p", { class: "page-subtitle" }, meta.subtitle)
   );
 
-  const grid = el("div", { class: "menu-grid" });
+  const grid = el("div", { class: "menu-grid menu-grid--row" });
   items.forEach((item) => {
     grid.append(
-      el("a", { class: "menu-tile", href: item.hash }, [
+      el("a", { class: "menu-tile menu-tile--row", href: item.hash }, [
         el("span", { class: "tile-icon", html: icon(item.icon) }),
-        el("span", { class: "tile-title" }, item.title),
-        el("span", { class: "tile-desc" }, item.desc),
+        el("span", { class: "tile-body" }, [
+          el("span", { class: "tile-title" }, item.title),
+          el("span", { class: "tile-desc" }, item.desc),
+        ]),
       ])
     );
   });
