@@ -1,0 +1,563 @@
+// Corrector de redaccion con IA: eliges un agente (prompt de sistema con su
+// tono y ejemplos), pegas un texto y Gemini lo devuelve corregido; luego se
+// puede seguir pidiendo ajustes. Los agentes se gestionan desde esta misma
+// pantalla (crear, editar, duplicar, borrar, exportar/importar JSON).
+
+import { el, escapeHtml } from "../util/format.js";
+import { obtenerClave, obtenerAjustes } from "../ai/config.js";
+import { generar, ErrorGemini } from "../ai/gemini.js";
+import { verificarAcceso, htmlAvisoPrivacidad } from "../ai/ui-clave.js";
+import * as historial from "../ai/historial.js";
+import {
+  TONOS,
+  cargarAgentes,
+  guardarAgentes,
+  restaurarPredeterminados,
+  nuevoAgenteVacio,
+  construirSistema,
+  exportarAgentesJson,
+  importarAgentesJson,
+} from "../ai/agentes.js";
+
+const K_ACTIVO = "ia.agenteActivo";
+const MAX_CARACTERES = 30000;
+
+function leerActivo() {
+  try {
+    return window.localStorage.getItem(K_ACTIVO);
+  } catch {
+    return null;
+  }
+}
+function guardarActivo(id) {
+  try {
+    window.localStorage.setItem(K_ACTIVO, id);
+  } catch {
+    /* sin storage */
+  }
+}
+
+async function copiarTexto(texto) {
+  try {
+    await navigator.clipboard.writeText(texto);
+    return true;
+  } catch {
+    const ta = el("textarea", { style: "position:fixed;opacity:0;" });
+    ta.value = texto;
+    document.body.append(ta);
+    ta.select();
+    let ok = false;
+    try {
+      ok = document.execCommand("copy");
+    } catch {
+      ok = false;
+    }
+    ta.remove();
+    return ok;
+  }
+}
+
+function descargar(nombre, contenido, tipo) {
+  const url = URL.createObjectURL(new Blob([contenido], { type: tipo }));
+  const a = el("a", { href: url, download: nombre });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+const fechaCorta = (ms) => new Date(ms).toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" });
+
+export async function render(container) {
+  container.innerHTML = `
+    <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/ia">Inteligencia artificial</a> <span>/</span> <span>Corrector de redacción</span></div>
+    <h1 class="page-title">Corrector de redacción</h1>
+    <p class="page-subtitle">Elige un agente, pega tu texto y recibe una versión corregida. Después puedes pedir ajustes.</p>
+  `;
+  if (!verificarAcceso(container, { reintentar: () => render(container) })) return;
+
+  let agentes = cargarAgentes();
+  let activoId = agentes.some((a) => a.id === leerActivo()) ? leerActivo() : agentes[0].id;
+  let conv = null; // conversacion actual
+  let ocupado = false;
+
+  container.insertAdjacentHTML(
+    "beforeend",
+    `
+    <div class="card">
+      <div class="ia-toolbar">
+        <h2 class="section-title" style="margin:0">Agente</h2>
+        <div class="grupo">
+          <button type="button" class="btn btn-sm" id="btn-gestionar">Gestionar agentes</button>
+          <button type="button" class="btn btn-sm" id="btn-historial">Historial</button>
+        </div>
+      </div>
+      <div class="ia-agente-lista" id="lista-agentes" role="group" aria-label="Agentes de redacción"></div>
+      <p class="text-muted text-sm" id="desc-agente" style="margin-bottom:0"></p>
+    </div>
+
+    <div id="panel-historial" class="card" hidden></div>
+    <div id="panel-gestor" class="card" hidden></div>
+
+    <div class="card">
+      <div class="field">
+        <label for="f-texto">Texto a corregir</label>
+        <textarea id="f-texto" rows="9" placeholder="Pega aquí el texto (correo, descripción, acta…)"></textarea>
+        <span class="hint" id="cuenta-caracteres"></span>
+      </div>
+      <div class="field">
+        <label for="f-extra">Indicación adicional (opcional)</label>
+        <input type="text" id="f-extra" placeholder="Ej.: dirigido al gerente, máximo 120 palabras, en tono más firme…">
+      </div>
+      <div class="btn-row" style="margin-top:0">
+        <button type="button" class="btn btn-primary" id="btn-corregir">Corregir</button>
+        <button type="button" class="btn" id="btn-nueva">Nueva conversación</button>
+      </div>
+      ${htmlAvisoPrivacidad().replace('class="callout', 'style="margin:var(--space-4) 0 0" class="callout')}
+    </div>
+
+    <div class="card" id="card-resultado" hidden>
+      <h2 class="section-title" style="margin-top:0">Resultado</h2>
+      <div class="ia-chat" id="chat" aria-live="polite"></div>
+      <div class="ia-composer">
+        <textarea id="f-ajuste" rows="2" placeholder="Pide un ajuste: más formal, más corto, agrega un cierre…"></textarea>
+        <button type="button" class="btn btn-primary" id="btn-ajustar">Enviar</button>
+      </div>
+    </div>
+  `
+  );
+
+  const $ = (s) => container.querySelector(s);
+  const chat = $("#chat");
+  const fTexto = $("#f-texto");
+
+  const agenteActivo = () => agentes.find((a) => a.id === activoId) || agentes[0];
+
+  // ---------- agentes ----------
+  function pintarAgentes() {
+    const lista = $("#lista-agentes");
+    lista.innerHTML = "";
+    for (const a of agentes) {
+      lista.append(
+        el(
+          "button",
+          {
+            type: "button",
+            class: "ia-chip",
+            "aria-pressed": String(a.id === activoId),
+            onclick: () => {
+              if (a.id === activoId) return;
+              if (conv && !confirm("Cambiar de agente inicia una conversación nueva. ¿Continuar?")) return;
+              activoId = a.id;
+              guardarActivo(a.id);
+              reiniciarConversacion();
+              pintarAgentes();
+            },
+          },
+          a.nombre
+        )
+      );
+    }
+    $("#desc-agente").textContent = agenteActivo().descripcion || "";
+  }
+
+  // ---------- conversacion ----------
+  function burbuja(rol, texto) {
+    const cls = rol === "user" ? "ia-msg ia-msg--user" : rol === "error" ? "ia-msg ia-msg--error" : "ia-msg ia-msg--model ia-msg--plano";
+    const nodo = el("div", { class: cls }, texto);
+    if (rol === "model") {
+      nodo.append(
+        el("div", { class: "ia-msg-acciones" }, [
+          el(
+            "button",
+            {
+              type: "button",
+              class: "btn btn-sm",
+              onclick: async (e) => {
+                const ok = await copiarTexto(texto);
+                e.target.textContent = ok ? "¡Copiado!" : "No se pudo copiar";
+                setTimeout(() => (e.target.textContent = "Copiar"), 1500);
+              },
+            },
+            "Copiar"
+          ),
+        ])
+      );
+    }
+    chat.append(nodo);
+    chat.scrollTop = chat.scrollHeight;
+    return nodo;
+  }
+
+  function reiniciarConversacion() {
+    conv = null;
+    chat.innerHTML = "";
+    $("#card-resultado").hidden = true;
+  }
+
+  function pintarConversacion() {
+    chat.innerHTML = "";
+    for (const m of conv.mensajes) burbuja(m.rol, m.texto);
+    $("#card-resultado").hidden = false;
+  }
+
+  function bloquear(v) {
+    ocupado = v;
+    $("#btn-corregir").disabled = v;
+    $("#btn-ajustar").disabled = v;
+  }
+
+  async function enviar(textoUsuario, textoVisible) {
+    if (ocupado) return;
+    const agente = agenteActivo();
+    if (!conv) {
+      conv = {
+        id: historial.nuevoId(),
+        tipo: "redaccion",
+        titulo: (textoVisible || textoUsuario).replace(/\s+/g, " ").slice(0, 70),
+        agenteId: agente.id,
+        agenteNombre: agente.nombre,
+        creado: Date.now(),
+        mensajes: [],
+        contenidos: [],
+      };
+    }
+    $("#card-resultado").hidden = false;
+    conv.contenidos.push({ role: "user", parts: [{ text: textoUsuario }] });
+    conv.mensajes.push({ rol: "user", texto: textoVisible || textoUsuario });
+    burbuja("user", textoVisible || textoUsuario);
+    const espera = el("div", { class: "ia-msg ia-msg--model" }, [el("span", { class: "ia-typing", "aria-label": "Generando respuesta" }, [el("span"), el("span"), el("span")])]);
+    chat.append(espera);
+    chat.scrollTop = chat.scrollHeight;
+    bloquear(true);
+
+    try {
+      const aj = obtenerAjustes();
+      const r = await generar({
+        clave: obtenerClave(),
+        modelo: aj.modelo,
+        sistema: construirSistema(agente),
+        contenidos: conv.contenidos,
+        temperatura: agente.temperatura ?? aj.temperatura,
+      });
+      const texto = r.texto.trim() || `(La IA no devolvió texto${r.finishReason ? `: ${r.finishReason}` : ""}. Reformula o acorta el texto.)`;
+      conv.contenidos.push({ role: "model", parts: [{ text: r.texto || texto }] });
+      conv.mensajes.push({ rol: "model", texto });
+      espera.remove();
+      burbuja("model", texto);
+      historial.guardar(conv); // en segundo plano: un guardado lento no debe bloquear la interfaz
+    } catch (err) {
+      // se revierte el turno del usuario para no dejar el historial desbalanceado
+      conv.contenidos.pop();
+      conv.mensajes.pop();
+      espera.remove();
+      // la burbuja del usuario queda visible junto al error para que sea claro que no se envio
+      burbuja("error", err instanceof ErrorGemini ? err.message : `Error inesperado: ${err.message || err}`);
+    } finally {
+      bloquear(false);
+    }
+  }
+
+  $("#btn-corregir").addEventListener("click", () => {
+    const texto = fTexto.value.trim();
+    if (!texto) return fTexto.focus();
+    if (texto.length > MAX_CARACTERES) {
+      alert(`El texto es demasiado largo (${texto.length} caracteres). El máximo es ${MAX_CARACTERES}.`);
+      return;
+    }
+    if (conv) reiniciarConversacion(); // "Corregir" siempre parte de una conversacion nueva
+    const extra = $("#f-extra").value.trim();
+    const mensaje =
+      "Corrige el siguiente texto siguiendo tus instrucciones." +
+      (extra ? `\nIndicación adicional: ${extra}` : "") +
+      `\n\nTEXTO:\n<<<\n${texto}\n>>>`;
+    enviar(mensaje, texto);
+  });
+
+  $("#btn-ajustar").addEventListener("click", () => {
+    const f = $("#f-ajuste");
+    const t = f.value.trim();
+    if (!t || !conv) return;
+    f.value = "";
+    enviar(t);
+  });
+  $("#f-ajuste").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) $("#btn-ajustar").click();
+  });
+
+  $("#btn-nueva").addEventListener("click", () => {
+    reiniciarConversacion();
+    fTexto.value = "";
+    $("#f-extra").value = "";
+    contarCaracteres();
+    fTexto.focus();
+  });
+
+  function contarCaracteres() {
+    const n = fTexto.value.length;
+    $("#cuenta-caracteres").textContent = n ? `${n.toLocaleString("es-CO")} caracteres` : "";
+  }
+  fTexto.addEventListener("input", contarCaracteres);
+
+  // ---------- historial ----------
+  const panelHistorial = $("#panel-historial");
+  async function pintarHistorial() {
+    const lista = await historial.listar("redaccion");
+    panelHistorial.innerHTML = `<h2 class="section-title" style="margin-top:0">Historial de conversaciones</h2>`;
+    if (!lista.length) {
+      panelHistorial.insertAdjacentHTML("beforeend", `<p class="text-muted" style="margin-bottom:0">Aún no hay conversaciones guardadas.</p>`);
+      return;
+    }
+    const cont = el("div", { class: "ia-historial" });
+    for (const c of lista) {
+      cont.append(
+        el("div", { class: "ia-historial-item" }, [
+          el("span", { class: "titulo", title: c.titulo }, `${c.agenteNombre ? `[${c.agenteNombre}] ` : ""}${c.titulo}`),
+          el("span", { class: "fecha" }, fechaCorta(c.actualizado)),
+          el(
+            "button",
+            {
+              type: "button",
+              class: "btn btn-sm",
+              onclick: () => {
+                conv = c;
+                if (agentes.some((a) => a.id === c.agenteId)) {
+                  activoId = c.agenteId;
+                  guardarActivo(activoId);
+                  pintarAgentes();
+                }
+                pintarConversacion();
+                panelHistorial.hidden = true;
+                $("#card-resultado").scrollIntoView({ behavior: "smooth", block: "nearest" });
+              },
+            },
+            "Abrir"
+          ),
+          el(
+            "button",
+            {
+              type: "button",
+              class: "btn btn-sm btn-ghost",
+              onclick: async () => {
+                await historial.borrar(c.id);
+                if (conv?.id === c.id) reiniciarConversacion();
+                pintarHistorial();
+              },
+            },
+            "Borrar"
+          ),
+        ])
+      );
+    }
+    panelHistorial.append(cont);
+  }
+  $("#btn-historial").addEventListener("click", async () => {
+    panelHistorial.hidden = !panelHistorial.hidden;
+    if (!panelHistorial.hidden) await pintarHistorial();
+  });
+
+  // ---------- gestor de agentes ----------
+  const panelGestor = $("#panel-gestor");
+  $("#btn-gestionar").addEventListener("click", () => {
+    panelGestor.hidden = !panelGestor.hidden;
+    if (!panelGestor.hidden) pintarGestor();
+  });
+
+  function persistir() {
+    if (!guardarAgentes(agentes)) alert("No se pudieron guardar los agentes en este navegador (¿almacenamiento bloqueado?).");
+    if (!agentes.some((a) => a.id === activoId)) activoId = agentes[0].id;
+    guardarActivo(activoId);
+    pintarAgentes();
+  }
+
+  function pintarGestor() {
+    panelGestor.innerHTML = `
+      <div class="ia-toolbar">
+        <h2 class="section-title" style="margin:0">Gestionar agentes</h2>
+        <div class="grupo">
+          <button type="button" class="btn btn-sm btn-primary" data-a="nuevo">Nuevo agente</button>
+          <button type="button" class="btn btn-sm" data-a="exportar">Exportar JSON</button>
+          <button type="button" class="btn btn-sm" data-a="importar">Importar JSON</button>
+          <button type="button" class="btn btn-sm btn-ghost" data-a="restaurar">Restaurar predeterminados</button>
+          <input type="file" accept="application/json,.json" hidden id="f-importar">
+        </div>
+      </div>
+      <div class="ia-historial" id="gestor-lista"></div>
+      <div id="gestor-form"></div>
+      <div id="gestor-msg"></div>`;
+    const lista = panelGestor.querySelector("#gestor-lista");
+    for (const a of agentes) {
+      lista.append(
+        el("div", { class: "ia-historial-item" }, [
+          el("span", { class: "titulo", title: a.descripcion }, [a.nombre, a.predefinido ? el("span", { class: "badge", style: "margin-left:8px" }, "predeterminado") : null]),
+          el("button", { type: "button", class: "btn btn-sm", onclick: () => pintarFormulario(structuredClone(a), false) }, "Editar"),
+          el(
+            "button",
+            {
+              type: "button",
+              class: "btn btn-sm",
+              onclick: () => {
+                const copia = { ...structuredClone(a), id: `agente-${Date.now().toString(36)}`, nombre: `${a.nombre} (copia)`, predefinido: false };
+                agentes.push(copia);
+                persistir();
+                pintarGestor();
+              },
+            },
+            "Duplicar"
+          ),
+          el(
+            "button",
+            {
+              type: "button",
+              class: "btn btn-sm btn-ghost",
+              onclick: () => {
+                if (agentes.length <= 1) return alert("Debe quedar al menos un agente.");
+                if (!confirm(`¿Eliminar el agente "${a.nombre}"?`)) return;
+                agentes = agentes.filter((x) => x.id !== a.id);
+                persistir();
+                pintarGestor();
+              },
+            },
+            "Eliminar"
+          ),
+        ])
+      );
+    }
+
+    const msg = (tipo, texto) => {
+      panelGestor.querySelector("#gestor-msg").innerHTML = `<div class="callout callout-${tipo}" style="margin:var(--space-4) 0 0"><span>${escapeHtml(texto)}</span></div>`;
+    };
+
+    panelGestor.querySelector('[data-a="nuevo"]').addEventListener("click", () => pintarFormulario(nuevoAgenteVacio(), true));
+    panelGestor.querySelector('[data-a="exportar"]').addEventListener("click", () => {
+      descargar("agentes-redaccion.json", exportarAgentesJson(agentes), "application/json");
+    });
+    const inputArchivo = panelGestor.querySelector("#f-importar");
+    panelGestor.querySelector('[data-a="importar"]').addEventListener("click", () => inputArchivo.click());
+    inputArchivo.addEventListener("change", async () => {
+      const archivo = inputArchivo.files[0];
+      if (!archivo) return;
+      try {
+        const importados = importarAgentesJson(await archivo.text());
+        const ids = new Set(agentes.map((a) => a.id));
+        for (const a of importados) {
+          if (ids.has(a.id)) {
+            a.id = `agente-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`;
+            a.nombre = `${a.nombre} (importado)`;
+          }
+          ids.add(a.id);
+          agentes.push(a);
+        }
+        persistir();
+        pintarGestor();
+        panelGestor.querySelector("#gestor-msg").innerHTML = "";
+        msg("success", `Se importaron ${importados.length} agente(s).`);
+      } catch (err) {
+        msg("danger", err.message || "No se pudo importar el archivo.");
+      }
+    });
+    panelGestor.querySelector('[data-a="restaurar"]').addEventListener("click", () => {
+      if (!confirm("Se descartarán los cambios y agentes propios, y volverán los 4 predeterminados. ¿Continuar?")) return;
+      restaurarPredeterminados();
+      agentes = cargarAgentes();
+      activoId = agentes[0].id;
+      guardarActivo(activoId);
+      pintarAgentes();
+      pintarGestor();
+    });
+  }
+
+  function pintarFormulario(a, esNuevo) {
+    const cont = panelGestor.querySelector("#gestor-form");
+    cont.innerHTML = `
+      <div class="card" style="margin-top:var(--space-4); background:var(--bg-sunken); box-shadow:none">
+        <h3 style="margin-top:0">${esNuevo ? "Nuevo agente" : `Editar: ${escapeHtml(a.nombre)}`}</h3>
+        <div class="grid-2">
+          <div class="field"><label for="g-nombre">Nombre</label><input type="text" id="g-nombre" maxlength="80"></div>
+          <div class="field"><label for="g-desc">Descripción corta</label><input type="text" id="g-desc" maxlength="300"></div>
+        </div>
+        <div class="grid-3">
+          <div class="field"><label for="g-tono">Tono</label><select id="g-tono">${TONOS.map((t) => `<option>${t}</option>`).join("")}</select></div>
+          <div class="field"><label for="g-temp">Temperatura (0–1.5)</label><input type="number" id="g-temp" min="0" max="1.5" step="0.1"><span class="hint">Menor = más fiel al texto. Mayor = más libre.</span></div>
+          <div class="field"><label>&nbsp;</label><label class="checkbox-row"><input type="checkbox" id="g-explicar"> Explicar los cambios realizados</label></div>
+        </div>
+        <div class="field">
+          <label for="g-instr">Instrucciones del agente</label>
+          <textarea id="g-instr" rows="7" placeholder="Describe cómo debe trabajar: rol, estructura del resultado, qué conservar, qué evitar…"></textarea>
+          <span class="hint">Se agregan a unas reglas base (español de Colombia, no inventar datos ni cambiar cifras).</span>
+        </div>
+        <div>
+          <label style="font-size:.82rem;font-weight:600;color:var(--text-muted)">Ejemplos "antes / después" (opcional, máx. 5)</label>
+          <div id="g-ejemplos" style="margin-top:var(--space-2)"></div>
+          <button type="button" class="btn btn-sm" id="g-add-ej">Agregar ejemplo</button>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn btn-primary" id="g-guardar">Guardar agente</button>
+          <button type="button" class="btn" id="g-cancelar">Cancelar</button>
+        </div>
+      </div>`;
+    const g = (s) => cont.querySelector(s);
+    g("#g-nombre").value = a.nombre;
+    g("#g-desc").value = a.descripcion || "";
+    g("#g-tono").value = TONOS.includes(a.tono) ? a.tono : TONOS[1];
+    g("#g-temp").value = a.temperatura ?? 0.4;
+    g("#g-explicar").checked = !!a.explicarCambios;
+    g("#g-instr").value = a.instrucciones || "";
+
+    const ejemplos = (a.ejemplos || []).map((e) => ({ ...e }));
+    function pintarEjemplos() {
+      const box = g("#g-ejemplos");
+      box.innerHTML = "";
+      ejemplos.forEach((e, i) => {
+        const fila = el("div", { class: "ia-ejemplo" }, [
+          el("div", { class: "field", style: "margin-bottom:var(--space-2)" }, [el("label", {}, `Antes (${i + 1})`), el("textarea", { rows: "3", "data-k": "antes" })]),
+          el("div", { class: "field", style: "margin-bottom:var(--space-2)" }, [el("label", {}, `Después (${i + 1})`), el("textarea", { rows: "3", "data-k": "despues" })]),
+          el("button", { type: "button", class: "btn btn-sm btn-ghost", onclick: () => { ejemplos.splice(i, 1); pintarEjemplos(); } }, "Quitar"),
+        ]);
+        fila.querySelector('[data-k="antes"]').value = e.antes || "";
+        fila.querySelector('[data-k="despues"]').value = e.despues || "";
+        fila.querySelector('[data-k="antes"]').addEventListener("input", (ev) => (e.antes = ev.target.value));
+        fila.querySelector('[data-k="despues"]').addEventListener("input", (ev) => (e.despues = ev.target.value));
+        box.append(fila);
+      });
+      g("#g-add-ej").hidden = ejemplos.length >= 5;
+    }
+    pintarEjemplos();
+    g("#g-add-ej").addEventListener("click", () => {
+      ejemplos.push({ antes: "", despues: "" });
+      pintarEjemplos();
+    });
+
+    g("#g-cancelar").addEventListener("click", () => (cont.innerHTML = ""));
+    g("#g-guardar").addEventListener("click", () => {
+      const nombre = g("#g-nombre").value.trim();
+      if (!nombre) return g("#g-nombre").focus();
+      if (!g("#g-instr").value.trim()) {
+        alert("Escribe las instrucciones del agente.");
+        return g("#g-instr").focus();
+      }
+      let temp = parseFloat(String(g("#g-temp").value).replace(",", "."));
+      temp = Number.isFinite(temp) ? Math.min(Math.max(temp, 0), 1.5) : 0.4;
+      const nuevo = {
+        ...a,
+        nombre,
+        descripcion: g("#g-desc").value.trim(),
+        tono: g("#g-tono").value,
+        temperatura: temp,
+        explicarCambios: g("#g-explicar").checked,
+        instrucciones: g("#g-instr").value.trim(),
+        ejemplos: ejemplos.filter((e) => e.antes?.trim() || e.despues?.trim()),
+      };
+      const i = agentes.findIndex((x) => x.id === nuevo.id);
+      if (i >= 0) agentes[i] = nuevo;
+      else agentes.push(nuevo);
+      if (esNuevo) activoId = nuevo.id;
+      persistir();
+      pintarGestor();
+    });
+    cont.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  pintarAgentes();
+  contarCaracteres();
+}

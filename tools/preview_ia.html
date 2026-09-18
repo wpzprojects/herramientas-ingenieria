@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>preview_ia</title>
+<!--
+  Vista previa de las pantallas de IA con Gemini SIMULADO (sin clave ni internet).
+  Sirve para revisar la interfaz y verificar el flujo con screenshots de Edge headless.
+
+    python -m http.server 8000
+    http://localhost:8000/tools/preview_ia.html?vista=redaccion&paso=corregir
+    http://localhost:8000/tools/preview_ia.html?vista=analisis&paso=preguntar
+
+  vista: redaccion | analisis | configuracion
+  paso : (redaccion) corregir | ajustar | gestor  ·  (analisis) preguntar | reporte
+  tema : dark | light
+-->
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+<main class="content" id="app" style="max-width:1000px;margin:0 auto"></main>
+<pre id="out" style="display:none"></pre>
+<script type="module">
+window.__BASE_PATH__ = "../";
+const q = new URLSearchParams(location.search);
+const vista = q.get("vista") || "redaccion";
+const paso = q.get("paso") || "";
+document.documentElement.setAttribute("data-theme", q.get("tema") || "dark");
+const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+const log = (m) => (document.getElementById("out").textContent += m + "\n");
+
+const config = await import("../js/ai/config.js");
+const gemini = await import("../js/ai/gemini.js");
+config.guardarClave("AIzaMOCKMOCKMOCK", false);
+
+// ---- Gemini simulado ----
+let llamadasMock = 0;
+gemini.usarMock(async ({ ruta, cuerpo }) => {
+  llamadasMock++;
+  if (ruta.startsWith("/models?")) {
+    return { models: [{ name: "models/gemini-2.5-flash", supportedGenerationMethods: ["generateContent"] }] };
+  }
+  const ult = cuerpo.contents[cuerpo.contents.length - 1];
+  const textoUlt = ult.parts.map((p) => p.text || "").join(" ");
+
+  if (vista === "redaccion") {
+    if (/ajuste|formal|corto/i.test(textoUlt) && cuerpo.contents.length > 1) {
+      return { candidates: [{ content: { parts: [{ text: "Estimado equipo:\n\nAdjunto el informe de avance. Quedo atento a sus comentarios.\n\nCordialmente,\nWilsson" }] } }] };
+    }
+    return { candidates: [{ content: { parts: [{ text: "Asunto: Informe de avance del proyecto\n\nEstimado equipo:\n\nLes comparto el informe de avance del proyecto correspondiente a esta semana. Quedo atento a sus comentarios para incorporarlos antes del cierre.\n\nCordialmente,\nWilsson" }] } }] };
+  }
+
+  // analisis: 1a vuelta -> llamadas a herramientas; 2a vuelta -> texto final
+  const esRespuestaHerramienta = ult.parts.some((p) => p.functionResponse);
+  if (!esRespuestaHerramienta) {
+    if (/reporte formal|REPORTE DE ESCENARIOS/i.test(textoUlt)) {
+      return { candidates: [{ content: { parts: [{ text: "# Reporte de escenarios\n\n## Objetivo\nEvaluar el efecto del calibre en pérdidas y regulación.\n\n## Hallazgos\n- El calibre mayor reduce las pérdidas.\n\n## Recomendaciones\n1. Verificar contra el criterio de diseño." }] } }] };
+    }
+    return { candidates: [{ content: { role: "model", parts: [
+      { text: "Voy a calcular los escenarios." },
+      { functionCall: { name: "calcular_perdidas", args: { tension_kv: 34.5, potencia_mw: 9.9, factor_potencia: 0.95, longitud_km: 5.2, factor_carga: 0.564, red: "Aerea", material: "ACSR", calibre: "4/0" } } },
+      { functionCall: { name: "barrer_parametro", args: { herramienta: "calcular_regulacion", parametros_json: JSON.stringify({ tension_kv: 34.5, potencia_mw: 9.9, factor_potencia: 0.95, longitud_km: 5.2, red: "Aerea", material: "ACSR", calibre: "4/0" }), parametro: "longitud_km", desde: 2, hasta: 10, pasos: 5 } } },
+    ] } }] };
+  }
+  return { candidates: [{ content: { role: "model", parts: [{ text: "## Resumen\n\nCon **4/0 ACSR**, las pérdidas a Fc=0.564 son las de la primera fila; la caída de tensión crece de forma lineal con la longitud.\n\n| Longitud (km) | Caída (%) |\n|---|---|\n| 2 | ver tabla |\n\n**Advertencia:** verifica contra tu criterio de diseño." }] } }] };
+});
+
+// ---- render ----
+const app = document.getElementById("app");
+const mod = await import(`../js/views/ia-${vista}.js`);
+await mod.render(app);
+await espera(100);
+const $ = (s) => app.querySelector(s);
+const click = (s) => $(s)?.click();
+
+try {
+  if (vista === "redaccion") {
+    if (paso === "corregir" || paso === "ajustar") {
+      $("#f-texto").value = "hola equipo les mando el informe de avance de esta semana avicenme si tienen comentarios pa incluirlos antes del cierre gracias";
+      $("#f-texto").dispatchEvent(new Event("input"));
+      click("#btn-corregir");
+      await espera(200);
+    }
+    if (paso === "ajustar") {
+      $("#f-ajuste").value = "más corto y formal (ajuste)";
+      click("#btn-ajustar");
+      await espera(200);
+    }
+    if (paso === "gestor") {
+      click("#btn-gestionar");
+      await espera(50);
+      app.querySelector("#gestor-lista .btn")?.click();
+      await espera(50);
+    }
+  }
+  if (vista === "analisis") {
+    if (paso === "preguntar" || paso === "reporte") {
+      $("#f-pregunta").value = "Analiza pérdidas y regulación de una línea 34.5 kV, 9.9 MW, fp 0.95, 5.2 km con ACSR 4/0 y varía la longitud.";
+      click("#btn-enviar");
+      await espera(600);
+    }
+    if (paso === "reporte") {
+      click("#btn-reporte");
+      await espera(600);
+    }
+  }
+} catch (err) {
+  log("ERROR: " + (err.stack || err));
+  document.getElementById("out").style.display = "block";
+}
+document.title = "listo";
+</script>
+</body>
+</html>

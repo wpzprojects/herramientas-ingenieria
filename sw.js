@@ -40,6 +40,7 @@ const APP_SHELL = [
   "js/views/normatividad.js",
   "js/views/varios.js",
   "js/views/ia.js",
+  "js/views/ia-redaccion.js",
   "js/views/ia-configuracion.js",
   "js/views/ayuda.js",
   "js/views/calc-ampacidad-aerea.js",

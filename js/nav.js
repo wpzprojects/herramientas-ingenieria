@@ -45,6 +45,7 @@ export const sectionMenus = {
     { title: "Conversión de unidades", desc: "Longitud, fuerza, área, presión, ángulos, temperatura y más.", icon: "ruler", hash: "#/varios/conversion-unidades" },
   ],
   ia: [
+    { title: "Corrector de redacción", desc: "Correos, descripciones técnicas, actas y resúmenes con agentes configurables.", icon: "pencil", hash: "#/ia/redaccion" },
     { title: "Configuración de IA", desc: "Clave de API de Gemini, modelo y datos guardados en este navegador.", icon: "settings", hash: "#/ia/configuracion" },
   ],
 };
