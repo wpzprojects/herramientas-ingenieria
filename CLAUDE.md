@@ -30,10 +30,14 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - `.content` (`css/app.css`) ya NO tiene `max-width`/centrado: ocupa todo el ancho
   disponible junto al sidebar en todas las vistas (se quitó el `max-width:1100px` el
   2026-09-17 porque dejaba un espacio vacío grande a la derecha en pantallas anchas).
-- Tarjetas del Home usan layout horizontal (icono circular a la izquierda, texto a la
-  derecha) vía las clases modificadoras `.menu-grid--home` / `.menu-tile--row`, para no
-  afectar el layout vertical por defecto de `.menu-tile` que usan los submenús
-  (Cálculos/Catálogos/Normatividad/Varios).
+- Todas las tarjetas de menú (Home y los submenús Cálculos/Catálogos/Normatividad/Varios)
+  usan el layout horizontal (icono circular a la izquierda, texto a la derecha) vía las
+  clases modificadoras `.menu-grid--row` / `.menu-tile--row` (renombradas desde `--home`
+  el 2026-09-17 al dejar de ser exclusivas del Home). El título+descripción van envueltos
+  en un `<span class="tile-body">`.
+- Iconos en `js/icons.js` deben calcarse trazo a trazo del path real de Tabler Icons, no
+  aproximarse: un pequeño error en las coordenadas (p.ej. el icono `hash`, corregido el
+  2026-09-17) deforma visualmente el símbolo.
 - Modo oscuro: `--bg` es `#0f0f0f` (antes `#1e1e1e`, se oscureció ~50% el 2026-09-17).
 
 ## Verificación visual de cambios de UI
