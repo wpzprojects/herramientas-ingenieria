@@ -254,6 +254,7 @@ input:disabled, select:disabled { opacity: 0.55; }
   padding: var(--space-2) var(--space-5);
   background: var(--accent-soft);
   border-bottom: 1px solid var(--accent);
+  border-bottom-color: color-mix(in srgb, var(--accent) 65%, var(--accent-soft)); /* 35 % menos intensa (si el navegador no soporta color-mix queda --accent) */
   border-radius: calc(var(--radius-lg) - 1px) calc(var(--radius-lg) - 1px) 0 0;
   color: var(--text-muted); font-size: 0.75rem; font-weight: 700;
   letter-spacing: 0.04em; text-transform: uppercase;
@@ -264,16 +265,6 @@ input:disabled, select:disabled { opacity: 0.55; }
 .btn.btn-tramo-quitar { margin-left: auto; padding: 2px 8px; font-size: 0.72rem; text-transform: none; letter-spacing: normal; }
 .btn.btn-agregar-tramo { padding: 8px 12px; }
 .form-section .fila-agregar { margin-top: 10px; } /* (dos clases: `.btn-row` esta mas abajo y ganaria) */
-/* PRUEBA de la linea inferior de la barra de titulo (tema oscuro): se dejan dos alternativas a la vista para elegir una y aplicarla a todas.
-   A (.barra-media): mitad de grosor. Una linea de 0.5px real desaparece en pantallas de densidad normal (se redondea a 0), asi que se
-      dibuja una de 1px escalada a la mitad: en pantallas densas es un hilo de 1 pixel fisico y en las normales queda suavizada (mas tenue).
-   B (.barra-tenue): mismo grosor, con 35 % menos de intensidad (color mezclado con el fondo de la barra). */
-.form-section-title.barra-media { border-bottom-color: transparent; position: relative; }
-.form-section-title.barra-media::after {
-  content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px;
-  background: var(--accent); transform: scaleY(0.5); transform-origin: bottom;
-}
-.form-section-title.barra-tenue { border-bottom-color: color-mix(in srgb, var(--accent) 65%, var(--accent-soft)); }
 .input-with-toggle { display: flex; align-items: center; gap: var(--space-3); }
 .input-with-toggle input[type="number"] { flex: 1 1 auto; min-width: 0; }
 .input-with-toggle .checkbox-row { white-space: nowrap; }
@@ -285,7 +276,7 @@ input:disabled, select:disabled { opacity: 0.55; }
   border-top: 1px solid var(--border);
 }
 .tabla-perdidas th.num, .tabla-perdidas td.num { text-align: right; font-variant-numeric: tabular-nums; }
-.tabla-perdidas tr.match-row { background: var(--success-soft); }
+.tabla-perdidas tr.match-row { background: var(--fila-sugerida); } /* verde suave en el tema claro; azul del tema (mas claro que el panel) en el oscuro */
 .tabla-perdidas tr.current-row td, .tabla-perdidas tr.total-row td { font-weight: 700; }
 .formula-katex { overflow-x: auto; overflow-y: hidden; text-align: center; margin: 0 0 var(--space-3); padding: var(--space-1) 0; }
 .formula-katex .katex-display { margin: 0; }

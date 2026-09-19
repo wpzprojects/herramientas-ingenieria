@@ -39,6 +39,7 @@
 
   --success: #17845c;
   --success-soft: #e2f6ee;
+  --fila-sugerida: var(--success-soft); /* fila destacada de las tablas de resultado (calibre sugerido) */
   --warning: #a8660e;
   --warning-soft: #fdf1de;
   --danger: #c22b34;
@@ -82,6 +83,7 @@
 
     --success: #4cc38a;
     --success-soft: #1c2b23;
+    --fila-sugerida: #344d6a; /* azul del tema, mas claro y saturado que --accent-soft (el fondo del panel de resultados) */
     --warning: #e0a84c;
     --warning-soft: #2e2618;
     --danger: #f2766c;
@@ -123,6 +125,7 @@
 
   --success: #4cc38a;
   --success-soft: #1c2b23;
+  --fila-sugerida: #344d6a; /* azul del tema, mas claro y saturado que --accent-soft (el fondo del panel de resultados) */
   --warning: #e0a84c;
   --warning-soft: #2e2618;
   --danger: #f2766c;

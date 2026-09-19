@@ -171,8 +171,6 @@ await seccion("vista: aspecto de las tarjetas", async () => {
       fondo: cs.backgroundColor,
       lineaColor: cs.borderBottomColor,
       lineaGrosor: cs.borderBottomWidth,
-      clases: t.className,
-      despues: (({ transform, height, backgroundColor, position }) => ({ transform, height, backgroundColor, position }))(getComputedStyle(t, "::after")),
       arribaBoton: card.querySelector(".fila-agregar")?.getBoundingClientRect().top,
       colorIcono: getComputedStyle(svg).color,
       // fin del contenido: el ultimo elemento de la tarjeta (en la ultima tarjeta es la fila del boton «Agregar tramo»)
@@ -187,13 +185,7 @@ await seccion("vista: aspecto de las tarjetas", async () => {
     ok(Math.abs(rt.left - (rc.left + 1)) <= 0.6 && Math.abs(rt.right - (rc.right - 1)) <= 0.6, `«${nombre}»: la barra llega de borde a borde de la tarjeta`);
     ok(rt.top - rc.top <= 1.6, `«${nombre}»: la barra queda arriba, pegada al borde superior de la tarjeta`);
     ok(m.fondo === suave, `«${nombre}»: fondo con el color atenuado del tema`);
-    if (m.clases.includes("barra-media")) {
-      ok(m.lineaGrosor === "1px" && m.lineaColor === "rgba(0, 0, 0, 0)" && m.despues.position === "absolute" && m.despues.height === "1px" && m.despues.transform === "matrix(1, 0, 0, 0.5, 0, 0)" && m.despues.backgroundColor === acento, `«${nombre}»: prueba A: línea de 1px escalada a la mitad, con el color del tema (${m.despues.transform})`);
-    } else if (m.clases.includes("barra-tenue")) {
-      ok(m.lineaGrosor === "1px" && m.lineaColor === mezcla && m.lineaColor !== acento, `«${nombre}»: prueba B: misma línea con 35 % menos de intensidad (${m.lineaColor})`);
-    } else {
-      ok(m.lineaColor === acento && m.lineaGrosor === "1px", `«${nombre}»: línea inferior delgada con el color del tema`);
-    }
+    ok(m.lineaGrosor === "1px" && m.lineaColor === mezcla && m.lineaColor !== acento, `«${nombre}»: línea inferior de 1px con el color del tema y 35 % menos de intensidad (${m.lineaColor})`);
     ok(m.colorIcono === acento, `«${nombre}»: el icono lleva el color pleno del tema`);
     ok(Math.abs(ri.top + ri.height / 2 - centroBarra) <= 1, `«${nombre}»: icono centrado verticalmente en la barra (${(ri.top + ri.height / 2 - centroBarra).toFixed(1)} px)`);
     if (rTexto) ok(Math.abs(rTexto.top + rTexto.height / 2 - centroBarra) <= 1.5, `«${nombre}»: texto centrado verticalmente en la barra (${(rTexto.top + rTexto.height / 2 - centroBarra).toFixed(1)} px)`);
@@ -245,6 +237,43 @@ await seccion("vista: un tramo, cálculo y resultados", async () => {
 
   const rep = texto($('[data-panel="reporte"]'));
   ok(rep.includes("Dato de partida: Potencia activa") && rep.includes("Tramo 1:") && rep.includes("Conductores por fase: 1") && rep.includes("Pérdidas de potencia:"), "el reporte incluye dato de partida, tramo y pérdidas");
+});
+
+await seccion("vista: color de la fila sugerida en cada tema", async () => {
+  const html = document.documentElement;
+  const previo = html.getAttribute("data-theme");
+  const rgb = (c) => {
+    const n = c.match(/[\d.]+/g).map(Number).slice(0, 3);
+    return c.startsWith("color(") ? n.map((v) => v * 255) : n; // "rgb(r, g, b)" o "color(srgb r g b)"
+  };
+  const brillo = (c) => rgb(c).reduce((a, b) => a + b, 0);
+  // Todas las medidas de un tema se toman juntas (sin ok() en medio) y luego se restaura el tema.
+  const medir = (tema) => {
+    html.setAttribute("data-theme", tema);
+    const sonda = document.createElement("div");
+    stage.append(sonda);
+    const token = (v) => { sonda.style.backgroundColor = `var(${v})`; return getComputedStyle(sonda).backgroundColor; };
+    const r = {
+      fila: getComputedStyle($(".tabla-perdidas tr.match-row")).backgroundColor,
+      panel: getComputedStyle($(".result-panel")).backgroundColor,
+      tabla: getComputedStyle($(".tabla-perdidas")).backgroundColor,
+      exito: token("--success-soft"),
+      acentoSuave: token("--accent-soft"),
+    };
+    sonda.remove();
+    return r;
+  };
+  const claro = medir("light");
+  const oscuro = medir("dark");
+  if (previo === null) html.removeAttribute("data-theme");
+  else html.setAttribute("data-theme", previo);
+
+  ok(claro.fila === claro.exito, `tema claro: la fila sugerida conserva el verde suave (${claro.fila})`);
+  const [r, g, b] = rgb(oscuro.fila);
+  ok(oscuro.fila !== oscuro.exito && b > g && g > r, `tema oscuro: la fila sugerida ya no es verde, es azul (${oscuro.fila})`);
+  ok(brillo(oscuro.fila) >= brillo(oscuro.panel) + 30, `tema oscuro: es más clara que el azul del panel de resultados (${oscuro.fila} frente a ${oscuro.panel})`);
+  ok(oscuro.fila !== oscuro.panel && oscuro.fila !== oscuro.tabla, "tema oscuro: no se confunde con el panel ni con el fondo de la tabla");
+  ok(brillo(oscuro.fila) < 400, "tema oscuro: sigue siendo un tono oscuro (el texto claro se lee bien)");
 });
 
 await seccion("vista: dato de partida aparente y corriente", async () => {

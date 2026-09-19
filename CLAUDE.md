@@ -34,9 +34,10 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   aparecer «Quitar»); espacio inferior compacto (`.grid-2.ultima`, relleno de 12px; botón «Agregar tramo» a 10px del último campo).
   Iconos de esta pantalla (segunda prueba): `circuitVoltmeter` (línea) y `plugConnected` (conductor); la primera prueba, `waveSine` y
   `circuitResistor`, sigue en `icons.js` sin usar hasta que el usuario elija (borrar lo que no se use). Todos copiados del SVG oficial
-  de Tabler. PRUEBA EN CURSO de la línea inferior de la barra (oscuro): `.barra-media` (mitad de grosor, en «Datos de la línea») y
-  `.barra-tenue` (35 % menos de intensidad, en «Conductor»): cuando el usuario elija, dejar una sola para todas y borrar la otra
-  (CSS, clases en `calc-perdidas.js` y pruebas). Para traer un icono real de Tabler: `curl` a internet NO funciona aquí, pero
+  de Tabler. La línea inferior de la barra es 35 % menos intensa que `--accent` (`color-mix`, decidido por el usuario tras probar dos
+  alternativas; NO usar bordes de 0.5px: desaparecen en pantallas de densidad normal). La fila del calibre sugerido usa el token
+  `--fila-sugerida` (verde suave en claro; en oscuro un azul `#344d6a`, más claro que el fondo del panel de resultados para no
+  confundirse con él; el verde no se veía bien en oscuro). Para traer un icono real de Tabler: `curl` a internet NO funciona aquí, pero
   WebFetch sobre `raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/<nombre>.svg` sí (pedir el SVG literal).
 - CSS: `.btn` está definido después de las reglas de esta pantalla, así que sus variantes deben escribirse `.btn.clase` (si no,
   `.btn` gana por orden y el padding no cambia). En pruebas de layout tomar TODAS las medidas antes de llamar a `ok()`: el contenedor
@@ -89,7 +90,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v69); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v70); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (Ayuda → "Configuración avanzada", `js/auth/*`, `firebase/firestore.rules`)

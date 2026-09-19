@@ -82,7 +82,7 @@ export async function render(container) {
 
     <form id="form-calc" novalidate>
       <div class="card form-section">
-        <div class="form-section-title barra-media">${icon("circuitVoltmeter")} Datos de la línea</div>
+        <div class="form-section-title">${icon("circuitVoltmeter")} Datos de la línea</div>
         <div class="grid-2">
           <div class="field">
             <label for="f-tension">Tensión de línea (kV)</label>
@@ -168,7 +168,7 @@ export async function render(container) {
     const cont = document.createElement("div");
     cont.innerHTML = `
       <div class="card form-section tramo-block">
-        <div class="form-section-title barra-tenue">
+        <div class="form-section-title">
           ${icon("plugConnected")} <span class="tramo-titulo">Conductor — Tramo 1</span>
           <button type="button" class="btn btn-ghost btn-tramo-quitar" hidden>${icon("close")} Quitar</button>
         </div>
