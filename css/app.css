@@ -298,6 +298,7 @@ input:disabled, select:disabled { opacity: 0.55; }
 .formula-caja > .result-subhead:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
 .formula-caja > :last-child { margin-bottom: 0; }
 /* Descripcion de las etiquetas: lista con viñetas; el simbolo (KaTeX) ocupa un ancho fijo para que los textos queden alineados */
+.formula-caja .result-subhead + .formula-vars { margin-top: 0; } /* la nota va pegada a su subtitulo (el subtitulo ya deja el espacio) */
 .formula-etiquetas { margin: 0; padding-left: 1.3em; font-size: 0.88rem; }
 .formula-etiquetas li { margin-bottom: var(--space-1); padding-left: var(--space-1); }
 .formula-etiquetas li::marker { color: var(--text-faint); }

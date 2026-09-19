@@ -513,7 +513,7 @@ export async function render(container) {
           ).join("") +
           `<div class="result-subhead">Descripción de las etiquetas</div><ul class="formula-etiquetas">` +
           FORMULAS_ETIQUETAS.map((e) => `<li><span class="formula-simbolo">${katex.renderToString(e.tex, { throwOnError: false })}</span><span>${escapeHtml(e.texto)}</span></li>`).join("") +
-          `</ul><p class="text-muted text-sm formula-vars">${escapeHtml(FORMULAS_NOTA)}</p>`;
+          `</ul><div class="result-subhead">Notas</div><p class="text-muted text-sm formula-vars">${escapeHtml(FORMULAS_NOTA)}</p>`;
         caja.hidden = false; // la caja (subtarjeta) solo aparece cuando ya hay fórmulas dibujadas; mientras tanto se ve el texto plano
         wrap.querySelector("#formulas-plano").hidden = true;
       } catch {

@@ -421,7 +421,21 @@ await seccion("vista: fórmulas con KaTeX", async () => {
   const subtitulos = $$("#formulas-katex > .result-subhead").map(texto);
   const items = $$("#formulas-katex ul.formula-etiquetas > li");
   const listaCS = getComputedStyle($("#formulas-katex ul.formula-etiquetas"));
-  ok(subtitulos.includes("Descripción de las etiquetas") && subtitulos.length === 4, `subtítulos de la subtarjeta: ${subtitulos.join(" | ")}`);
+  ok(subtitulos.includes("Descripción de las etiquetas") && subtitulos.at(-1) === "Notas" && subtitulos.length === 5, `subtítulos de la subtarjeta: ${subtitulos.join(" | ")}`);
+  // Linea divisoria entre la descripcion de las etiquetas y las notas: el subtitulo «Notas» (con su linea superior) va entre la lista y el texto.
+  const tituloNotas = [...$$("#formulas-katex > .result-subhead")].find((e) => texto(e) === "Notas");
+  const listaEt = $("#formulas-katex ul.formula-etiquetas");
+  const notas = $("#formulas-katex > p.formula-vars");
+  const rl = listaEt.getBoundingClientRect();
+  const rt2 = tituloNotas.getBoundingClientRect();
+  const rn = notas.getBoundingClientRect();
+  const cn = getComputedStyle(tituloNotas);
+  const ancho = $("#formulas-katex").getBoundingClientRect();
+  ok(tituloNotas.previousElementSibling === listaEt && tituloNotas.nextElementSibling === notas, "el subtítulo «Notas» queda entre la lista de etiquetas y las notas");
+  ok(rl.bottom <= rt2.top && rt2.bottom <= rn.top, "orden vertical: lista de etiquetas, línea y subtítulo «Notas», y luego las notas");
+  ok(cn.borderTopWidth === "1px" && cn.borderTopStyle === "solid" && cn.borderTopColor === getComputedStyle($$("#formulas-katex > .result-subhead")[1]).borderTopColor, "«Notas» lleva la misma línea divisoria que los otros subtítulos");
+  ok(rt2.left <= ancho.left + 17 && rt2.right >= ancho.right - 17, "la línea divisoria abarca todo el ancho útil de la subtarjeta");
+  ok(rn.top - rt2.bottom <= 14, `las notas quedan pegadas a su subtítulo (${(rn.top - rt2.bottom).toFixed(0)} px)`);
   ok(items.length === 15 && listaCS.listStyleType === "disc", `la descripción es una lista con viñetas de ${items.length} etiquetas (${listaCS.listStyleType})`);
   ok(items.every((li) => li.querySelector(".formula-simbolo .katex") && texto(li.lastElementChild).length > 3), "cada viñeta lleva el símbolo dibujado con KaTeX y su descripción");
   ok(!texto($("#formulas-katex")).includes("P: potencia activa [MW] ·"), "ya no queda la línea corrida con puntos medios");
