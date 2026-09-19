@@ -13,7 +13,7 @@ const TILES = [
   },
   {
     title: "Catálogos",
-    desc: "Consulta técnica de conductores desnudos, semiaislados, XLPE y de tuberías.",
+    desc: "Consulta técnica de conductores y tuberías.",
     icon: "book",
     hash: "#/catalogos",
   },
