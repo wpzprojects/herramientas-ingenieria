@@ -35,8 +35,30 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - En `sw.js`, `cache.addAll` falla completo si un archivo de `APP_SHELL` no existe: al agregar
   o borrar archivos, actualizar la lista y subir `CACHE_VERSION`.
 - Si `bash` de Git no encuentra `ls/sed/python`, usar PowerShell (`python` sí está en el PATH ahí).
-  Para leer resultados de `verify_ia.html` con Edge headless hace falta `Start-Process
-  -RedirectStandardOutput` (la salida de `--dump-dom` no se captura con `&`).
+  Para leer resultados de `verify_ia.html`: en Bash sirve `msedge --headless --dump-dom ... | python -c` (con el servidor en
+  segundo plano); en PowerShell hace falta `Start-Process -RedirectStandardOutput` (la salida de `--dump-dom` no se captura con `&`).
+- Pantallas de chat (Corrector de redacción y Análisis con calculadoras), diseño acordado con el usuario (2026-09-19):
+  una tarjeta que crece con la conversación (`.ia-chat--hilo`, SIN barra de scroll propia: desplaza la página); la caja de
+  texto es `.ia-caja` con un textarea autoajustable (`ajustarAlto`: debe mostrar completo el placeholder aunque ocupe varias
+  líneas y se reajusta con ResizeObserver + rAF; queda a 12px del borde de la tarjeta); Nueva conversación / Dictar / Enviar
+  van en una fila `.ia-acciones` DEBAJO de la tarjeta, con botones `.ia-accion` (icono + palabra, sin recuadro hasta pasar el
+  cursor). La respuesta de la IA (`.ia-msg--model`) lleva fondo transparente y una línea clara. No poner contador de caracteres
+  ni avisos de privacidad en estas pantallas (la privacidad vive en Configuración de IA). Análisis es UNA sola tarjeta
+  «Consulta» cuyas sugerencias desaparecen al iniciar el chat: el usuario rechazó dividirla en dos tarjetas.
+- Dictado por voz (`js/ai/voz.js`): el pitido lo pone Android al iniciar el reconocimiento y la web no puede silenciarlo; por eso
+  NO se reinicia el reconocimiento en las pausas (cada reinicio pita) y en Android los resultados se fusionan con
+  `unirAcumulados` (Chrome los entrega acumulados y duplicaba el texto). El usuario descartó transcribir con Gemini. Pendiente
+  por decidir: ocultar «Dictar» en Android para usar el micrófono del teclado (Gboard).
+- Iconos `send`, `plus`, `copy` y `microphone` (`js/icons.js`) se escribieron de memoria de Tabler: si alguno se ve raro,
+  recalcarlo del path real.
+- Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
+  baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
+  invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v61); en el celular hay que cerrar la app y
+  abrirla dos veces para ver la versión nueva.
+- Git: `APP_PowerApps/` (34 archivos, incluido el `.msapp` que necesita `tools/extract_data.py`) aparece borrado en el árbol de
+  trabajo desde antes de esta sesión, sin commit de borrado; no commitearlo ni agregarlo con `git add -A` salvo que el usuario
+  lo decida (se recupera con `git checkout -- APP_PowerApps`).
 
 ## Acceso con Google (Ayuda → "Configuración avanzada", `js/auth/*`, `firebase/firestore.rules`)
 
