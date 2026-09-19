@@ -104,7 +104,7 @@ export async function render(container) {
     <div id="panel-historial" class="card" hidden></div>
     <div id="panel-gestor" class="card" hidden></div>
 
-    <div class="ia-conv" id="conv">
+    <div class="card ia-conv" id="conv">
       <div class="ia-chat ia-chat--hilo" id="chat" aria-live="polite" hidden></div>
       <div class="ia-caja">
         <textarea id="f-texto" rows="1" placeholder="${PH_TEXTO}"></textarea>

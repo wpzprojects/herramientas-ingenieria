@@ -446,14 +446,12 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .ia-msg--model { align-self: flex-start; background: var(--bg-sunken); }
 .ia-msg--plano { white-space: pre-wrap; }
 .ia-msg--error { align-self: flex-start; background: var(--danger-soft); border-color: var(--danger); color: var(--danger); }
-/* Corrector de redaccion, estilo chat: hilo sobre el fondo de la pagina (scroll interno, barra discreta) y una caja delgada abajo que crece al escribir. */
-.ia-conv { display: flex; flex-direction: column; margin-top: var(--space-4); }
+/* Corrector de redaccion, estilo chat: una tarjeta con el hilo (crece hasta un tope y luego se desplaza por dentro, con barra discreta) y una cajita resaltada abajo. */
+.ia-conv { display: flex; flex-direction: column; }
 .ia-chat--hilo {
-  position: relative; height: clamp(260px, calc(100vh - 400px), 720px); max-height: none;
-  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-1); gap: var(--space-5); margin-bottom: var(--space-4);
+  position: relative; max-height: clamp(260px, calc(100vh - 430px), 720px); padding: var(--space-1) var(--space-2) var(--space-1) var(--space-1);
+  gap: var(--space-5); margin-bottom: var(--space-4);
   scrollbar-width: thin; scrollbar-color: transparent transparent;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
-  mask-image: linear-gradient(to bottom, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
 }
 .ia-chat--hilo:hover { scrollbar-color: var(--border-strong) transparent; }
 .ia-chat--hilo::-webkit-scrollbar { width: 8px; }
@@ -462,7 +460,7 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .ia-chat--hilo .ia-msg--model { background: transparent; border-color: transparent; padding-left: 0; padding-right: 0; max-width: 100%; }
 .ia-caja {
   display: flex; flex-wrap: wrap; align-items: flex-end; gap: 2px;
-  border: 1px solid var(--border-strong); border-radius: 24px; background: var(--bg-elevated); padding: 6px 10px 6px 18px;
+  border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-sunken); padding: 4px 8px 4px 14px;
 }
 .ia-caja:focus-within { border-color: var(--accent); }
 .ia-caja textarea, .ia-caja textarea:focus {
