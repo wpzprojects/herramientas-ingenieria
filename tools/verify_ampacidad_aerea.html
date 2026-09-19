@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>verify_ampacidad_aerea</title>
+<!--
+  Pruebas de la pantalla de Ampacidad aerea (js/views/calc-ampacidad-aerea.js) y del motor (js/calc/ampacidad-aerea.js). Se
+  ejecuta en el navegador, sin internet: la vista real se renderiza en un contenedor oculto y se maneja como lo haria una
+  persona; los numeros se comparan con el balance termico de la IEEE 738 escrito aqui de forma independiente.
+
+  Uso (desde la raiz del proyecto):
+    python -m http.server 8000
+    abrir http://localhost:8000/tools/verify_ampacidad_aerea.html   -> lista PASS/FAIL
+  o en modo consola:
+    msedge --headless --dump-dom --virtual-time-budget=35000 http://localhost:8000/tools/verify_ampacidad_aerea.html
+-->
+<style>body{font-family:ui-monospace,Consolas,monospace;font-size:13px;padding:12px}#stage{position:absolute;left:-9999px;width:1000px}</style>
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+<pre id="out"></pre>
+<div id="stage"></div>
+<script type="module">
+window.__BASE_PATH__ = "../";
+const out = document.getElementById("out");
+let fallos = 0;
+let total = 0;
+function ok(cond, msg) {
+  total++;
+  if (!cond) fallos++;
+  out.textContent += `${cond ? "PASS" : "FAIL"} ${msg}\n`;
+}
+function cerca(a, b, tol, msg) {
+  ok(Math.abs(a - b) <= tol, `${msg} (obtenido ${a}, esperado ${b})`);
+}
+async function seccion(nombre, fn) {
+  out.textContent += `\n== ${nombre}\n`;
+  try {
+    await fn();
+  } catch (err) {
+    fallos++;
+    total++;
+    out.textContent += `FAIL excepcion en "${nombre}": ${err && err.stack ? err.stack : err}\n`;
+  }
+}
+const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const motor = await import("../js/calc/ampacidad-aerea.js");
+const desnudos = await (await fetch("../data/conductores-desnudos.json")).json();
+const ACSR = desnudos.find((c) => c.tipo === "ACSR" && c.calibre_awg_kcmil === "4/0");
+
+// Balance termico de la IEEE 738 escrito de forma independiente (notacion cientifica, angulos con π/180).
+function ref({ dmm, r25, r75, eps, alfa, Ta, Tc, Vw, phi, He, Qse, theta }) {
+  const D = dmm / 1000;
+  const g = Math.PI / 180;
+  const Tf = (Tc + Ta) / 2;
+  const rho = (1.293 - 1.525e-4 * He + 6.379e-9 * He * He) / (1 + 0.00367 * Tf);
+  const mu = (1.458e-6 * Math.pow(Tf + 273, 1.5)) / (Tf + 383.4);
+  const kf = 0.02424 + 7.477e-5 * Tf - 4.407e-9 * Tf * Tf;
+  const Re = (D * rho * Vw) / mu;
+  const K = 1.194 - Math.cos(phi * g) + 0.194 * Math.cos(2 * phi * g) + 0.368 * Math.sin(2 * phi * g);
+  const dT = Tc - Ta;
+  const qcn = 3.645 * Math.sqrt(rho) * Math.pow(D, 0.75) * Math.pow(dT, 1.25);
+  const qc1 = K * (1.01 + 1.35 * Math.pow(Re, 0.52)) * kf * dT;
+  const qc2 = K * 0.754 * Math.pow(Re, 0.6) * kf * dT;
+  const qc = Math.max(qcn, qc1, qc2);
+  const qr = 17.8 * D * eps * (Math.pow((Tc + 273) / 100, 4) - Math.pow((Ta + 273) / 100, 4));
+  const qs = alfa * Qse * Math.sin(theta * g) * D;
+  const R = (r25 + ((r75 - r25) / 50) * (Tc - 25)) / 1000;
+  return { I: Math.sqrt((qc + qr - qs) / R), qc, qr, qs, R, Tf, rho, Re };
+}
+const BASE = { dmm: ACSR.diametro_cable_mm, r25: ACSR.r_ac_25c_ohm_km, r75: ACSR.r_ac_75c_ohm_km, eps: 0.5, alfa: 0.5, Ta: 25, Tc: 75, Vw: 0.61, phi: 90, He: 0, Qse: 1000, theta: 90 };
+const aMotor = (b) => motor.calcularAmpacidadAerea({ diametroMm: b.dmm, rBajoOhmKm: b.r25, rAltoOhmKm: b.r75, epsilon: b.eps, alfa: b.alfa, taC: b.Ta, tcC: b.Tc, vwMs: b.Vw, anguloVientoDeg: b.phi, elevacionM: b.He, qseWm2: b.Qse, thetaDeg: b.theta });
+
+await seccion("ampacidad-aerea: motor", async () => {
+  const casos = [
+    ["por defecto (ACSR 4/0, 25→75 °C, 0.61 m/s, 1000 W/m²)", BASE],
+    ["viento fuerte y en ángulo (5 m/s, 45°)", { ...BASE, Vw: 5, phi: 45 }],
+    ["sin viento (convección natural)", { ...BASE, Vw: 0 }],
+    ["altitud 2600 m, ambiente 15 °C, límite 90 °C", { ...BASE, He: 2600, Ta: 15, Tc: 90 }],
+    ["conductor envejecido (ε = α = 0.9), sin sol", { ...BASE, eps: 0.9, alfa: 0.9, Qse: 0 }],
+    ["sol inclinado (θ = 30°)", { ...BASE, theta: 30 }],
+  ];
+  for (const [nombre, b] of casos) {
+    const e = ref(b);
+    const r = aMotor(b);
+    cerca(r.ampacidad / e.I, 1, 1e-9, `${nombre}: ${e.I.toFixed(2)} A`);
+  }
+  const e = ref(BASE);
+  const r = aMotor(BASE);
+  cerca(r.intermedios.qc, e.qc, 1e-9, "Qc coincide con la fórmula independiente");
+  cerca(r.intermedios.qr, e.qr, 1e-9, "Qr coincide");
+  cerca(r.intermedios.qs, e.qs, 1e-9, "Qs coincide");
+  cerca(r.intermedios.r * 1000, e.R * 1000, 1e-12, "R (resistencia efectiva) coincide");
+  cerca(r.ampacidad ** 2 * r.intermedios.r, r.intermedios.qc + r.intermedios.qr - r.intermedios.qs, 1e-6, "balance: I²·R = Qc + Qr − Qs");
+  ok(r.intermedios.qc === Math.max(r.intermedios.qcn, r.intermedios.qc1, r.intermedios.qc2), "Qc es la mayor de las tres convecciones");
+  ok(aMotor({ ...BASE, Vw: 3 }).ampacidad > r.ampacidad && aMotor({ ...BASE, Ta: 40 }).ampacidad < r.ampacidad && aMotor({ ...BASE, Qse: 1200 }).ampacidad < r.ampacidad && aMotor({ ...BASE, Tc: 90 }).ampacidad > r.ampacidad, "más viento o más límite de temperatura suben la ampacidad; más ambiente o más sol la bajan");
+  ok(!(aMotor({ ...BASE, Tc: 20 }).ampacidad > 0) && !(aMotor({ ...BASE, Qse: 50000 }).ampacidad > 0), "con Tc < Ta o con sol excesivo no hay ampacidad (NaN): la pantalla lo avisa");
+});
+
+const stage = document.getElementById("stage");
+const $ = (s, r = stage) => r.querySelector(s);
+const $$ = (s, r = stage) => [...r.querySelectorAll(s)];
+const poner = (sel, v, ev = "input") => { const e = $(sel); e.value = v; e.dispatchEvent(new Event(ev, { bubbles: true })); };
+const elegir = (sel, v) => poner(sel, v, "change");
+const marcar = (sel, v) => { const e = $(sel); e.checked = v; e.dispatchEvent(new Event("change", { bubbles: true })); };
+const texto = (e) => (e ? e.textContent.replace(/\s+/g, " ").trim() : "");
+const calcular = () => $("#form-calc").requestSubmit();
+const resultadoA = () => parseFloat(texto($(".result-metric .value")));
+
+const { render } = await import("../js/views/calc-ampacidad-aerea.js");
+await render(stage, {});
+
+const elegirConductor = () => { elegir("#f-tipo", "ACSR"); elegir("#f-calibre", "4/0"); elegir("#f-referencia", ACSR.nombre_clave); };
+
+await seccion("vista: tarjetas y campos", async () => {
+  const titulos = $$(".form-section-title").map(texto);
+  ok($$(".card.form-section").length === 3 && titulos[0].includes("Conductor") && titulos[1].includes("Condiciones de operación") && titulos[2].includes("Radiación solar y superficie"), `tres tarjetas: «${titulos.join("», «")}»`);
+  ok($$(".form-section-title").every((t) => t.querySelector("svg.icon") && t.parentElement.classList.contains("card")), "cada título lleva su icono y va dentro de su tarjeta");
+  ok(new Set($$(".form-section-title svg").map((s) => s.innerHTML)).size === 3, "las tres tarjetas tienen iconos distintos");
+  ok($$(".card").every((c) => c.classList.contains("tarjeta-borde")), "las tarjetas llevan el borde marcado");
+  ok($$(".hint").length === 0, "no quedan textos de ayuda fijos (.hint) debajo de los campos");
+  const tarjetas = $$(".form-section").map((c) => c.getBoundingClientRect());
+  ok(tarjetas.slice(1).every((r, i) => Math.abs(r.top - tarjetas[i].bottom - 16) < 0.6), "las tarjetas están separadas 16 px");
+
+  const filas = (card) => {
+    const campos = $$(".field", card).map((f) => ({ n: texto($(":scope > label:first-child", f)), r: f.getBoundingClientRect() }));
+    const fs = [];
+    for (const c of campos) { const f = fs.find((x) => Math.abs(x[0].r.top - c.r.top) < 2); if (f) f.push(c); else fs.push([c]); }
+    return fs.map((f) => f.map((c) => c.n).join(" | ")).join(" // ");
+  };
+  const [c1, c2, c3] = $$(".form-section");
+  ok(filas(c1) === "Tipo | Calibre // Referencia | Diámetro del cable (mm) // Resistencia AC a 25°C (Ω/km) | Resistencia AC a 75°C (Ω/km)", `tarjeta Conductor: ${filas(c1)}`);
+  ok(filas(c2) === "Temperatura ambiente (°C) | Temperatura máxima del conductor (°C) // Velocidad del viento (m/s) | Ángulo viento-conductor (°) // Elevación sobre el nivel del mar (m)", `tarjeta Condiciones: ${filas(c2)}`);
+  ok(filas(c3) === "Emisividad (ε) | Absortividad (α) // Radiación solar total Qse (W/m²) | Ángulo efectivo de incidencia solar θ (°)", `tarjeta Radiación: ${filas(c3)}`);
+  ok($$(".input-with-toggle").length === 5 && $$(".input-with-toggle").every((w) => texto($("label.checkbox-row", w)) === "Manual"), "diámetro, las dos resistencias, Qse y θ llevan la casilla «Manual» a su derecha (ya no «Modificar manualmente»)");
+  ok(!texto($("#form-calc")).includes("Modificar manualmente"), "no queda ningún «Modificar manualmente»");
+});
+
+await seccion("vista: conductor del catálogo y «Manual»", async () => {
+  ok($("#f-calibre").disabled && $("#f-referencia").disabled && $("#f-diametro").disabled && $("#f-rbajo").disabled && $("#f-ralto").disabled && $("#f-qse").disabled && $("#f-theta").disabled, "al abrir: calibre, referencia, diámetro, resistencias, Qse y θ bloqueados");
+  ok(!$("#form-calc").checkValidity(), "sin elegir conductor el formulario no es válido");
+  elegir("#f-tipo", "ACSR");
+  ok(!$("#f-calibre").disabled && $("#f-referencia").disabled, "al elegir el tipo se habilita el calibre");
+  elegir("#f-calibre", "4/0");
+  ok(!$("#f-referencia").disabled && $$("#f-referencia option").length >= 2, "al elegir el calibre se habilita la referencia");
+  elegir("#f-referencia", ACSR.nombre_clave);
+  cerca(parseFloat($("#f-diametro").value), ACSR.diametro_cable_mm, 1e-12, `el diámetro sale del catálogo (${$("#f-diametro").value} mm)`);
+  cerca(parseFloat($("#f-rbajo").value), ACSR.r_ac_25c_ohm_km, 1e-12, "la resistencia a 25 °C sale del catálogo");
+  cerca(parseFloat($("#f-ralto").value), ACSR.r_ac_75c_ohm_km, 1e-12, "la resistencia a 75 °C sale del catálogo");
+  ok($("#form-calc").checkValidity(), "con el conductor elegido el formulario es válido");
+
+  marcar("#chk-diametro", true);
+  poner("#f-diametro", "14.335");
+  ok(!$("#f-diametro").disabled && $("#f-diametro").validity.valid, "«Manual» habilita el diámetro y acepta 3 decimales");
+  marcar("#chk-diametro", false);
+  cerca(parseFloat($("#f-diametro").value), ACSR.diametro_cable_mm, 1e-12, "al quitar «Manual» vuelve el valor del catálogo");
+  marcar("#chk-rbajo", true);
+  poner("#f-rbajo", "0.3957");
+  marcar("#chk-ralto", true);
+  poner("#f-ralto", "0.4813");
+  ok($("#f-rbajo").validity.valid && $("#f-ralto").validity.valid, "las resistencias aceptan valores de 4 decimales en modo Manual");
+  marcar("#chk-rbajo", false);
+  marcar("#chk-ralto", false);
+  cerca(parseFloat($("#f-rbajo").value), ACSR.r_ac_25c_ohm_km, 1e-12, "al quitar «Manual» vuelve la resistencia de catálogo");
+  marcar("#chk-qse", true);
+  poner("#f-qse", "850");
+  marcar("#chk-theta", true);
+  poner("#f-theta", "60");
+  ok(!$("#f-qse").disabled && !$("#f-theta").disabled, "«Manual» habilita Qse y θ");
+  marcar("#chk-qse", false);
+  marcar("#chk-theta", false);
+  ok($("#f-qse").value === "1000" && $("#f-theta").value === "90" && $("#f-qse").disabled, "al quitarlo vuelven Qse = 1000 W/m² y θ = 90°");
+  ok($("#f-epsilon").value === "0.5" && $("#f-alfa").value === "0.5" && $("#f-ta").value === "25" && $("#f-tc").value === "75" && $("#f-vw").value === "0.61" && $("#f-angulo").value === "90" && $("#f-elevacion").value === "0", "valores por defecto: ε = α = 0.5, 25 → 75 °C, 0.61 m/s, 90°, 0 m");
+  elegir("#f-tipo", "AAAC");
+  ok($("#f-referencia").disabled && $("#f-diametro").value === "" && !$("#form-calc").checkValidity(), "al cambiar el tipo se limpian referencia y datos del conductor");
+  elegirConductor();
+});
+
+await seccion("vista: cálculo y resultados", async () => {
+  calcular();
+  const e = ref(BASE);
+  cerca(resultadoA(), e.I, 0.006, `resultado por defecto: ${e.I.toFixed(2)} A`);
+  ok(texto($(".result-metric .label")) === "Ampacidad admisible" && texto($(".result-metric .unit")) === "A", "la métrica muestra la ampacidad admisible en A");
+
+  poner("#f-vw", "3");
+  poner("#f-angulo", "45");
+  poner("#f-ta", "35");
+  poner("#f-tc", "90");
+  poner("#f-elevacion", "2600");
+  poner("#f-epsilon", "0.8");
+  poner("#f-alfa", "0.7");
+  marcar("#chk-qse", true);
+  poner("#f-qse", "900");
+  marcar("#chk-theta", true);
+  poner("#f-theta", "60");
+  calcular();
+  const e2 = ref({ ...BASE, Vw: 3, phi: 45, Ta: 35, Tc: 90, He: 2600, eps: 0.8, alfa: 0.7, Qse: 900, theta: 60 });
+  cerca(resultadoA(), e2.I, 0.006, `todos los campos cambiados: ${e2.I.toFixed(2)} A`);
+
+  // con conductor manual
+  marcar("#chk-diametro", true);
+  poner("#f-diametro", "20");
+  marcar("#chk-rbajo", true);
+  poner("#f-rbajo", "0.2");
+  marcar("#chk-ralto", true);
+  poner("#f-ralto", "0.25");
+  calcular();
+  cerca(resultadoA(), ref({ ...BASE, Vw: 3, phi: 45, Ta: 35, Tc: 90, He: 2600, eps: 0.8, alfa: 0.7, Qse: 900, theta: 60, dmm: 20, r25: 0.2, r75: 0.25 }).I, 0.006, "con diámetro y resistencias ingresados a mano");
+  marcar("#chk-diametro", false);
+  marcar("#chk-rbajo", false);
+  marcar("#chk-ralto", false);
+
+  // sin corriente admisible: en vez de NaN se avisa
+  poner("#f-tc", "20");
+  poner("#f-ta", "35");
+  calcular();
+  ok(!!$("#resultado-wrap .callout-warning") && texto($("#resultado-wrap .callout-warning")).includes("no admite corriente") && !$(".result-metric"), "con Tc menor que Ta se avisa que no hay corriente admisible (en lugar de mostrar NaN)");
+  const rep = $('[data-panel="reporte"] .report-block').textContent;
+  ok(rep.includes("Ampacidad: el balance térmico no admite corriente con estos datos") && !rep.includes("NaN A"), "el reporte también lo dice y no muestra NaN como ampacidad");
+
+  // vuelve a los valores de base
+  poner("#f-vw", "0.61");
+  poner("#f-angulo", "90");
+  poner("#f-ta", "25");
+  poner("#f-tc", "75");
+  poner("#f-elevacion", "0");
+  poner("#f-epsilon", "0.5");
+  poner("#f-alfa", "0.5");
+  marcar("#chk-qse", false);
+  marcar("#chk-theta", false);
+  calcular();
+  cerca(resultadoA(), e.I, 0.006, "de vuelta a los valores por defecto se recupera el resultado inicial");
+});
+
+await seccion("vista: estructura del reporte (se copia y se pega)", async () => {
+  const leer = () => { calcular(); return $('[data-panel="reporte"] .report-block').textContent.split("\n"); };
+  const LINEA = /^-{30}$/;
+  const etiquetasEn = (l) => l.filter((x) => /^[A-ZÁÉÍÓÚÑ ]{4,}:?$/.test(x));
+  const tiene = (l, inicio) => l.some((x) => x.trim().startsWith(inicio));
+  const a = leer();
+  const iRes = a.indexOf("RESULTADOS:");
+  const params = a.slice(4, iRes - 1);
+  const res = a.slice(iRes + 2);
+  ok(a[0] === "CÁLCULO DE AMPACIDAD AÉREA" && a[1] === "" && a[2] === "PARÁMETROS DE ENTRADA:" && LINEA.test(a[3]), "«CÁLCULO DE AMPACIDAD AÉREA», línea en blanco, «PARÁMETROS DE ENTRADA:» y su línea divisoria DEBAJO");
+  ok(iRes > 4 && a[iRes - 1] === "" && LINEA.test(a[iRes + 1]), "«RESULTADOS:» con una línea en blanco antes y su línea divisoria DEBAJO");
+  ok(!LINEA.test(a[2]) && !LINEA.test(a[iRes - 1]) && !LINEA.test(a[4]) && !LINEA.test(a[iRes + 2]), "encima de las etiquetas no hay línea y debajo de la línea sigue directamente el contenido");
+  ok(etiquetasEn(a).join("|") === "CÁLCULO DE AMPACIDAD AÉREA|PARÁMETROS DE ENTRADA:|RESULTADOS:" && a.filter((x) => LINEA.test(x)).length === 2, "tres etiquetas y dos líneas divisorias");
+  for (const inicio of ["Tipo: ACSR", "Calibre: 4/0", `Referencia: ${ACSR.nombre_clave}`, "Diámetro:", "Resistencia AC 25°C", "Resistencia AC 75°C", "Temperatura ambiente: 25.00 °C", "Temperatura máxima del conductor: 75.00 °C", "Velocidad del viento: 0.61 m/s", "Ángulo viento-conductor: 90.00 °", "Elevación sobre el nivel del mar: 0.00 m", "Emisividad (ε): 0.50", "Absortividad (α): 0.50", "Radiación solar total (Qse): 1000.00 W/m²", "Ángulo efectivo de incidencia solar (θ): 90.00 °"]) {
+    ok(tiene(params, inicio), `parámetros de entrada incluye «${inicio}»`);
+  }
+  for (const inicio of ["Qc", "Qr", "Qs", "R (", "Ampacidad"]) {
+    ok(!tiene(params, inicio), `«${inicio}…» NO está en los parámetros (es un resultado)`);
+  }
+  for (const inicio of ["Qc (convección)", "Qr (radiación emitida)", "Qs (radiación solar absorbida)", "R (resistencia efectiva)", "Ampacidad:"]) {
+    ok(tiene(res, inicio), `resultados incluye «${inicio}»`);
+  }
+  ok(a.at(-1).startsWith("Ampacidad: ") && a.at(-1).endsWith(" A") && !tiene(res, "Temperatura") && !tiene(res, "Velocidad") && !tiene(res, "Calibre"), "el reporte termina con la ampacidad y los datos de entrada no se repiten en los resultados");
+  const negritas = $$('[data-panel="reporte"] .report-block strong');
+  const pesos = negritas.map((e) => parseInt(getComputedStyle(e).fontWeight, 10));
+  ok(negritas.map((e) => e.textContent).join("|") === "CÁLCULO DE AMPACIDAD AÉREA|PARÁMETROS DE ENTRADA:|RESULTADOS:" && pesos.every((w) => w >= 700), `las tres etiquetas están en negrita (${pesos.join(", ")}) y solo ellas`);
+});
+
+await seccion("vista: fórmulas con KaTeX", async () => {
+  ok(!window.katex, "KaTeX no se carga hasta abrir la pestaña Fórmulas");
+  $$(".tab-btn").find((b) => b.dataset.tab === "formulas").click();
+  for (let i = 0; i < 40 && !$$("#formulas-katex .katex").length; i++) await espera(100);
+  await document.fonts.ready;
+  await espera(150);
+  const caja = $("#formulas-katex");
+  const subtitulos = $$("#formulas-katex > .result-subhead").map(texto);
+  const items = $$("#formulas-katex ul.formula-etiquetas > li");
+  const izq = items.map((li) => li.lastElementChild.getBoundingClientRect().left);
+  const n = $$("#formulas-katex .formula-katex").length;
+  ok(window.katex && n === 15 && $$("#formulas-katex .katex-display").length === 15, `KaTeX cargado y ${n} ecuaciones dibujadas`);
+  ok($$("#formulas-katex .katex-error").length === 0, "ninguna ecuación con error de sintaxis");
+  ok($("#formulas-plano").hidden && !caja.hidden, "al dibujarse las fórmulas se oculta el texto plano y aparece la subtarjeta");
+  ok(subtitulos.join("|") === "Balance térmico (IEEE Std 738)|Propiedades del aire|Convección|Radiación|Resistencia a la temperatura del conductor|Descripción de las etiquetas|Notas", `subtítulos: ${subtitulos.join(" | ")}`);
+  ok(items.length === 23 && items.every((li) => li.querySelector(".formula-simbolo .katex")), `la descripción de las etiquetas es una lista de ${items.length} viñetas con el símbolo dibujado`);
+  ok(Math.max(...izq) - Math.min(...izq) < 1, "los textos de las viñetas quedan alineados");
+  ok($$("#formulas-katex .katex .sqrt").length >= 2 && $$("#formulas-katex .katex .mop").some((m) => m.textContent.includes("max")), "hay raíces y el máximo de las tres convecciones dibujados");
+  const textoCaja = texto(caja);
+  ok(textoCaja.includes("balance térmico en régimen permanente") && textoCaja.includes("no está implementado") && textoCaja.includes("no hay ampacidad"), "las notas explican el balance, que Qse y θ se ingresan y cuándo no hay ampacidad");
+  const rc = caja.getBoundingClientRect();
+  ok($$("#formulas-katex .formula-katex").every((e) => { const r = e.getBoundingClientRect(); return r.left >= rc.left && r.right <= rc.right + 0.5; }), "las ecuaciones quedan dentro de la subtarjeta (aun las más largas)");
+});
+
+// La pantalla se prueba tambien dentro de un iframe de ancho fijo: las media queries dependen del ancho de la ventana.
+const cargarMarco = (ancho) => new Promise((resolve) => {
+  const marco = document.createElement("iframe");
+  marco.style.cssText = `position:fixed;left:-99999px;top:0;width:${ancho}px;height:3400px;border:0`;
+  const alRecibir = (e) => {
+    if (e.source !== marco.contentWindow || e.data !== "listo") return;
+    window.removeEventListener("message", alRecibir);
+    resolve(marco);
+  };
+  window.addEventListener("message", alRecibir);
+  marco.srcdoc = `<!doctype html><html><head><link rel="stylesheet" href="../css/tokens.css"><link rel="stylesheet" href="../css/app.css"></head><body><div id="c" class="content"></div><script type="module">window.__BASE_PATH__ = "../"; const { render } = await import("../js/views/calc-ampacidad-aerea.js"); const c = document.getElementById("c"); await render(c, {}); const ev = (s, v) => { const e = c.querySelector(s); e.value = v; e.dispatchEvent(new Event("change", { bubbles: true })); }; ev("#f-tipo", "ACSR"); ev("#f-calibre", "4/0"); ev("#f-referencia", ${JSON.stringify(ACSR.nombre_clave)}); c.querySelector("#form-calc").requestSubmit(); parent.postMessage("listo", "*");<\/script></body></html>`;
+  document.body.append(marco);
+});
+
+await seccion("vista: aspecto (barra de título, 16 px laterales y espaciado uniforme)", async () => {
+  const medir = (marco) => {
+    const d = marco.contentDocument;
+    const izq = (e) => e.getBoundingClientRect().left;
+    const sonda = d.createElement("div");
+    d.body.append(sonda);
+    const token = (v) => { sonda.style.backgroundColor = `var(${v})`; return d.defaultView.getComputedStyle(sonda).backgroundColor; };
+    sonda.style.borderBottomColor = "color-mix(in srgb, var(--accent) 65%, var(--accent-soft))";
+    const mezcla = d.defaultView.getComputedStyle(sonda).borderBottomColor;
+    const suave = token("--accent-soft");
+    const acento = token("--accent");
+    sonda.remove();
+    const cs = (e) => d.defaultView.getComputedStyle(e);
+    const tarjetas = [...d.querySelectorAll(".form-section")];
+    const res = d.querySelector("#resultado-wrap > .card");
+    const panel = res.querySelector(".result-panel");
+    const barras = tarjetas.map((card) => {
+      const t = card.querySelector(".form-section-title");
+      const rc = card.getBoundingClientRect();
+      const rt = t.getBoundingClientRect();
+      const svg = t.querySelector("svg");
+      const ri = svg.getBoundingClientRect();
+      return { llegaBordes: Math.abs(rt.left - (rc.left + 1)) <= 0.6 && Math.abs(rt.right - (rc.right - 1)) <= 0.6, arriba: rt.top - rc.top <= 1.6, fondo: cs(t).backgroundColor === suave, linea: cs(t).borderBottomColor === mezcla && cs(t).borderBottomWidth === "1px", icono: cs(svg).color === acento, centrado: Math.abs(ri.top + ri.height / 2 - (rt.top + (rt.height - 1) / 2)) <= 1, altura: Math.round(rt.height) };
+    });
+    const separaciones = tarjetas.map((card) => {
+      const rects = [...card.querySelectorAll(".field")].filter((f) => f.getClientRects().length).map((f) => f.getBoundingClientRect());
+      return rects.slice(1).map((r, i) => r.top - rects[i].bottom);
+    });
+    return {
+      barras,
+      separaciones,
+      lateral: { conductor: izq(tarjetas[0].querySelector("select, input")) - izq(tarjetas[0]), operacion: izq(tarjetas[1].querySelector("select, input")) - izq(tarjetas[1]), radiacion: izq(tarjetas[2].querySelector("select, input")) - izq(tarjetas[2]), icono: izq(tarjetas[2].querySelector(".form-section-title svg")) - izq(tarjetas[2]), tabs: izq(res.querySelector(".tabs")) - izq(res), panel: izq(panel) - izq(res) },
+    };
+  };
+  const angosto = await cargarMarco(600);
+  const mAng = medir(angosto);
+  angosto.remove();
+  const ancho = await cargarMarco(1000);
+  const mAnc = medir(ancho);
+  ancho.remove();
+
+  for (const [nombre, m] of [["600 px", mAng], ["1000 px", mAnc]]) {
+    m.barras.forEach((b, i) => {
+      const t = ["Conductor", "Condiciones de operación", "Radiación solar y superficie"][i];
+      ok(b.llegaBordes && b.arriba && b.fondo && b.linea && b.icono && b.centrado, `ancho ${nombre}, «${t}»: barra de borde a borde con el color atenuado, línea 35 % menos intensa, icono en color pleno y centrado`);
+    });
+    ok(new Set(m.barras.map((b) => b.altura)).size === 1, `ancho ${nombre}: las barras tienen la misma altura`);
+    ok(Object.values(m.lateral).every((v) => v === 17), `ancho ${nombre}: 17 px del borde al contenido (1 + 16) en tarjetas, resultados y panel (${Object.values(m.lateral).join(", ")})`);
+  }
+  mAng.separaciones.forEach((s, i) => {
+    ok(s.length >= 2 && s.every((v) => Math.abs(v - 16) <= 0.6), `ancho 600 px, tarjeta ${i + 1}: todos los campos a 16 px unos de otros (${s.map((v) => v.toFixed(0)).join(", ")})`);
+  });
+});
+
+await seccion("vista: ayuda de los campos con botón de información", async () => {
+  // etiquetas: con o sin boton deben medir lo mismo (todas las medidas juntas, antes de ok())
+  const campos = $$("#form-calc .field").filter((f) => f.getClientRects().length && f.querySelector(":scope > label"));
+  const medidas = campos.map((f) => {
+    const label = f.querySelector(":scope > label");
+    const control = f.querySelector("input, select");
+    return { conInfo: !!label.querySelector(".info-btn"), alto: Math.round(label.getBoundingClientRect().height * 10) / 10, desfase: Math.round((control.getBoundingClientRect().top - f.getBoundingClientRect().top) * 10) / 10 };
+  });
+  ok(medidas.filter((m) => m.conInfo).length === 8 && medidas.filter((m) => !m.conInfo).length >= 5, "se comparan campos con y sin botón de información");
+  ok(new Set(medidas.map((m) => m.alto)).size === 1 && new Set(medidas.map((m) => m.desfase)).size === 1, `el botón no cambia la altura de las etiquetas ni la posición de las casillas (${[...new Set(medidas.map((m) => m.alto))].join(", ")} px)`);
+
+  const botones = $$(".info-btn");
+  const nombres = botones.map((b) => b.getAttribute("aria-label").replace("Más información sobre ", ""));
+  ok(nombres.join("|") === "Resistencia AC a 25°C (Ω/km)|Resistencia AC a 75°C (Ω/km)|Velocidad del viento (m/s)|Ángulo viento-conductor (°)|Emisividad (ε)|Absortividad (α)|Radiación solar total Qse (W/m²)|Ángulo efectivo de incidencia solar θ (°)", `botones de información junto al nombre de: ${nombres.join(" | ")}`);
+  ok(botones.every((b) => b.tagName === "BUTTON" && b.type === "button" && b.getAttribute("aria-expanded") === "false" && document.getElementById(b.getAttribute("aria-controls"))), "son botones reales, con aria-expanded y aria-controls");
+  const b0 = botones[4];
+  const campo = b0.closest(".field");
+  const card = b0.closest(".card");
+  const pop = document.getElementById(b0.getAttribute("aria-controls"));
+  const antes = card.getBoundingClientRect().height;
+  b0.click();
+  const abierto = { oculto: pop.hidden, texto: texto(pop), abajo: pop.classList.contains("info-popover--abajo"), rp: pop.getBoundingClientRect(), rl: campo.querySelector("label").getBoundingClientRect(), card: card.getBoundingClientRect().height };
+  b0.click();
+  ok(!abierto.oculto && abierto.texto === "Entre 0.23 (conductor nuevo, brillante) y 0.91 (envejecido, oscuro).", `al pulsar el botón se abre el cuadro: «${abierto.texto}»`);
+  ok(!abierto.abajo && abierto.rp.bottom <= abierto.rl.top + 0.5, "el cuadro se abre arriba de la etiqueta");
+  ok(Math.abs(abierto.card - antes) < 0.5 && pop.hidden, "abrir el cuadro no mueve el formulario y un segundo clic lo cierra");
+});
+
+await seccion("service worker y otros archivos", async () => {
+  const sw = await (await fetch("../sw.js")).text();
+  const lista = [...sw.matchAll(/^\s*"([^"]+)",\s*$/gm)].map((m) => m[1]);
+  ok(["js/calc/ampacidad-aerea.js", "js/views/calc-ampacidad-aerea.js", "js/util/info-campo.js", "js/util/resultados-ui.js"].every((f) => lista.includes(f)), "el service worker precachea los módulos que usa la pantalla");
+  const existen = await Promise.all(lista.filter((f) => f !== "./").map((f) => fetch(`../${f}`, { method: "HEAD" }).then((r) => [f, r.ok])));
+  const faltan = existen.filter(([, okk]) => !okk).map(([f]) => f);
+  ok(faltan.length === 0, `todos los archivos del APP_SHELL existen${faltan.length ? ": " + faltan.join(", ") : ""}`);
+  const tool = await (await fetch("../js/ai/tools.js")).text();
+  ok(tool.includes('nombre: "calcular_ampacidad_aerea"') && tool.includes('from "../calc/ampacidad-aerea.js"'), "la herramienta de la IA sigue usando el motor original de ampacidad aérea (sin cambios)");
+});
+
+out.textContent += `\nRESULT: ${fallos ? "FAIL" : "OK"} (${total - fallos}/${total})\n`;
+</script>
+</body>
+</html>
