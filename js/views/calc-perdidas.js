@@ -208,7 +208,7 @@ export async function render(container) {
           <div class="field">
             <label for="f-n-${id}">Conductores por fase</label>
             <input type="number" id="f-n-${id}" min="1" max="8" step="1" value="1" required>
-            <span class="hint">Conductores en paralelo (haz): la resistencia efectiva es la del conductor dividida entre este número.</span>
+            <span class="hint">La resistencia efectiva es la del conductor dividida entre este número.</span>
           </div>
         </div>
       </div>`;
