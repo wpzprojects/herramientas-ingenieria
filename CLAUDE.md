@@ -36,6 +36,12 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   `sugerirCalibre` con `campo`) y `js/util/resultados-ui.js` (tarjeta con pestañas, `reporteHtml` con negrita, panel de fórmulas
   y `activarPestanas`, que además alinea la columna de símbolos midiendo el más ancho: `--ancho-simbolo`). Etiquetas: siempre
   «Óptimo» / «Adecuado» / «Elevado» (antes «Mayores pérdidas»). Clase de tablas de resultado: `.tabla-resultado`.
+- Ayuda de los campos (2026-09-19, pedido del usuario): en Pérdidas y Regulación NO hay textos `.hint` debajo de los campos; la ayuda
+  va en un botón «i» (Tabler `info-circle`) junto al nombre, que abre un cuadro pequeño (popover) sin mover el formulario. Se usa
+  marcando la etiqueta: `<label data-info="texto">` y llamando `activarInfos(contenedor)` (`js/util/info-campo.js`; también en cada
+  tarjeta de tramo creada después). Cierra al tocar fuera, con Esc o al abrir otro; NO usar `title` (no sirve en pantallas
+  táctiles). Solo para explicaciones: los errores/validaciones siguen visibles. Las demás pantallas (Ampacidad subterránea, IA…) aún
+  usan `.hint`: se migrarán al rediseñarlas, no antes.
 - Campos numéricos que vienen del catálogo (resistencia, RMG) llevan `step="any"`: con `step="0.01"` el modo «Manual» fallaba la
   validación con valores de 3 decimales (p. ej. 0.396).
 
@@ -125,7 +131,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v79); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v80); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (Ayuda → "Configuración avanzada", `js/auth/*`, `firebase/firestore.rules`)

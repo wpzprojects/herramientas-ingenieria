@@ -25,6 +25,7 @@ js/app.js, router.js, nav.js, icons.js     # bootstrap, router SPA por hash, nav
 js/util/format.js                          # formato de numeros, fetch de datos con cache, helpers DOM
 js/util/katex.js                           # carga perezosa de KaTeX (solo al abrir una pestaña de formulas)
 js/util/resultados-ui.js                   # tarjeta de resultados con pestañas, reporte con negrita y panel de formulas (Perdidas, Regulacion)
+js/util/info-campo.js                       # boton «i» junto al nombre de un campo con su cuadro de ayuda (reemplaza los textos .hint)
 vendor/katex/                              # copia local de KaTeX 0.16.11 (MIT): js, css y fuentes woff2; precacheada por el service worker
 js/calc/*.js                               # motores de calculo PUROS (sin DOM), 1:1 con las formulas originales
 js/ai/*.js                                 # capa de IA (Gemini): cliente, herramientas, agentes, reporte (ver "Funciones de IA")

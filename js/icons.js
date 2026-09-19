@@ -65,6 +65,9 @@ const shapes = {
     '<g stroke-width="2"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></g>',
   chartLine:
     '<g stroke-width="2"><path d="M4 19l16 0"/><path d="M4 15l4 -6l4 2l4 -5l4 4"/></g>',
+  // Tabler "info-circle" (SVG oficial): boton de informacion junto al nombre de un campo (js/util/info-campo.js).
+  infoCircle:
+    '<g stroke-width="2"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 9h.01"/><path d="M11 12h1v4h1"/></g>',
   // Tabler "circuit-voltmeter" y "plug-connected" (SVG oficial): iconos de las tarjetas Datos de la linea y Conductor (Perdidas).
   circuitVoltmeter:
     '<g stroke-width="2"><path d="M5 12a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M5 12h-3"/><path d="M19 12h3"/><path d="M10 10l2 4l2 -4"/></g>',

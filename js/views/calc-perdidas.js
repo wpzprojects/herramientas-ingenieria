@@ -15,6 +15,7 @@ import {
   UMBRAL_ADECUADO_PCT,
 } from "../calc/perdidas-tramos.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
+import { activarInfos } from "../util/info-campo.js";
 
 // Ecuaciones (LaTeX) de la pestaña Fórmulas: replican lo que hace el motor, con las mismas unidades (MW, kV, Ω/km, km).
 const FORMULAS_TEX = [
@@ -134,9 +135,8 @@ export async function render(container) {
             <input type="number" id="f-fp" min="0" max="1" step="0.01" value="0.9" required>
           </div>
           <div class="field">
-            <label for="f-fc">Factor de carga (Fc)</label>
+            <label for="f-fc" data-info="Circuitos de uso: 1 · Granjas solares: 0.564">Factor de carga (Fc)</label>
             <input type="number" id="f-fc" min="0" max="1" step="0.0001" value="0.564" required>
-            <span class="hint">Circuitos de uso: 1 · Granjas solares: 0.564</span>
           </div>
         </div>
       </div>
@@ -151,6 +151,7 @@ export async function render(container) {
     <div id="resultado-wrap"></div>
   `;
 
+  activarInfos(container);
   const form = container.querySelector("#form-calc");
   const fTension = container.querySelector("#f-tension");
   const selModo = container.querySelector("#f-modo");
@@ -223,13 +224,13 @@ export async function render(container) {
             <input type="number" id="f-longitud-${id}" min="0" step="0.01" value="10" required>
           </div>
           <div class="field">
-            <label for="f-n-${id}">Conductores por fase</label>
+            <label for="f-n-${id}" data-info="Resistencia efectiva: R conductor / # conductores por fase.">Conductores por fase</label>
             <input type="number" id="f-n-${id}" min="1" max="8" step="1" value="1" required>
-            <span class="hint">Resistencia efectiva: R conductor / # conductores por fase.</span>
           </div>
         </div>
       </div>`;
     const card = cont.firstElementChild;
+    activarInfos(card);
     const q = (s) => card.querySelector(s);
     const selRed = q(`#f-red-${id}`);
     const selMaterial = q(`#f-material-${id}`);

@@ -572,6 +572,65 @@ await seccion("vista: fórmulas con KaTeX", async () => {
   ok(fuentesOk.every(Boolean), "las fuentes locales de KaTeX existen");
 });
 
+await seccion("vista: ayuda de los campos con botón de información", async () => {
+  const tramosN = $$(".tramo-block").length;
+  const ESPERADOS = ["Factor de carga (Fc)", ...Array(tramosN).fill("Conductores por fase")];
+  const botones = $$(".info-btn");
+  const nombres = botones.map((b) => b.getAttribute("aria-label").replace("Más información sobre ", ""));
+  ok(nombres.join("|") === ESPERADOS.join("|"), `botones de información junto al nombre de: ${nombres.join(" | ")}`);
+  ok($$(".hint").length === 0, "ya no quedan textos de ayuda fijos debajo de los campos");
+  ok(botones.every((b) => b.tagName === "BUTTON" && b.type === "button" && b.tabIndex >= 0 && b.getAttribute("aria-expanded") === "false" && document.getElementById(b.getAttribute("aria-controls"))), "son botones reales (se llegan con Tab), con aria-expanded y aria-controls");
+  ok(new Set(botones.map((b) => b.getAttribute("aria-controls"))).size === botones.length, "cada botón controla su propio cuadro (ids únicos)");
+  ok(botones.every((b) => b.querySelector('svg path[d^="M3 12a9 9 0 1 0 18 0"]') && b.closest("label") && !texto(b.closest("label")).includes("Más información")), "el botón lleva el icono info-circle de Tabler y el nombre visible del campo no cambia");
+
+  // Todas las medidas de una accion se toman juntas (el contenedor de pruebas se desplaza cuando crece #out).
+  const b0 = botones.at(-1);
+  const campo = b0.closest(".field");
+  const card = b0.closest(".card");
+  const pop = document.getElementById(b0.getAttribute("aria-controls"));
+  const antes = { card: card.getBoundingClientRect().height, campo: campo.getBoundingClientRect().height, input: campo.querySelector("input").getBoundingClientRect().top - campo.getBoundingClientRect().top };
+  b0.click();
+  const abierto = {
+    oculto: pop.hidden, exp: b0.getAttribute("aria-expanded"), texto: texto(pop), info: campo.querySelector("label").dataset.info,
+    pos: getComputedStyle(pop).position, z: getComputedStyle(pop).zIndex,
+    rp: pop.getBoundingClientRect(), rc: campo.getBoundingClientRect(), rl: campo.querySelector("label").getBoundingClientRect(),
+    card: card.getBoundingClientRect().height, campoH: campo.getBoundingClientRect().height,
+    input: campo.querySelector("input").getBoundingClientRect().top - campo.getBoundingClientRect().top,
+  };
+  b0.click();
+  const cerrado = pop.hidden && b0.getAttribute("aria-expanded") === "false";
+  b0.click();
+  botones[0].click();
+  const otro = { primeroCerrado: pop.hidden, otroAbierto: !document.getElementById(botones[0].getAttribute("aria-controls")).hidden, unSoloAbierto: $$(".info-popover").filter((p) => !p.hidden).length === 1 };
+  $("#f-tension").click();
+  const fuera = $$(".info-popover").every((p) => p.hidden) && botones.every((b) => b.getAttribute("aria-expanded") === "false");
+  b0.click();
+  document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  const esc = $$(".info-popover").every((p) => p.hidden) && b0.getAttribute("aria-expanded") === "false";
+
+  ok(!abierto.oculto && abierto.exp === "true" && abierto.texto === abierto.info && abierto.texto.length > 10, `al pulsar el botón se abre el cuadro con el texto de ayuda: «${abierto.texto}»`);
+  ok(abierto.pos === "absolute" && abierto.z === "30", "el cuadro flota sobre el formulario (posición absoluta, por encima de los demás campos)");
+  ok(Math.abs(abierto.card - antes.card) < 0.5 && Math.abs(abierto.campoH - antes.campo) < 0.5 && Math.abs(abierto.input - antes.input) < 0.5, "abrir el cuadro no mueve nada del formulario (ni la tarjeta, ni el campo, ni su casilla)");
+  ok(abierto.rp.top >= abierto.rl.bottom - 4 && abierto.rp.left >= abierto.rc.left - 0.5 && abierto.rp.right <= abierto.rc.right + 0.5, "el cuadro aparece bajo el nombre del campo, dentro del ancho del campo");
+  ok(cerrado, "un segundo clic sobre el botón lo cierra");
+  ok(otro.primeroCerrado && otro.otroAbierto && otro.unSoloAbierto, "al abrir otro botón se cierra el anterior (solo uno abierto a la vez)");
+  ok(fuera, "tocar fuera del cuadro lo cierra");
+  ok(esc, "la tecla Esc lo cierra");
+
+  // en pantalla angosta los cuadros no se salen de la ventana
+  const marco = await cargarMarco(600);
+  const d = marco.contentDocument;
+  const dentro = [];
+  for (const b of d.querySelectorAll(".info-btn")) {
+    b.click();
+    const r = d.getElementById(b.getAttribute("aria-controls")).getBoundingClientRect();
+    dentro.push(r.width > 0 && r.left >= 0 && r.right <= 600 + 0.5);
+    b.click();
+  }
+  marco.remove();
+  ok(dentro.length >= 2 && dentro.every(Boolean), `en pantalla angosta (600 px) los ${dentro.length} cuadros quedan dentro de la ventana`);
+});
+
 await seccion("service worker: archivos nuevos", async () => {
   const sw = await (await fetch("../sw.js")).text();
   const lista = [...sw.matchAll(/^\s*"([^"]+)",\s*$/gm)].map((m) => m[1]);

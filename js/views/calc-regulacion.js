@@ -15,6 +15,7 @@ import {
   UMBRAL_ADECUADO_PCT,
 } from "../calc/regulacion-tramos.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
+import { activarInfos } from "../util/info-campo.js";
 
 // Ecuaciones (LaTeX) de la pestaña Fórmulas: replican lo que hace el motor, con las mismas unidades
 // (MW, kV, Ω/km, km, mm para el radio medio geométrico y m para las distancias).
@@ -170,6 +171,7 @@ export async function render(container) {
     <div id="resultado-wrap"></div>
   `;
 
+  activarInfos(container);
   const form = container.querySelector("#form-calc");
   const fTension = container.querySelector("#f-tension");
   const selModo = container.querySelector("#f-modo");
@@ -226,9 +228,8 @@ export async function render(container) {
             <input type="number" id="f-longitud-${id}" min="0" step="0.01" value="5.2" required>
           </div>
           <div class="field">
-            <label for="f-n-${id}">Conductores por fase</label>
+            <label for="f-n-${id}" data-info="Resistencia efectiva: R conductor / # conductores por fase.">Conductores por fase</label>
             <input type="number" id="f-n-${id}" min="1" max="8" step="1" value="1" required>
-            <span class="hint">Resistencia efectiva: R conductor / # conductores por fase.</span>
           </div>
         </div>
         <div class="grid-2">
@@ -248,9 +249,8 @@ export async function render(container) {
         </div>
         <div class="grid-2">
           <div class="field">
-            <label for="f-sephaz-${id}">Separación entre subconductores del haz (m)</label>
+            <label for="f-sephaz-${id}" data-info="Solo aplica con más de un conductor por fase.">Separación entre subconductores del haz (m)</label>
             <input type="number" id="f-sephaz-${id}" min="0.01" max="5" step="0.01" value="0.4" disabled>
-            <span class="hint">Solo aplica con más de un conductor por fase.</span>
           </div>
           <div class="field">
             <label for="f-rmg-${id}">Radio medio geométrico (mm)</label>
@@ -276,6 +276,7 @@ export async function render(container) {
         </div>
       </div>`;
     const card = cont.firstElementChild;
+    activarInfos(card);
     const q = (s) => card.querySelector(s);
     const selRed = q(`#f-red-${id}`);
     const selMaterial = q(`#f-material-${id}`);
