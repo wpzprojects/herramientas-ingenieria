@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>verify_normatividad</title>
+<!--
+  Pruebas del visor de imagenes normativas (js/views/normativa-imagen.js), sobre todo del tema «Enterramiento de ductos», donde
+  el numeral 3.20.6.3.g del RETIE 2024 pasó de imagen a nota al pie debajo del visor. Se ejecuta en el navegador, sin internet:
+  la vista real se renderiza en un contenedor oculto y se maneja como lo haria una persona.
+
+  Uso (desde la raiz del proyecto):
+    python -m http.server 8000
+    abrir http://localhost:8000/tools/verify_normatividad.html   -> lista PASS/FAIL
+  o en modo consola:
+    msedge --headless --dump-dom --virtual-time-budget=35000 http://localhost:8000/tools/verify_normatividad.html
+-->
+<style>body{font-family:ui-monospace,Consolas,monospace;font-size:13px;padding:12px}#stage{position:absolute;left:-9999px;width:1000px}</style>
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+<pre id="out"></pre>
+<div id="stage"></div>
+<script type="module">
+window.__BASE_PATH__ = "../";
+const out = document.getElementById("out");
+let fallos = 0;
+let total = 0;
+function ok(cond, msg) {
+  total++;
+  if (!cond) fallos++;
+  out.textContent += `${cond ? "PASS" : "FAIL"} ${msg}\n`;
+}
+async function seccion(nombre, fn) {
+  out.textContent += `\n== ${nombre}\n`;
+  try {
+    await fn();
+  } catch (err) {
+    fallos++;
+    total++;
+    out.textContent += `FAIL excepcion en "${nombre}": ${err && err.stack ? err.stack : err}\n`;
+  }
+}
+
+const stage = document.getElementById("stage");
+const $ = (s, r = stage) => r.querySelector(s);
+const $$ = (s, r = stage) => [...r.querySelectorAll(s)];
+const texto = (e) => (e ? e.textContent.replace(/\s+/g, " ").trim() : "");
+const { render } = await import("../js/views/normativa-imagen.js");
+const nav = await import("../js/nav.js");
+const existe = async (ruta) => (await fetch(`../${ruta}`, { method: "HEAD" })).ok;
+const cargarTema = async (tema) => { stage.innerHTML = ""; await render(stage, { tema }); };
+
+await seccion("Enterramiento de ductos: nota al pie", async () => {
+  await cargarTema("enterramiento-ductos");
+  ok(texto($(".page-title")) === "Enterramiento de ductos", "título «Enterramiento de ductos»");
+  const opciones = $$("#sel-tabla option").map(texto);
+  ok(opciones.length === 2 && opciones[0].startsWith("NTC 2050, Tabla 300.5 ") && opciones[1].startsWith("NTC 2050, Tabla 300.50"), `el selector queda con 2 opciones: ${opciones.join(" | ")}`);
+  ok(!opciones.some((o) => o.includes("RETIE") || o.includes("3.20.6.3")), "ya no está la opción del numeral 3.20.6.3.g del RETIE");
+  ok($("#frame-imagen img").getAttribute("src").endsWith("assets/normativa/tabla-300-5.jpg"), "al entrar se muestra la Tabla 300.5");
+
+  const nota = $(".nota-pie");
+  ok(!!nota && nota.tagName === "P" && texto($("strong", nota)) === "RETIE 2024, numeral 3.20.6.3.g:", "hay una nota con «RETIE 2024, numeral 3.20.6.3.g:» en negrita al inicio");
+  const t = texto(nota);
+  ok(t.includes("La profundidad de enterramiento de ductos para redes de distribución exteriores") && t.includes("Tabla 300.5 de la NTC 2050 segunda actualización para tensiones hasta 1 000 V") && t.includes("Tabla 300.50 para tensiones mayores a 1 000 V nominales") && t.includes("Excepción: cuando existan conflictos") && t.includes("menos de 150 V a tierra") && t.endsWith("no menor a 0,45 m."), "la nota trae el texto completo del numeral, con la excepción de 0,45 m");
+  const frame = $("#frame-imagen").getBoundingClientRect();
+  const rn = nota.getBoundingClientRect();
+  ok(rn.top >= frame.bottom - 0.5 && Math.abs(rn.left - frame.left) < 40, "la nota va DEBAJO del visor de imágenes");
+  ok($("#imagenes-wrap").lastElementChild === nota, "la nota es lo último de la pantalla");
+  const cs = getComputedStyle(nota);
+  ok(cs.borderLeftWidth === "3px" && parseFloat(cs.fontSize) < parseFloat(getComputedStyle(document.documentElement).fontSize) && cs.borderTopWidth === "0px", `estilo discreto: línea vertical de 3 px a la izquierda y letra más pequeña (${cs.fontSize})`);
+
+  // cambiar de tabla no quita la nota
+  const sel = $("#sel-tabla");
+  sel.value = "1";
+  sel.dispatchEvent(new Event("change", { bubbles: true }));
+  ok($("#frame-imagen img").getAttribute("src").endsWith("assets/normativa/tabla-300-50.jpg") && $$(".nota-pie").length === 1 && $("#imagenes-wrap").lastElementChild === $(".nota-pie"), "al elegir la Tabla 300.50 cambia la imagen y la nota sigue ahí (una sola)");
+  const frame2 = $("#frame-imagen").getBoundingClientRect();
+  ok($(".nota-pie").getBoundingClientRect().top >= frame2.bottom - 0.5, "con la otra imagen la nota también queda debajo del visor");
+});
+
+await seccion("la imagen del numeral ya no existe", async () => {
+  ok(!(await existe("assets/normativa/numeral-3-20-6-3-g.jpg")), "el archivo numeral-3-20-6-3-g.jpg ya no está en assets/normativa");
+  const fuente = await (await fetch("../js/views/normativa-imagen.js")).text();
+  ok(!fuente.includes("numeral-3-20-6-3-g"), "el visor ya no la referencia");
+  const sw = await (await fetch("../sw.js")).text();
+  ok(!sw.includes("numeral-3-20-6-3-g"), "el service worker ya no la precachea");
+});
+
+await seccion("los demás temas no cambian", async () => {
+  await cargarTema("distancias-seguridad");
+  ok($$("#sel-tabla option").length === 8 && !$(".nota-pie"), "Distancias de seguridad: 8 tablas y sin nota");
+  await cargarTema("zona-servidumbre");
+  ok($$(".image-frame img").length === 2 && !$(".nota-pie"), "Zona de servidumbre: 2 imágenes lado a lado y sin nota");
+  await cargarTema("corriente-ntc");
+  ok($$(".image-frame img").length === 1 && !$(".nota-pie"), "Corriente de conductores NTC 2050: 1 imagen y sin nota");
+  await cargarTema("no-existe");
+  ok(texto($(".empty-state h2")) === "Tema no encontrado", "un tema desconocido sigue mostrando «Tema no encontrado»");
+});
+
+await seccion("todas las imágenes existen y están precacheadas", async () => {
+  const sw = await (await fetch("../sw.js")).text();
+  const listaSw = [...sw.matchAll(/^\s*"([^"]+)",\s*$/gm)].map((m) => m[1]);
+  const usadas = new Set();
+  for (const tema of ["distancias-seguridad", "zona-servidumbre", "enterramiento-ductos", "corriente-ntc"]) {
+    await cargarTema(tema);
+    // se recorren todas las opciones del selector (si hay)
+    const sel = $("#sel-tabla");
+    if (sel) {
+      for (let i = 0; i < sel.options.length; i++) {
+        sel.value = String(i);
+        sel.dispatchEvent(new Event("change", { bubbles: true }));
+        usadas.add($("#frame-imagen img").getAttribute("src"));
+      }
+    } else {
+      $$(".image-frame img").forEach((im) => usadas.add(im.getAttribute("src")));
+    }
+  }
+  const lista = [...usadas];
+  const faltan = [];
+  for (const r of lista) if (!(await existe(r))) faltan.push(r);
+  ok(lista.length === 13 && faltan.length === 0, `las ${lista.length} imágenes que muestra el visor existen${faltan.length ? ": faltan " + faltan.join(", ") : ""}`);
+  const sinCache = lista.filter((r) => !listaSw.includes(r));
+  ok(sinCache.length === 0, `todas están en el APP_SHELL del service worker${sinCache.length ? ": faltan " + sinCache.join(", ") : ""}`);
+  const existenSw = await Promise.all(listaSw.filter((f) => f !== "./").map((f) => fetch(`../${f}`, { method: "HEAD" }).then((r) => [f, r.ok])));
+  const faltanSw = existenSw.filter(([, okk]) => !okk).map(([f]) => f);
+  ok(faltanSw.length === 0, `todos los archivos del APP_SHELL existen${faltanSw.length ? ": " + faltanSw.join(", ") : ""}`);
+  ok(nav.sectionMenus.normatividad.some((i) => i.hash === "#/normatividad/enterramiento-ductos"), "la tarjeta «Enterramiento de ductos» sigue en el menú de Normatividad");
+});
+
+out.textContent += `\nRESULT: ${fallos ? "FAIL" : "OK"} (${total - fallos}/${total})\n`;
+</script>
+</body>
+</html>

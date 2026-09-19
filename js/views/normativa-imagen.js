@@ -2,6 +2,7 @@
 // Cubre las 4 rutas "#/normatividad/:tema" (distancias-seguridad,
 // zona-servidumbre, enterramiento-ductos, corriente-ntc) definidas en
 // js/router.js y js/nav.js (sectionMenus.normatividad).
+// Un tema puede llevar una `nota`: texto normativo que se muestra como nota al pie, debajo del visor (ver .nota-pie en app.css).
 
 const TEMAS = {
   "distancias-seguridad": {
@@ -29,8 +30,13 @@ const TEMAS = {
   "enterramiento-ductos": {
     titulo: "Enterramiento de ductos",
     selector: true,
+    // El numeral 3.20.6.3.g del RETIE 2024 era una imagen de texto que solo remite a estas dos tablas: ahora es la nota al pie.
+    nota: {
+      titulo: "RETIE 2024, numeral 3.20.6.3.g:",
+      texto:
+        "La profundidad de enterramiento de ductos para redes de distribución exteriores, internas de un edificio, urbanización cerrada, planta industrial o propiedad privada, deben estar acorde a lo establecido en la Tabla 300.5 de la NTC 2050 segunda actualización para tensiones hasta 1 000 V y la Tabla 300.50 para tensiones mayores a 1 000 V nominales. Excepción: cuando existan conflictos con otras instalaciones subterráneas existentes en áreas peatonales para menos de 150 V a tierra, pueden ser enterradas a una profundidad no menor a 0,45 m.",
+    },
     opciones: [
-      { label: "RETIE 2024, numeral 3.20.6.3.g — Criterio de enterramiento de ductos", img: "assets/normativa/numeral-3-20-6-3-g.jpg" },
       { label: "NTC 2050, Tabla 300.5 — Enterramiento de conductores de 0 a 1000 V", img: "assets/normativa/tabla-300-5.jpg" },
       { label: "NTC 2050, Tabla 300.50 — Enterramiento de conductores de 1000 V en adelante", img: "assets/normativa/tabla-300-50.jpg" },
     ],
@@ -104,5 +110,10 @@ export async function render(container, params) {
           .join("")}
       </div>
     `;
+  }
+
+  // Nota al pie: debajo del visor, siempre visible (no depende de la tabla elegida).
+  if (tema.nota) {
+    wrap.insertAdjacentHTML("beforeend", `<p class="nota-pie"><strong>${tema.nota.titulo}</strong> ${tema.nota.texto}</p>`);
   }
 }

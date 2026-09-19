@@ -3,7 +3,7 @@
 // sirve cache-first con relleno en segundo plano (stale-while-revalidate)
 // para lo que no estuviera precacheado.
 
-const CACHE_VERSION = "v99";
+const CACHE_VERSION = "v100";
 const CACHE_NAME = `herramientas-ingenieria-${CACHE_VERSION}`;
 
 const SCOPE = self.registration.scope;
@@ -97,7 +97,6 @@ const APP_SHELL = [
   "assets/normativa/tabla-3-10-5-c.jpg",
   "assets/normativa/tabla-3-19-1-a.jpg",
   "assets/normativa/figura-3-19-1-a.jpg",
-  "assets/normativa/numeral-3-20-6-3-g.jpg",
   "assets/normativa/tabla-300-5.jpg",
   "assets/normativa/tabla-300-50.jpg",
   "assets/normativa/capacidad-corriente-conductores-ntc.jpg",

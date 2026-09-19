@@ -59,6 +59,8 @@ Los `data/*.json` son la **fuente de verdad** de los catálogos y se editan dire
 
 `tools/verify_catalogo_tuberias.html` prueba el catálogo de Tuberías (tarjeta en Catálogos, listado con filtro por tipo y buscador, ficha de detalle) y que los tres catálogos de conductores sigan igual.
 
+`tools/verify_normatividad.html` prueba el visor de imágenes normativas (nota al pie de «Enterramiento de ductos», que las demás imágenes existan y estén en el service worker).
+
 `tools/verify_perdidas.html` (arnés en el navegador, sin internet) prueba la pantalla de Pérdidas: la lógica de varios tramos (`js/calc/perdidas-tramos.js`) contra fórmulas escritas de forma independiente, y la vista real manejada como lo haría una persona (dato de partida, agregar/quitar tramos, resultados, fórmulas con KaTeX, archivos del service worker). Se ejecuta igual que `verify_ia.html` (ver su encabezado).
 
 ## Funciones de IA (Gemini)

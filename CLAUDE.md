@@ -181,7 +181,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v99); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v100); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (Ayuda → "Configuración avanzada", `js/auth/*`, `firebase/firestore.rules`)
@@ -242,6 +242,12 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   el icono `underground` (el mismo de Ampacidad subterránea; el usuario descartó uno tipo tubo porque se confundiría con los de
   conductores). Al agregar otra familia: entrada en `CONFIG` de las dos vistas + tarjeta en `sectionMenus.catalogos` (`nav.js`).
   Pruebas: `tools/verify_catalogo_tuberias.html`.
+- Normatividad → visor de imágenes (`js/views/normativa-imagen.js`): un tema puede llevar una `nota` (texto normativo citado), que se
+  pinta como nota al pie DEBAJO del visor (`.nota-pie`: texto pequeño con línea vertical a la izquierda; siempre visible, no depende de
+  la tabla elegida). «Enterramiento de ductos» la usa desde 2026-09-19: el numeral 3.20.6.3.g del RETIE 2024 era una imagen de texto
+  que solo remite a las Tablas 300.5 y 300.50 de la NTC 2050; se pasó a nota (texto completo, con la excepción de 0,45 m), se quitó
+  del selector y se borró `assets/normativa/numeral-3-20-6-3-g.jpg` (y su línea del service worker; sigue en el historial de git).
+  Al agregar/quitar imágenes de `assets/normativa/` recordar el `APP_SHELL`. Pruebas: `tools/verify_normatividad.html`.
 - Menú lateral: en pantallas anchas (>880px) se puede contraer con el botón del fondo de la barra
   (queda una barra de 64px solo con iconos; estado en `localStorage.sidebarCollapsed` y clase
   `sb-collapsed` en `<html>`). La barra es `sticky` con el alto de la ventana para que el botón
