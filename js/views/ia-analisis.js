@@ -4,7 +4,8 @@
 // calculos realmente ejecutados (auditables), exportable a Markdown/PDF.
 
 import { el, escapeHtml } from "../util/format.js";
-import { obtenerClave, obtenerAjustes } from "../ai/config.js";
+import { obtenerAjustes } from "../ai/config.js";
+import { claveEnUso } from "../ai/clave.js";
 import { ErrorGemini } from "../ai/gemini.js";
 import { verificarAcceso } from "../ai/ui-clave.js";
 import { markdownAHtml } from "../ai/markdown.js";
@@ -37,7 +38,7 @@ export async function render(container) {
     <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/ia">Funciones de IA</a> <span>/</span> <span>Análisis con calculadoras</span></div>
     <h1 class="page-title">Análisis con calculadoras</h1>
   `;
-  if (!verificarAcceso(container, { reintentar: () => render(container) })) return;
+  if (!(await verificarAcceso(container, { reintentar: () => render(container) }))) return;
 
   const ajustes0 = obtenerAjustes();
   let conv = null;
@@ -183,7 +184,7 @@ export async function render(container) {
       const r = await ejecutarTurno({
         conv,
         texto,
-        clave: obtenerClave(),
+        clave: claveEnUso(),
         ajustes: obtenerAjustes(),
         ctx,
         onEvento: (e) => {

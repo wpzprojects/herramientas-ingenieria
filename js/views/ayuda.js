@@ -32,6 +32,16 @@ export function render(container) {
         </div>`;
     }).join("")}
 
+    <div class="card">
+      <h2 class="section-title" style="margin-top:0">Configuración avanzada</h2>
+      <p class="text-muted ayuda-intro">Acceso restringido con tu cuenta de Google.</p>
+      <ul class="ayuda-lista">
+        <li>
+          <a href="#/ayuda/configuracion"><strong>Configuración avanzada</strong></a><span class="ayuda-desc"> — Usuarios autorizados y clave de Gemini guardada en el servidor.</span>
+        </li>
+      </ul>
+    </div>
+
     <div class="card dev-card">
       <div class="dev-header">
         <span class="dev-avatar">WP</span>

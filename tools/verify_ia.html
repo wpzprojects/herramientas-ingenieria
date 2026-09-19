@@ -410,6 +410,66 @@ await seccion("acceso: login, logout y conexión", async () => {
   ok(await falla(() => cancel.iniciarSesion(), "cancelado"), "login cancelado => error 'cancelado'");
 });
 
+const claves = await import("../js/ai/clave.js");
+const cfgIA = await import("../js/ai/config.js");
+
+await seccion("clave: fuente de la clave de Gemini (local / personal / compartida)", async () => {
+  localStorage.removeItem("ia.fuenteClave");
+  cfgIA.borrarClave();
+  ok(claves.obtenerFuente() === "local", "por defecto la fuente es 'local'");
+  let r = await claves.prepararClave();
+  ok(!r.ok && r.motivo === "sin-clave-local", "local sin clave -> 'sin-clave-local'");
+  cfgIA.guardarClave("AIza-LOCAL", false);
+  r = await claves.prepararClave();
+  ok(r.ok && claves.claveEnUso() === "AIza-LOCAL", "local con clave -> la usa");
+  cfgIA.borrarClave();
+
+  claves.guardarFuente("compartida");
+  acceso.usarBackend(null);
+  r = await claves.prepararClave();
+  ok(!r.ok && r.motivo === "sin-servicio", "servidor sin Firebase configurado -> 'sin-servicio'");
+
+  acceso.usarBackend(crearBackendMock({ usuarios: semilla(), sesion: null, claveCompartida: "AIza-COMPARTIDA" }));
+  r = await claves.prepararClave();
+  ok(!r.ok && r.motivo === "sin-sesion", "sin sesión -> 'sin-sesion'");
+
+  acceso.usarBackend(crearBackendMock({ usuarios: semilla(), sesion: EXTRAÑO, claveCompartida: "AIza-COMPARTIDA" }));
+  r = await claves.prepararClave();
+  ok(!r.ok && r.motivo === "sin-acceso" && claves.claveEnUso() === "", "correo fuera de la lista -> 'sin-acceso' y no entrega la clave");
+
+  acceso.usarBackend(crearBackendMock({ usuarios: semilla(), sesion: OTRO, claveCompartida: "AIza-COMPARTIDA" }));
+  r = await claves.prepararClave();
+  ok(r.ok && claves.claveEnUso() === "AIza-COMPARTIDA", "usuario autorizado -> usa la clave compartida");
+  const guardado = JSON.stringify({ ...localStorage }) + JSON.stringify({ ...sessionStorage });
+  ok(!guardado.includes("AIza-COMPARTIDA"), "la clave del servidor NO se copia a localStorage/sessionStorage (solo memoria)");
+  claves.olvidarClaveServidor();
+  ok(claves.claveEnUso() === "", "olvidarClaveServidor() borra la copia en memoria");
+
+  acceso.usarBackend(crearBackendMock({ usuarios: semilla(), sesion: OTRO, claveCompartida: null }));
+  r = await claves.prepararClave();
+  ok(!r.ok && r.motivo === "sin-clave-servidor", "compartida sin configurar -> 'sin-clave-servidor'");
+
+  claves.guardarFuente("personal");
+  const mp = crearBackendMock({ usuarios: semilla(), sesion: OTRO, claveCompartida: "AIza-COMPARTIDA" });
+  acceso.usarBackend(mp);
+  r = await claves.prepararClave();
+  ok(!r.ok && r.motivo === "sin-clave-servidor", "personal sin configurar -> 'sin-clave-servidor' (no cae a la compartida)");
+  await mp.guardarClavePersonal("AIza-PERSONAL");
+  r = await claves.prepararClave();
+  ok(r.ok && claves.claveEnUso() === "AIza-PERSONAL", "personal configurada -> usa la personal");
+
+  const off = crearBackendMock({ usuarios: semilla(), sesion: OTRO, claveCompartida: "x" });
+  off._conexion(false);
+  acceso.usarBackend(off);
+  r = await claves.prepararClave();
+  ok(!r.ok && r.motivo === "error", "falla del servidor -> 'error' con mensaje (no rompe)");
+
+  claves.guardarFuente("basura");
+  ok(claves.obtenerFuente() === "local", "una fuente inválida se trata como 'local'");
+  acceso.usarBackend(null);
+  localStorage.removeItem("ia.fuenteClave");
+});
+
 /*__SECCIONES_EXTRA__*/
 
 out.textContent += `\nRESULT: ${fallos ? "FAIL" : "OK"} (${total - fallos}/${total})\n`;

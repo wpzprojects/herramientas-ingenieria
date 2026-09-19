@@ -49,6 +49,7 @@ const routeTable = [
   ["/ia/redaccion", () => import("./views/ia-redaccion.js")],
   ["/ia/configuracion", () => import("./views/ia-configuracion.js")],
   ["/ayuda", () => import("./views/ayuda.js")],
+  ["/ayuda/configuracion", () => import("./views/configuracion-avanzada.js")],
 ].map(([pattern, load]) => ({ ...compile(pattern), pattern, load }));
 
 function currentPath() {

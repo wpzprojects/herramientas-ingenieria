@@ -15,6 +15,7 @@ import {
 } from "../ai/config.js";
 import { listarModelos, elegirModeloPorDefecto, ErrorGemini } from "../ai/gemini.js";
 import { abrirInstructivo, htmlAvisoPrivacidad } from "../ai/ui-clave.js";
+import { obtenerFuente, ETIQUETA_FUENTE } from "../ai/clave.js";
 import { contar, borrarTodo } from "../ai/historial.js";
 import { restaurarPredeterminados } from "../ai/agentes.js";
 
@@ -28,6 +29,7 @@ export async function render(container) {
     <div class="card">
       <h2 class="section-title" style="margin-top:0">Conexión con Gemini</h2>
       <p class="text-muted" id="estado-clave"></p>
+      <p class="text-muted text-sm" id="fuente-clave"></p>
       <div class="field">
         <label for="f-clave">Clave de API</label>
         <div class="input-group">
@@ -136,6 +138,10 @@ export async function render(container) {
     const n = await contar();
     $("#info-datos").textContent = `Conversaciones guardadas: ${n}. Los agentes de redacción y los ajustes también se guardan aquí.`;
   }
+
+  $("#fuente-clave").innerHTML =
+    `Las funciones de IA están usando <strong>${escapeHtml(ETIQUETA_FUENTE[obtenerFuente()])}</strong>. ` +
+    `Puedes cambiarlo en <a href="#/ayuda/configuracion">Ayuda → Configuración avanzada</a>.`;
 
   pintarEstadoClave();
   pintarAjustes();

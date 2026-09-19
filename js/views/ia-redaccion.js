@@ -4,7 +4,8 @@
 // pantalla (crear, editar, duplicar, borrar, exportar/importar JSON).
 
 import { el, escapeHtml } from "../util/format.js";
-import { obtenerClave, obtenerAjustes } from "../ai/config.js";
+import { obtenerAjustes } from "../ai/config.js";
+import { claveEnUso } from "../ai/clave.js";
 import { generar, ErrorGemini } from "../ai/gemini.js";
 import { verificarAcceso, htmlAvisoPrivacidad } from "../ai/ui-clave.js";
 import * as historial from "../ai/historial.js";
@@ -73,7 +74,7 @@ export async function render(container) {
     <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/ia">Funciones de IA</a> <span>/</span> <span>Corrector de redacción</span></div>
     <h1 class="page-title">Corrector de redacción</h1>
   `;
-  if (!verificarAcceso(container, { reintentar: () => render(container) })) return;
+  if (!(await verificarAcceso(container, { reintentar: () => render(container) }))) return;
 
   let agentes = cargarAgentes();
   let activoId = agentes.some((a) => a.id === leerActivo()) ? leerActivo() : agentes[0].id;
@@ -233,7 +234,7 @@ export async function render(container) {
     try {
       const aj = obtenerAjustes();
       const r = await generar({
-        clave: obtenerClave(),
+        clave: claveEnUso(),
         modelo: aj.modelo,
         sistema: construirSistema(agente),
         contenidos: conv.contenidos,

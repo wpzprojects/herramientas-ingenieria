@@ -25,6 +25,7 @@ js/app.js, router.js, nav.js, icons.js     # bootstrap, router SPA por hash, nav
 js/util/format.js                          # formato de numeros, fetch de datos con cache, helpers DOM
 js/calc/*.js                               # motores de calculo PUROS (sin DOM), 1:1 con las formulas originales
 js/ai/*.js                                 # capa de IA (Gemini): cliente, herramientas, agentes, reporte (ver "Funciones de IA")
+js/auth/*.js, firebase/firestore.rules     # acceso con Google (Firebase): login, lista de usuarios, claves en el servidor
 js/views/*.js                              # 1 modulo por pantalla: export async function render(container, params)
 data/*.json                                # catalogos (conductores, tuberias, resoluciones, codificacion, factores de conversion)
 assets/normativa/*.jpg                     # tablas/figuras normativas escaneadas (RETIE / NTC 2050)
@@ -59,6 +60,33 @@ Sección nueva (no existía en la app original) con tres pantallas: **Análisis 
 - **Privacidad**: con el plan gratuito Google puede usar lo enviado para mejorar sus productos; la app lo advierte en varias pantallas.
 - **Verificación**: `tools/verify_ia.html` (arnés en el navegador, sin clave ni internet, Gemini simulado: contrasta cada adaptador contra fórmulas independientes y los motores) y `tools/preview_ia.html` (vista previa de las pantallas con Gemini simulado). Ver instrucciones en el encabezado de cada archivo.
 - Si se cambia la firma de un motor de `js/calc/*.js`, hay que actualizar también su adaptador en `js/ai/tools.js` y correr `verify_ia.html`.
+
+## Acceso con Google y Firebase (Ayuda → Configuración avanzada)
+
+Pantalla de acceso restringido (`#/ayuda/configuracion`, tarjeta "Configuración avanzada" en Ayuda). Pide iniciar sesión con Google y solo deja entrar a los correos de una **lista guardada en el servidor** (no en este repositorio, que es público). Dentro se gestionan los usuarios y se puede guardar la clave de Gemini en el servidor. Requiere internet; el resto de la app sigue funcionando sin conexión.
+
+**Cómo funciona y por qué así.** La app es estática y su código lo puede leer cualquiera, por lo que un login "solo en pantalla" no protege nada. La seguridad la aplica el servidor: **Firebase** (Authentication con Google + Firestore) con reglas (`firebase/firestore.rules`) que corren en los servidores de Google; no hay servidor propio que mantener. El SDK se carga por CDN (gstatic) solo al entrar a esa pantalla o al usar una clave del servidor, sin build step.
+
+- **Roles**: `admin` (gestiona la lista y la clave compartida) y `usuario` (entra, ve la lista y usa las claves). Un admin no puede quitarse ni bajarse el rol a sí mismo, así siempre queda al menos uno.
+- **Claves de Gemini en el servidor**: `ajustes/gemini` (compartida: la leen los autorizados y la cambian los admins) y `usuarios/{correo}/secretos/gemini` (personal: solo su dueño, ni los admins). En Funciones de IA se elige cuál usar (`js/ai/clave.js`): la clave del servidor solo vive en memoria, nunca en `localStorage`. **La clave compartida la puede leer, técnicamente, cualquier usuario autorizado**; compártela solo con gente de confianza. Ocultarla del todo exigiría un intermediario en el servidor (Cloud Functions requiere plan Blaze, o un Cloudflare Worker).
+- **Estado actual**: `js/auth/firebase-config.js` trae `firebaseConfig = null`, así que la pantalla muestra "Servicio de acceso no configurado" hasta completar los pasos de abajo. El backend simulado (`js/auth/backend-mock.js`) existe solo para pruebas y jamás se elige solo.
+
+**Activarlo (una vez, con tu cuenta de Google):**
+
+1. [Consola de Firebase](https://console.firebase.google.com) → crear proyecto (Google Analytics no hace falta).
+2. **Authentication → Método de acceso → Google** → habilitar (correo de soporte).
+3. **Authentication → Configuración → Dominios autorizados** → agregar el dominio de GitHub Pages (`wpzprojects.github.io`); `localhost` ya viene.
+4. **Firestore Database** → crear en modo producción, en una región cercana (p. ej. São Paulo; no se puede cambiar luego).
+5. **Firestore → Reglas** → pegar el contenido de `firebase/firestore.rules` → Publicar.
+6. **Configuración del proyecto → Tus apps → Web** → registrar la app y copiar el bloque `firebaseConfig` a `js/auth/firebase-config.js` (son identificadores públicos; la seguridad son las reglas).
+7. **Primer administrador (a mano):** Firestore → colección `usuarios` → documento con ID = tu correo **en minúsculas** (p. ej. `nombre@gmail.com`) y un campo `rol` = `admin`. La consola ignora las reglas, por eso sirve para arrancar.
+8. Publicar el cambio de `firebase-config.js`, abrir Ayuda → Configuración avanzada e iniciar sesión.
+
+**Probar las reglas antes de fiarse de ellas** (no se pudieron ejecutar en el desarrollo; Firestore → Reglas → *Simulador de reglas*): con el correo del admin debe permitir leer y escribir `usuarios/*` y `ajustes/gemini`; con un correo que NO esté en `usuarios` debe denegar todo salvo `get usuarios/{su propio correo}`; con un `usuario` normal debe permitir leer la lista y la clave compartida pero denegar escribir; un admin no debe poder borrar `usuarios/{su correo}`; nadie debe poder leer `usuarios/{otro}/secretos/*`.
+
+**Cosas a tener presentes:** la lista contiene correos (datos personales; guardar solo correo y rol); el correo se guarda en minúsculas y Google debe entregarlo verificado; la versión del SDK está fijada en `FIREBASE_SDK_VERSION` (`js/auth/firebase-config.js`) y conviene revisarla de vez en cuando; el plan gratuito (Spark) alcanza de sobra para este uso. Con una cuenta de Workspace corporativa el administrador del dominio podría bloquear apps de terceros; por ahora se usa Gmail personal.
+
+**Verificación**: `tools/verify_ia.html` cubre las reglas de acceso sobre el servidor simulado (roles, no quitarse a sí mismo, claves privadas, memoria vs. `localStorage`) y `tools/preview_ia.html?vista=avanzada&paso=admin|usuario|login|extrano|nada|agregar` muestra la pantalla en cada escenario. Lo que solo se puede probar con el Firebase real (login de Google, reglas) queda pendiente de la configuración anterior.
 
 ## Decisiones de migración que vale la pena recordar
 

@@ -12,8 +12,9 @@
     http://localhost:8000/tools/preview_ia.html?vista=redaccion&paso=corregir
     http://localhost:8000/tools/preview_ia.html?vista=analisis&paso=preguntar
 
-  vista: redaccion | analisis | configuracion
+  vista: redaccion | analisis | configuracion | avanzada
   paso : (redaccion) corregir | ajustar | gestor  ·  (analisis) preguntar | reporte
+         (avanzada) nada | login | admin | agregar | usuario | extrano
   tema : dark | light
 -->
 <link rel="stylesheet" href="../css/tokens.css">
@@ -67,11 +68,44 @@ gemini.usarMock(async ({ ruta, cuerpo }) => {
   return { candidates: [{ content: { role: "model", parts: [{ text: "## Resumen\n\nCon **4/0 ACSR**, las pérdidas a Fc=0.564 son las de la primera fila; la caída de tensión crece de forma lineal con la longitud.\n\n| Longitud (km) | Caída (%) |\n|---|---|\n| 2 | ver tabla |\n\n**Advertencia:** verifica contra tu criterio de diseño." }] } }] };
 });
 
+// ---- backend de acceso simulado (solo para la vista "avanzada") ----
+if (vista === "avanzada") {
+  const { usarBackend } = await import("../js/auth/backend.js");
+  const { crearBackendMock } = await import("../js/auth/backend-mock.js");
+  const ADMIN = { email: "yo@gmail.com", nombre: "Wilsson Perez", foto: "" };
+  const USUARIO = { email: "otro@gmail.com", nombre: "Otro Usuario", foto: "" };
+  const semilla = [
+    { email: "yo@gmail.com", rol: "admin", agregadoPor: "consola", fecha: Date.now() - 5 * 86400000 },
+    { email: "otro@gmail.com", rol: "usuario", agregadoPor: "yo@gmail.com", fecha: Date.now() - 86400000 },
+  ];
+  const escenarios = {
+    nada: null,
+    login: { usuarios: semilla, sesion: null, cuentaAlIniciar: ADMIN },
+    admin: { usuarios: semilla, sesion: ADMIN, claveCompartida: "AIzaCOMPARTIDA" },
+    agregar: { usuarios: semilla, sesion: ADMIN, claveCompartida: "AIzaCOMPARTIDA" },
+    usuario: { usuarios: semilla, sesion: USUARIO, claveCompartida: "AIzaCOMPARTIDA" },
+    extrano: { usuarios: semilla, sesion: { email: "extrano@gmail.com", nombre: "Extraño", foto: "" } },
+  };
+  const cfg = escenarios[paso || "admin"];
+  if (cfg) usarBackend(crearBackendMock(cfg));
+}
+
+// ---- funciones de IA usando la clave del servidor (paso=srv-sinsesion | srv-ok) ----
+if ((vista === "analisis" || vista === "redaccion") && paso.startsWith("srv-")) {
+  const { usarBackend } = await import("../js/auth/backend.js");
+  const { crearBackendMock } = await import("../js/auth/backend-mock.js");
+  const claves = await import("../js/ai/clave.js");
+  claves.guardarFuente("compartida");
+  const semilla = [{ email: "yo@gmail.com", rol: "admin" }];
+  usarBackend(crearBackendMock({ usuarios: semilla, sesion: paso === "srv-ok" ? { email: "yo@gmail.com", nombre: "Yo", foto: "" } : null, claveCompartida: "AIzaCOMPARTIDA" }));
+}
+
 // ---- render ----
 const app = document.getElementById("app");
-const mod = await import(`../js/views/ia-${vista}.js`);
+const MODULOS = { redaccion: "ia-redaccion", analisis: "ia-analisis", configuracion: "ia-configuracion", avanzada: "configuracion-avanzada" };
+const mod = await import(`../js/views/${MODULOS[vista] || "ia-" + vista}.js`);
 await mod.render(app);
-await espera(100);
+await espera(300);
 const $ = (s) => app.querySelector(s);
 const click = (s) => $(s)?.click();
 
@@ -93,6 +127,13 @@ try {
       await espera(50);
       app.querySelector("#gestor-lista .btn")?.click();
       await espera(50);
+    }
+  }
+  if (vista === "avanzada") {
+    if (paso === "agregar") {
+      $("#ca-nuevo").value = "Nuevo.Usuario@Gmail.com";
+      click("#ca-agregar");
+      await espera(300);
     }
   }
   if (vista === "analisis") {

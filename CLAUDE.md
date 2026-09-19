@@ -34,6 +34,20 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   Para leer resultados de `verify_ia.html` con Edge headless hace falta `Start-Process
   -RedirectStandardOutput` (la salida de `--dump-dom` no se captura con `&`).
 
+## Acceso con Google (Ayuda → "Configuración avanzada", `js/auth/*`, `firebase/firestore.rules`)
+
+- Control de acceso con Firebase (login Google + lista de correos en Firestore). Un login solo en
+  pantalla NO protege nada (el código es público): la seguridad son las reglas de
+  `firebase/firestore.rules`, que aplica el servidor. Nada confidencial puede ir en `data/*.json` ni
+  en el repo: lo protegido debe vivir en el servidor.
+- El backend simulado (`backend-mock.js`) es SOLO para pruebas: nunca se elige solo
+  (`obtenerBackend()` devuelve null si `firebase-config.js` no tiene la config). Si se cambia el
+  modelo de datos o las reglas, actualizar `firestore.rules`, `backend-firebase.js`,
+  `backend-mock.js` (que replica las reglas) y correr `tools/verify_ia.html`.
+- La clave de Gemini del servidor va SOLO en memoria (`js/ai/clave.js`), nunca en `localStorage`.
+- Activación y pasos manuales de Firebase: ver README ("Acceso con Google y Firebase"). Las reglas
+  reales y el login de Google no se pudieron probar sin el proyecto de Firebase.
+
 ## Convenciones de UI/CSS
 
 - Iconos (`js/icons.js`): SVG inline propios, sin CDN (requisito de offline). El estilo
