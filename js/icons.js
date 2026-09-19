@@ -22,8 +22,6 @@ const paths = {
   moon: "M20.8 14.5A9 9 0 1 1 9.5 3.2a7 7 0 0 0 11.3 11.3Z",
   activity: "M2 12h4l3 9 6-18 3 9h4", // (espejo izquierda-derecha del trazo original, pedido del usuario; solo lo usa la tarjeta de Regulacion)
   alertTriangle: "M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0ZM12 9v4M12 17h.01",
-  powerTower: "M12 2v18M6 6h12M8 10h8M12 20 7 22M12 20l5 2",
-  underground: "M9 9h6v3H9zM12 3v6M3 15h4M9 15h4M15 15h4M3 18h4M9 18h4M15 18h4",
 };
 
 // Iconos compuestos (varias formas primitivas) para casos que un solo trazo
@@ -87,6 +85,12 @@ const shapes = {
   // Tabler "grid-dots" (SVG oficial): icono de la tarjeta Instalacion (banco de ductos) de Ampacidad subterranea.
   gridDots:
     '<g stroke-width="2"><path d="M4 5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M11 5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M18 5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M4 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M18 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M4 19a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M11 19a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M18 19a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/></g>',
+  // Ampacidad aerea (torre de celosia: patas, cruceta y diagonales) y subterranea (banco de ductos en corte: superficie y 4 ductos).
+  // Dibujados a mano en el estilo de Tabler (trazo 2); elegidos por el usuario entre varias opciones (2026-09-19).
+  powerTower:
+    '<g stroke-width="2"><path d="M8 22 12 3l4 19"/><path d="M5 8h14"/><path d="M10.1 12l5.1 6"/><path d="M13.9 12l-5.1 6"/></g>',
+  underground:
+    '<g stroke-width="2"><path d="M3 5h18"/><path d="M6.5 12.5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M13.5 12.5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M6.5 19.5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M13.5 19.5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/></g>',
 };
 
 export function icon(name, cls = "") {
