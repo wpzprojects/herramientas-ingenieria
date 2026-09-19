@@ -12,7 +12,7 @@ import {
   clasificarRegulacion,
   sugerirCalibre,
   UMBRAL_OPTIMO_PCT,
-  UMBRAL_ADECUADO_PCT,
+  UMBRAL_ACEPTABLE_PCT,
 } from "../calc/regulacion-tramos.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 import { activarInfos } from "../util/info-campo.js";
@@ -443,10 +443,10 @@ export async function render(container) {
   function comparacionCalibresHtml(base, estado) {
     const candidatos = candidatosCalibre(base, estado);
     if (!candidatos.length) return "";
-    const { sugerido, menor, ventana } = sugerirCalibre(candidatos, UMBRAL_ADECUADO_PCT, 3, estado.calibre, "caidaTensionPct");
+    const { sugerido, menor, ventana } = sugerirCalibre(candidatos, UMBRAL_ACEPTABLE_PCT, 3, estado.calibre, "caidaTensionPct");
     const mensaje = sugerido
-      ? `Calibre más pequeño con caída de tensión de ${fmtPercent(UMBRAL_ADECUADO_PCT, 0)} o menos: <strong>${escapeHtml(sugerido.calibre)}</strong> (${fmt(sugerido.area)} mm²).`
-      : `Ningún calibre del catálogo baja de ${fmtPercent(UMBRAL_ADECUADO_PCT, 0)} de caída de tensión con estos datos; el de menor caída es <strong>${escapeHtml(menor.calibre)}</strong>.`;
+      ? `Calibre más pequeño con caída de tensión de ${fmtPercent(UMBRAL_ACEPTABLE_PCT, 0)} o menos: <strong>${escapeHtml(sugerido.calibre)}</strong> (${fmt(sugerido.area)} mm²).`
+      : `Ningún calibre del catálogo baja de ${fmtPercent(UMBRAL_ACEPTABLE_PCT, 0)} de caída de tensión con estos datos; el de menor caída es <strong>${escapeHtml(menor.calibre)}</strong>.`;
     const filas = ventana
       .map((c) => {
         const clases = [c.calibre === sugerido?.calibre ? "match-row" : "", c.calibre === estado.calibre ? "current-row" : ""].filter(Boolean).join(" ");
@@ -569,7 +569,7 @@ export async function render(container) {
                 <div class="label">Caída de tensión${varios ? " total" : ""}${clase ? ` <span class="badge ${clase.clase}">${clase.etiqueta}</span>` : ""}</div>
               </div>
             </div>
-            <p class="text-muted text-sm" style="margin: var(--space-3) 0 0;">Referencias de diseño: hasta ${UMBRAL_OPTIMO_PCT}% óptimo · hasta ${UMBRAL_ADECUADO_PCT}% adecuado.</p>
+            <p class="text-muted text-sm" style="margin: var(--space-3) 0 0;">Referencias de diseño: hasta ${UMBRAL_OPTIMO_PCT}% óptimo · hasta ${UMBRAL_ACEPTABLE_PCT}% aceptable.</p>
             ${varios ? tablaTramosHtml(r, estados) : comparacionCalibresHtml(base, estados[0])}
           </div>`;
 

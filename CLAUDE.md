@@ -25,8 +25,8 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Regulación (2026-09-19) replica el rediseño de Pérdidas (mismas tarjetas, iconos, relleno, reporte y fórmulas). Diferencias: sin
   factor de carga; por tramo agrega radio medio geométrico (mm, del catálogo, editable con «Manual»), conductores por fase con
   «Separación entre subconductores del haz» (RMG equivalente del haz, `calcularRmgHaz`) y las 3 distancias entre fases (propias de
-  cada tramo). Referencias de diseño 5 % (Óptimo) / 10 % (Adecuado) / «Elevado» por encima; NO son límite normativo, y en pantalla
-  el texto es solo «Referencias de diseño: hasta X% óptimo · hasta Y% adecuado.» (el usuario pidió quitar la aclaración entre
+  cada tramo). Referencias de diseño 5 % (Óptimo) / 10 % (Aceptable) / «Elevado» por encima; NO son límite normativo, y en pantalla
+  el texto es solo «Referencias de diseño: hasta X% óptimo · hasta Y% aceptable.» (el usuario pidió quitar la aclaración entre
   paréntesis; no volver a poner «límite normativo» en la interfaz). Orden de los campos del tramo IGUAL al de la «Calculadora
   Normativa» (red|material, longitud|conductores por fase, calibre|resistencia, separación del haz|RMG, distancias A-B|A-C|B-C);
   Pérdidas conserva su propio orden (calibre|resistencia antes de longitud|conductores), no tocarlo. El motor
@@ -35,7 +35,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Código compartido para las próximas calculadoras: `js/calc/circuito.js` (dato de partida, `clasificarPorUmbrales`,
   `sugerirCalibre` con `campo`) y `js/util/resultados-ui.js` (tarjeta con pestañas, `reporteHtml` con negrita, panel de fórmulas
   y `activarPestanas`, que además alinea la columna de símbolos midiendo el más ancho: `--ancho-simbolo`). Etiquetas: siempre
-  «Óptimo» / «Adecuado» / «Elevado» (antes «Mayores pérdidas»). Clase de tablas de resultado: `.tabla-resultado`.
+  «Óptimo» / «Aceptable» / «Elevado» (antes «Mayores pérdidas»). Clase de tablas de resultado: `.tabla-resultado`.
 - Ayuda de los campos (2026-09-19, pedido del usuario): en Pérdidas y Regulación NO hay textos `.hint` debajo de los campos; la ayuda
   va en un botón «i» (Tabler `info-circle`) junto al nombre, que abre un cuadro pequeño (popover) sin mover el formulario. El cuadro
   sale ARRIBA de la etiqueta (no tapa la casilla que se va a llenar; decidido con el usuario) y se voltea abajo
@@ -102,7 +102,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   que ya había (métricas + tablas); **sin gráficos** (barras, velocímetro): el usuario los quiere más adelante, no ahora.
   Unidades: se mantienen MW y MVA. El motor `js/calc/perdidas.js` NO se toca; la suma de tramos y el dato de partida viven en
   `js/calc/perdidas-tramos.js`. La IA (`calcular_perdidas`) sigue igual (un tramo). Pruebas: `tools/verify_perdidas.html`.
-- Umbrales 1 % / 3 %: solo «referencias de diseño» (Óptimo / Adecuado / Elevado). NUNCA escribir «fuera de norma».
+- Umbrales 1 % / 3 %: solo «referencias de diseño» (Óptimo / Aceptable / Elevado). NUNCA escribir «fuera de norma».
 - Tarjetas (`.form-section`): título como BARRA de borde a borde (`.form-section-title`: fondo `--accent-soft` como el botón activo del
   menú lateral, línea inferior delgada `--accent`, icono `--accent` pleno, centrado vertical, `min-height` fijo para que no cambie al
   aparecer «Quitar»); espacio inferior compacto (`.grid-2.ultima`, relleno de 12px; botón «Agregar tramo» a 10px del último campo).
@@ -198,7 +198,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v122); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v123); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (Ayuda → "Configuración avanzada", `js/auth/*`, `firebase/firestore.rules`)

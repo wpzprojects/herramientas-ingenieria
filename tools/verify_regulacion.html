@@ -107,8 +107,8 @@ await seccion("regulacion-tramos: logica", async () => {
   cerca(motor.calcularRegulacion({ ...BASE, potenciaActivaMw: desdeI, longitudKm: 5, resistenciaOhmKm: 0.4, rmgM: 0.005, dabM: 2, dacM: 2, dbcM: 2 }).corriente, 174.4, 1e-9, "ida y vuelta: con la P obtenida de 174.4 A el motor devuelve 174.4 A");
 
   const c = (p) => tr.clasificarRegulacion(p);
-  ok(c(4.9).clave === "optimo" && c(5).clave === "optimo" && c(5.0001).clave === "adecuado" && c(10).clave === "adecuado" && c(10.0001).clave === "elevado", "referencias: ≤5 óptimo, ≤10 adecuado, >10 elevado");
-  ok([4, 8, 12].map((p) => c(p).etiqueta).join("|") === "Óptimo|Adecuado|Elevado" && ![4, 8, 12].some((p) => /norma/i.test(c(p).etiqueta)), "textos «Óptimo», «Adecuado» y «Elevado»; ninguno dice «norma»");
+  ok(c(4.9).clave === "optimo" && c(5).clave === "optimo" && c(5.0001).clave === "aceptable" && c(10).clave === "aceptable" && c(10.0001).clave === "elevado", "referencias: ≤5 óptimo, ≤10 aceptable, >10 elevado");
+  ok([4, 8, 12].map((p) => c(p).etiqueta).join("|") === "Óptimo|Aceptable|Elevado" && ![4, 8, 12].some((p) => /norma/i.test(c(p).etiqueta)), "textos «Óptimo», «Aceptable» y «Elevado»; ninguno dice «norma»");
 
   // sugerencia de calibre con la caida de tension como valor a comparar
   const cand = [14, 11, 9, 7, 5, 3].map((p, i) => ({ calibre: `c${i}`, area: i + 1, caidaTensionPct: p }));
@@ -209,7 +209,7 @@ await seccion("vista: un tramo, cálculo y resultados", async () => {
   cerca(valorDe("Constante de regulación"), E1.K, 5e-8, "resultado: constante de regulación");
   const badge = $(".badge", metrica("Caída de tensión"));
   ok(badge && texto(badge) === "Óptimo" && badge.classList.contains("badge-success"), `con ${E1.pct.toFixed(2)} % la etiqueta es «${texto(badge)}»`);
-  ok(texto($("#resultado-wrap")).includes("Referencias de diseño: hasta 5% óptimo · hasta 10% adecuado.") && !texto($("#resultado-wrap")).includes("(no son un límite"), "las referencias se muestran como «Referencias de diseño: hasta 5% óptimo · hasta 10% adecuado.» (sin paréntesis)");
+  ok(texto($("#resultado-wrap")).includes("Referencias de diseño: hasta 5% óptimo · hasta 10% aceptable.") && !texto($("#resultado-wrap")).includes("(no son un límite"), "las referencias se muestran como «Referencias de diseño: hasta 5% óptimo · hasta 10% aceptable.» (sin paréntesis)");
   ok(!/norma/i.test(texto($("#resultado-wrap"))), "en los resultados no aparece la palabra «norma» ni «normativo» en ninguna parte");
   ok(!$$(".result-panel svg, .result-gauge").length, "sin gráficos");
 
@@ -237,7 +237,7 @@ await seccion("vista: un tramo, cálculo y resultados", async () => {
   ok(valorDe("Caída de tensión") > 10 && texto(b2) === "Elevado" && b2.classList.contains("badge-warning"), `con ${valorDe("Caída de tensión")} % la etiqueta es «${texto(b2)}» (antes «Mayores pérdidas/caídas»)`);
   poner("#f-longitud-0", "12");
   calcular();
-  ok(texto($(".badge", metrica("Caída de tensión"))) === "Adecuado" && !$(".badge", metrica("Caída de tensión")).classList.contains("badge-success"), "entre 5 % y 10 %: «Adecuado»");
+  ok(texto($(".badge", metrica("Caída de tensión"))) === "Aceptable" && !$(".badge", metrica("Caída de tensión")).classList.contains("badge-success"), "entre 5 % y 10 %: «Aceptable»");
   poner("#f-longitud-0", "5.2");
 });
 

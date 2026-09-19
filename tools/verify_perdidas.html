@@ -100,9 +100,9 @@ await seccion("perdidas-tramos: logica", async () => {
 
   // referencias de diseño
   const c = (p) => tr.clasificarPerdidas(p).clave;
-  ok(c(0.5) === "optimo" && c(1) === "optimo" && c(1.0001) === "adecuado" && c(3) === "adecuado" && c(3.0001) === "elevado", "etiquetas: ≤1 óptimo, ≤3 adecuado, >3 elevado");
+  ok(c(0.5) === "optimo" && c(1) === "optimo" && c(1.0001) === "aceptable" && c(3) === "aceptable" && c(3.0001) === "elevado", "etiquetas: ≤1 óptimo, ≤3 aceptable, >3 elevado");
   const etiquetas = [0.5, 2, 5].map((p) => tr.clasificarPerdidas(p).etiqueta);
-  ok(etiquetas.join("|") === "Óptimo|Adecuado|Elevado", `textos de las etiquetas: ${etiquetas.join(" | ")} (por encima de 3 % dice «Elevado»)`);
+  ok(etiquetas.join("|") === "Óptimo|Aceptable|Elevado", `textos de las etiquetas: ${etiquetas.join(" | ")} (por encima de 3 % dice «Elevado»)`);
   ok(!/norma/i.test(etiquetas.join(" ")), "ninguna etiqueta dice «norma»");
 
   // sugerencia de calibre
@@ -316,7 +316,7 @@ await seccion("vista: un tramo, cálculo y resultados", async () => {
   cerca(valorDe("Pérdidas de potencia"), (e.pct / 100) * 19.9, 0.0006, "resultado: pérdidas en MW");
   ok(metrica("Porcentaje de pérdidas").querySelector(".badge") && texto(metrica("Porcentaje de pérdidas").querySelector(".badge")).length > 0, "el % de pérdidas lleva su etiqueta");
   ok(!/norma/i.test(texto($("#resultado-wrap"))), "en los resultados no aparece la palabra «norma» ni «normativo» en ninguna parte");
-  ok(texto($("#resultado-wrap")).includes("Referencias de diseño: hasta 1% óptimo · hasta 3% adecuado.") && !texto($("#resultado-wrap")).includes("(no son un límite"), "las referencias se muestran como «Referencias de diseño: hasta 1% óptimo · hasta 3% adecuado.» (sin paréntesis)");
+  ok(texto($("#resultado-wrap")).includes("Referencias de diseño: hasta 1% óptimo · hasta 3% aceptable.") && !texto($("#resultado-wrap")).includes("(no son un límite"), "las referencias se muestran como «Referencias de diseño: hasta 1% óptimo · hasta 3% aceptable.» (sin paréntesis)");
   ok(!$$(".result-panel svg, .result-gauge").length, "sin gráficos: solo los formatos de resultado que ya existían");
 
   const filas = $$(".tabla-resultado tbody tr");

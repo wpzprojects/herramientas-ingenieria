@@ -12,9 +12,9 @@ import { clasificarPorUmbrales } from "./circuito.js";
 
 export { potenciaActivaMw, sugerirCalibre } from "./circuito.js";
 
-// Referencias de diseño (NO son un limite normativo): hasta 1 % es optimo y hasta 3 % se considera adecuado.
+// Referencias de diseño (NO son un limite normativo): hasta 1 % es optimo y hasta 3 % se considera aceptable.
 export const UMBRAL_OPTIMO_PCT = 1;
-export const UMBRAL_ADECUADO_PCT = 3;
+export const UMBRAL_ACEPTABLE_PCT = 3;
 
 /**
  * @param {{tensionLineaKv:number, potenciaActivaMw:number, factorPotencia:number, factorCarga:number}} base
@@ -44,7 +44,7 @@ export function calcularPerdidasTramos(base, tramos) {
   };
 }
 
-/** «Óptimo» hasta 1 %, «Adecuado» hasta 3 % y «Elevado» por encima. */
+/** «Óptimo» hasta 1 %, «Aceptable» hasta 3 % y «Elevado» por encima. */
 export function clasificarPerdidas(pct) {
-  return clasificarPorUmbrales(pct, UMBRAL_OPTIMO_PCT, UMBRAL_ADECUADO_PCT);
+  return clasificarPorUmbrales(pct, UMBRAL_OPTIMO_PCT, UMBRAL_ACEPTABLE_PCT);
 }

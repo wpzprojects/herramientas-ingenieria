@@ -19,11 +19,11 @@ export function potenciaActivaMw({ modo, potenciaMw, potenciaMva, corrienteA, te
 
 /**
  * Etiqueta orientativa segun dos referencias de diseño (NO son un limite normativo): hasta `optimo` es «Óptimo», hasta
- * `adecuado` es «Adecuado» y por encima es «Elevado». `clase` es la clase de badge de la app ("" = neutra).
+ * `aceptable` es «Aceptable» y por encima es «Elevado». `clase` es la clase de badge de la app ("" = neutra).
  */
-export function clasificarPorUmbrales(pct, optimo, adecuado) {
+export function clasificarPorUmbrales(pct, optimo, aceptable) {
   if (pct <= optimo) return { clave: "optimo", etiqueta: "Óptimo", clase: "badge-success" };
-  if (pct <= adecuado) return { clave: "adecuado", etiqueta: "Adecuado", clase: "" };
+  if (pct <= aceptable) return { clave: "aceptable", etiqueta: "Aceptable", clase: "" };
   return { clave: "elevado", etiqueta: "Elevado", clase: "badge-warning" };
 }
 

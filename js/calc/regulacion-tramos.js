@@ -16,9 +16,9 @@ import { clasificarPorUmbrales } from "./circuito.js";
 
 export { potenciaActivaMw, sugerirCalibre } from "./circuito.js";
 
-// Referencias de diseño (NO son un limite normativo): hasta 5 % es optimo y hasta 10 % se considera adecuado.
+// Referencias de diseño (NO son un limite normativo): hasta 5 % es optimo y hasta 10 % se considera aceptable.
 export const UMBRAL_OPTIMO_PCT = 5;
-export const UMBRAL_ADECUADO_PCT = 10;
+export const UMBRAL_ACEPTABLE_PCT = 10;
 
 /**
  * RMG equivalente (mm) de un haz de N subconductores identicos, equiespaciados en un poligono regular con separacion
@@ -68,7 +68,7 @@ export function calcularRegulacionTramos(base, tramos) {
   };
 }
 
-/** «Óptimo» hasta 5 %, «Adecuado» hasta 10 % y «Elevado» por encima. */
+/** «Óptimo» hasta 5 %, «Aceptable» hasta 10 % y «Elevado» por encima. */
 export function clasificarRegulacion(pct) {
-  return clasificarPorUmbrales(pct, UMBRAL_OPTIMO_PCT, UMBRAL_ADECUADO_PCT);
+  return clasificarPorUmbrales(pct, UMBRAL_OPTIMO_PCT, UMBRAL_ACEPTABLE_PCT);
 }
