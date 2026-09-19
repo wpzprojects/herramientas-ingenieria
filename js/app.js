@@ -1,5 +1,5 @@
 import { icon } from "./icons.js";
-import { sidebarLinks } from "./nav.js";
+import { sidebarLinks, perfilLink } from "./nav.js";
 import { initRouter } from "./router.js";
 
 const shell = document.getElementById("app-shell");
@@ -58,6 +58,16 @@ navList.innerHTML = sidebarLinks
   )
   .join("");
 
+// Perfil: ultimo elemento del menu, encima del boton de contraer (en el cajon del celular queda al final de la lista)
+const navPerfil = document.getElementById("nav-perfil");
+navPerfil.innerHTML = `
+    <li>
+      <a class="nav-link" data-key="${perfilLink.key}" href="${perfilLink.hash}" title="${perfilLink.title}">
+        <span class="nav-icon">${icon(perfilLink.icon)}</span>
+        <span class="nav-label">${perfilLink.title}</span>
+      </a>
+    </li>`;
+
 // --- Menu lateral contraible (solo pantallas anchas; en movil se mantiene el cajon emergente) ---
 const SIDEBAR_KEY = "sidebarCollapsed";
 const collapseBtn = document.getElementById("sidebar-collapse");
@@ -85,7 +95,7 @@ collapseBtn.addEventListener("click", () => {
 
 function setActiveLink(path) {
   const section = path.split("/").filter(Boolean)[0] || "";
-  navList.querySelectorAll(".nav-link").forEach((a) => {
+  document.querySelectorAll("#nav-list .nav-link, #nav-perfil .nav-link").forEach((a) => {
     a.classList.toggle("active", a.dataset.key === section);
   });
 }
@@ -100,9 +110,11 @@ navToggle.addEventListener("click", () => {
   navToggle.setAttribute("aria-expanded", String(open));
 });
 backdrop.addEventListener("click", closeMobileNav);
-navList.addEventListener("click", (e) => {
-  if (e.target.closest("a")) closeMobileNav();
-});
+[navList, navPerfil].forEach((lista) =>
+  lista.addEventListener("click", (e) => {
+    if (e.target.closest("a")) closeMobileNav();
+  })
+);
 
 initRouter({
   mount,

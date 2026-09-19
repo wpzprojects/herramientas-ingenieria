@@ -199,10 +199,12 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v131); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v132); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
-## Acceso con Google (Ayuda → "Configuración avanzada", `js/auth/*`, `firebase/firestore.rules`)
+## Acceso con Google (menú lateral → «Perfil», `js/auth/*`, `firebase/firestore.rules`)
+
+- Ubicación (2026-09-19, pedido del usuario): antes estaba en Ayuda → «Configuración avanzada»; ahora es la sección **Perfil** (`#/perfil`, vista `js/views/configuracion-avanzada.js`, título «Perfil y configuración avanzada»), un ítem con icono `user` al fondo del menú lateral, ENCIMA del botón de contraer (`perfilLink` en `nav.js`, lista `#nav-perfil`), sin tarjeta en Inicio ni en Ayuda (la tarjeta de Ayuda se eliminó). `#/ayuda/configuracion` redirige a `#/perfil`. El router marca el ítem activo ANTES de `render` (la vista espera al servicio y tardaba en resaltarse).
 
 - Control de acceso con Firebase (login Google + lista de correos en Firestore). Un login solo en
   pantalla NO protege nada (el código es público): la seguridad son las reglas de
@@ -227,7 +229,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   en borrador, opciones de correo, diseño offline, riesgos, fases y preguntas abiertas).
 - Idea: al abrir la app se pide login con Google; si el correo está en `usuarios` entra (admin o
   usuario); si no, "sin acceso" con botón **Solicitar acceso** que crea `solicitudes/{correo}` y el
-  admin aprueba/rechaza en Configuración avanzada. Reutiliza `js/auth/*` y las reglas actuales.
+  admin aprueba/rechaza en Perfil y configuración avanzada. Reutiliza `js/auth/*` y las reglas actuales.
 - Advertencia clave: es un control de USO, no de confidencialidad (el sitio y sus archivos son
   públicos en GitHub Pages). Proteger contenido de verdad exigiría Cloudflare Access u otro hosting.
 - Decisiones sin confirmar (preguntar al usuario antes de implementar): propósito, alcance (toda la

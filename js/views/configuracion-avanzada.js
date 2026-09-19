@@ -1,4 +1,4 @@
-// Configuracion avanzada (Ayuda > Configuracion avanzada): acceso restringido con cuenta de Google.
+// Perfil y configuracion avanzada (menu lateral > Perfil, #/perfil): acceso restringido con cuenta de Google.
 // Muestra el login y, si el correo esta en la lista de usuarios autorizados (guardada en el
 // servidor, no en el repositorio), permite gestionar esa lista (solo administradores) y guardar
 // la clave de Gemini en el servidor. La seguridad real la aplican las reglas de Firestore
@@ -20,8 +20,8 @@ const OPCIONES_FUENTE = {
 
 export async function render(container) {
   container.innerHTML = `
-    <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/ayuda">Ayuda</a> <span>/</span> <span>Configuración avanzada</span></div>
-    <h1 class="page-title">Configuración avanzada</h1>
+    <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <span>Perfil y configuración avanzada</span></div>
+    <h1 class="page-title">Perfil y configuración avanzada</h1>
     <div id="ca-cuerpo"></div>
   `;
   const cuerpo = container.querySelector("#ca-cuerpo");

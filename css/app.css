@@ -99,6 +99,12 @@ button { font-family: inherit; }
    Alineado a la izquierda con los iconos del menu: mismo relleno lateral que .nav-link, menos 1px por
    el borde transparente de .icon-btn (medido en el navegador). */
 .sidebar-head { display: flex; justify-content: flex-start; flex: 0 0 auto; margin-top: auto; padding-top: var(--space-2); }
+/* Perfil: al fondo del menu, justo encima del boton de contraer (que ya no necesita empujarse con margin-top:auto) */
+.nav-list-perfil { margin-top: var(--space-3); }
+@media (min-width: 881px) {
+  .sidebar .nav-list-perfil { margin-top: auto; }
+  .nav-list-perfil + .sidebar-head { margin-top: 0; }
+}
 .sidebar-collapse-btn {
   width: auto; height: 48px; padding: 0 calc(var(--space-3) - 1px);
   justify-content: flex-start;

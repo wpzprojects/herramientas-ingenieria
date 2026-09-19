@@ -10,6 +10,9 @@ export const sidebarLinks = [
   { key: "ayuda", title: "Ayuda", icon: "help", hash: "#/ayuda" },
 ];
 
+// Perfil: va aparte de la lista principal, en el fondo del menu lateral (encima del boton de contraer). Sin tarjeta en el Inicio.
+export const perfilLink = { key: "perfil", title: "Perfil", icon: "user", hash: "#/perfil" };
+
 export const sectionMeta = {
   calculos: { title: "Cálculos", subtitle: "Calculadoras de ingeniería para líneas y redes de distribución." },
   catalogos: { title: "Catálogos", subtitle: "Consulta técnica de conductores por familia y de tuberías, con filtros y ficha de detalle." },

@@ -83,9 +83,9 @@ Sección nueva (no existía en la app original) con tres pantallas: **Análisis 
 - **Verificación**: `tools/verify_ia.html` (arnés en el navegador, sin clave ni internet, Gemini simulado: contrasta cada adaptador contra fórmulas independientes y los motores) y `tools/preview_ia.html` (vista previa de las pantallas con Gemini simulado). Ver instrucciones en el encabezado de cada archivo.
 - Si se cambia la firma de un motor de `js/calc/*.js`, hay que actualizar también su adaptador en `js/ai/tools.js` y correr `verify_ia.html`.
 
-## Acceso con Google y Firebase (Ayuda → Configuración avanzada)
+## Acceso con Google y Firebase (menú lateral → Perfil)
 
-Pantalla de acceso restringido (`#/ayuda/configuracion`, tarjeta "Configuración avanzada" en Ayuda). Pide iniciar sesión con Google y solo deja entrar a los correos de una **lista guardada en el servidor** (no en este repositorio, que es público). Dentro se gestionan los usuarios y se puede guardar la clave de Gemini en el servidor. Requiere internet; el resto de la app sigue funcionando sin conexión.
+Pantalla de acceso restringido (`#/perfil`, «Perfil y configuración avanzada»: ítem con icono de usuario al fondo del menú lateral, encima del botón de contraer; la ruta anterior `#/ayuda/configuracion` redirige ahí). Pide iniciar sesión con Google y solo deja entrar a los correos de una **lista guardada en el servidor** (no en este repositorio, que es público). Dentro se gestionan los usuarios y se puede guardar la clave de Gemini en el servidor. Requiere internet; el resto de la app sigue funcionando sin conexión.
 
 **Cómo funciona y por qué así.** La app es estática y su código lo puede leer cualquiera, por lo que un login "solo en pantalla" no protege nada. La seguridad la aplica el servidor: **Firebase** (Authentication con Google + Firestore) con reglas (`firebase/firestore.rules`) que corren en los servidores de Google; no hay servidor propio que mantener. El SDK se carga por CDN (gstatic) solo al entrar a esa pantalla o al usar una clave del servidor, sin build step.
 
@@ -102,7 +102,7 @@ Pantalla de acceso restringido (`#/ayuda/configuracion`, tarjeta "Configuración
 5. **Firestore → Reglas** → pegar el contenido de `firebase/firestore.rules` → Publicar.
 6. **Configuración del proyecto → Tus apps → Web** → registrar la app y copiar el bloque `firebaseConfig` a `js/auth/firebase-config.js` (son identificadores públicos; la seguridad son las reglas).
 7. **Primer administrador (a mano):** Firestore → colección `usuarios` → documento con ID = tu correo **en minúsculas** (p. ej. `nombre@gmail.com`) y un campo `rol` = `admin`. La consola ignora las reglas, por eso sirve para arrancar.
-8. Publicar el cambio de `firebase-config.js`, abrir Ayuda → Configuración avanzada e iniciar sesión.
+8. Publicar el cambio de `firebase-config.js`, abrir Perfil (menú lateral) e iniciar sesión.
 
 **Probar las reglas antes de fiarse de ellas** (no se pudieron ejecutar en el desarrollo; Firestore → Reglas → *Simulador de reglas*): con el correo del admin debe permitir leer y escribir `usuarios/*` y `ajustes/gemini`; con un correo que NO esté en `usuarios` debe denegar todo salvo `get usuarios/{su propio correo}`; con un `usuario` normal debe permitir leer la lista y la clave compartida pero denegar escribir; un admin no debe poder borrar `usuarios/{su correo}`; nadie debe poder leer `usuarios/{otro}/secretos/*`.
 

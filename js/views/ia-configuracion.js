@@ -141,7 +141,7 @@ export async function render(container) {
 
   $("#fuente-clave").innerHTML =
     `Las funciones de IA están usando <strong>${escapeHtml(ETIQUETA_FUENTE[obtenerFuente()])}</strong>. ` +
-    `Puedes cambiarlo en <a href="#/ayuda/configuracion">Ayuda → Configuración avanzada</a>.`;
+    `Puedes cambiarlo en <a href="#/perfil">Perfil</a>.`;
 
   pintarEstadoClave();
   pintarAjustes();

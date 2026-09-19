@@ -49,7 +49,9 @@ const routeTable = [
   ["/ia/redaccion", () => import("./views/ia-redaccion.js")],
   ["/ia/configuracion", () => import("./views/ia-configuracion.js")],
   ["/ayuda", () => import("./views/ayuda.js")],
-  ["/ayuda/configuracion", () => import("./views/configuracion-avanzada.js")],
+  ["/perfil", () => import("./views/configuracion-avanzada.js")],
+  // ruta anterior (Ayuda > Configuracion avanzada): redirige al Perfil por si alguien la tenia guardada
+  ["/ayuda/configuracion", () => Promise.resolve({ render: () => location.replace("#/perfil") })],
 ].map(([pattern, load]) => ({ ...compile(pattern), pattern, load }));
 
 function currentPath() {
@@ -94,6 +96,7 @@ export function initRouter({ mount, onNavigate }) {
       if (myToken !== token) return; // navegacion mas reciente ya en curso
       mount.innerHTML = "";
       mount.scrollTop = 0;
+      onNavigate?.(path, found.params); // antes de render: pantallas lentas (p. ej. Perfil, que espera al servicio) ya marcan su ítem del menú
       await mod.render(mount, found.params);
       mount.focus({ preventScroll: true });
     } catch (err) {
