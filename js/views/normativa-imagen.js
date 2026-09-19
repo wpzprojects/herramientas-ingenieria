@@ -4,19 +4,20 @@
 // js/router.js y js/nav.js (sectionMenus.normatividad).
 // Un tema puede llevar una `nota`: texto normativo que se muestra como nota al pie, debajo del visor (ver .nota-pie en app.css).
 
+// Los titulos de «Distancias de seguridad» (numeral + descripcion) son los de la app original de Power Apps (Selector_Tablas).
 const TEMAS = {
   "distancias-seguridad": {
     titulo: "Distancias de seguridad",
     selector: true,
     opciones: [
-      { label: "Tabla 3.10.1.a", img: "assets/normativa/tabla-3-10-1-a.jpg" },
-      { label: "Tabla 3.10.2.a", img: "assets/normativa/tabla-3-10-2-a.jpg" },
-      { label: "Tabla 3.10.3.a", img: "assets/normativa/tabla-3-10-3-a.jpg" },
-      { label: "Tabla 3.10.4.a", img: "assets/normativa/tabla-3-10-4-a.jpg" },
-      { label: "Tabla 3.10.4.b", img: "assets/normativa/tabla-3-10-4-b.jpg" },
-      { label: "Tabla 3.10.5.b", img: "assets/normativa/tabla-3-10-5-b.jpg" },
-      { label: "Tabla 3.10.5.c", img: "assets/normativa/tabla-3-10-5-c.jpg" },
-      { label: "Tabla 3.22.1.c (equivalente a Tabla 23.2 RETIE 2013)", img: "assets/normativa/tabla-3-22-1-c.jpg" },
+      { label: "Tabla 3.10.1.a — Distancias mínimas de seguridad en zonas con construcciones", img: "assets/normativa/tabla-3-10-1-a.jpg" },
+      { label: "Tabla 3.10.2.a — Distancias mínimas de seguridad para diferentes situaciones", img: "assets/normativa/tabla-3-10-2-a.jpg" },
+      { label: "Tabla 3.10.3.a — Distancias verticales mínimas en vanos de cruces o recorridos paralelos entre líneas de diferentes tensiones", img: "assets/normativa/tabla-3-10-3-a.jpg" },
+      { label: "Tabla 3.10.4.a — Distancia horizontal entre conductores soportados en la misma estructura de apoyo", img: "assets/normativa/tabla-3-10-4-a.jpg" },
+      { label: "Tabla 3.10.4.b — Distancia vertical mínima en metros entre conductores sobre la misma estructura", img: "assets/normativa/tabla-3-10-4-b.jpg" },
+      { label: "Tabla 3.10.5.b — Distancias mínimas para trabajos en o cerca de partes energizadas en corriente alterna", img: "assets/normativa/tabla-3-10-5-b.jpg" },
+      { label: "Tabla 3.10.5.c — Distancias mínimas para trabajos en o cerca de partes energizadas en corriente continua", img: "assets/normativa/tabla-3-10-5-c.jpg" },
+      { label: "Tabla 3.22.1.c — Distancias de seguridad en el aire en subestaciones exteriores (Tabla 23.2 en RETIE 2013)", img: "assets/normativa/tabla-3-22-1-c.jpg" },
     ],
   },
   "zona-servidumbre": {
@@ -75,24 +76,41 @@ export async function render(container, params) {
 
   if (tema.selector) {
     wrap.innerHTML = `
-      <div class="field" style="max-width: 760px;">
+      <div class="field" style="max-width: 960px;">
         <label for="sel-tabla">Tabla / figura</label>
         <select id="sel-tabla">
           ${tema.opciones.map((op, i) => `<option value="${i}">${op.label}</option>`).join("")}
         </select>
       </div>
+      <p class="titulo-completo" id="titulo-completo" hidden></p>
       <div class="image-frame" id="frame-imagen"></div>
     `;
 
     const sel = wrap.querySelector("#sel-tabla");
     const frame = wrap.querySelector("#frame-imagen");
+    const tituloCompleto = wrap.querySelector("#titulo-completo");
+    const lienzo = document.createElement("canvas").getContext("2d");
+
+    // El desplegable cerrado corta los titulos largos (sobre todo en el celular): si el titulo elegido no cabe entero, se
+    // muestra completo justo debajo del campo.
+    function actualizarTitulo() {
+      const texto = tema.opciones[Number(sel.value)].label;
+      const cs = getComputedStyle(sel);
+      lienzo.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+      const util = sel.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 30; // ~30 px de la flechita
+      const noCabe = sel.clientWidth > 0 && lienzo.measureText(texto).width > util;
+      tituloCompleto.textContent = noCabe ? texto : "";
+      tituloCompleto.hidden = !noCabe;
+    }
 
     function pintarImagen(idx) {
       const op = tema.opciones[idx];
       frame.innerHTML = `<img src="${op.img}" data-lightbox="${op.img}" alt="${op.label}">`;
+      actualizarTitulo();
     }
 
     sel.addEventListener("change", () => pintarImagen(Number(sel.value)));
+    if (typeof ResizeObserver === "function") new ResizeObserver(actualizarTitulo).observe(sel);
     pintarImagen(0);
   } else {
     wrap.innerHTML = `

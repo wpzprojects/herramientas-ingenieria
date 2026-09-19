@@ -80,21 +80,70 @@ await seccion("Enterramiento de ductos: nota al pie", async () => {
   ok($(".nota-pie").getBoundingClientRect().top >= frame2.bottom - 0.5, "con la otra imagen la nota también queda debajo del visor");
 });
 
+await seccion("Distancias de seguridad: títulos «Tabla — descripción»", async () => {
+  await cargarTema("distancias-seguridad");
+  const esperados = [
+    "Tabla 3.10.1.a — Distancias mínimas de seguridad en zonas con construcciones",
+    "Tabla 3.10.2.a — Distancias mínimas de seguridad para diferentes situaciones",
+    "Tabla 3.10.3.a — Distancias verticales mínimas en vanos de cruces o recorridos paralelos entre líneas de diferentes tensiones",
+    "Tabla 3.10.4.a — Distancia horizontal entre conductores soportados en la misma estructura de apoyo",
+    "Tabla 3.10.4.b — Distancia vertical mínima en metros entre conductores sobre la misma estructura",
+    "Tabla 3.10.5.b — Distancias mínimas para trabajos en o cerca de partes energizadas en corriente alterna",
+    "Tabla 3.10.5.c — Distancias mínimas para trabajos en o cerca de partes energizadas en corriente continua",
+    "Tabla 3.22.1.c — Distancias de seguridad en el aire en subestaciones exteriores (Tabla 23.2 en RETIE 2013)",
+  ];
+  const actuales = $$("#sel-tabla option").map(texto);
+  ok(actuales.length === 8 && actuales.every((t, i) => t === esperados[i]), "las 8 opciones llevan el numeral, el guión y la descripción de la app original de Power Apps");
+  ok(actuales.every((t) => /^Tabla \d+\.\d+\.\d+\.[a-z] — \S/.test(t)), "todas siguen el formato «Tabla N.N.N.x — descripción», como las de Enterramiento de ductos");
+  // cada opcion sigue mostrando su imagen
+  const sel = $("#sel-tabla");
+  const imgs = [];
+  for (let i = 0; i < sel.options.length; i++) {
+    sel.value = String(i);
+    sel.dispatchEvent(new Event("change", { bubbles: true }));
+    imgs.push($("#frame-imagen img").getAttribute("src"));
+  }
+  ok(imgs.join("|") === ["1-a", "2-a", "3-a", "4-a", "4-b", "5-b", "5-c"].map((n) => `assets/normativa/tabla-3-10-${n}.jpg`).concat("assets/normativa/tabla-3-22-1-c.jpg").join("|"), "cada título abre la imagen de su tabla");
+});
+
 await seccion("el selector de tabla / figura muestra los títulos completos", async () => {
   const lienzo = document.createElement("canvas").getContext("2d");
-  for (const tema of ["distancias-seguridad", "enterramiento-ductos"]) {
-    await cargarTema(tema);
-    const sel = $("#sel-tabla");
-    const cs = getComputedStyle(sel);
-    lienzo.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
-    // ancho util del texto = ancho del campo - relleno - flecha del desplegable (~30 px)
-    const util = sel.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 30;
-    const anchos = $$("option", sel).map((o) => ({ t: texto(o), w: lienzo.measureText(texto(o)).width }));
-    const mayor = anchos.reduce((m, a) => (a.w > m.w ? a : m));
-    ok(mayor.w <= util, `${tema}: el título más largo cabe entero (${Math.round(mayor.w)} px de ${Math.round(util)} px útiles): «${mayor.t}»`);
-  }
+  const ancho = (sel, t) => { const cs = getComputedStyle(sel); lienzo.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`; return lienzo.measureText(t).width; };
+  const util = (sel) => { const cs = getComputedStyle(sel); return sel.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 30; };
+
+  // ventana ancha (1000 px): el campo llega hasta 960 px
   await cargarTema("enterramiento-ductos");
-  ok($("#sel-tabla").getBoundingClientRect().width <= 760.5, "el campo no pasa de 760 px de ancho");
+  let sel = $("#sel-tabla");
+  ok(sel.getBoundingClientRect().width <= 960.5 && sel.getBoundingClientRect().width > 700, `el campo es ancho pero no pasa de 960 px (${Math.round(sel.getBoundingClientRect().width)} px)`);
+  const mayorEnt = Math.max(...$$("option", sel).map((o) => ancho(sel, texto(o))));
+  ok(mayorEnt <= util(sel), `Enterramiento de ductos: el título más largo cabe entero (${Math.round(mayorEnt)} px de ${Math.round(util(sel))} px útiles)`);
+  ok($("#titulo-completo").hidden, "si el título cabe no se repite debajo del campo");
+  await cargarTema("distancias-seguridad");
+  sel = $("#sel-tabla");
+  const mayorDist = Math.max(...$$("option", sel).map((o) => ancho(sel, texto(o))));
+  ok(mayorDist <= util(sel), `Distancias de seguridad: hasta el título más largo cabe entero (${Math.round(mayorDist)} px de ${Math.round(util(sel))} px útiles)`);
+  sel.value = "2";
+  sel.dispatchEvent(new Event("change", { bubbles: true }));
+  ok($("#titulo-completo").hidden, "con ventana ancha el título largo (3.10.3.a) se ve completo en el campo, sin repetirlo");
+
+  // pantalla angosta (360 px, como un celular): el titulo elegido se muestra completo bajo el campo
+  stage.innerHTML = "";
+  const estrecho = document.createElement("div");
+  estrecho.style.width = "360px";
+  stage.append(estrecho);
+  await render(estrecho, { tema: "distancias-seguridad" });
+  const selE = estrecho.querySelector("#sel-tabla");
+  const cap = estrecho.querySelector("#titulo-completo");
+  const largo = "Tabla 3.10.3.a — Distancias verticales mínimas en vanos de cruces o recorridos paralelos entre líneas de diferentes tensiones";
+  selE.value = "2";
+  selE.dispatchEvent(new Event("change", { bubbles: true }));
+  ok(!cap.hidden && texto(cap) === largo, "en pantalla angosta el título elegido, que no cabe en el campo, aparece completo debajo");
+  ok(cap.getBoundingClientRect().top >= selE.getBoundingClientRect().bottom - 0.5 && cap.getBoundingClientRect().bottom <= estrecho.querySelector("#frame-imagen").getBoundingClientRect().top + 0.5, "ese título queda entre el campo y la imagen");
+  ok(cap.getBoundingClientRect().right <= estrecho.getBoundingClientRect().right + 0.5, "y no se sale de la pantalla (se acomoda en varias líneas)");
+  selE.value = "0";
+  selE.dispatchEvent(new Event("change", { bubbles: true }));
+  ok(texto(cap) === texto(selE.options[0]) && !cap.hidden, "al cambiar de tabla el título de abajo cambia con ella");
+  stage.innerHTML = "";
 });
 
 await seccion("la imagen del numeral ya no existe", async () => {
