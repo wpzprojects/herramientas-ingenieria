@@ -22,9 +22,9 @@
   --topbar-h: 56px;
 
   /* --- paleta clara (por defecto) --- */
-  --bg: #f3f6fa;
+  --bg: #e7eaee;
   --bg-elevated: #ffffff;
-  --bg-sunken: #e8edf4;
+  --bg-sunken: #dce1e8;
   --bg-input: #ffffff;
   --text: #16202f;
   --text-muted: #5b6b83;
