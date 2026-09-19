@@ -175,19 +175,18 @@ export async function render(container) {
     if (rol === "model") {
       nodo.append(
         el("div", { class: "ia-msg-acciones" }, [
-          el(
-            "button",
-            {
-              type: "button",
-              class: "btn btn-sm",
-              onclick: async (e) => {
-                const ok = await copiarTexto(texto);
-                e.target.textContent = ok ? "¡Copiado!" : "No se pudo copiar";
-                setTimeout(() => (e.target.textContent = "Copiar"), 1500);
-              },
+          el("button", {
+            type: "button",
+            class: "ia-accion",
+            title: "Copiar la respuesta",
+            html: `${icon("copy")}<span>Copiar</span>`,
+            onclick: async (e) => {
+              const etiqueta = e.currentTarget.querySelector("span"); // antes del await: luego currentTarget es null
+              const ok = await copiarTexto(texto);
+              etiqueta.textContent = ok ? "¡Copiado!" : "No se pudo copiar";
+              setTimeout(() => (etiqueta.textContent = "Copiar"), 1500);
             },
-            "Copiar"
-          ),
+          }),
         ])
       );
     }

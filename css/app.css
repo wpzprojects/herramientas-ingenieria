@@ -449,6 +449,8 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 /* Corrector de redaccion, estilo chat: una tarjeta que crece con la conversacion (la pagina hace el scroll), caja de texto resaltada al final y los botones de accion debajo, fuera de la tarjeta. */
 .ia-conv { display: flex; flex-direction: column; }
 .ia-chat--hilo { max-height: none; overflow: visible; padding: 0; gap: var(--space-4); margin-bottom: var(--space-4); }
+.ia-chat--hilo .ia-msg--model { background: transparent; border-color: var(--border-strong); }
+.ia-chat--hilo .ia-msg-acciones { justify-content: flex-end; margin-top: 0; }
 .ia-chat--hilo .ia-msg { scroll-margin-top: calc(var(--topbar-h, 56px) + var(--space-4)); }
 .ia-caja { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-sunken); padding: 4px 14px; }
 .ia-caja:focus-within { border-color: var(--accent); }
