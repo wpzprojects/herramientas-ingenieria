@@ -7,7 +7,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 ## Convenciones del proyecto
 
 - Sin build step: no introducir bundlers, transpiladores ni dependencias npm salvo
-  que se pida explícitamente.
+  que se pida explícitamente. (Única excepción pedida: KaTeX como copia local en `vendor/katex`.)
 - `js/calc/*.js`: motores de cálculo puros, sin DOM, 1:1 con las fórmulas del original
   en Power Apps. No mezclar lógica de UI aquí.
 - `js/views/*.js`: un módulo por pantalla, exporta `async function render(container, params)`.
@@ -19,6 +19,22 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Revisar la sección "Decisiones de migración que vale la pena recordar" del README
   antes de "corregir" comportamientos que parezcan bugs (algunos son intencionales,
   replicando el comportamiento original).
+
+## Pantalla de Pérdidas (tarjetas, varios tramos) y KaTeX
+
+- Rediseño acordado con el usuario (2026-09-19) tomando de referencia el módulo de pérdidas de otro proyecto («Calculadora
+  Normativa»): tarjeta «Datos de la línea» (con *dato de partida*: MW, MVA o A) + una tarjeta «Conductor — Tramo N» por tramo
+  (agregar/quitar, conductores por fase). Los COLORES no cambian (solo tokens existentes) y los resultados van en los formatos
+  que ya había (métricas + tablas); **sin gráficos** (barras, velocímetro): el usuario los quiere más adelante, no ahora.
+  Unidades: se mantienen MW y MVA. El motor `js/calc/perdidas.js` NO se toca; la suma de tramos y el dato de partida viven en
+  `js/calc/perdidas-tramos.js`. La IA (`calcular_perdidas`) sigue igual (un tramo). Pruebas: `tools/verify_perdidas.html`.
+- Umbrales 1 % / 3 %: solo «referencias de diseño» (Óptimo / Adecuado / Mayores pérdidas). NUNCA escribir «fuera de norma».
+- KaTeX: copia local en `vendor/katex` (MIT, sin npm), carga perezosa (`js/util/katex.js`) al abrir «Fórmulas» y precacheada en
+  `sw.js`. El usuario quiere extenderlo a las pestañas «Fórmulas» de las demás calculadoras, una por una.
+- Siguen pendientes por decisión del usuario: gráficos de resultado y aplicar este mismo patrón (tarjetas, etc.) a otras
+  calculadoras; los refinamientos visuales de esta pantalla (iconos, títulos) los irá indicando él.
+- `assets/ejemplos/` (o `assets/Ejemplos/`) es una carpeta TEMPORAL de referencia del usuario, con un repo git anidado: NO subirla.
+  Está excluida en `.git/info/exclude` (local); aun así, hacer `git add` solo con rutas explícitas, nunca `git add -A`/`.`.
 
 ## Sección "Funciones de IA" (`js/ai/*`, `js/views/ia*.js`)
 
@@ -61,7 +77,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v65); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v66); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (Ayuda → "Configuración avanzada", `js/auth/*`, `firebase/firestore.rules`)

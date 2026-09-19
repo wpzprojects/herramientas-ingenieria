@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>verify_perdidas</title>
+<!--
+  Pruebas de la pantalla de Pérdidas (js/views/calc-perdidas.js) y de su logica de varios tramos
+  (js/calc/perdidas-tramos.js). Se ejecuta en el navegador, sin internet: la vista real se renderiza en un
+  contenedor oculto y se maneja como lo haria una persona; los numeros se comparan con formulas escritas aqui
+  de forma independiente (en kW, con otra forma algebraica que la del motor, que trabaja en MW).
+
+  Uso (desde la raiz del proyecto):
+    python -m http.server 8000
+    abrir http://localhost:8000/tools/verify_perdidas.html   -> lista PASS/FAIL
+  o en modo consola:
+    msedge --headless --dump-dom --virtual-time-budget=15000 http://localhost:8000/tools/verify_perdidas.html
+-->
+<style>body{font-family:ui-monospace,Consolas,monospace;font-size:13px;padding:12px}#stage{position:absolute;left:-9999px;width:1000px}</style>
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+<pre id="out"></pre>
+<div id="stage"></div>
+<script type="module">
+window.__BASE_PATH__ = "../";
+const out = document.getElementById("out");
+let fallos = 0;
+let total = 0;
+function ok(cond, msg) {
+  total++;
+  if (!cond) fallos++;
+  out.textContent += `${cond ? "PASS" : "FAIL"} ${msg}\n`;
+}
+function cerca(a, b, tol, msg) {
+  ok(Math.abs(a - b) <= tol, `${msg} (obtenido ${a}, esperado ${b})`);
+}
+async function seccion(nombre, fn) {
+  out.textContent += `\n== ${nombre}\n`;
+  try {
+    await fn();
+  } catch (err) {
+    fallos++;
+    total++;
+    out.textContent += `FAIL excepcion en "${nombre}": ${err && err.stack ? err.stack : err}\n`;
+  }
+}
+const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const motor = await import("../js/calc/perdidas.js");
+const tr = await import("../js/calc/perdidas-tramos.js");
+const desnudos = await (await fetch("../data/conductores-desnudos.json")).json();
+const ACSR_4_0 = desnudos.find((c) => c.tipo === "ACSR" && c.calibre_awg_kcmil === "4/0");
+const ACSR_1_0 = desnudos.find((c) => c.tipo === "ACSR" && c.calibre_awg_kcmil === "1/0");
+
+// Formula independiente (en kW y con la otra forma algebraica): I = P/(V·fp·√3); % = √3·R·L·I·Fp / (10·V·fp)
+function esperado({ V, Pmw, fp, fc, R, L }) {
+  const I = (Pmw * 1000) / (V * fp * Math.sqrt(3));
+  const Fp = 0.7 * fc + 0.3;
+  return { I, S: Pmw / fp, pct: (Math.sqrt(3) * R * L * I * Fp) / (10 * V * fp) };
+}
+
+await seccion("perdidas-tramos: logica", async () => {
+  const base = { tensionLineaKv: 34.5, potenciaActivaMw: 19.9, factorPotencia: 0.9, factorCarga: 0.564 };
+  const e1 = esperado({ V: 34.5, Pmw: 19.9, fp: 0.9, fc: 0.564, R: ACSR_4_0.r_ac_75c_ohm_km, L: 10 });
+
+  const uno = tr.calcularPerdidasTramos(base, [{ resistenciaOhmKm: ACSR_4_0.r_ac_75c_ohm_km, longitudKm: 10, numConductoresPorFase: 1 }]);
+  const directo = motor.calcularPerdidas({ ...base, resistenciaOhmKm: ACSR_4_0.r_ac_75c_ohm_km, longitudKm: 10 });
+  ok(uno.perdidasPct === directo.perdidasPct && uno.corriente === directo.corriente && uno.potenciaS === directo.potenciaS && uno.potenciaQ === directo.potenciaQ, "un solo tramo: idéntico al motor original");
+  cerca(uno.perdidasPct, e1.pct, 1e-9, "un solo tramo: % de pérdidas coincide con la fórmula independiente");
+  cerca(uno.corriente, e1.I, 1e-9, "corriente coincide con la fórmula independiente");
+  cerca(uno.perdidasMw, (e1.pct / 100) * 19.9, 1e-9, "pérdidas en MW = % · P");
+
+  const dos = tr.calcularPerdidasTramos(base, [
+    { resistenciaOhmKm: ACSR_4_0.r_ac_75c_ohm_km, longitudKm: 10, numConductoresPorFase: 1 },
+    { resistenciaOhmKm: ACSR_1_0.r_ac_75c_ohm_km, longitudKm: 4, numConductoresPorFase: 1 },
+  ]);
+  const e2 = esperado({ V: 34.5, Pmw: 19.9, fp: 0.9, fc: 0.564, R: ACSR_1_0.r_ac_75c_ohm_km, L: 4 });
+  cerca(dos.perdidasPct, e1.pct + e2.pct, 1e-9, "dos tramos: el % total es la suma de los % de cada tramo");
+  cerca(dos.tramos[1].perdidasPct, e2.pct, 1e-9, "dos tramos: el % del segundo tramo coincide con la fórmula independiente");
+  cerca(dos.perdidasMw, dos.tramos[0].perdidasMw + dos.tramos[1].perdidasMw, 1e-12, "pérdidas totales en MW = suma por tramo");
+  ok(dos.corriente === uno.corriente && dos.potenciaS === uno.potenciaS && dos.potenciaQ === uno.potenciaQ, "corriente y potencias son las mismas con uno o varios tramos");
+
+  const haz = tr.calcularPerdidasTramos(base, [{ resistenciaOhmKm: 0.4, longitudKm: 10, numConductoresPorFase: 2 }]);
+  const sinHaz = tr.calcularPerdidasTramos(base, [{ resistenciaOhmKm: 0.4, longitudKm: 10, numConductoresPorFase: 1 }]);
+  cerca(haz.tramos[0].resistenciaEfectivaOhmKm, 0.2, 1e-12, "2 conductores por fase: la resistencia efectiva es R/2");
+  cerca(haz.perdidasPct, sinHaz.perdidasPct / 2, 1e-9, "2 conductores por fase: las pérdidas se reducen a la mitad");
+  cerca(tr.calcularPerdidasTramos(base, [{ resistenciaOhmKm: 0.4, longitudKm: 10 }]).perdidasPct, sinHaz.perdidasPct, 1e-12, "sin indicar conductores por fase se asume 1");
+
+  // dato de partida
+  const V = 34.5, fp = 0.9;
+  cerca(tr.potenciaActivaMw({ modo: "potencia", potenciaMw: 19.9, potenciaMva: 1, corrienteA: 1, tensionKv: V, factorPotencia: fp }), 19.9, 1e-12, "modo potencia activa: se usa tal cual");
+  cerca(tr.potenciaActivaMw({ modo: "aparente", potenciaMva: 22.11, tensionKv: V, factorPotencia: fp }), 22.11 * 0.9, 1e-12, "modo potencia aparente: P = S·FP");
+  const desdeI = tr.potenciaActivaMw({ modo: "corriente", corrienteA: 370, tensionKv: V, factorPotencia: fp });
+  cerca(desdeI, (Math.sqrt(3) * 34.5 * 370 * 0.9) / 1000, 1e-12, "modo corriente: P = √3·V·I·FP / 1000");
+  const ida = motor.calcularPerdidas({ ...base, potenciaActivaMw: desdeI, resistenciaOhmKm: 0.4, longitudKm: 10 });
+  cerca(ida.corriente, 370, 1e-9, "ida y vuelta: con la P obtenida de 370 A el motor devuelve 370 A");
+  const desdeS = tr.potenciaActivaMw({ modo: "aparente", potenciaMva: 22.11, tensionKv: V, factorPotencia: fp });
+  cerca(motor.calcularPerdidas({ ...base, potenciaActivaMw: desdeS, resistenciaOhmKm: 0.4, longitudKm: 10 }).potenciaS, 22.11, 1e-9, "ida y vuelta: con la P obtenida de 22.11 MVA el motor devuelve 22.11 MVA");
+
+  // referencias de diseño
+  const c = (p) => tr.clasificarPerdidas(p).clave;
+  ok(c(0.5) === "optimo" && c(1) === "optimo" && c(1.0001) === "adecuado" && c(3) === "adecuado" && c(3.0001) === "mayores", "etiquetas: ≤1 óptimo, ≤3 adecuado, >3 mayores pérdidas");
+  ok(!/norma/i.test(["optimo", "adecuado", "mayores"].map((k) => tr.clasificarPerdidas({ optimo: 0.5, adecuado: 2, mayores: 5 }[k]).etiqueta).join(" ")), "ninguna etiqueta dice «norma»");
+
+  // sugerencia de calibre
+  const cand = [10, 6, 4, 3.5, 2.9, 2, 1.5, 1, 0.8].map((p, i) => ({ calibre: `c${i}`, area: i + 1, perdidasPct: p }));
+  const s = tr.sugerirCalibre(cand, 3);
+  ok(s.sugerido.calibre === "c4" && s.ventana.map((x) => x.calibre).join() === "c1,c2,c3,c4,c5,c6", "sugiere el primer calibre ≤ 3 % y una ventana de 3 a cada lado");
+  const n = tr.sugerirCalibre(cand.map((x) => ({ ...x, perdidasPct: 5 + x.area })), 3);
+  ok(n.sugerido === null && n.menor.calibre === "c0" && n.ventana.map((x) => x.calibre).join() === "c6,c7,c8", "si ninguno cumple: sin sugerido, indica el de menores pérdidas y muestra los últimos");
+  ok(tr.sugerirCalibre(cand.map((x) => ({ ...x, perdidasPct: 0.5 })), 3).ventana.map((x) => x.calibre).join() === "c0,c1,c2", "si el primero ya cumple, la ventana no se sale del inicio");
+  ok(tr.sugerirCalibre(cand, 3, 3, "c8").ventana.map((x) => x.calibre).join() === "c1,c2,c3,c4,c5,c6,c8", "el calibre actual siempre aparece, en su lugar por área, aunque quede fuera de la ventana");
+  ok(tr.sugerirCalibre(cand, 3, 3, "c3").ventana.map((x) => x.calibre).join() === "c1,c2,c3,c4,c5,c6", "si el actual ya está en la ventana no se duplica");
+});
+
+const stage = document.getElementById("stage");
+const $ = (s, r = stage) => r.querySelector(s);
+const $$ = (s, r = stage) => [...r.querySelectorAll(s)];
+const poner = (sel, v, ev = "input") => { const e = $(sel); e.value = v; e.dispatchEvent(new Event(ev, { bubbles: true })); };
+const elegir = (sel, v) => poner(sel, v, "change");
+const texto = (e) => (e ? e.textContent.replace(/\s+/g, " ").trim() : "");
+const metrica = (etiqueta) => $$(".result-metric").find((m) => texto($(".label", m)).startsWith(etiqueta));
+const valorDe = (etiqueta) => parseFloat(texto($(".value", metrica(etiqueta))));
+
+const { render } = await import("../js/views/calc-perdidas.js");
+await render(stage, {});
+
+await seccion("vista: tarjetas y dato de partida", async () => {
+  const titulos = $$(".form-section-title").map(texto);
+  ok($$(".card.form-section").length === 2 && titulos[0].includes("Datos de la línea") && titulos[1].includes("Conductor — Tramo 1"), `dos tarjetas: «${titulos.join("» y «")}»`);
+  ok($$(".form-section-title").every((t) => t.querySelector("svg.icon")), "cada título lleva su icono");
+  ok($$(".form-section-title").every((t) => t.parentElement.classList.contains("card")), "los títulos van dentro de tarjetas");
+  ok($(".btn-tramo-quitar").hidden, "con un solo tramo no aparece «Quitar»");
+  ok($$(".tramo-block .btn").some((b) => texto(b).includes("Agregar nuevo tramo")), "«Agregar nuevo tramo» está dentro de la última tarjeta");
+
+  const visible = () => ["#wrap-potencia", "#wrap-aparente", "#wrap-corriente"].filter((s) => !$(s).hidden).join();
+  ok(visible() === "#wrap-potencia" && $("#f-potencia").required && !$("#f-aparente").required, "por defecto: potencia activa (MW) visible y obligatoria");
+  elegir("#f-modo", "aparente");
+  ok(visible() === "#wrap-aparente" && $("#f-aparente").required && !$("#f-potencia").required, "potencia aparente: solo ese campo, y obligatorio");
+  elegir("#f-modo", "corriente");
+  ok(visible() === "#wrap-corriente" && $("#f-corriente").required && !$("#f-aparente").required, "corriente: solo ese campo, y obligatorio");
+  elegir("#f-modo", "potencia");
+  ok(visible() === "#wrap-potencia", "se puede volver a potencia activa");
+  ok(texto($("#wrap-potencia label")).includes("MW") && texto($("#wrap-aparente label")).includes("MVA") && texto($("#wrap-corriente label")).includes("(A)"), "unidades: MW, MVA y A");
+});
+
+await seccion("vista: un tramo, cálculo y resultados", async () => {
+  elegir("#f-red-0", "Aerea");
+  elegir("#f-material-0", "ACSR");
+  ok($("#f-calibre-0").options.length > 3, "el material carga sus calibres");
+  elegir("#f-calibre-0", "4/0");
+  cerca(parseFloat($("#f-resistencia-0").value), ACSR_4_0.r_ac_75c_ohm_km, 1e-12, "la resistencia sale del catálogo y no se puede editar");
+  ok($("#f-resistencia-0").disabled, "resistencia bloqueada mientras no esté «Manual»");
+  poner("#f-longitud-0", "10");
+  $("#form-calc").requestSubmit();
+  const e = esperado({ V: 34.5, Pmw: 19.9, fp: 0.9, fc: 0.564, R: ACSR_4_0.r_ac_75c_ohm_km, L: 10 });
+  cerca(valorDe("Corriente"), e.I, 0.006, "resultado: corriente");
+  cerca(valorDe("Potencia aparente"), e.S, 0.006, "resultado: potencia aparente (MVA)");
+  cerca(valorDe("Potencia activa"), 19.9, 0.006, "resultado: potencia activa (MW)");
+  cerca(valorDe("Porcentaje de pérdidas"), e.pct, 0.006, "resultado: % de pérdidas");
+  cerca(valorDe("Pérdidas de potencia"), (e.pct / 100) * 19.9, 0.0006, "resultado: pérdidas en MW");
+  ok(metrica("Porcentaje de pérdidas").querySelector(".badge") && texto(metrica("Porcentaje de pérdidas").querySelector(".badge")).length > 0, "el % de pérdidas lleva su etiqueta");
+  ok(!/norma/i.test(texto($("#resultado-wrap")).replace("no son un límite normativo", "")), "ninguna etiqueta habla de «fuera de norma»");
+  ok(texto($("#resultado-wrap")).includes("no son un límite normativo"), "se aclara que 1 % y 3 % son referencias de diseño");
+  ok(!$$(".result-panel svg, .result-gauge").length, "sin gráficos: solo los formatos de resultado que ya existían");
+
+  const filas = $$(".tabla-perdidas tbody tr");
+  ok(texto($(".result-subhead")).includes("Comparación con otros calibres") && filas.length >= 3, `un solo tramo: comparación de calibres (${filas.length} filas)`);
+  ok(filas.some((f) => f.classList.contains("current-row") && texto(f).includes("4/0") && texto(f).includes("Actual")), "la fila del calibre elegido está marcada como «Actual»");
+  const pcts = filas.map((f) => parseFloat(texto(f.querySelectorAll("td")[2])));
+  const areas = filas.map((f) => parseFloat(texto(f.querySelectorAll("td")[1])));
+  ok(areas.every((a, i) => i === 0 || a >= areas[i - 1]), "los calibres van ordenados por área");
+  ok(pcts.every((p, i) => i === 0 || p <= pcts[i - 1] + 1e-9), "a mayor área, menores pérdidas");
+  const calibres = filas.map((f) => texto(f.querySelector("td")).replace("Actual", "").trim());
+  ok(new Set(calibres).size === calibres.length, "un calibre no se repite en la comparación (una sola referencia por calibre)");
+
+  const rep = texto($('[data-panel="reporte"]'));
+  ok(rep.includes("Dato de partida: Potencia activa") && rep.includes("Tramo 1:") && rep.includes("Conductores por fase: 1") && rep.includes("Pérdidas de potencia:"), "el reporte incluye dato de partida, tramo y pérdidas");
+});
+
+await seccion("vista: dato de partida aparente y corriente", async () => {
+  elegir("#f-modo", "aparente");
+  poner("#f-aparente", "22.11");
+  $("#form-calc").requestSubmit();
+  cerca(valorDe("Potencia activa"), 22.11 * 0.9, 0.006, "desde potencia aparente: P = S·FP");
+  cerca(valorDe("Potencia aparente"), 22.11, 0.006, "desde potencia aparente: vuelve a dar 22.11 MVA");
+  ok(texto($('[data-panel="reporte"]')).includes("Dato de partida: Potencia aparente (22.11 MVA)"), "el reporte indica el dato de partida usado");
+  elegir("#f-modo", "corriente");
+  poner("#f-corriente", "370");
+  $("#form-calc").requestSubmit();
+  cerca(valorDe("Corriente"), 370, 0.006, "desde corriente: vuelve a dar 370 A");
+  cerca(valorDe("Potencia activa"), (Math.sqrt(3) * 34.5 * 370 * 0.9) / 1000, 0.006, "desde corriente: P = √3·V·I·FP / 1000");
+  elegir("#f-modo", "potencia");
+});
+
+await seccion("vista: varios tramos", async () => {
+  const agregar = $$(".tramo-block .btn").find((b) => texto(b).includes("Agregar nuevo tramo"));
+  agregar.click();
+  const bloques = () => $$(".tramo-block");
+  ok(bloques().length === 2 && texto($$(".tramo-titulo")[1]) === "Conductor — Tramo 2", "agregar crea la tarjeta «Conductor — Tramo 2»");
+  ok($$(".btn-tramo-quitar").every((b) => !b.hidden), "con dos tramos ambos muestran «Quitar»");
+  ok(bloques()[1].contains(agregar) && !bloques()[0].contains(agregar), "«Agregar nuevo tramo» pasa a la última tarjeta");
+  ok($("#f-calibre-0").value === "4/0" && $("#f-material-0").value === "ACSR", "el primer tramo conserva lo elegido");
+
+  elegir("#f-red-1", "Aerea");
+  elegir("#f-material-1", "ACSR");
+  elegir("#f-calibre-1", "1/0");
+  poner("#f-longitud-1", "4");
+  $("#form-calc").requestSubmit();
+  const e1 = esperado({ V: 34.5, Pmw: 19.9, fp: 0.9, fc: 0.564, R: ACSR_4_0.r_ac_75c_ohm_km, L: 10 });
+  const e2 = esperado({ V: 34.5, Pmw: 19.9, fp: 0.9, fc: 0.564, R: ACSR_1_0.r_ac_75c_ohm_km, L: 4 });
+  cerca(valorDe("Porcentaje de pérdidas total"), e1.pct + e2.pct, 0.006, "dos tramos: % total = suma de los tramos");
+  const filas = $$(".tabla-perdidas tbody tr");
+  ok(filas.length === 3 && filas[2].classList.contains("total-row"), "tabla por tramo: dos filas y una de total");
+  cerca(parseFloat(texto(filas[0].querySelectorAll("td")[3])), e1.pct, 0.006, "tabla: % del tramo 1");
+  cerca(parseFloat(texto(filas[1].querySelectorAll("td")[3])), e2.pct, 0.006, "tabla: % del tramo 2");
+  cerca(parseFloat(texto(filas[2].querySelectorAll("td")[1])), e1.pct + e2.pct, 0.006, "tabla: total");
+  ok(!$$(".result-subhead").some((s) => texto(s).includes("Comparación con otros calibres")), "con varios tramos no se muestra la comparación de calibres");
+  ok(texto($('[data-panel="reporte"]')).includes("Tramo 2:") && texto($('[data-panel="reporte"]')).includes("Longitud del tramo: 4.00 km"), "el reporte lista cada tramo");
+
+  // haz de conductores en el tramo 2
+  poner("#f-n-1", "2");
+  $("#form-calc").requestSubmit();
+  cerca(valorDe("Porcentaje de pérdidas total"), e1.pct + e2.pct / 2, 0.006, "2 conductores por fase en el tramo 2: sus pérdidas se dividen entre 2");
+  ok(texto($$(".tabla-perdidas tbody tr")[1].querySelectorAll("td")[1]).includes("×2"), "la tabla indica ×2 en ese tramo");
+
+  // resistencia manual
+  const chk = $("#chk-resistencia-1");
+  chk.checked = true;
+  chk.dispatchEvent(new Event("change", { bubbles: true }));
+  ok(!$("#f-resistencia-1").disabled, "«Manual» habilita la resistencia");
+  poner("#f-resistencia-1", "0.5");
+  poner("#f-n-1", "1");
+  $("#form-calc").requestSubmit();
+  const e2m = esperado({ V: 34.5, Pmw: 19.9, fp: 0.9, fc: 0.564, R: 0.5, L: 4 });
+  cerca(valorDe("Porcentaje de pérdidas total"), e1.pct + e2m.pct, 0.006, "resistencia manual: se usa el valor escrito");
+
+  // quitar el primer tramo
+  $$(".btn-tramo-quitar")[0].click();
+  ok(bloques().length === 1 && texto($(".tramo-titulo")) === "Conductor — Tramo 1", "quitar elimina la tarjeta y renumera");
+  ok($(".btn-tramo-quitar").hidden, "con un solo tramo vuelve a ocultarse «Quitar»");
+  ok(bloques()[0].contains($$(".tramo-block .btn").find((b) => texto(b).includes("Agregar nuevo tramo"))), "«Agregar nuevo tramo» sigue en la última tarjeta");
+  ok($("#f-calibre-1").value === "1/0" && $("#chk-resistencia-1").checked && $("#f-resistencia-1").value === "0.5", "el tramo que queda conserva calibre y resistencia manual");
+});
+
+await seccion("vista: fórmulas con KaTeX", async () => {
+  ok(!window.katex, "KaTeX no se carga hasta abrir la pestaña Fórmulas");
+  $$(".tab-btn").find((b) => b.dataset.tab === "formulas").click();
+  for (let i = 0; i < 40 && !$$("#formulas-katex .katex").length; i++) await espera(100);
+  const ecuaciones = $$("#formulas-katex .formula-katex");
+  ok(window.katex && ecuaciones.length === 10, `KaTeX cargado y 10 ecuaciones dibujadas (${ecuaciones.length})`);
+  ok($$("#formulas-katex .katex-error").length === 0, "ninguna ecuación con error de sintaxis");
+  ok($("#formulas-plano").hidden, "al dibujarse las fórmulas se oculta el texto plano");
+  ok($$("#formulas-katex .katex-display").length === 10, "las ecuaciones se muestran en modo display");
+  ok(texto($("#formulas-katex")).includes("Dato de partida") && texto($("#formulas-katex")).includes("Buller-Woodrow"), "incluye los títulos y la nota de fidelidad");
+  ok(!!document.querySelector('link[href$="vendor/katex/katex.min.css"]'), "se cargó la hoja de estilos local de KaTeX");
+  const fuentesOk = await Promise.all(["KaTeX_Main-Regular", "KaTeX_Math-Italic", "KaTeX_Size2-Regular"].map((f) => fetch(`../vendor/katex/fonts/${f}.woff2`).then((r) => r.ok)));
+  ok(fuentesOk.every(Boolean), "las fuentes locales de KaTeX existen");
+});
+
+await seccion("service worker: archivos nuevos", async () => {
+  const sw = await (await fetch("../sw.js")).text();
+  const lista = [...sw.matchAll(/^\s*"([^"]+)",\s*$/gm)].map((m) => m[1]);
+  const nuevos = ["js/calc/perdidas-tramos.js", "js/util/katex.js", "vendor/katex/katex.min.js", "vendor/katex/katex.min.css"];
+  ok(nuevos.every((f) => lista.includes(f)), "el service worker precachea el módulo, el cargador y KaTeX");
+  const fuentes = lista.filter((f) => f.startsWith("vendor/katex/fonts/"));
+  ok(fuentes.length === 20, `precachea las 20 fuentes de KaTeX (${fuentes.length})`);
+  const existen = await Promise.all(lista.filter((f) => f !== "./").map((f) => fetch(`../${f}`, { method: "HEAD" }).then((r) => [f, r.ok])));
+  const faltan = existen.filter(([, okk]) => !okk).map(([f]) => f);
+  ok(faltan.length === 0, `todos los archivos del APP_SHELL existen (cache.addAll falla completo si falta uno)${faltan.length ? ": " + faltan.join(", ") : ""}`);
+});
+
+out.textContent += `\nRESULT: ${fallos ? "FAIL" : "OK"} (${total - fallos}/${total})\n`;
+</script>
+</body>
+</html>

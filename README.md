@@ -23,6 +23,8 @@ index.html, manifest.webmanifest, sw.js   # shell PWA
 css/                                       # tokens.css (paleta clara/oscura) + app.css (componentes)
 js/app.js, router.js, nav.js, icons.js     # bootstrap, router SPA por hash, navegacion, iconos SVG inline
 js/util/format.js                          # formato de numeros, fetch de datos con cache, helpers DOM
+js/util/katex.js                           # carga perezosa de KaTeX (solo al abrir una pestaña de formulas)
+vendor/katex/                              # copia local de KaTeX 0.16.11 (MIT): js, css y fuentes woff2; precacheada por el service worker
 js/calc/*.js                               # motores de calculo PUROS (sin DOM), 1:1 con las formulas originales
 js/ai/*.js                                 # capa de IA (Gemini): cliente, herramientas, agentes, reporte (ver "Funciones de IA")
 js/auth/*.js, firebase/firestore.rules     # acceso con Google (Firebase): login, lista de usuarios, claves en el servidor
@@ -42,6 +44,8 @@ Los `data/*.json` son la **fuente de verdad** de los catálogos y se editan dire
 ## Verificación de los motores de cálculo
 
 `tools/verify_calc.py` y `tools/verify_coordenadas.py` son scripts Python independientes (reimplementan las mismas fórmulas en otro lenguaje) usados para validar numéricamente los módulos de `js/calc/` durante la migración — no son parte de la app, pero conviene conservarlos como referencia/regresión si se vuelve a tocar esa lógica.
+
+`tools/verify_perdidas.html` (arnés en el navegador, sin internet) prueba la pantalla de Pérdidas: la lógica de varios tramos (`js/calc/perdidas-tramos.js`) contra fórmulas escritas de forma independiente, y la vista real manejada como lo haría una persona (dato de partida, agregar/quitar tramos, resultados, fórmulas con KaTeX, archivos del service worker). Se ejecuta igual que `verify_ia.html` (ver su encabezado).
 
 ## Funciones de IA (Gemini)
 
@@ -93,6 +97,9 @@ Pantalla de acceso restringido (`#/ayuda/configuracion`, tarjeta "Configuración
 - **Conversión de coordenadas**: `Atan2` en Power Fx sigue la convención de Excel (`Atan2(x, y)`), que equivale a `Math.atan2(y, x)` en JavaScript (orden de argumentos invertido). Ya corregido y validado con un caso de ida y vuelta exacto en `js/calc/coordenadas.js`.
 - Los paneles "Reporte" y "Fórmulas" de cada calculadora, que en el original estaban condicionados a un nivel de acceso oculto (`vAcceso >= 3`, fijado siempre en 3 al abrir la app), quedan siempre visibles en la PWA.
 - Se omitieron del menú las 6 opciones que ya estaban deshabilitadas/sin implementar en la app original (resistencia de puesta a tierra, DPS, catálogo de aisladores, criterios Celsia, bitácora, verificación documental) y la pantalla de desarrollo interno (`Pantalla_Pruebas`).
+
+- **Pérdidas (pantalla en tarjetas)**: «Datos de la línea» (con el *dato de partida*: potencia activa en MW, potencia aparente en MVA o corriente en A, que se convierte a potencia activa) y una tarjeta «Conductor» por tramo (con conductores por fase: la resistencia efectiva es R/N). El % de pérdidas total es la **suma** de los % de cada tramo, válido con la misma corriente en todo el circuito (sin cargas intermedias). `js/calc/perdidas.js` no se modificó: `js/calc/perdidas-tramos.js` lo usa tramo por tramo. Los umbrales de 1 % y 3 % son **referencias de diseño** (etiquetas «Óptimo», «Adecuado» y «Mayores pérdidas», y calibre sugerido); no se presentan como límite normativo ni como «fuera de norma». La herramienta de la IA (`calcular_perdidas`) sigue con un solo tramo y potencia en MW.
+- **KaTeX** (`vendor/katex`): única biblioteca de terceros incluida, como copia local (MIT, sin npm ni build) para que las fórmulas se vean bien sin internet. Se carga solo al abrir la pestaña «Fórmulas» de Pérdidas.
 
 ## Iconos / logo
 

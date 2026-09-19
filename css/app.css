@@ -244,6 +244,33 @@ input:disabled, select:disabled { opacity: 0.55; }
 .input-group > * { flex: 1 1 auto; }
 .checkbox-row { display: flex; align-items: center; gap: var(--space-2); font-size: 0.88rem; color: var(--text-muted); }
 
+/* ---------- pantalla en tarjetas (Perdidas): titulo con icono, casilla junto al campo, tablas de resultado, formulas KaTeX ---------- */
+.form-section-title {
+  display: flex; align-items: center; gap: var(--space-2);
+  color: var(--text-muted); font-size: 0.75rem; font-weight: 700;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  padding-bottom: var(--space-2); margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+.form-section-title .icon { width: 14px; height: 14px; }
+.btn-tramo-quitar { margin-left: auto; padding: 2px 8px; font-size: 0.72rem; text-transform: none; letter-spacing: normal; }
+.input-with-toggle { display: flex; align-items: center; gap: var(--space-3); }
+.input-with-toggle input[type="number"] { flex: 1 1 auto; min-width: 0; }
+.input-with-toggle .checkbox-row { white-space: nowrap; }
+#tramos-container { margin-top: var(--space-4); }
+.result-subhead {
+  font-size: 0.75rem; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.04em;
+  margin: var(--space-5) 0 var(--space-3); padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+.tabla-perdidas th.num, .tabla-perdidas td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.tabla-perdidas tr.match-row { background: var(--success-soft); }
+.tabla-perdidas tr.current-row td, .tabla-perdidas tr.total-row td { font-weight: 700; }
+.formula-katex { overflow-x: auto; overflow-y: hidden; text-align: center; margin: 0 0 var(--space-3); padding: var(--space-1) 0; }
+.formula-katex .katex-display { margin: 0; }
+.formula-vars { white-space: pre-line; margin: var(--space-4) 0 0; }
+
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
   padding: 11px 20px;

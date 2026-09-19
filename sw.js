@@ -3,7 +3,7 @@
 // sirve cache-first con relleno en segundo plano (stale-while-revalidate)
 // para lo que no estuviera precacheado.
 
-const CACHE_VERSION = "v65";
+const CACHE_VERSION = "v66";
 const CACHE_NAME = `herramientas-ingenieria-${CACHE_VERSION}`;
 
 const SCOPE = self.registration.scope;
@@ -20,10 +20,12 @@ const APP_SHELL = [
   "js/nav.js",
   "js/icons.js",
   "js/util/format.js",
+  "js/util/katex.js",
   "js/calc/ampacidad-aerea.js",
   "js/calc/ampacidad-subterranea.js",
   "js/calc/cortocircuito.js",
   "js/calc/perdidas.js",
+  "js/calc/perdidas-tramos.js",
   "js/calc/regulacion.js",
   "js/calc/ocupacion-ductos.js",
   "js/calc/unidades.js",
@@ -93,6 +95,28 @@ const APP_SHELL = [
   "assets/normativa/tabla-300-50.jpg",
   "assets/normativa/capacidad-corriente-conductores-ntc.jpg",
   "assets/normativa/tabla-3-22-1-c.jpg",
+  "vendor/katex/katex.min.js",
+  "vendor/katex/katex.min.css",
+  "vendor/katex/fonts/KaTeX_AMS-Regular.woff2",
+  "vendor/katex/fonts/KaTeX_Caligraphic-Bold.woff2",
+  "vendor/katex/fonts/KaTeX_Caligraphic-Regular.woff2",
+  "vendor/katex/fonts/KaTeX_Fraktur-Bold.woff2",
+  "vendor/katex/fonts/KaTeX_Fraktur-Regular.woff2",
+  "vendor/katex/fonts/KaTeX_Main-Bold.woff2",
+  "vendor/katex/fonts/KaTeX_Main-BoldItalic.woff2",
+  "vendor/katex/fonts/KaTeX_Main-Italic.woff2",
+  "vendor/katex/fonts/KaTeX_Main-Regular.woff2",
+  "vendor/katex/fonts/KaTeX_Math-BoldItalic.woff2",
+  "vendor/katex/fonts/KaTeX_Math-Italic.woff2",
+  "vendor/katex/fonts/KaTeX_SansSerif-Bold.woff2",
+  "vendor/katex/fonts/KaTeX_SansSerif-Italic.woff2",
+  "vendor/katex/fonts/KaTeX_SansSerif-Regular.woff2",
+  "vendor/katex/fonts/KaTeX_Script-Regular.woff2",
+  "vendor/katex/fonts/KaTeX_Size1-Regular.woff2",
+  "vendor/katex/fonts/KaTeX_Size2-Regular.woff2",
+  "vendor/katex/fonts/KaTeX_Size3-Regular.woff2",
+  "vendor/katex/fonts/KaTeX_Size4-Regular.woff2",
+  "vendor/katex/fonts/KaTeX_Typewriter-Regular.woff2",
 ].map(u);
 
 self.addEventListener("install", (event) => {
