@@ -3,7 +3,7 @@
 // sirve cache-first con relleno en segundo plano (stale-while-revalidate)
 // para lo que no estuviera precacheado.
 
-const CACHE_VERSION = "v106";
+const CACHE_VERSION = "v107";
 const CACHE_NAME = `herramientas-ingenieria-${CACHE_VERSION}`;
 
 const SCOPE = self.registration.scope;
@@ -21,6 +21,8 @@ const APP_SHELL = [
   "js/icons.js",
   "js/util/format.js",
   "js/util/katex.js",
+  "js/util/proj4.js",
+  "js/util/proj4-col-urban.js",
   "js/util/resultados-ui.js",
   "js/util/info-campo.js",
   "js/calc/ampacidad-aerea.js",
@@ -37,6 +39,7 @@ const APP_SHELL = [
   "js/calc/ocupacion-ductos.js",
   "js/calc/unidades.js",
   "js/calc/coordenadas.js",
+  "js/calc/coordenadas-epsg.js",
   "js/ai/config.js",
   "js/ai/gemini.js",
   "js/ai/historial.js",
@@ -84,6 +87,7 @@ const APP_SHELL = [
   "data/conductores-semiaislados.json",
   "data/conductores-xlpe.json",
   "data/tuberias.json",
+  "data/sistemas-epsg.json",
   "data/construccion-cable-subterraneo.json",
   "data/codificacion.json",
   "data/resoluciones.json",
@@ -102,6 +106,7 @@ const APP_SHELL = [
   "assets/normativa/capacidad-corriente-conductores-ntc.jpg",
   "assets/normativa/tabla-3-22-1-c.jpg",
   "vendor/katex/katex.min.js",
+  "vendor/proj4/proj4.js",
   "vendor/katex/katex.min.css",
   "vendor/katex/fonts/KaTeX_AMS-Regular.woff2",
   "vendor/katex/fonts/KaTeX_Caligraphic-Bold.woff2",

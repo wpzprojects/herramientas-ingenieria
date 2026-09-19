@@ -181,7 +181,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v106); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v107); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (Ayuda → "Configuración avanzada", `js/auth/*`, `firebase/firestore.rules`)
@@ -253,6 +253,20 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   angosta el desplegable cerrado corta los títulos largos: se probó repetir el título completo debajo del campo y el usuario lo
   RECHAZÓ (2026-09-19); no volver a ponerlo (el desplegable abierto sí muestra el título completo).
   Al agregar/quitar imágenes de `assets/normativa/` recordar el `APP_SHELL`. Pruebas: `tools/verify_normatividad.html`.
+- Conversión de coordenadas (2026-09-19): además del conversor de los 7 sistemas (`js/calc/coordenadas.js`, motor original propio: NO
+  tocarlo, lo usa también la IA), el botón «Otros sistemas de coordenadas» despliega un panel para convertir entre cualquier par
+  de ~509 códigos EPSG (los de Colombia —MAGNA-SIRGAS, Bogotá 1975, Origen Nacional, las 32 cuadrículas urbanas de las ciudades— y los
+  más usados del mundo: WGS84, las 120 zonas UTM, NAD83, ETRS89, SIRGAS, etc.). Reemplazó al enlace a un cuaderno de Google Colab
+  (que el usuario consideró demasiado complejo). Usa proj4js (`vendor/proj4`, MIT, carga perezosa con `js/util/proj4.js`) y el
+  catálogo `data/sistemas-epsg.json` (~70 KB, `{codigo: [nombre, cadena proj4, [N, O, S, E]]}`), generado de la base abierta
+  `epsg-index` (npm; bajada con PowerShell, que SÍ tiene internet aquí) filtrando por Colombia + lo más usado y SIN los que necesitan
+  archivos de rejilla (NAD27, OSGB36…); para agregar códigos hay que regenerarlo igual. Lógica pura en `js/calc/coordenadas-epsg.js`
+  (código escrito por el usuario, ficha con unidad, avisos de datum y de área de uso, `convertirEntreSistemas`).
+  Las cuadrículas urbanas usan `+proj=col_urban` (EPSG 1052), que proj4js NO trae: `js/util/proj4-col-urban.js` la agrega
+  (formulas de la guía IOGP 7-2, como en PROJ). Verificado: da el mismo resultado que el conversor original en los 7 sistemas
+  (diferencia < 1e-6 mm), el origen de cada proyección es exacto, y las distancias de la cuadrícula de Bogotá difieren de las de 3116
+  en (1 + h_0/R). Exactitud: entre datums distintos (p. ej. Bogotá 1975 ↔ MAGNA) proj4 usa los parámetros +towgs84 (orden de metros): el
+  panel avisa. Orden de coordenadas siempre X (longitud/este) e Y (latitud/norte). Pruebas: `tools/verify_coordenadas_epsg.html`.
 - Menú lateral: en pantallas anchas (>880px) se puede contraer con el botón del fondo de la barra
   (queda una barra de 64px solo con iconos; estado en `localStorage.sidebarCollapsed` y clase
   `sb-collapsed` en `<html>`). La barra es `sticky` con el alto de la ventana para que el botón

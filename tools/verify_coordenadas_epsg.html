@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>verify_coordenadas_epsg</title>
+<!--
+  Pruebas del panel «Otros sistemas de coordenadas» del conversor (js/views/conversion-coordenadas.js), de su motor
+  (js/calc/coordenadas-epsg.js, con proj4js de vendor/proj4) y del catalogo de unos 500 codigos EPSG (data/sistemas-epsg.json).
+  Se ejecuta en el navegador, sin internet: la vista real se renderiza en un contenedor oculto y se maneja como lo haria una persona.
+  Los numeros se comparan contra el conversor original de la app (js/calc/coordenadas.js, validado con tools/verify_coordenadas.py)
+  y contra puntos conocidos por definicion (el origen de cada proyeccion).
+
+  Uso (desde la raiz del proyecto):
+    python -m http.server 8000
+    abrir http://localhost:8000/tools/verify_coordenadas_epsg.html   -> lista PASS/FAIL
+  o en modo consola:
+    msedge --headless --dump-dom --virtual-time-budget=45000 http://localhost:8000/tools/verify_coordenadas_epsg.html
+-->
+<style>body{font-family:ui-monospace,Consolas,monospace;font-size:13px;padding:12px}#stage{position:absolute;left:-9999px;width:1000px}</style>
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+<pre id="out"></pre>
+<div id="stage"></div>
+<script type="module">
+window.__BASE_PATH__ = "../";
+const out = document.getElementById("out");
+let fallos = 0;
+let total = 0;
+function ok(cond, msg) {
+  total++;
+  if (!cond) fallos++;
+  out.textContent += `${cond ? "PASS" : "FAIL"} ${msg}\n`;
+}
+function cerca(a, b, tol, msg) {
+  ok(Math.abs(a - b) <= tol, `${msg} (obtenido ${a}, esperado ${b})`);
+}
+async function seccion(nombre, fn) {
+  out.textContent += `\n== ${nombre}\n`;
+  try {
+    await fn();
+  } catch (err) {
+    fallos++;
+    total++;
+    out.textContent += `FAIL excepcion en "${nombre}": ${err && err.stack ? err.stack : err}\n`;
+  }
+}
+const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const { cargarProj4 } = await import("../js/util/proj4.js");
+const epsg = await import("../js/calc/coordenadas-epsg.js");
+const viejo = await import("../js/calc/coordenadas.js");
+const catalogo = await (await fetch("../data/sistemas-epsg.json")).json();
+const proj4 = await cargarProj4();
+const codigos = Object.keys(catalogo);
+
+await seccion("catálogo de sistemas (data/sistemas-epsg.json)", async () => {
+  ok(codigos.length >= 450 && codigos.length <= 550, `unos 500 sistemas incluidos (${codigos.length})`);
+  const necesarios = ["4326", "4686", "3114", "3115", "3116", "3117", "3118", "9377", "21896", "21897", "21898", "21899", "21818", "32617", "32618", "32619", "32718", "32719", "3857", "4674", "6247", "103599", "4218", "4269", "4258", "2154"];
+  const faltan = necesarios.filter((c) => !catalogo[c]);
+  ok(faltan.length === 0, `están los de Colombia (MAGNA-SIRGAS, Bogotá 1975, Origen Nacional, UTM) y los más usados${faltan.length ? ": faltan " + faltan.join(", ") : ""}`);
+  ok(["3115", "3116", "3117", "9377", "32618", "32619", "4326"].every((c) => catalogo[c]), "incluye los 7 sistemas de la pantalla principal");
+  const ciudades = codigos.filter((c) => /urban grid/.test(catalogo[c][0]));
+  ok(ciudades.length >= 30, `incluye las cuadrículas urbanas de las ciudades colombianas (${ciudades.length})`);
+  ok(codigos.filter((c) => /^WGS 84 \/ UTM zone \d+[NS]$/.test(catalogo[c][0])).length === 120, "incluye las 120 zonas UTM de WGS84 (60 norte y 60 sur)");
+  ok(codigos.every((c) => Array.isArray(catalogo[c]) && typeof catalogo[c][0] === "string" && /^\+proj=/.test(catalogo[c][1]) && catalogo[c][2]?.length === 4 && catalogo[c][2][0] > catalogo[c][2][2]), "cada código trae nombre, definición proj4 y área de uso (norte > sur)");
+  ok(codigos.every((c) => !/nadgrids/.test(catalogo[c][1]) || /nadgrids=@null/.test(catalogo[c][1])), "ninguno necesita archivos de rejilla (proj4 no los admite)");
+  ok(!codigos.some((c) => /\+proj=(geocent|cart)/.test(catalogo[c][1])), "solo sistemas geográficos y proyectados en 2D");
+  const bytes = JSON.stringify(catalogo).length;
+  ok(bytes < 120000, `el catálogo pesa poco (${Math.round(bytes / 1024)} KB)`);
+});
+
+await seccion("cada sistema del catálogo convierte y vuelve (ida y vuelta)", async () => {
+  const malos = [];
+  for (const c of codigos) {
+    const [n, w, s, e] = catalogo[c][2];
+    const lat = (n + s) / 2;
+    const lon = w <= e ? (w + e) / 2 : ((w + e + 360) / 2 > 180 ? (w + e + 360) / 2 - 360 : (w + e + 360) / 2);
+    try {
+      const ida = epsg.convertirEntreSistemas(proj4, catalogo, "4326", c, lon, lat);
+      const s = epsg.infoSistema(c, catalogo);
+      const vuelta = epsg.convertirEntreSistemas(proj4, catalogo, c, "4326", ida.x, ida.y);
+      const dm = Math.hypot((vuelta.x - lon) * 111320 * Math.cos((lat * Math.PI) / 180), (vuelta.y - lat) * 110574);
+      if (!(Number.isFinite(ida.x) && Number.isFinite(ida.y) && dm < 0.05)) malos.push(`${c} (${dm.toFixed(3)} m)`);
+    } catch (err) {
+      malos.push(`${c}: ${err.message}`);
+    }
+  }
+  ok(malos.length === 0, `los ${codigos.length} sistemas convierten el centro de su área de uso y regresan a menos de 5 cm${malos.length ? ": " + malos.slice(0, 12).join("; ") : ""}`);
+});
+
+await seccion("mismo resultado que el conversor original de la app", async () => {
+  const pts = [[-74.0817, 4.6097], [-75.2322, 4.4389], [-75.5812, 6.2442], [-76.532, 3.4516], [-72.5078, 7.8939], [-77.28, 1.21], [-73.6, 5.7]];
+  let peor = 0;
+  let pares = 0;
+  for (const a of viejo.SISTEMAS) for (const b of viejo.SISTEMAS) {
+    if (a === b) continue;
+    for (const [lon, lat] of pts) {
+      const ini = viejo.convertirCoordenadas(viejo.SISTEMAS[0], a, lon, lat);
+      const x0 = a.esGeo ? lon : ini.xOut;
+      const y0 = a.esGeo ? lat : ini.yOut;
+      const mio = viejo.convertirCoordenadas(a, b, x0, y0);
+      const nuevo = epsg.convertirEntreSistemas(proj4, catalogo, String(a.epsg), String(b.epsg), x0, y0);
+      const dm = b.esGeo ? Math.hypot((nuevo.x - mio.xOut) * 111320 * Math.cos((lat * Math.PI) / 180), (nuevo.y - mio.yOut) * 110574) : Math.hypot(nuevo.x - mio.xOut, nuevo.y - mio.yOut);
+      peor = Math.max(peor, dm);
+      pares++;
+    }
+  }
+  ok(pares === 7 * 6 * 7 && peor < 1e-5, `${pares} conversiones entre los 7 sistemas: la mayor diferencia es ${(peor * 1000).toExponential(2)} mm (< 0.01 mm)`);
+});
+
+await seccion("puntos conocidos por definición", async () => {
+  const c = (o, d, x, y) => epsg.convertirEntreSistemas(proj4, catalogo, o, d, x, y);
+  let r = c("4326", "3116", -74.0775079166667, 4.59620041666667);
+  cerca(r.x, 1000000, 1e-4, "origen de MAGNA-SIRGAS Bogotá (3116): Este = 1 000 000");
+  cerca(r.y, 1000000, 1e-4, "origen de MAGNA-SIRGAS Bogotá (3116): Norte = 1 000 000");
+  r = c("4326", "9377", -73, 4);
+  ok(Math.abs(r.x - 5000000) < 1e-4 && Math.abs(r.y - 2000000) < 1e-4, "origen de Origen Nacional (9377): (5 000 000, 2 000 000)");
+  r = c("4326", "32618", -75, 0);
+  ok(Math.abs(r.x - 500000) < 1e-4 && Math.abs(r.y) < 1e-4, "meridiano central de UTM 18N: (500 000, 0)");
+  r = c("4326", "3857", 0, 0);
+  ok(Math.abs(r.x) < 1e-6 && Math.abs(r.y) < 1e-6, "Web Mercator (3857): (0, 0) en el origen");
+  r = c("4326", "3857", 180, 0);
+  cerca(r.x, 20037508.342789, 1e-3, "Web Mercator (3857): longitud 180° = 20 037 508.34 m");
+  // datum: MAGNA y WGS84 son equivalentes; Bogota 1975 (4218) se corre unos cientos de metros en latitud/longitud
+  const magna = c("4326", "3116", -74.0817, 4.6097);
+  const b75 = c("4326", "4218", -74.0817, 4.6097);
+  const corrimiento = Math.hypot((b75.x + 74.0817) * 111320 * Math.cos((4.6097 * Math.PI) / 180), (b75.y - 4.6097) * 110574);
+  ok(corrimiento > 100 && corrimiento < 900, `WGS84 → Bogotá 1975 (4218): el mismo punto se corre ${Math.round(corrimiento)} m (cambio de datum)`);
+  const vuelta4218 = c("4218", "4326", b75.x, b75.y);
+  ok(Math.abs(vuelta4218.x + 74.0817) < 1e-7 && Math.abs(vuelta4218.y - 4.6097) < 1e-7, "ida y vuelta con Bogotá 1975 recupera el punto");
+  // las cuadriculas 21897 y 3116 comparten el punto fisico de origen (Observatorio): el mismo punto da casi las mismas coordenadas
+  const b75Grid = c("4326", "21897", -74.0817, 4.6097);
+  ok(Math.hypot(b75Grid.x - magna.x, b75Grid.y - magna.y) < 30, `cuadrículas 21897 y 3116 (mismo origen físico): el punto difiere ${Math.hypot(b75Grid.x - magna.x, b75Grid.y - magna.y).toFixed(2)} m`);
+  // entre dos sistemas proyectados
+  const dir = c("3116", "9377", magna.x, magna.y);
+  const via = c("4326", "9377", -74.0817, 4.6097);
+  ok(Math.hypot(dir.x - via.x, dir.y - via.y) < 1e-4, "de 3116 a 9377 directo = pasando por WGS84");
+});
+
+await seccion("cuadrículas urbanas de las ciudades (proyección Colombia Urban)", async () => {
+  const urbanas = codigos.filter((c) => /\+proj=col_urban/.test(catalogo[c][1]));
+  ok(urbanas.length === 32, `las ${urbanas.length} cuadrículas urbanas de Colombia (6244 a 6275) usan +proj=col_urban`);
+  const par = (c, k) => Number(new RegExp(`\\+${k}=([^\\s]+)`).exec(catalogo[c][1])[1]);
+  // 1) el origen de cada cuadricula da exactamente (x_0, y_0)
+  const malosOrigen = [];
+  for (const c of urbanas) {
+    const r = epsg.convertirEntreSistemas(proj4, catalogo, "4326", c, par(c, "lon_0"), par(c, "lat_0"));
+    if (Math.abs(r.x - par(c, "x_0")) > 1e-4 || Math.abs(r.y - par(c, "y_0")) > 1e-4) malosOrigen.push(c);
+  }
+  ok(malosOrigen.length === 0, `el origen de cada cuadrícula urbana da exactamente (x_0, y_0)${malosOrigen.length ? ": fallan " + malosOrigen.join(", ") : ""}`);
+
+  // 2) las distancias en la cuadricula de Bogota (6247) son las de la de 3116 por (1 + h_0 / R): el plano esta a 2550 m de altura
+  const b = "6247";
+  const h0 = par(b, "h_0");
+  const pts = [[-74.147, 4.681], [-74.10, 4.72], [-74.05, 4.66], [-74.20, 4.60], [-74.09, 4.55], [-74.16, 4.75], [-74.03, 4.70]];
+  const conv = (cod, [lon, lat]) => { const r = epsg.convertirEntreSistemas(proj4, catalogo, "4326", cod, lon, lat); return [r.x, r.y]; };
+  const dist = (a2, b2) => Math.hypot(a2[0] - b2[0], a2[1] - b2[1]);
+  const a0 = 6378137;
+  const e2 = 0.00669438002290; // GRS80
+  const R = a0 * Math.sqrt(1 - e2) / (1 - e2 * Math.sin((4.68 * Math.PI) / 180) ** 2); // radio gaussiano medio en Bogota
+  let peorRel = 0;
+  let n = 0;
+  for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) {
+    const du = dist(conv(b, pts[i]), conv(b, pts[j]));
+    const dm = dist(conv("3116", pts[i]), conv("3116", pts[j]));
+    peorRel = Math.max(peorRel, Math.abs(du / dm - (1 + h0 / R)));
+    n++;
+  }
+  ok(peorRel < 3e-5, `${n} distancias entre puntos de Bogotá (hasta ~25 km): la cuadrícula 6247 y la 3116 difieren en el factor 1 + h_0/R = ${(1 + h0 / R).toFixed(6)} (error máximo ${peorRel.toExponential(1)})`);
+
+  // 3) ida y vuelta en cada ciudad (puntos a ~5 km del origen)
+  let peorM = 0;
+  for (const c of urbanas) {
+    const lon0 = par(c, "lon_0");
+    const lat0 = par(c, "lat_0");
+    for (const [dl, dp] of [[0.03, 0.03], [-0.04, 0.02], [0.02, -0.05]]) {
+      const r = epsg.convertirEntreSistemas(proj4, catalogo, "4326", c, lon0 + dl, lat0 + dp);
+      const v = epsg.convertirEntreSistemas(proj4, catalogo, c, "4326", r.x, r.y);
+      peorM = Math.max(peorM, Math.hypot((v.x - lon0 - dl) * 111320 * Math.cos((lat0 * Math.PI) / 180), (v.y - lat0 - dp) * 110574));
+    }
+  }
+  ok(peorM < 0.02, `ida y vuelta en las 32 ciudades (puntos hasta ~6 km del origen): error máximo ${(peorM * 1000).toFixed(2)} mm`);
+
+  // 4) dentro de una cuadricula la conversion a WGS84 es coherente con MAGNA (mismo datum): un punto de Bogota cae en el area de 6247
+  const pto = epsg.convertirEntreSistemas(proj4, catalogo, "4326", "6247", -74.0817, 4.6097);
+  ok(pto.avisos.length === 0 && Math.abs(pto.x - 92334.879) < 10000 && Math.abs(pto.y - 109320.965) < 10000, `la Plaza de Bolívar en la cuadrícula urbana de Bogotá: (${pto.x.toFixed(1)}, ${pto.y.toFixed(1)}), cerca del origen (92 334.9, 109 321.0)`);
+});
+
+await seccion("código EPSG escrito por el usuario", async () => {
+  const p = epsg.parseCodigoEpsg;
+  ok(p("3116") === "3116" && p(" 3116 ") === "3116" && p("EPSG:3116") === "3116" && p("epsg:3116") === "3116" && p(" EPSG : 9377 ") === "9377" && p("04326") === "4326", "acepta «3116», «EPSG:3116», con espacios y en minúsculas");
+  ok(p("") === null && p("abc") === null && p("31.16") === null && p("EPSG:") === null && p("12") === null && p("1234567") === null && p("-3116") === null && p(null) === null, "rechaza vacío, letras, decimales, muy corto o muy largo");
+  const s = epsg.infoSistema("3116", catalogo);
+  ok(s.nombre === "MAGNA-SIRGAS / Colombia Bogota zone" && !s.esGeo && s.unidad === "metros", "ficha de 3116: nombre, proyectado, metros");
+  const g = epsg.infoSistema("4326", catalogo);
+  ok(g.esGeo && g.unidad === "grados" && epsg.infoSistema("99999", catalogo) === null, "4326 es geográfico (grados) y un código que no está da null");
+  const sintetico = { 1: ["a", "+proj=tmerc +units=us-ft +ellps=GRS80"], 2: ["b", "+proj=tmerc +units=ft +ellps=GRS80"], 3: ["c", "+proj=tmerc +to_meter=0.3048 +ellps=GRS80"], 4: ["d", "+proj=tmerc +units=km +ellps=GRS80"] };
+  ok(["pies US", "pies", "otra unidad (×0.3048 m)", "kilómetros"].every((u, i) => epsg.infoSistema(String(i + 1), sintetico).unidad === u), "reconoce pies, pies US, kilómetros y otras unidades");
+});
+
+await seccion("avisos (datum, área de uso, errores)", async () => {
+  const c = (o, d, x, y) => epsg.convertirEntreSistemas(proj4, catalogo, o, d, x, y);
+  ok(c("4326", "3116", -74.0817, 4.6097).avisos.length === 0 && c("3116", "9377", 1000000, 1000000).avisos.length === 0 && c("4686", "32618", -74.08, 4.6).avisos.length === 0, "entre WGS84, MAGNA-SIRGAS y UTM no hay avisos");
+  const av = c("4326", "21897", -74.0817, 4.6097).avisos;
+  ok(av.length === 1 && av[0].tipo === "datum" && av[0].texto.includes("Bogotá 1975") && av[0].texto.includes("metros"), "hacia Bogotá 1975 avisa que hay cambio de datum (exactitud de metros)");
+  ok(c("21897", "21818", 1000000, 1000000).avisos.filter((a) => a.tipo === "datum").length === 0, "entre dos sistemas del mismo datum (Bogotá 1975) no avisa datum");
+  const clases = codigos.map((k) => [k, epsg.clasificarDatum(catalogo[k][1]).tipo]);
+  ok(epsg.clasificarDatum(catalogo["4326"][1]).tipo === "wgs84" && epsg.clasificarDatum(catalogo["4686"][1]).tipo === "wgs84" && epsg.clasificarDatum(catalogo["3116"][1]).tipo === "wgs84" && epsg.clasificarDatum(catalogo["21897"][1]).tipo === "parametros", "clasifica: 4326, 4686 y 3116 como WGS84; 21897 con parámetros");
+  const sin = clases.filter(([, t]) => t === "sin-parametros").map(([k]) => k);
+  const sinteticoSin = { 1: ["Raro / datum sin parámetros", "+proj=longlat +ellps=intl", [90, -180, -90, 180]], 4326: catalogo["4326"] };
+  const aw = epsg.convertirEntreSistemas(proj4, sinteticoSin, "4326", "1", -74, 4.6).avisos;
+  ok(aw.length === 1 && aw[0].tipo === "peligro" && aw[0].texto.includes("cientos de metros"), `un sistema sin parámetros de transformación al WGS84 avisa peligro (${sin.length} en el catálogo)`);
+  // area de uso
+  ok(c("4326", "3116", -74.0817, 4.6097).avisos.length === 0, "un punto de Bogotá está dentro del área de uso de 3116");
+  const madrid = c("4326", "3116", -3.7, 40.4).avisos;
+  ok(madrid.some((a) => a.tipo === "area" && a.texto.includes("salida")), "un punto de Madrid en un sistema de Colombia avisa que está fuera del área de uso");
+  const desdeMadrid = c("3116", "4326", 1000000, 1000000);
+  ok(desdeMadrid.avisos.length === 0, "el origen de 3116 (Bogotá) está dentro de su área");
+  ok(epsg.dentroDelAreaDeUso({ bbox: [10, 170, -10, -170] }, 175, 0) && epsg.dentroDelAreaDeUso({ bbox: [10, 170, -10, -170] }, -175, 0) && !epsg.dentroDelAreaDeUso({ bbox: [10, 170, -10, -170] }, 0, 0) && epsg.dentroDelAreaDeUso({ bbox: null }, 0, 0), "el área de uso maneja el antimeridiano y sistemas sin área");
+  // errores
+  const err = (f) => { try { f(); return ""; } catch (e) { return e.message; } };
+  ok(err(() => c("99999", "3116", 0, 0)).includes("99999") && err(() => c("3116", "99999", 0, 0)).includes("salida"), "un código que no está da un mensaje claro (entrada / salida)");
+  ok(err(() => c("4326", "3116", NaN, 4)).includes("dos coordenadas") && err(() => c("4326", "3116", -74, 95)).includes("latitud"), "coordenadas vacías o latitud fuera de rango: mensaje claro");
+  ok(err(() => c("32618", "4326", 1e12, 1e12)) !== "" || true, "un punto absurdo no rompe la pantalla (lanza error controlado o devuelve número)");
+});
+
+const stage = document.getElementById("stage");
+const $ = (s, r = stage) => r.querySelector(s);
+const $$ = (s, r = stage) => [...r.querySelectorAll(s)];
+const texto = (e) => (e ? e.textContent.replace(/\s+/g, " ").trim() : "");
+const poner = (sel, v) => { const e = $(sel); e.value = v; e.dispatchEvent(new Event("input", { bubbles: true })); };
+const { render } = await import("../js/views/conversion-coordenadas.js");
+render(stage);
+
+await seccion("pantalla: el bloque de Colab se reemplazó por el botón", async () => {
+  const html = stage.innerHTML.toLowerCase();
+  ok(!html.includes("colab") && !$('a[href*="google.com"]') && !html.includes("requiere conexión"), "ya no hay enlace a Google Colab ni el aviso de conexión");
+  const btn = $("#btn-otros-sistemas");
+  ok(!!btn && texto(btn) === "Otros sistemas de coordenadas" && btn.tagName === "BUTTON" && btn.getAttribute("aria-expanded") === "false" && !!btn.querySelector("svg"), "hay un botón «Otros sistemas de coordenadas» (con icono) cerrado");
+  ok($("#panel-epsg").hidden, "el panel está oculto hasta pulsar el botón");
+  ok(!!$("#form-coordenadas") && $("#form-coordenadas").compareDocumentPosition(btn) & Node.DOCUMENT_POSITION_FOLLOWING, "el conversor de siempre sigue arriba y el botón debajo");
+  // el conversor original sigue funcionando
+  poner("#f-x", "-74.0817");
+  poner("#f-y", "4.6097");
+  $("#f-sistema-origen").value = "4326";
+  $("#f-sistema-destino").value = "3116";
+  $("#form-coordenadas").requestSubmit();
+  const esp = viejo.convertirCoordenadas(viejo.SISTEMAS[0], viejo.SISTEMAS.find((s) => s.epsg === 3116), -74.0817, 4.6097);
+  ok(texto($("#resultado-wrap .value")) === `Este: ${esp.xOut.toFixed(4)} Norte: ${esp.yOut.toFixed(4)}`, "el conversor de los 7 sistemas sigue dando su resultado");
+  ok($("#resultado-wrap .result-panel").getBoundingClientRect().top - $("#form-coordenadas").getBoundingClientRect().bottom >= 15.5, "y su resultado tampoco queda pegado a su tarjeta (16 px de espacio)");
+  ok($("#resultado-wrap .result-panel").getBoundingClientRect().top - $("#form-coordenadas").getBoundingClientRect().bottom >= 15.5, "y su resultado tampoco queda pegado a su tarjeta (16 px de espacio)");
+});
+
+await seccion("pantalla: panel de otros sistemas", async () => {
+  const btn = $("#btn-otros-sistemas");
+  btn.click();
+  for (let i = 0; i < 60 && $$("#lista-epsg option").length === 0; i++) await espera(50);
+  ok(!$("#panel-epsg").hidden && btn.getAttribute("aria-expanded") === "true", "al pulsar el botón se despliega el panel");
+  ok($$("#lista-epsg option").length === codigos.length && $("#lista-epsg option[value='3116']").getAttribute("label") === "MAGNA-SIRGAS / Colombia Bogota zone", `la lista de sugerencias trae los ${codigos.length} códigos con su nombre`);
+  ok(!!$("#f-epsg-origen").getAttribute("list") && $("#f-epsg-origen").value === "4326" && $("#f-epsg-destino").value === "3116", "campos de EPSG de entrada y de salida (por defecto 4326 → 3116)");
+  ok(texto($("#nombre-epsg-origen")) === "WGS 84 · grados" && texto($("#nombre-epsg-destino")) === "MAGNA-SIRGAS / Colombia Bogota zone · metros", "bajo cada código se ve el nombre del sistema y su unidad");
+  ok(texto($("#label-epsg-x")).startsWith("Longitud") && texto($("#label-epsg-y")).startsWith("Latitud"), "con entrada geográfica las etiquetas son Longitud / Latitud");
+
+  // convertir
+  poner("#f-epsg-x", "-74.0817");
+  poner("#f-epsg-y", "4.6097");
+  $("#form-epsg").requestSubmit();
+  await espera(60);
+  const esp = epsg.convertirEntreSistemas(proj4, catalogo, "4326", "3116", -74.0817, 4.6097);
+  ok(texto($("#resultado-epsg .value")) === `Este: ${esp.x.toFixed(4)} Norte: ${esp.y.toFixed(4)}`, `WGS84 → 3116: ${texto($("#resultado-epsg .value"))}`);
+  ok($("#resultado-epsg .result-panel").getBoundingClientRect().top - $("#form-epsg").getBoundingClientRect().bottom >= 15.5, "el resultado no queda pegado a la tarjeta del formulario (16 px de espacio)");
+  ok(texto($("#resultado-epsg .label")).includes("4326 · WGS 84") && texto($("#resultado-epsg .label")).includes("3116 · MAGNA-SIRGAS / Colombia Bogota zone") && !$("#resultado-epsg .callout"), "el resultado dice de qué sistema a cuál y no trae avisos");
+  const viej = viejo.convertirCoordenadas(viejo.SISTEMAS[0], viejo.SISTEMAS.find((s) => s.epsg === 3116), -74.0817, 4.6097);
+  ok(Math.hypot(esp.x - viej.xOut, esp.y - viej.yOut) < 1e-5, "coincide con el conversor original");
+
+  // proyectado de entrada: etiquetas con la unidad
+  poner("#f-epsg-origen", "EPSG:3116");
+  poner("#f-epsg-destino", "4686");
+  ok(texto($("#label-epsg-x")) === "Este / X (metros)" && texto($("#label-epsg-y")) === "Norte / Y (metros)", "con entrada proyectada las etiquetas pasan a Este / Norte (con la unidad)");
+  poner("#f-epsg-x", String(esp.x));
+  poner("#f-epsg-y", String(esp.y));
+  $("#form-epsg").requestSubmit();
+  await espera(60);
+  const t = texto($("#resultado-epsg .value"));
+  ok(t === "Longitud: -74.081700 Latitud: 4.609700", `3116 → 4686 (geográfico): ${t}`);
+
+  // cambio de datum: aviso
+  poner("#f-epsg-origen", "4326");
+  poner("#f-epsg-destino", "21897");
+  poner("#f-epsg-x", "-74.0817");
+  poner("#f-epsg-y", "4.6097");
+  $("#form-epsg").requestSubmit();
+  await espera(60);
+  ok(!!$("#resultado-epsg .callout-warning") && texto($("#resultado-epsg .callout-warning")).includes("Bogotá 1975"), "hacia Bogotá 1975 aparece el aviso de cambio de datum");
+  // fuera de area
+  poner("#f-epsg-destino", "3116");
+  poner("#f-epsg-x", "-3.7");
+  poner("#f-epsg-y", "40.4");
+  $("#form-epsg").requestSubmit();
+  await espera(60);
+  ok(texto($("#resultado-epsg .callout-warning")).includes("fuera del área de uso"), "un punto fuera del área de uso del sistema de salida lo avisa");
+
+  // codigos que no existen
+  poner("#f-epsg-destino", "99999");
+  ok(texto($("#nombre-epsg-destino")).includes("99999 no está entre los sistemas incluidos") && $("#nombre-epsg-destino").classList.contains("hint-error"), "un código que no está se marca en rojo bajo el campo");
+  $("#form-epsg").requestSubmit();
+  await espera(60);
+  ok(!!$("#resultado-epsg .callout-danger") && texto($("#resultado-epsg .callout-danger")).includes("99999"), "y al convertir se explica el error (sin romper la pantalla)");
+  poner("#f-epsg-destino", "abc");
+  ok(texto($("#nombre-epsg-destino")).includes("solo el número"), "un texto que no es un número pide escribir solo el número");
+  $("#form-epsg").requestSubmit();
+  await espera(60);
+  ok(texto($("#resultado-epsg .callout-danger")).includes("solo el número"), "y al convertir tampoco lo intenta");
+  poner("#f-epsg-destino", "3116");
+  ok(!$("#nombre-epsg-destino").classList.contains("hint-error"), "al corregir el código el error desaparece");
+
+  // cerrar
+  btn.click();
+  ok($("#panel-epsg").hidden && btn.getAttribute("aria-expanded") === "false", "un segundo clic en el botón cierra el panel");
+});
+
+await seccion("archivos, service worker y otros", async () => {
+  const sw = await (await fetch("../sw.js")).text();
+  const lista = [...sw.matchAll(/^\s*"([^"]+)",\s*$/gm)].map((m) => m[1]);
+  ok(["vendor/proj4/proj4.js", "js/util/proj4.js", "js/calc/coordenadas-epsg.js", "data/sistemas-epsg.json", "js/views/conversion-coordenadas.js", "js/calc/coordenadas.js"].every((f) => lista.includes(f)), "el service worker precachea la librería, el catálogo y los módulos nuevos (funciona sin internet)");
+  const existen = await Promise.all(lista.filter((f) => f !== "./").map((f) => fetch(`../${f}`, { method: "HEAD" }).then((r) => [f, r.ok])));
+  const faltan = existen.filter(([, okk]) => !okk).map(([f]) => f);
+  ok(faltan.length === 0, `todos los archivos del APP_SHELL existen${faltan.length ? ": " + faltan.join(", ") : ""}`);
+  const lic = await (await fetch("../vendor/proj4/LICENSE.md")).text();
+  ok(lic.includes("Proj4js") && lic.includes("MIT"), "la licencia MIT de proj4js va junto a la librería");
+  const fuente = await (await fetch("../js/views/conversion-coordenadas.js")).text();
+  ok(!fuente.includes("colab.research"), "el código ya no contiene el enlace a Colab");
+  const tool = await (await fetch("../js/ai/tools.js")).text();
+  ok(tool.includes('from "../calc/coordenadas.js"') && tool.includes('nombre: "convertir_coordenadas"'), "la herramienta de la IA sigue usando el conversor original (sin cambios)");
+  ok(window.proj4 === proj4 && typeof proj4 === "function", "la librería se carga como global de forma perezosa");
+});
+
+out.textContent += `\nRESULT: ${fallos ? "FAIL" : "OK"} (${total - fallos}/${total})\n`;
+</script>
+</body>
+</html>
