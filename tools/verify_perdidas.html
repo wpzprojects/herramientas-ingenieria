@@ -206,7 +206,7 @@ await seccion("vista: aspecto de las tarjetas", async () => {
 });
 
 // La pantalla se prueba tambien dentro de un iframe de ancho fijo: las media queries dependen del ancho de la ventana, no del contenedor.
-const cargarMarco = (ancho) => new Promise((resolve) => {
+const cargarMarco = (ancho, calcular = false) => new Promise((resolve) => {
   const marco = document.createElement("iframe");
   marco.style.cssText = `position:fixed;left:-99999px;top:0;width:${ancho}px;height:3000px;border:0`;
   const alRecibir = (e) => {
@@ -215,7 +215,7 @@ const cargarMarco = (ancho) => new Promise((resolve) => {
     resolve(marco);
   };
   window.addEventListener("message", alRecibir);
-  marco.srcdoc = `<!doctype html><html><head><link rel="stylesheet" href="../css/tokens.css"><link rel="stylesheet" href="../css/app.css"></head><body><div id="c" class="content"></div><script type="module">window.__BASE_PATH__ = "../"; const { render } = await import("../js/views/calc-perdidas.js"); await render(document.getElementById("c"), {}); parent.postMessage("listo", "*");<\/script></body></html>`;
+  marco.srcdoc = `<!doctype html><html><head><link rel="stylesheet" href="../css/tokens.css"><link rel="stylesheet" href="../css/app.css"></head><body><div id="c" class="content"></div><script type="module">window.__BASE_PATH__ = "../"; const { render } = await import("../js/views/calc-perdidas.js"); await render(document.getElementById("c"), {}); if (${calcular}) { const c = document.getElementById("c"); const ev = (s, v) => { const e = c.querySelector(s); e.value = v; e.dispatchEvent(new Event("change", { bubbles: true })); }; ev("#f-material-0", "ACSR"); ev("#f-calibre-0", "4/0"); c.querySelector("#form-calc").requestSubmit(); } parent.postMessage("listo", "*");<\/script></body></html>`;
   document.body.append(marco);
 });
 
@@ -250,6 +250,51 @@ await seccion("vista: espaciado uniforme entre campos (pantalla angosta y ancha)
   sepAncho.forEach((s, i) => {
     ok(s.every((v) => v >= 15.4 || v < 0), `ancho 1000 px, tarjeta ${i + 1}: sin cambios en el espaciado entre filas`);
   });
+});
+
+await seccion("vista: espacio lateral de 16 px en las tarjetas y el panel de resultados", async () => {
+  // Distancias horizontales (borde exterior de la tarjeta → contenido) medidas dentro del iframe, a ancho angosto y ancho.
+  const medir = (marco) => {
+    const d = marco.contentDocument;
+    const izq = (e) => e.getBoundingClientRect().left;
+    const tarjeta = d.querySelector(".tramo-block");
+    const datos = d.querySelector(".form-section");
+    const res = d.querySelector("#resultado-wrap > .card");
+    const panel = res.querySelector(".result-panel");
+    const sondaCard = d.createElement("div");
+    sondaCard.className = "card";
+    const sondaPanel = d.createElement("div");
+    sondaPanel.className = "result-panel";
+    d.body.append(sondaCard, sondaPanel); // una .card y un .result-panel "normales", como los de otras calculadoras
+    const r = {
+      tramoACampo: izq(tarjeta.querySelector("select, input")) - izq(tarjeta),
+      datosACampo: izq(datos.querySelector("select, input")) - izq(datos),
+      tramoAIcono: izq(tarjeta.querySelector(".form-section-title svg")) - izq(tarjeta),
+      datosAIcono: izq(datos.querySelector(".form-section-title svg")) - izq(datos),
+      resATabs: izq(res.querySelector(".tabs")) - izq(res),
+      resAPanel: izq(panel) - izq(res),
+      panelATexto: izq(panel.querySelector(".result-metric .value")) - izq(panel),
+      panelAEtiqueta: izq(panel.querySelector(".result-metric .label")) - izq(panel),
+      cardNormal: getComputedStyle(sondaCard).paddingLeft,
+      panelNormal: getComputedStyle(sondaPanel).paddingLeft,
+    };
+    sondaCard.remove();
+    sondaPanel.remove();
+    return r;
+  };
+  const angosto = await cargarMarco(600, true);
+  const mAng = medir(angosto);
+  angosto.remove();
+  const ancho = await cargarMarco(1000, true);
+  const mAnc = medir(ancho);
+  ancho.remove();
+  for (const [nombre, m] of [["600 px", mAng], ["1000 px", mAnc]]) {
+    ok(m.tramoACampo === 17 && m.datosACampo === 17, `ancho ${nombre}: tarjetas de datos y de conductor: del borde de la tarjeta al campo 17 px (1 de borde + 16 de relleno) (${m.datosACampo} y ${m.tramoACampo})`);
+    ok(m.resATabs === 17 && m.resAPanel === 17, `ancho ${nombre}: tarjeta de resultados: del borde a las pestañas y al panel 17 px (${m.resATabs} y ${m.resAPanel})`);
+    ok(m.panelATexto === 17 && m.panelAEtiqueta === 17, `ancho ${nombre}: dentro del panel azul: del borde del panel a los números 17 px (${m.panelATexto} y ${m.panelAEtiqueta})`);
+    ok(m.tramoAIcono === 17 && m.datosAIcono === 17, `ancho ${nombre}: el icono del título queda alineado con los campos (${m.datosAIcono} y ${m.tramoAIcono})`);
+    ok(m.cardNormal === "24px" && m.panelNormal === "24px", `ancho ${nombre}: una tarjeta y un panel de otras pantallas conservan 24 px (${m.cardNormal}, ${m.panelNormal})`);
+  }
 });
 
 await seccion("vista: un tramo, cálculo y resultados", async () => {

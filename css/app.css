@@ -249,12 +249,12 @@ input:disabled, select:disabled { opacity: 0.55; }
 
 /* ---------- pantalla en tarjetas (Perdidas): titulo con icono, casilla junto al campo, tablas de resultado, formulas KaTeX ---------- */
 /* Barra de titulo de la tarjeta: de borde a borde, con el color atenuado del menu lateral (--accent-soft) y una linea delgada del color del tema */
-.form-section { padding-bottom: 12px; }
+/* El relleno de estas tarjetas es 16px (--pad-tarjeta, se define en .card.tarjeta-borde): la barra de titulo usa la misma variable para llegar al borde */
 .form-section-title {
   display: flex; align-items: center; gap: var(--space-2);
   min-height: 48px; box-sizing: border-box;
-  margin: calc(-1 * var(--space-5)) calc(-1 * var(--space-5)) var(--space-4);
-  padding: var(--space-2) var(--space-5);
+  margin: calc(-1 * var(--pad-tarjeta, var(--space-5))) calc(-1 * var(--pad-tarjeta, var(--space-5))) var(--space-4);
+  padding: var(--space-2) var(--pad-tarjeta, var(--space-5));
   background: var(--accent-soft);
   border-bottom: 1px solid var(--accent);
   border-bottom-color: color-mix(in srgb, var(--accent) 65%, var(--accent-soft)); /* 35 % menos intensa (si el navegador no soporta color-mix queda --accent) */
@@ -286,7 +286,9 @@ input:disabled, select:disabled { opacity: 0.55; }
 .tabla-perdidas tr.current-row td, .tabla-perdidas tr.total-row td { font-weight: 700; }
 /* Borde de las tarjetas de esta pantalla: el color del borde de las tablas (--table-border): en el tema claro es mas marcado que --border
    (que casi se pierde contra el fondo) y en el oscuro es el mismo --border de siempre. Se mantiene en 1px: mas grueso se veria pesado. */
-.card.tarjeta-borde { border-color: var(--table-border); }
+.card.tarjeta-borde { border-color: var(--table-border); --pad-tarjeta: var(--space-4); padding: var(--pad-tarjeta); }
+.card.tarjeta-borde.form-section { padding-bottom: 12px; } /* las tarjetas de datos: un poco menos abajo (ver .grid-2.ultima) */
+.tarjeta-borde .result-panel { padding: var(--space-4); }  /* panel azul de resultados: tambien 16px (en otras calculadoras sigue en 24px) */
 /* Subtarjeta de las formulas (KaTeX): mismo aspecto que la caja de «Reporte» (fondo hundido, borde y esquinas), sin su letra monoespaciada */
 .formula-caja {
   background: var(--bg-sunken);
