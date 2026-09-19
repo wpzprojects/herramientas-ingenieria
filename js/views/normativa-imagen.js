@@ -82,35 +82,18 @@ export async function render(container, params) {
           ${tema.opciones.map((op, i) => `<option value="${i}">${op.label}</option>`).join("")}
         </select>
       </div>
-      <p class="titulo-completo" id="titulo-completo" hidden></p>
       <div class="image-frame" id="frame-imagen"></div>
     `;
 
     const sel = wrap.querySelector("#sel-tabla");
     const frame = wrap.querySelector("#frame-imagen");
-    const tituloCompleto = wrap.querySelector("#titulo-completo");
-    const lienzo = document.createElement("canvas").getContext("2d");
-
-    // El desplegable cerrado corta los titulos largos (sobre todo en el celular): si el titulo elegido no cabe entero, se
-    // muestra completo justo debajo del campo.
-    function actualizarTitulo() {
-      const texto = tema.opciones[Number(sel.value)].label;
-      const cs = getComputedStyle(sel);
-      lienzo.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
-      const util = sel.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 30; // ~30 px de la flechita
-      const noCabe = sel.clientWidth > 0 && lienzo.measureText(texto).width > util;
-      tituloCompleto.textContent = noCabe ? texto : "";
-      tituloCompleto.hidden = !noCabe;
-    }
 
     function pintarImagen(idx) {
       const op = tema.opciones[idx];
       frame.innerHTML = `<img src="${op.img}" data-lightbox="${op.img}" alt="${op.label}">`;
-      actualizarTitulo();
     }
 
     sel.addEventListener("change", () => pintarImagen(Number(sel.value)));
-    if (typeof ResizeObserver === "function") new ResizeObserver(actualizarTitulo).observe(sel);
     pintarImagen(0);
   } else {
     wrap.innerHTML = `

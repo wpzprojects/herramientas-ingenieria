@@ -117,32 +117,24 @@ await seccion("el selector de tabla / figura muestra los títulos completos", as
   ok(sel.getBoundingClientRect().width <= 960.5 && sel.getBoundingClientRect().width > 700, `el campo es ancho pero no pasa de 960 px (${Math.round(sel.getBoundingClientRect().width)} px)`);
   const mayorEnt = Math.max(...$$("option", sel).map((o) => ancho(sel, texto(o))));
   ok(mayorEnt <= util(sel), `Enterramiento de ductos: el título más largo cabe entero (${Math.round(mayorEnt)} px de ${Math.round(util(sel))} px útiles)`);
-  ok($("#titulo-completo").hidden, "si el título cabe no se repite debajo del campo");
   await cargarTema("distancias-seguridad");
   sel = $("#sel-tabla");
   const mayorDist = Math.max(...$$("option", sel).map((o) => ancho(sel, texto(o))));
   ok(mayorDist <= util(sel), `Distancias de seguridad: hasta el título más largo cabe entero (${Math.round(mayorDist)} px de ${Math.round(util(sel))} px útiles)`);
-  sel.value = "2";
-  sel.dispatchEvent(new Event("change", { bubbles: true }));
-  ok($("#titulo-completo").hidden, "con ventana ancha el título largo (3.10.3.a) se ve completo en el campo, sin repetirlo");
-
-  // pantalla angosta (360 px, como un celular): el titulo elegido se muestra completo bajo el campo
+  // ya no se repite el título debajo del campo (ni en ventana ancha ni en angosta)
+  ok(!$("#titulo-completo") && !$(".titulo-completo"), "no hay título repetido debajo del campo en ventana ancha");
   stage.innerHTML = "";
   const estrecho = document.createElement("div");
   estrecho.style.width = "360px";
   stage.append(estrecho);
-  await render(estrecho, { tema: "distancias-seguridad" });
-  const selE = estrecho.querySelector("#sel-tabla");
-  const cap = estrecho.querySelector("#titulo-completo");
-  const largo = "Tabla 3.10.3.a — Distancias verticales mínimas en vanos de cruces o recorridos paralelos entre líneas de diferentes tensiones";
-  selE.value = "2";
-  selE.dispatchEvent(new Event("change", { bubbles: true }));
-  ok(!cap.hidden && texto(cap) === largo, "en pantalla angosta el título elegido, que no cabe en el campo, aparece completo debajo");
-  ok(cap.getBoundingClientRect().top >= selE.getBoundingClientRect().bottom - 0.5 && cap.getBoundingClientRect().bottom <= estrecho.querySelector("#frame-imagen").getBoundingClientRect().top + 0.5, "ese título queda entre el campo y la imagen");
-  ok(cap.getBoundingClientRect().right <= estrecho.getBoundingClientRect().right + 0.5, "y no se sale de la pantalla (se acomoda en varias líneas)");
-  selE.value = "0";
-  selE.dispatchEvent(new Event("change", { bubbles: true }));
-  ok(texto(cap) === texto(selE.options[0]) && !cap.hidden, "al cambiar de tabla el título de abajo cambia con ella");
+  for (const tema of ["distancias-seguridad", "enterramiento-ductos"]) {
+    await render(estrecho, { tema });
+    const selE = estrecho.querySelector("#sel-tabla");
+    selE.value = String(selE.options.length - 1);
+    selE.dispatchEvent(new Event("change", { bubbles: true }));
+    ok(!estrecho.querySelector("#titulo-completo") && !estrecho.querySelector(".titulo-completo") && selE.nextElementSibling === null && selE.parentElement.nextElementSibling.id === "frame-imagen", `${tema}: en pantalla angosta tampoco hay título repetido; tras el campo va directo la imagen`);
+  }
+  ok(!(await (await fetch("../css/app.css")).text()).includes("titulo-completo") && !(await (await fetch("../js/views/normativa-imagen.js")).text()).includes("titulo-completo"), "el código y el CSS de esa función ya no existen");
   stage.innerHTML = "";
 });
 
