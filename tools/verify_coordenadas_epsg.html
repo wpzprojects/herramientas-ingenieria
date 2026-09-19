@@ -234,7 +234,7 @@ const poner = (sel, v) => { const e = $(sel); e.value = v; e.dispatchEvent(new E
 const elegir = (sel, v) => { const e = $(sel); e.value = v; e.dispatchEvent(new Event("change", { bubbles: true })); };
 const marcar = (sel, v) => { const e = $(sel); e.checked = v; e.dispatchEvent(new Event("change", { bubbles: true })); };
 const enviar = async () => { $("#form-coordenadas").requestSubmit(); await espera(120); };
-const visible = (sel) => !$(sel).hidden && $(sel).getClientRects().length > 0;
+const visible = (sel) => { const e = $(sel); const cs = getComputedStyle(e); return !e.hidden && e.getClientRects().length > 0 && cs.visibility !== "hidden" && !e.closest(".inactivo"); };
 const S = (c) => viejo.SISTEMAS.find((x) => x.epsg === c);
 const { render } = await import("../js/views/conversion-coordenadas.js");
 render(stage);
@@ -249,8 +249,8 @@ await seccion("pantalla: un solo formulario (sin botón ni tarjeta aparte)", asy
   ok(visible("#campos-lista") && !visible("#campos-epsg") && visible("#campos-punto") && !visible("#campo-lote"), "por defecto: las dos listas de siempre y longitud / latitud");
   const conv = $$(".btn-row .btn")[0].getBoundingClientRect();
   const lote = $("#btn-lotes").getBoundingClientRect();
-  ok(texto($$(".btn-row .btn")[0]) === "Convertir" && texto($("#btn-lotes")) === "Convertir por lotes" && Math.abs(conv.top - lote.top) < 2 && lote.left > conv.right, "junto al botón «Convertir» está «Convertir por lotes», a su derecha");
-  ok($("#btn-lotes").getAttribute("aria-pressed") === "false" && $("#btn-lotes").type === "button", "«Convertir por lotes» empieza apagado y no envía el formulario");
+  ok(texto($$(".btn-row .btn")[0]) === "Convertir" && texto($("#btn-lotes .activo")) === "Convertir por lotes" && Math.abs(conv.top - lote.top) < 2 && lote.left > conv.right, "junto al botón «Convertir» está «Convertir por lotes», a su derecha");
+  ok($("#btn-lotes").dataset.lotes === "false" && $("#btn-lotes").type === "button", "«Convertir por lotes» empieza apagado y no envía el formulario");
 });
 
 await seccion("pantalla: los 7 sistemas (motor original) con avisos de área de uso", async () => {
@@ -313,7 +313,7 @@ await seccion("pantalla: habilitar todos los sistemas (códigos EPSG)", async ()
   ok(texto($("#label-x")) === "Este / X (metros)" && texto($("#label-y")) === "Norte / Y (metros)", "con entrada proyectada las etiquetas pasan a Este / Norte (metros)");
   poner("#f-epsg-origen", "4326");
   poner("#f-epsg-destino", "99999");
-  ok(texto($("#nombre-epsg-destino")).includes("99999 no está entre los sistemas incluidos") && $("#nombre-epsg-destino").classList.contains("hint-error"), "un código que no está se marca en rojo bajo el campo");
+  ok(texto($("#nombre-epsg-destino")).includes("99999 no está incluido") && $("#nombre-epsg-destino").classList.contains("hint-error"), "un código que no está se marca en rojo bajo el campo");
   await enviar();
   ok(!!$("#resultado-wrap .callout-danger") && texto($("#resultado-wrap .callout-danger")).includes("código EPSG"), "y al convertir se explica el error (sin romper la pantalla)");
   poner("#f-epsg-destino", "3116");
@@ -323,7 +323,8 @@ await seccion("pantalla: habilitar todos los sistemas (códigos EPSG)", async ()
 
 await seccion("pantalla: convertir por lotes", async () => {
   $("#btn-lotes").click();
-  ok($("#btn-lotes").getAttribute("aria-pressed") === "true" && !visible("#campos-punto") && visible("#campo-lote"), "«Convertir por lotes» reemplaza longitud y latitud por un cuadro de texto");
+  ok($("#btn-lotes").dataset.lotes === "true" && !visible("#campos-punto") && visible("#campo-lote"), "«Convertir por lotes» reemplaza longitud y latitud por un cuadro de texto");
+  ok(texto($("#btn-lotes .activo")) === "Convertir un solo punto", "encendido, el botón dice «Convertir un solo punto» (para volver a convertir de a una coordenada)");
   const ta = $("#f-lote").getBoundingClientRect();
   ok(ta.height > 120 && ta.width > $("#f-sistema-origen").getBoundingClientRect().width * 1.5, `el cuadro es de lado a lado y más alto que un campo (${Math.round(ta.width)} × ${Math.round(ta.height)} px)`);
   const nota = $("#campo-lote .hint");
@@ -366,7 +367,62 @@ await seccion("pantalla: convertir por lotes", async () => {
 
   // apagar el lote devuelve los campos
   $("#btn-lotes").click();
-  ok($("#btn-lotes").getAttribute("aria-pressed") === "false" && visible("#campos-punto") && !visible("#campo-lote") && $("#f-x").required, "al apagar «Convertir por lotes» vuelven longitud y latitud");
+  ok($("#btn-lotes").dataset.lotes === "false" && visible("#campos-punto") && !visible("#campo-lote") && $("#f-x").required && texto($("#btn-lotes .activo")) === "Convertir por lotes", "al volver a pulsarlo regresan longitud y latitud y el botón dice otra vez «Convertir por lotes»");
+});
+
+await seccion("pantalla: nada se corre al habilitar todos los sistemas ni al cambiar el botón de lotes", async () => {
+  const cuentas = async (ancho) => {
+    const marco = document.createElement("div");
+    marco.style.width = ancho + "px";
+    stage.append(marco);
+    await render(marco, {});
+    await espera(200);
+    const q = (x) => marco.querySelector(x);
+    const y = (x) => Math.round(q(x).getBoundingClientRect().top * 10) / 10;
+    const r = {};
+    r.altoListaAntes = q("#campos-lista").getBoundingClientRect().height;
+    r.botones0 = y(".btn-row");
+    r.formAlto0 = q("#form-coordenadas").getBoundingClientRect().height;
+    q("#chk-todos").checked = true;
+    q("#chk-todos").dispatchEvent(new Event("change", { bubbles: true }));
+    for (let i = 0; i < 80 && marco.querySelectorAll("#lista-epsg option").length === 0; i++) await espera(50);
+    r.formAlto1 = q("#form-coordenadas").getBoundingClientRect().height;
+    r.botones1 = y(".btn-row");
+    const poner2 = (x, v) => { q(x).value = v; q(x).dispatchEvent(new Event("input", { bubbles: true })); };
+    poner2("#f-epsg-origen", "4326");
+    poner2("#f-epsg-destino", "6247");
+    r.hintDestino = q("#nombre-epsg-destino").textContent;
+    r.formAlto2 = q("#form-coordenadas").getBoundingClientRect().height;
+    r.botones2 = y(".btn-row");
+    poner2("#f-epsg-destino", "99999"); // mensaje de error
+    r.botones3 = y(".btn-row");
+    poner2("#f-epsg-destino", "");
+    q("#chk-todos").checked = false;
+    q("#chk-todos").dispatchEvent(new Event("change", { bubbles: true }));
+    r.botones4 = y(".btn-row");
+    r.formAlto4 = q("#form-coordenadas").getBoundingClientRect().height;
+    // boton de lotes: mismo ancho con los dos textos
+    const b = q("#btn-lotes");
+    r.anchoUno = b.getBoundingClientRect().width;
+    b.click();
+    r.anchoDos = b.getBoundingClientRect().width;
+    r.textoDos = texto(b.querySelector(".activo"));
+    const visibles = [...b.children].map((c) => getComputedStyle(c).visibility);
+    r.visibles = visibles.join();
+    r.cabe = b.children[1].getBoundingClientRect().width <= b.getBoundingClientRect().width;
+    b.click();
+    r.anchoTres = b.getBoundingClientRect().width;
+    marco.remove();
+    return r;
+  };
+  for (const ancho of [900, 360]) {
+    const r = await cuentas(ancho);
+    ok(Math.abs(r.formAlto0 - r.formAlto4) < 0.6 && r.formAlto1 === r.formAlto0 && r.formAlto2 === r.formAlto0, `ancho ${ancho} px: el formulario mide siempre lo mismo (${r.formAlto0.toFixed(1)} px) con las listas, con los campos EPSG vacíos y con el nombre del sistema`);
+    ok(r.botones0 === r.botones1 && r.botones1 === r.botones2 && r.botones2 === r.botones3 && r.botones3 === r.botones4, `ancho ${ancho} px: los botones no se mueven al habilitar todos los sistemas, al escribir un código (${r.hintDestino}), con el mensaje de error ni al volver [${r.botones0}, ${r.botones1}, ${r.botones2}, ${r.botones3}, ${r.botones4}]`);
+    ok(Math.abs(r.anchoUno - r.anchoDos) < 0.5 && Math.abs(r.anchoDos - r.anchoTres) < 0.5 && r.textoDos === "Convertir un solo punto" && r.cabe, `ancho ${ancho} px: el botón de lotes mide siempre lo mismo (${Math.round(r.anchoUno)} px) con sus dos textos`);
+  }
+  const b = $("#btn-lotes");
+  ok([...b.children].map((c) => getComputedStyle(c).visibility).join() === "visible,hidden" && b.children[1].getClientRects().length > 0, "solo se ve un texto a la vez (el otro queda oculto pero ocupa su lugar)");
 });
 
 await seccion("archivos, service worker y otros", async () => {

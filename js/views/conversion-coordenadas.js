@@ -25,29 +25,33 @@ export function render(container) {
     <h1 class="page-title">Conversión de coordenadas</h1>
 
     <form class="card" id="form-coordenadas" novalidate>
+      <div class="campos-sistemas">
       <div class="grid-2" id="campos-lista">
         <div class="field">
           <label for="f-sistema-origen">Sistema de entrada</label>
           <select id="f-sistema-origen" required>${opcionesSistemas()}</select>
+          <span class="hint hint-linea" aria-hidden="true"></span>
         </div>
         <div class="field">
           <label for="f-sistema-destino">Sistema de salida</label>
           <select id="f-sistema-destino" required>${opcionesSistemas()}</select>
+          <span class="hint hint-linea" aria-hidden="true"></span>
         </div>
       </div>
 
-      <div class="grid-2" id="campos-epsg" hidden>
+      <div class="grid-2 inactivo" id="campos-epsg">
         <div class="field">
           <label for="f-epsg-origen">EPSG de entrada</label>
           <input type="text" id="f-epsg-origen" inputmode="numeric" autocomplete="off" list="lista-epsg">
-          <span class="hint" id="nombre-epsg-origen"></span>
+          <span class="hint hint-linea" id="nombre-epsg-origen"></span>
         </div>
         <div class="field">
           <label for="f-epsg-destino">EPSG de salida</label>
           <input type="text" id="f-epsg-destino" inputmode="numeric" autocomplete="off" list="lista-epsg">
-          <span class="hint" id="nombre-epsg-destino"></span>
+          <span class="hint hint-linea" id="nombre-epsg-destino"></span>
         </div>
         <datalist id="lista-epsg"></datalist>
+      </div>
       </div>
 
       <label class="checkbox-row" style="margin-bottom: var(--space-4);">
@@ -73,7 +77,7 @@ export function render(container) {
 
       <div class="btn-row">
         <button type="submit" class="btn btn-primary">Convertir</button>
-        <button type="button" class="btn btn-toggle" id="btn-lotes" aria-pressed="false">Convertir por lotes</button>
+        <button type="button" class="btn btn-toggle btn-dos-textos" id="btn-lotes" data-lotes="false"><span class="activo">Convertir por lotes</span><span>Convertir un solo punto</span></button>
       </div>
     </form>
 
@@ -114,7 +118,7 @@ export function render(container) {
   let proj4 = null;
 
   const modoEpsg = () => chkTodos.checked;
-  const modoLote = () => btnLotes.getAttribute("aria-pressed") === "true";
+  const modoLote = () => btnLotes.dataset.lotes === "true";
 
   /** Sistema elegido (entrada o salida) en el modo actual: {etiqueta, esGeo, unidad, epsg, bbox} o null si no es valido. */
   function sistema(lado) {
@@ -132,6 +136,7 @@ export function render(container) {
     const describir = (campo, hint) => {
       const texto = campo.value.trim();
       hint.classList.remove("hint-error");
+      hint.removeAttribute("title");
       if (!texto || !catalogo) {
         hint.textContent = "";
         return;
@@ -139,10 +144,11 @@ export function render(container) {
       const codigo = parseCodigoEpsg(texto);
       const s = codigo ? infoSistema(codigo, catalogo) : null;
       if (!s) {
-        hint.textContent = codigo ? `El código ${codigo} no está entre los sistemas incluidos.` : "Escriba solo el número del código EPSG (por ejemplo 3116).";
+        hint.textContent = codigo ? `El código ${codigo} no está incluido.` : "Escriba solo el número (por ejemplo 3116).";
         hint.classList.add("hint-error");
       } else {
         hint.textContent = `${s.nombre} · ${s.unidad}`;
+        hint.title = hint.textContent; // en pantallas angostas el nombre se recorta: el texto completo queda como sugerencia
       }
     };
     if (modoEpsg()) {
@@ -158,13 +164,16 @@ export function render(container) {
 
   /** Muestra u oculta cada bloque segun los dos modos; los campos ocultos dejan de ser obligatorios. */
   function aplicarModos() {
-    camposLista.hidden = modoEpsg();
-    camposEpsg.hidden = !modoEpsg();
+    // Las dos parejas de campos ocupan el mismo lugar (.campos-sistemas): la inactiva solo se oculta, asi el formulario mide siempre lo mismo
+    camposLista.classList.toggle("inactivo", modoEpsg());
+    camposEpsg.classList.toggle("inactivo", !modoEpsg());
     camposPunto.hidden = modoLote();
     campoLote.hidden = !modoLote();
     fX.required = fY.required = !modoLote();
     fLote.required = modoLote();
-    btnLotes.setAttribute("aria-pressed", String(modoLote()));
+    const [textoLotes, textoUno] = btnLotes.children; // los dos textos ocupan el mismo lugar: el boton mide siempre lo mismo
+    textoLotes.classList.toggle("activo", !modoLote());
+    textoUno.classList.toggle("activo", modoLote());
     actualizar();
   }
 
@@ -191,7 +200,7 @@ export function render(container) {
     aplicarModos();
   });
   btnLotes.addEventListener("click", () => {
-    btnLotes.setAttribute("aria-pressed", String(!modoLote()));
+    btnLotes.dataset.lotes = String(!modoLote());
     aplicarModos();
   });
   selOrigen.addEventListener("change", actualizar);

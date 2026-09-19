@@ -232,6 +232,13 @@ button { font-family: inherit; }
 .field label { font-size: 0.82rem; font-weight: 600; color: var(--text-muted); }
 .field .hint { font-size: 0.78rem; color: var(--text-faint); }
 .field .hint.hint-error { color: var(--danger); }
+/* Dos bloques alternos de campos en el mismo lugar (p. ej. listas de sistemas / campos EPSG): el alto es el del mayor, nunca se corre nada */
+.campos-sistemas { display: grid; }
+.campos-sistemas > * { grid-area: 1 / 1; }
+.campos-sistemas > .inactivo { visibility: hidden; }
+.campos-sistemas .field { min-width: 0; } /* deja que el nombre largo se recorte con «…» en vez de ensanchar la columna */
+/* Linea de nombre bajo un campo que se reserva SIEMPRE (una sola linea, se recorta con «…»): asi mostrarla u ocultarla no mueve el resto del formulario */
+.field .hint.hint-linea { display: block; min-height: 1.35em; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 input[type="text"], input[type="number"], input[type="search"], input[type="email"], input[type="password"], select, textarea {
   font: inherit;
   font-size: 0.95rem;
@@ -346,7 +353,11 @@ input:disabled, select:disabled { opacity: 0.55; }
 .btn-ghost { background: transparent; border-color: transparent; }
 .btn-ghost:hover { background: var(--bg-sunken); }
 .btn-row { display: flex; gap: var(--space-3); flex-wrap: wrap; margin-top: var(--space-4); }
-.btn.btn-toggle[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); } /* boton que se enciende y se apaga (p. ej. Convertir por lotes) */
+.btn.btn-toggle[data-lotes="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); } /* Convertir por lotes: encendido */
+/* Boton con dos textos que se alternan: ambos ocupan el mismo lugar (el oculto sigue midiendo), asi el boton no cambia de ancho */
+.btn.btn-dos-textos { display: inline-grid; justify-items: center; }
+.btn-dos-textos > span { grid-area: 1 / 1; visibility: hidden; }
+.btn-dos-textos > span.activo { visibility: visible; }
 .btn[disabled] { opacity: 0.5; cursor: not-allowed; }
 
 /* ---------- tabs ---------- */
