@@ -17,7 +17,6 @@ export function render(container) {
   container.innerHTML = `
     <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/varios">Varios</a> <span>/</span> <span>Conversión de coordenadas</span></div>
     <h1 class="page-title">Conversión de coordenadas</h1>
-    <p class="page-subtitle">WGS84 / MAGNA-SIRGAS ↔ UTM, mediante proyección Transversa de Mercator (series de Kruger).</p>
 
     <form class="card" id="form-coordenadas" novalidate>
       <div class="grid-2">

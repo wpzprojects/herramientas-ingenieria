@@ -24,7 +24,6 @@ export async function render(container) {
   container.innerHTML = `
     <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/calculos">Cálculos</a> <span>/</span> <span>Pérdidas</span></div>
     <h1 class="page-title">Pérdidas de potencia</h1>
-    <p class="page-subtitle">Corriente, potencia y porcentaje de pérdidas de una línea trifásica, ajustado por factor de carga.</p>
 
     <form class="card" id="form-calc" novalidate>
       <div class="grid-2">

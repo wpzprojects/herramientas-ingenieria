@@ -46,7 +46,6 @@ export async function render(container) {
   container.innerHTML = `
     <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/calculos">Cálculos</a> <span>/</span> <span>Ampacidad subterránea</span></div>
     <h1 class="page-title">Ampacidad de cables subterráneos</h1>
-    <p class="page-subtitle">Corriente admisible en régimen permanente de un cable en banco de ductos, según IEC 60287-1-1.</p>
 
     <form class="card" id="form-calc" novalidate>
       <div class="grid-2">

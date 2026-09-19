@@ -10,7 +10,6 @@ const APP_VERSION = "1.0.0";
 export function render(container) {
   container.innerHTML = `
     <h1 class="page-title">Ayuda</h1>
-    <p class="page-subtitle">Cómo usar Herramientas de Ingeniería.</p>
 
     ${SECCIONES.map((key) => {
       const meta = sectionMeta[key];

@@ -24,7 +24,6 @@ export async function render(container) {
   container.innerHTML = `
     <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/ia">Funciones de IA</a> <span>/</span> <span>Configuración</span></div>
     <h1 class="page-title">Configuración de IA</h1>
-    <p class="page-subtitle">Conexión con Google Gemini, modelo y datos guardados en este navegador.</p>
 
     <div class="card">
       <h2 class="section-title" style="margin-top:0">Conexión con Gemini</h2>

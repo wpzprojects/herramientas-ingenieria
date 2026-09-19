@@ -28,7 +28,7 @@ export async function render(container, { id }) {
       <span>${row.resolucion}</span>
     </div>
     <h1 class="page-title">${row.resolucion}</h1>
-    <p class="page-subtitle page-subtitle--dato">${row.objeto}</p>
+    <p class="page-subtitle">${row.objeto}</p>
 
     <div class="detail-grid">
       <div class="detail-item">

@@ -72,7 +72,6 @@ export async function render(container) {
   container.innerHTML = `
     <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/ia">Funciones de IA</a> <span>/</span> <span>Corrector de redacción</span></div>
     <h1 class="page-title">Corrector de redacción</h1>
-    <p class="page-subtitle">Elige un agente, pega tu texto y recibe una versión corregida. Después puedes pedir ajustes.</p>
   `;
   if (!verificarAcceso(container, { reintentar: () => render(container) })) return;
 

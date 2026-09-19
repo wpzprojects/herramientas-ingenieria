@@ -12,8 +12,7 @@ export async function render(container, params) {
 
   container.append(
     el("nav", { class: "breadcrumb" }, [el("a", { href: "#/" }, "Inicio"), el("span", {}, "/"), el("span", {}, meta.title)]),
-    el("h1", { class: "page-title" }, meta.title),
-    el("p", { class: "page-subtitle" }, meta.subtitle)
+    el("h1", { class: "page-title" }, meta.title)
   );
 
   const grid = el("div", { class: "menu-grid menu-grid--row" });

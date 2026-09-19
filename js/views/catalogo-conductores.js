@@ -10,7 +10,6 @@ const CONFIG = {
   desnudos: {
     dataFile: "conductores-desnudos",
     titulo: "Conductores desnudos",
-    subtitulo: "ACSR, AAAC, ACAR, AAC, ACSS — conductores desnudos para lineas aereas.",
     filtros: [{ key: "tipo", label: "Tipo" }],
     busqueda: ["nombre_clave", "calibre_awg_kcmil"],
     columnas: [
@@ -25,7 +24,6 @@ const CONFIG = {
   semiaislados: {
     dataFile: "conductores-semiaislados",
     titulo: "Conductores semiaislados",
-    subtitulo: "Bicapa / Tricapa AAAC-ACSR para redes de distribucion.",
     filtros: [
       { key: "tension_operacion_kv", label: "Tensión" },
       { key: "capas", label: "Capas" },
@@ -44,7 +42,6 @@ const CONFIG = {
   xlpe: {
     dataFile: "conductores-xlpe",
     titulo: "Conductores XLPE (MT)",
-    subtitulo: "Cables aislados de media tensión.",
     filtros: [
       { key: "nivel_tension_kv", label: "Tensión" },
       { key: "material_conductor", label: "Material" },
@@ -110,8 +107,7 @@ export async function render(container, params) {
       el("span", {}, "/"),
       el("span", {}, cfg.titulo),
     ]),
-    el("h1", { class: "page-title" }, cfg.titulo),
-    el("p", { class: "page-subtitle" }, cfg.subtitulo)
+    el("h1", { class: "page-title" }, cfg.titulo)
   );
 
   const toolbar = el("div", { class: "toolbar" });

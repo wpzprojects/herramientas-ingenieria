@@ -10,7 +10,6 @@ export function render(container) {
   container.innerHTML = `
     <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <span>${meta.title}</span></div>
     <h1 class="page-title">${meta.title}</h1>
-    <p class="page-subtitle">${meta.subtitle}</p>
     <div class="menu-grid menu-grid--row">
       ${items
         .map(

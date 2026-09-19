@@ -25,7 +25,6 @@ export async function render(container) {
   container.innerHTML = `
     <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/calculos">Cálculos</a> <span>/</span> <span>Regulación</span></div>
     <h1 class="page-title">Regulación (caída de tensión)</h1>
-    <p class="page-subtitle">Caída de tensión y reactancia inductiva de un conductor en una línea trifásica de distribución.</p>
 
     <form class="card" id="form-calc" novalidate>
       <div class="grid-2">

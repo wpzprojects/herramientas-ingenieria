@@ -36,7 +36,6 @@ export async function render(container) {
   container.innerHTML = `
     <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/ia">Funciones de IA</a> <span>/</span> <span>Análisis con calculadoras</span></div>
     <h1 class="page-title">Análisis con calculadoras</h1>
-    <p class="page-subtitle">Describe un caso y pide comparar escenarios. La IA usa las calculadoras de la app (los números salen de ellas) y te entrega un reporte.</p>
   `;
   if (!verificarAcceso(container, { reintentar: () => render(container) })) return;
 

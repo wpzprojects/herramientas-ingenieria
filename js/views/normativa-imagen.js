@@ -6,7 +6,6 @@
 const TEMAS = {
   "distancias-seguridad": {
     titulo: "Distancias de seguridad",
-    subtitulo: "Tablas RETIE de distancias mínimas de seguridad (numerales 3.10.x y 3.22.1.c).",
     selector: true,
     opciones: [
       { label: "Tabla 3.10.1.a", img: "assets/normativa/tabla-3-10-1-a.jpg" },
@@ -21,7 +20,6 @@ const TEMAS = {
   },
   "zona-servidumbre": {
     titulo: "Zona de servidumbre",
-    subtitulo: "Ancho de zona de servidumbre para líneas de transmisión (RETIE 3.19.1.a).",
     selector: false,
     opciones: [
       { label: "Tabla 3.19.1.a", img: "assets/normativa/tabla-3-19-1-a.jpg" },
@@ -30,7 +28,6 @@ const TEMAS = {
   },
   "enterramiento-ductos": {
     titulo: "Enterramiento de ductos",
-    subtitulo: "Profundidad de enterramiento de ductos según RETIE y NTC 2050.",
     selector: true,
     opciones: [
       { label: "RETIE 2024, numeral 3.20.6.3.g — Criterio de enterramiento de ductos", img: "assets/normativa/numeral-3-20-6-3-g.jpg" },
@@ -40,7 +37,6 @@ const TEMAS = {
   },
   "corriente-ntc": {
     titulo: "Corriente de conductores NTC 2050",
-    subtitulo: "Tablas 310-77 a 310-80 de capacidad de corriente de conductores (NTC 2050 / NEC).",
     selector: false,
     opciones: [
       { label: "Capacidad de corriente de conductores", img: "assets/normativa/capacidad-corriente-conductores-ntc.jpg" },
@@ -66,7 +62,6 @@ export async function render(container, params) {
   container.innerHTML = `
     <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/normatividad">Normatividad</a> <span>/</span> <span>${tema.titulo}</span></div>
     <h1 class="page-title">${tema.titulo}</h1>
-    <p class="page-subtitle">${tema.subtitulo}</p>
     <div id="imagenes-wrap"></div>
   `;
 
