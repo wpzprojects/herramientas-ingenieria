@@ -10,6 +10,7 @@ import { generar, ErrorGemini } from "../ai/gemini.js";
 import { verificarAcceso } from "../ai/ui-clave.js";
 import * as historial from "../ai/historial.js";
 import { agregarMicrofono } from "../ai/voz.js";
+import { icon } from "../icons.js";
 import {
   TONOS,
   cargarAgentes,
@@ -103,16 +104,14 @@ export async function render(container) {
     <div id="panel-historial" class="card" hidden></div>
     <div id="panel-gestor" class="card" hidden></div>
 
-    <div class="card ia-conv" id="conv">
+    <div class="ia-conv" id="conv">
       <div class="ia-chat ia-chat--hilo" id="chat" aria-live="polite" hidden></div>
       <div class="ia-caja">
-        <textarea id="f-texto" rows="3" placeholder="${PH_TEXTO}"></textarea>
-        <div class="ia-caja-barra">
-          <button type="button" class="btn btn-ghost" id="btn-nueva">Nueva conversación</button>
-          <span class="hint" id="cuenta-caracteres"></span>
-          <button type="button" class="btn btn-primary" id="btn-enviar" title="Ctrl + Enter">Enviar</button>
-        </div>
+        <textarea id="f-texto" rows="1" placeholder="${PH_TEXTO}"></textarea>
+        <button type="button" class="ia-accion" id="btn-nueva" title="Empezar una conversación nueva">${icon("plus")}<span>Nueva conversación</span></button>
+        <button type="button" class="ia-accion ia-accion--enviar" id="btn-enviar" title="Enviar (Ctrl + Enter)">${icon("send")}<span>Enviar</span></button>
       </div>
+      <p class="ia-caja-pie hint" id="cuenta-caracteres"></p>
     </div>
   `
   );
@@ -120,7 +119,7 @@ export async function render(container) {
   const $ = (s) => container.querySelector(s);
   const chat = $("#chat");
   const fTexto = $("#f-texto");
-  const mic = agregarMicrofono(fTexto, $("#btn-enviar"));
+  const mic = agregarMicrofono(fTexto, $("#btn-enviar"), { clase: "ia-accion" });
 
   // Estilo chat: una sola caja abajo. Sin conversacion recibe el texto a corregir; con una en curso, los ajustes.
   function mostrarHilo(v) {

@@ -446,15 +446,42 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .ia-msg--model { align-self: flex-start; background: var(--bg-sunken); }
 .ia-msg--plano { white-space: pre-wrap; }
 .ia-msg--error { align-self: flex-start; background: var(--danger-soft); border-color: var(--danger); color: var(--danger); }
-/* Corrector de redaccion, estilo chat: un solo contenedor con el hilo (que se desplaza por dentro) y la caja de texto abajo, quieta. */
-.ia-conv { display: flex; flex-direction: column; }
-.ia-chat--hilo { position: relative; height: clamp(260px, calc(100vh - 540px), 640px); max-height: none; padding: var(--space-1) var(--space-2) var(--space-1) var(--space-1); gap: var(--space-5); margin-bottom: var(--space-4); }
+/* Corrector de redaccion, estilo chat: hilo sobre el fondo de la pagina (scroll interno, barra discreta) y una caja delgada abajo que crece al escribir. */
+.ia-conv { display: flex; flex-direction: column; margin-top: var(--space-4); }
+.ia-chat--hilo {
+  position: relative; height: clamp(260px, calc(100vh - 400px), 720px); max-height: none;
+  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-1); gap: var(--space-5); margin-bottom: var(--space-4);
+  scrollbar-width: thin; scrollbar-color: transparent transparent;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
+}
+.ia-chat--hilo:hover { scrollbar-color: var(--border-strong) transparent; }
+.ia-chat--hilo::-webkit-scrollbar { width: 8px; }
+.ia-chat--hilo::-webkit-scrollbar-thumb { background: transparent; border-radius: 4px; }
+.ia-chat--hilo:hover::-webkit-scrollbar-thumb { background: var(--border-strong); }
 .ia-chat--hilo .ia-msg--model { background: transparent; border-color: transparent; padding-left: 0; padding-right: 0; max-width: 100%; }
-.ia-caja { border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--bg-sunken); padding: var(--space-3); }
+.ia-caja {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 2px;
+  border: 1px solid var(--border-strong); border-radius: 24px; background: var(--bg-elevated); padding: 6px 10px 6px 18px;
+}
 .ia-caja:focus-within { border-color: var(--accent); }
-.ia-caja textarea, .ia-caja textarea:focus { width: 100%; min-height: 72px; resize: none; border: none; outline: none; box-shadow: none; background: transparent; padding: var(--space-1); }
-.ia-caja-barra { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-top: var(--space-2); }
-.ia-caja-barra .hint { flex: 1 1 auto; margin: 0; text-align: right; }
+.ia-caja textarea, .ia-caja textarea:focus {
+  flex: 1 1 240px; min-width: 0; min-height: 40px; resize: none; border: none; outline: none; box-shadow: none;
+  background: transparent; padding: 10px 4px; line-height: 1.4;
+}
+.ia-caja-pie { margin: var(--space-1) var(--space-3) 0; text-align: right; }
+.ia-caja-pie:empty { display: none; }
+/* Botones de accion sin recuadro: icono + palabra, se resaltan solo al pasar el cursor */
+.ia-accion {
+  display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border: none; border-radius: 999px;
+  background: transparent; color: var(--text-muted); font: inherit; font-size: 0.86rem; font-weight: 600; cursor: pointer;
+}
+.ia-accion .icon { width: 18px; height: 18px; }
+.ia-accion:hover, .ia-accion:focus-visible { background: var(--accent-soft); color: var(--accent-strong); }
+.ia-accion--enviar { color: var(--accent); }
+.ia-accion[disabled] { opacity: 0.5; cursor: not-allowed; background: transparent; }
+.ia-accion.ia-mic { min-width: 0; }
+.ia-accion.ia-mic[aria-pressed="true"] { background: var(--danger-soft); border: none; color: var(--danger); }
 .ia-msg-acciones { display: flex; gap: var(--space-2); margin-top: var(--space-2); }
 .ia-tools { display: flex; flex-wrap: wrap; gap: 6px; align-self: flex-start; }
 .ia-toolchip {

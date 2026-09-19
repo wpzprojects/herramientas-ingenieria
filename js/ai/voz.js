@@ -24,16 +24,16 @@ const ERRORES = {
 /**
  * Agrega un boton "Dictar" antes de `anterior` (normalmente el boton de enviar) que escribe en el campo
  * `objetivo` (un elemento, o una funcion que devuelve el elemento activo al empezar a dictar).
- * Clic para empezar, clic para terminar. Devuelve el boton (con `boton.detener()`), o null si el
+ * `clase` es la clase CSS base del boton ("btn" por defecto). Clic para empezar, clic para terminar. Devuelve el boton (con `boton.detener()`), o null si el
  * navegador no soporta voz.
  * Detiene el dictado solo al pulsar `anterior`, al teclear en el campo o al cambiar de pantalla.
  */
-export function agregarMicrofono(objetivo, anterior) {
+export function agregarMicrofono(objetivo, anterior, { clase = "btn" } = {}) {
   if (!Reconocimiento) return null;
 
   const boton = document.createElement("button");
   boton.type = "button";
-  boton.className = "btn ia-mic";
+  boton.className = `${clase} ia-mic`;
   boton.setAttribute("aria-pressed", "false");
   const pintar = (activo) => {
     boton.setAttribute("aria-pressed", String(activo));
