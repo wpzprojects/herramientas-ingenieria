@@ -52,6 +52,20 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   usuario el 2026-09-18). El arnés no puede iniciar sesión: los cambios en las reglas o el login
   se prueban a mano (y con el Simulador de reglas de la consola).
 
+## PENDIENTE (NO implementado): puerta de acceso general con solicitud de acceso
+
+- Análisis del 2026-09-18; el usuario decidió NO implementarlo todavía. **Todo el detalle está en
+  `docs/puerta-de-acceso-general.md`: léelo entero antes de retomarlo** (flujo, reglas de Firestore
+  en borrador, opciones de correo, diseño offline, riesgos, fases y preguntas abiertas).
+- Idea: al abrir la app se pide login con Google; si el correo está en `usuarios` entra (admin o
+  usuario); si no, "sin acceso" con botón **Solicitar acceso** que crea `solicitudes/{correo}` y el
+  admin aprueba/rechaza en Configuración avanzada. Reutiliza `js/auth/*` y las reglas actuales.
+- Advertencia clave: es un control de USO, no de confidencialidad (el sitio y sus archivos son
+  públicos en GitHub Pages). Proteger contenido de verdad exigiría Cloudflare Access u otro hosting.
+- Decisiones sin confirmar (preguntar al usuario antes de implementar): propósito, alcance (toda la
+  app vs solo módulos sensibles), vigencia del permiso offline (recomendado 14 días) y aviso por
+  correo (recomendado: sin correo al inicio).
+
 ## Convenciones de UI/CSS
 
 - Iconos (`js/icons.js`): SVG inline propios, sin CDN (requisito de offline). El estilo
