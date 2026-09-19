@@ -97,9 +97,12 @@ button { font-family: inherit; }
 
 /* Boton para contraer/expandir el menu (arriba de "Calculos"). Solo pantallas anchas. */
 /* Alineado a la izquierda con los iconos del menu (mismo relleno lateral que .nav-link) y compacto. */
+/* Medidas ajustadas (medidas en el navegador) para que el paso vertical de este icono al de "Calculos" (50px)
+   sea igual al de las demas filas .nav-link, y su eje horizontal coincida con el de los otros iconos
+   (-1px de relleno por el borde transparente de .icon-btn). */
 .sidebar-head { display: flex; justify-content: flex-start; margin-bottom: 2px; }
 .sidebar-collapse-btn {
-  width: auto; height: 32px; padding: 0 var(--space-3);
+  width: auto; height: 52px; padding: 0 calc(var(--space-3) - 1px);
   justify-content: flex-start;
   color: var(--text-muted);
 }
