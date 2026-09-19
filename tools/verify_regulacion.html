@@ -386,9 +386,9 @@ await seccion("vista: fórmulas con KaTeX", async () => {
 });
 
 // La pantalla se prueba tambien dentro de un iframe de ancho fijo: las media queries dependen del ancho de la ventana.
-const cargarMarco = (ancho) => new Promise((resolve) => {
+const cargarMarco = (ancho, _calcular = false, alto = 3400) => new Promise((resolve) => {
   const marco = document.createElement("iframe");
-  marco.style.cssText = `position:fixed;left:-99999px;top:0;width:${ancho}px;height:3400px;border:0`;
+  marco.style.cssText = `position:fixed;left:-99999px;top:0;width:${ancho}px;height:${alto}px;border:0`;
   const alRecibir = (e) => {
     if (e.source !== marco.contentWindow || e.data !== "listo") return;
     window.removeEventListener("message", alRecibir);
@@ -498,7 +498,7 @@ await seccion("vista: ayuda de los campos con botón de información", async () 
   b0.click();
   const abierto = {
     oculto: pop.hidden, exp: b0.getAttribute("aria-expanded"), texto: texto(pop), info: campo.querySelector("label").dataset.info,
-    pos: getComputedStyle(pop).position, z: getComputedStyle(pop).zIndex,
+    pos: getComputedStyle(pop).position, z: getComputedStyle(pop).zIndex, abajo: pop.classList.contains("info-popover--abajo"),
     rp: pop.getBoundingClientRect(), rc: campo.getBoundingClientRect(), rl: campo.querySelector("label").getBoundingClientRect(),
     card: card.getBoundingClientRect().height, campoH: campo.getBoundingClientRect().height,
     input: campo.querySelector("input").getBoundingClientRect().top - campo.getBoundingClientRect().top,
@@ -517,7 +517,7 @@ await seccion("vista: ayuda de los campos con botón de información", async () 
   ok(!abierto.oculto && abierto.exp === "true" && abierto.texto === abierto.info && abierto.texto.length > 10, `al pulsar el botón se abre el cuadro con el texto de ayuda: «${abierto.texto}»`);
   ok(abierto.pos === "absolute" && abierto.z === "30", "el cuadro flota sobre el formulario (posición absoluta, por encima de los demás campos)");
   ok(Math.abs(abierto.card - antes.card) < 0.5 && Math.abs(abierto.campoH - antes.campo) < 0.5 && Math.abs(abierto.input - antes.input) < 0.5, "abrir el cuadro no mueve nada del formulario (ni la tarjeta, ni el campo, ni su casilla)");
-  ok(abierto.rp.top >= abierto.rl.bottom - 4 && abierto.rp.left >= abierto.rc.left - 0.5 && abierto.rp.right <= abierto.rc.right + 0.5, "el cuadro aparece bajo el nombre del campo, dentro del ancho del campo");
+  ok(!abierto.abajo && abierto.rp.bottom <= abierto.rl.top + 0.5 && abierto.rp.left >= abierto.rc.left - 0.5 && abierto.rp.right <= abierto.rc.right + 0.5, "el cuadro aparece ARRIBA del nombre del campo (no tapa la casilla que se va a llenar), dentro del ancho del campo");
   ok(cerrado, "un segundo clic sobre el botón lo cierra");
   ok(otro.primeroCerrado && otro.otroAbierto && otro.unSoloAbierto, "al abrir otro botón se cierra el anterior (solo uno abierto a la vez)");
   ok(fuera, "tocar fuera del cuadro lo cierra");
@@ -535,6 +535,29 @@ await seccion("vista: ayuda de los campos con botón de información", async () 
   }
   marco.remove();
   ok(dentro.length >= 2 && dentro.every(Boolean), `en pantalla angosta (600 px) los ${dentro.length} cuadros quedan dentro de la ventana`);
+
+  // arriba por defecto y volteo hacia abajo cuando arriba no cabe (iframe de poca altura para poder desplazarlo)
+  const alto = 500;
+  const marcoV = await cargarMarco(600, true, alto); // con resultados: la página es lo bastante alta para desplazarla
+  const w = marcoV.contentWindow;
+  const dv = marcoV.contentDocument;
+  const botonV = dv.querySelector(".tramo-block .info-btn");
+  const campoV = botonV.closest(".field");
+  const popV = dv.getElementById(botonV.getAttribute("aria-controls"));
+  const labelV = campoV.querySelector("label");
+  const yCampo = campoV.getBoundingClientRect().top + w.scrollY;
+  const colocar = (arribaDe) => { // desplaza para que el campo quede a `arribaDe` px del borde superior y abre el cuadro
+    w.scrollTo(0, yCampo - arribaDe);
+    botonV.click();
+    const r = { arriba: !popV.classList.contains("info-popover--abajo"), rp: popV.getBoundingClientRect(), rl: labelV.getBoundingClientRect(), campoTop: campoV.getBoundingClientRect().top };
+    botonV.click();
+    return r;
+  };
+  const conEspacio = colocar(300);
+  const sinEspacio = colocar(20);
+  marcoV.remove();
+  ok(conEspacio.arriba && conEspacio.rp.bottom <= conEspacio.rl.top + 0.5 && conEspacio.rp.top >= 56, `con espacio arriba (campo a ${Math.round(conEspacio.campoTop)} px del borde) el cuadro se abre ARRIBA de la etiqueta y bajo la barra superior`);
+  ok(!sinEspacio.arriba && sinEspacio.rp.top >= sinEspacio.rl.bottom - 1 && sinEspacio.rp.top >= 0 && sinEspacio.rp.bottom <= alto, `sin espacio arriba (campo a ${Math.round(sinEspacio.campoTop)} px del borde) el cuadro se voltea y se abre ABAJO, dentro de la ventana`);
 });
 
 await seccion("service worker y otros archivos", async () => {

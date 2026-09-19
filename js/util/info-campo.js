@@ -4,7 +4,8 @@
 //     <label for="f-n" data-info="Resistencia efectiva: R conductor / # conductores por fase.">Conductores por fase</label>
 // y despues de pintar la pantalla se llama activarInfos(contenedor). Cada etiqueta con data-info recibe un boton «i» (icono
 // info-circle) y, justo despues de la etiqueta, un cuadro pequeño (popover) con el texto. El cuadro no ocupa espacio en el
-// formulario: se posiciona sobre el campo, se abre al tocar/pulsar el boton y se cierra al tocar fuera, con Esc o al abrir otro.
+// formulario: flota ARRIBA de la etiqueta (asi no tapa el campo que se va a llenar) y, si arriba no cabe (borde de la ventana o
+// barra superior fija), se voltea hacia abajo. Se abre al tocar/pulsar el boton y se cierra al tocar fuera, con Esc o al abrir otro.
 // El boton es un <button> real (se llega con Tab) con aria-expanded/aria-controls. No usa `title`: no funciona en pantallas tactiles.
 
 import { icon } from "../icons.js";
@@ -23,10 +24,23 @@ function cerrarTodos(excepto = null) {
   for (const p of document.querySelectorAll(".info-popover:not([hidden])")) if (p !== excepto) cerrar(p);
 }
 
+/** Arriba por defecto; si el cuadro no cabe por encima (queda bajo la barra superior fija o fuera de la ventana) se pone abajo. */
+function ubicar(popover) {
+  popover.classList.remove("info-popover--abajo");
+  const barra = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--topbar-h")) || 0;
+  if (popover.getBoundingClientRect().top < barra + 8) popover.classList.add("info-popover--abajo");
+}
+
 // Los eventos van una sola vez en `document` (delegacion): sirven para todas las pantallas y para tarjetas creadas despues.
 function instalarEventos() {
   if (eventosInstalados) return;
   eventosInstalados = true;
+  const reubicar = () => {
+    const abierto = document.querySelector(".info-popover:not([hidden])");
+    if (abierto) ubicar(abierto);
+  };
+  window.addEventListener("scroll", reubicar, { passive: true, capture: true });
+  window.addEventListener("resize", reubicar);
   document.addEventListener("click", (e) => {
     const boton = e.target.closest(".info-btn");
     if (boton) {
@@ -36,6 +50,7 @@ function instalarEventos() {
       cerrarTodos(abrir ? popover : null);
       popover.hidden = !abrir;
       boton.setAttribute("aria-expanded", String(abrir));
+      if (abrir) ubicar(popover); // hay que medirlo ya visible
       return;
     }
     if (!e.target.closest(".info-popover")) cerrarTodos();

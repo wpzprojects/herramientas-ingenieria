@@ -292,12 +292,13 @@ input:disabled, select:disabled { opacity: 0.55; }
 .info-btn .icon { width: 16px; height: 16px; }
 .info-btn:hover, .info-btn[aria-expanded="true"] { color: var(--accent); }
 .info-popover {
-  position: absolute; z-index: 30; left: 0; top: 22px; /* justo bajo la etiqueta (17px + 4px de separacion) */
+  position: absolute; z-index: 30; left: 0; bottom: calc(100% + 4px); /* arriba de la etiqueta: no tapa el campo que se va a llenar */
   width: max-content; max-width: 100%; box-sizing: border-box;
   padding: var(--space-2) var(--space-3); border-radius: var(--radius-md);
   background: var(--bg-elevated); color: var(--text); border: 1px solid var(--border-strong); box-shadow: var(--shadow-md);
   font-size: 0.8rem; font-weight: 400; line-height: 1.45; text-transform: none; letter-spacing: normal;
 }
+.info-popover--abajo { bottom: auto; top: 22px; } /* si arriba no cabe: justo bajo la etiqueta (17px + 4px de separacion) */
 .tabla-resultado th.num, .tabla-resultado td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .tabla-resultado tr.match-row { background: var(--fila-sugerida); } /* verde suave en el tema claro; azul del tema (mas claro que el panel) en el oscuro */
 .tabla-resultado tr.current-row td, .tabla-resultado tr.total-row td { font-weight: 700; }
