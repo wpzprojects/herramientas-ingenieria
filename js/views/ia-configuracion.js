@@ -80,11 +80,6 @@ export async function render(container) {
     </div>
 
     <div class="card">
-      <h2 class="section-title" style="margin-top:0">Privacidad</h2>
-      ${htmlAvisoPrivacidad()}
-    </div>
-
-    <div class="card">
       <h2 class="section-title" style="margin-top:0">Datos en este navegador</h2>
       <p class="text-muted" id="info-datos"></p>
       <div class="btn-row" style="margin-top: 0;">
@@ -92,6 +87,11 @@ export async function render(container) {
         <button type="button" class="btn" id="btn-restaurar-agentes">Restaurar agentes predeterminados</button>
       </div>
       <div id="msg-datos" style="margin-top: var(--space-4);"></div>
+    </div>
+
+    <div class="card">
+      <h2 class="section-title" style="margin-top:0">Privacidad</h2>
+      ${htmlAvisoPrivacidad()}
     </div>
   `;
 
