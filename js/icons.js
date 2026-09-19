@@ -88,9 +88,12 @@ const shapes = {
   // Ampacidad aerea (torre de celosia: patas, cruceta y diagonales) y subterranea (banco de ductos en corte: superficie y 4 ductos).
   // Dibujados a mano en el estilo de Tabler (trazo 2); elegidos por el usuario entre varias opciones (2026-09-19).
   powerTower:
-    '<g stroke-width="2"><path d="M8 22 12 3l4 19"/><path d="M5 8h14"/><path d="M10.1 12l5.1 6"/><path d="M13.9 12l-5.1 6"/></g>',
+    '<g stroke-width="2"><path d="M6 22 12 2l6 20"/><path d="M3 7h18"/><path d="M9.3 11l7.5 7"/><path d="M14.7 11l-7.5 7"/></g>',
   underground:
     '<g stroke-width="2"><path d="M3 5h18"/><path d="M6.5 12.5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M13.5 12.5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M6.5 19.5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M13.5 19.5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/></g>',
+  // Ocupacion de ductos: el ducto (circulo grande) con una terna de conductores (3 circulos macizos) en el fondo. Esquema del usuario.
+  ductoTerna:
+    '<g stroke-width="2"><circle cx="12" cy="12" r="9.5"/><g fill="currentColor" stroke="none"><circle cx="9" cy="17" r="2.4"/><circle cx="15" cy="17" r="2.4"/><circle cx="12" cy="11.6" r="2.4"/></g></g>',
 };
 
 export function icon(name, cls = "") {
