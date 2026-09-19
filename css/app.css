@@ -95,20 +95,26 @@ button { font-family: inherit; }
 .nav-link .nav-icon { width: 20px; text-align: center; flex: 0 0 auto; }
 .nav-link .nav-label { white-space: nowrap; }
 
-/* Boton para contraer/expandir el menu (arriba de "Calculos"). Solo pantallas anchas. */
-/* Alineado a la izquierda con los iconos del menu (mismo relleno lateral que .nav-link) y compacto. */
-/* Medidas ajustadas (medidas en el navegador) para que el paso vertical de este icono al de "Calculos" (50px)
-   sea igual al de las demas filas .nav-link, y su eje horizontal coincida con el de los otros iconos
-   (-1px de relleno por el borde transparente de .icon-btn). */
-.sidebar-head { display: flex; justify-content: flex-start; margin-bottom: 2px; }
+/* Boton para contraer/expandir el menu: va al fondo de la barra lateral (solo pantallas anchas).
+   Alineado a la izquierda con los iconos del menu: mismo relleno lateral que .nav-link, menos 1px por
+   el borde transparente de .icon-btn (medido en el navegador). */
+.sidebar-head { display: flex; justify-content: flex-start; flex: 0 0 auto; margin-top: auto; padding-top: var(--space-2); }
 .sidebar-collapse-btn {
-  width: auto; height: 52px; padding: 0 calc(var(--space-3) - 1px);
+  width: auto; height: 48px; padding: 0 calc(var(--space-3) - 1px);
   justify-content: flex-start;
   color: var(--text-muted);
 }
 .sidebar-collapse-btn:hover { color: var(--text); }
 @media (min-width: 881px) {
-  .sidebar { transition: width .18s ease; overflow-x: hidden; }
+  /* La barra ocupa el alto de la ventana y queda fija al desplazar el contenido: asi el boton siempre
+     queda en el borde inferior visible, sin generar desplazamiento vertical propio. */
+  .sidebar {
+    position: sticky; top: var(--topbar-h); align-self: flex-start;
+    height: calc(100vh - var(--topbar-h));
+    display: flex; flex-direction: column;
+    transition: width .18s ease; overflow-x: hidden;
+  }
+  .sidebar .nav-list { flex: 0 0 auto; }
   /* contraido: barra delgada solo con el icono de cada categoria */
   html.sb-collapsed .sidebar { width: 64px; padding-left: var(--space-2); padding-right: var(--space-2); }
   html.sb-collapsed .sidebar-head { justify-content: center; }
