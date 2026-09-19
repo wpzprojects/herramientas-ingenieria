@@ -72,8 +72,8 @@ export function render(container) {
       </div>
 
       <div class="btn-row">
-        <button type="button" class="btn btn-toggle btn-dos-textos" id="btn-lotes" data-lotes="false"><span class="activo">Convertir por lotes</span><span>Convertir un punto</span></button>
-        <button type="submit" class="btn btn-primary" style="margin-left: auto;">Convertir</button>
+        <button type="submit" class="btn btn-primary">Convertir</button>
+        <button type="button" class="btn btn-toggle btn-dos-textos" style="margin-left: auto;" id="btn-lotes" data-lotes="false"><span class="activo">Convertir por lotes</span><span>Convertir un punto</span></button>
       </div>
     </form>
 

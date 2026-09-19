@@ -264,9 +264,9 @@ await seccion("pantalla: un solo formulario (sin botón ni tarjeta aparte)", asy
   const chk = $("#chk-todos");
   ok(!!chk && !chk.checked && texto(chk.closest("label")) === "Habilitar todos los sistemas de coordenadas", "casilla «Habilitar todos los sistemas de coordenadas», apagada por defecto");
   ok(visible("#campos-lista") && !visible("#campos-epsg") && visible("#campos-punto") && !visible("#campo-lote"), "por defecto: las dos listas de siempre y longitud / latitud");
-  const conv = $$(".btn-row .btn")[1].getBoundingClientRect();
+  const conv = $$(".btn-row .btn")[0].getBoundingClientRect();
   const lote = $("#btn-lotes").getBoundingClientRect();
-  ok(texto($$(".btn-row .btn")[1]) === "Convertir" && texto($("#btn-lotes .activo")) === "Convertir por lotes" && Math.abs(conv.top - lote.top) < 2 && conv.left > lote.right && Math.abs(conv.right - ($("#form-coordenadas").getBoundingClientRect().right - 17)) < 1 && Math.abs(lote.left - ($("#form-coordenadas").getBoundingClientRect().left + 17)) < 1, "«Convertir por lotes» a la izquierda y «Convertir» justificado a la derecha, cada uno en su borde");
+  ok(texto($$(".btn-row .btn")[0]) === "Convertir" && texto($("#btn-lotes .activo")) === "Convertir por lotes" && Math.abs(conv.top - lote.top) < 2 && lote.left > conv.right && Math.abs(conv.left - ($("#form-coordenadas").getBoundingClientRect().left + 17)) < 1 && Math.abs(lote.right - ($("#form-coordenadas").getBoundingClientRect().right - 17)) < 1, "«Convertir» (azul) a la izquierda y «Convertir por lotes» justificado a la derecha, cada uno en su borde");
   ok($("#btn-lotes").dataset.lotes === "false" && $("#btn-lotes").type === "button", "«Convertir por lotes» empieza apagado y no envía el formulario");
 });
 
