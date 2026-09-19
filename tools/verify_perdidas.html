@@ -417,6 +417,21 @@ await seccion("vista: fórmulas con KaTeX", async () => {
   ok(cc.fontFamily !== cr.fontFamily && !cc.fontFamily.toLowerCase().includes("mono"), "la subtarjeta usa la letra normal (no la monoespaciada del reporte) para que KaTeX se vea bien");
   ok(dentro && ecuacionesEnCaja, "las 10 ecuaciones, los títulos y las notas quedan dentro de la subtarjeta");
   ok(primerTitulo.borderTopWidth === "0px", "el primer título no repite una línea sobre el borde de la subtarjeta");
+  // Descripcion de las etiquetas: subtitulo + lista con viñetas (ya no una linea corrida)
+  const subtitulos = $$("#formulas-katex > .result-subhead").map(texto);
+  const items = $$("#formulas-katex ul.formula-etiquetas > li");
+  const listaCS = getComputedStyle($("#formulas-katex ul.formula-etiquetas"));
+  ok(subtitulos.includes("Descripción de las etiquetas") && subtitulos.length === 4, `subtítulos de la subtarjeta: ${subtitulos.join(" | ")}`);
+  ok(items.length === 15 && listaCS.listStyleType === "disc", `la descripción es una lista con viñetas de ${items.length} etiquetas (${listaCS.listStyleType})`);
+  ok(items.every((li) => li.querySelector(".formula-simbolo .katex") && texto(li.lastElementChild).length > 3), "cada viñeta lleva el símbolo dibujado con KaTeX y su descripción");
+  ok(!texto($("#formulas-katex")).includes("P: potencia activa [MW] ·"), "ya no queda la línea corrida con puntos medios");
+  const textoItems = items.map((li) => texto(li.lastElementChild));
+  ok(["Potencia activa [MW]", "Potencia aparente [MVA]", "Tensión de línea [kV]", "Factor de pérdidas", "Resistencia efectiva del tramo [Ω/km]", "Pérdidas de potencia [MW]"].every((t) => textoItems.includes(t)), "las descripciones incluyen las magnitudes con sus unidades");
+  const ul = $("#formulas-katex ul.formula-etiquetas").getBoundingClientRect();
+  const rcaja = $("#formulas-katex").getBoundingClientRect();
+  ok(ul.left >= rcaja.left && ul.right <= rcaja.right + 0.5, "la lista queda dentro de la subtarjeta");
+  const izq = items.map((li) => li.lastElementChild.getBoundingClientRect().left);
+  ok(Math.max(...izq) - Math.min(...izq) < 1, `los textos de todas las viñetas quedan alineados (dispersión ${(Math.max(...izq) - Math.min(...izq)).toFixed(1)} px)`);
   ok($$("#formulas-katex .katex-display").length === 10, "las ecuaciones se muestran en modo display");
   ok(texto($("#formulas-katex")).includes("Dato de partida") && texto($("#formulas-katex")).includes("Buller-Woodrow"), "incluye los títulos y la nota de fidelidad");
   ok(!!document.querySelector('link[href$="vendor/katex/katex.min.css"]'), "se cargó la hoja de estilos local de KaTeX");

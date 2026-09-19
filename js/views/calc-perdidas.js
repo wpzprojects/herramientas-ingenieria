@@ -42,10 +42,24 @@ const FORMULAS_TEX = [
   },
 ];
 
-const FORMULAS_VARIABLES =
-  "P: potencia activa [MW] · S: potencia aparente [MVA] · Q: potencia reactiva [MVAR] · V: tensión de línea [kV] · I: corriente [A] · " +
-  "cos φ: factor de potencia · Fc: factor de carga · Fp: factor de pérdidas · R75: resistencia AC de un conductor a 75 °C [Ω/km] · " +
-  "N: conductores por fase · Ref: resistencia efectiva del tramo · L: longitud del tramo [km]";
+// Descripcion de las etiquetas (simbolos) de las ecuaciones, en el orden en que aparecen; el simbolo se dibuja con KaTeX igual que en ellas.
+const FORMULAS_ETIQUETAS = [
+  { tex: "P", texto: "Potencia activa [MW]" },
+  { tex: "S", texto: "Potencia aparente [MVA]" },
+  { tex: "Q", texto: "Potencia reactiva [MVAR]" },
+  { tex: "V", texto: "Tensión de línea [kV]" },
+  { tex: "I", texto: "Corriente [A]" },
+  { tex: String.raw`\cos\varphi`, texto: "Factor de potencia" },
+  { tex: "F_c", texto: "Factor de carga" },
+  { tex: "F_p", texto: "Factor de pérdidas" },
+  { tex: "R_{75}", texto: "Resistencia AC de un conductor a 75 °C [Ω/km]" },
+  { tex: "N", texto: "Conductores por fase" },
+  { tex: "R_{ef}", texto: "Resistencia efectiva del tramo [Ω/km]" },
+  { tex: "L_i", texto: "Longitud del tramo i [km]" },
+  { tex: String.raw`\%P_i`, texto: "Porcentaje de pérdidas del tramo i" },
+  { tex: String.raw`\%P_{total}`, texto: "Porcentaje de pérdidas total del circuito" },
+  { tex: "P_{perd}", texto: "Pérdidas de potencia [MW]" },
+];
 
 const FORMULAS_NOTA = `El circuito puede tener varios tramos (cada uno con su conductor y longitud): el % de pérdidas total es la suma del % de cada tramo, válido cuando la corriente es la misma en todo el circuito (sin cargas intermedias).
 
@@ -497,7 +511,9 @@ export async function render(container) {
           FORMULAS_TEX.map(
             (g) => `<div class="result-subhead">${escapeHtml(g.titulo)}</div>` + g.ecuaciones.map((tex) => `<div class="formula-katex">${ecuacionHtml(katex, tex)}</div>`).join("")
           ).join("") +
-          `<p class="text-muted text-sm formula-vars">${escapeHtml(FORMULAS_VARIABLES)}</p><p class="text-muted text-sm formula-vars">${escapeHtml(FORMULAS_NOTA)}</p>`;
+          `<div class="result-subhead">Descripción de las etiquetas</div><ul class="formula-etiquetas">` +
+          FORMULAS_ETIQUETAS.map((e) => `<li><span class="formula-simbolo">${katex.renderToString(e.tex, { throwOnError: false })}</span><span>${escapeHtml(e.texto)}</span></li>`).join("") +
+          `</ul><p class="text-muted text-sm formula-vars">${escapeHtml(FORMULAS_NOTA)}</p>`;
         caja.hidden = false; // la caja (subtarjeta) solo aparece cuando ya hay fórmulas dibujadas; mientras tanto se ve el texto plano
         wrap.querySelector("#formulas-plano").hidden = true;
       } catch {
