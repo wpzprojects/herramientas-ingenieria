@@ -7,7 +7,7 @@ import { el, escapeHtml } from "../util/format.js";
 import { obtenerAjustes } from "../ai/config.js";
 import { claveEnUso } from "../ai/clave.js";
 import { generar, ErrorGemini } from "../ai/gemini.js";
-import { verificarAcceso, htmlAvisoPrivacidad } from "../ai/ui-clave.js";
+import { verificarAcceso } from "../ai/ui-clave.js";
 import * as historial from "../ai/historial.js";
 import { agregarMicrofono } from "../ai/voz.js";
 import {
@@ -101,25 +101,27 @@ export async function render(container) {
     <div id="panel-gestor" class="card" hidden></div>
 
     <div class="card">
-      <div class="field">
+      <div class="field" style="margin-bottom:0">
         <label for="f-texto">Texto a corregir</label>
         <textarea id="f-texto" rows="9" placeholder="Pega aquí el texto (correo, descripción, acta…)"></textarea>
         <span class="hint" id="cuenta-caracteres"></span>
       </div>
-      <div class="btn-row" style="margin-top:0">
-        <button type="button" class="btn btn-primary" id="btn-corregir">Enviar</button>
-        <button type="button" class="btn" id="btn-nueva">Nueva conversación</button>
+      <div id="bloque-resultado" style="margin-top:var(--space-5)" hidden>
+        <h2 class="section-title" style="margin-top:0">Resultado</h2>
+        <div class="ia-chat" id="chat" aria-live="polite"></div>
       </div>
-      ${htmlAvisoPrivacidad().replace('class="callout', 'style="margin:var(--space-4) 0 0" class="callout')}
     </div>
 
-    <div class="card" id="card-resultado" hidden>
-      <h2 class="section-title" style="margin-top:0">Resultado</h2>
-      <div class="ia-chat" id="chat" aria-live="polite"></div>
-      <div class="ia-composer">
+    <div class="card" id="card-ajuste" hidden>
+      <div class="field" style="margin-bottom:0">
+        <label for="f-ajuste">Pedir un ajuste</label>
         <textarea id="f-ajuste" rows="2" placeholder="Pide un ajuste: más formal, más corto, agrega un cierre…"></textarea>
-        <button type="button" class="btn btn-primary" id="btn-ajustar">Enviar</button>
       </div>
+    </div>
+
+    <div class="btn-row">
+      <button type="button" class="btn btn-primary" id="btn-enviar">Enviar</button>
+      <button type="button" class="btn" id="btn-nueva">Nueva conversación</button>
     </div>
   `
   );
@@ -127,8 +129,17 @@ export async function render(container) {
   const $ = (s) => container.querySelector(s);
   const chat = $("#chat");
   const fTexto = $("#f-texto");
-  agregarMicrofono(fTexto, $("#btn-corregir"));
-  agregarMicrofono($("#f-ajuste"), $("#btn-ajustar"));
+  const fAjuste = $("#f-ajuste");
+  // Un solo juego de botones: actua sobre el texto a corregir o, con una conversacion en curso, sobre el ajuste.
+  const mic = agregarMicrofono(() => (conv ? fAjuste : fTexto), $("#btn-enviar"));
+
+  // Con resultado se muestra el cuadro de ajuste y el texto original queda de solo lectura.
+  function mostrarResultado(v) {
+    mic?.detener();
+    $("#bloque-resultado").hidden = !v;
+    $("#card-ajuste").hidden = !v;
+    fTexto.readOnly = v;
+  }
 
   const agenteActivo = () => agentes.find((a) => a.id === activoId) || agentes[0];
 
@@ -191,19 +202,19 @@ export async function render(container) {
   function reiniciarConversacion() {
     conv = null;
     chat.innerHTML = "";
-    $("#card-resultado").hidden = true;
+    fAjuste.value = "";
+    mostrarResultado(false);
   }
 
   function pintarConversacion() {
     chat.innerHTML = "";
     for (const m of conv.mensajes) burbuja(m.rol, m.texto);
-    $("#card-resultado").hidden = false;
+    mostrarResultado(true);
   }
 
   function bloquear(v) {
     ocupado = v;
-    $("#btn-corregir").disabled = v;
-    $("#btn-ajustar").disabled = v;
+    $("#btn-enviar").disabled = v;
   }
 
   async function enviar(textoUsuario, textoVisible) {
@@ -221,7 +232,7 @@ export async function render(container) {
         contenidos: [],
       };
     }
-    $("#card-resultado").hidden = false;
+    mostrarResultado(true);
     conv.contenidos.push({ role: "user", parts: [{ text: textoUsuario }] });
     conv.mensajes.push({ rol: "user", texto: textoVisible || textoUsuario });
     burbuja("user", textoVisible || textoUsuario);
@@ -252,33 +263,41 @@ export async function render(container) {
       espera.remove();
       // la burbuja del usuario queda visible junto al error para que sea claro que no se envio
       burbuja("error", err instanceof ErrorGemini ? err.message : `Error inesperado: ${err.message || err}`);
+      if (!conv.contenidos.length) {
+        // fallo el primer envio: se vuelve al modo "texto" para poder reintentar
+        conv = null;
+        $("#card-ajuste").hidden = true;
+        fTexto.readOnly = false;
+      }
     } finally {
       bloquear(false);
     }
   }
 
-  $("#btn-corregir").addEventListener("click", () => {
+  // "Enviar" sin conversacion corrige el texto; con una en curso envia el ajuste.
+  $("#btn-enviar").addEventListener("click", () => {
+    if (conv) {
+      const t = fAjuste.value.trim();
+      if (!t) return fAjuste.focus();
+      fAjuste.value = "";
+      enviar(t);
+      return;
+    }
     const texto = fTexto.value.trim();
     if (!texto) return fTexto.focus();
     if (texto.length > MAX_CARACTERES) {
       alert(`El texto es demasiado largo (${texto.length} caracteres). El máximo es ${MAX_CARACTERES}.`);
       return;
     }
-    if (conv) reiniciarConversacion(); // "Enviar" del texto siempre parte de una conversacion nueva
+    chat.innerHTML = ""; // por si quedo el error de un intento anterior
     const mensaje = `Corrige el siguiente texto siguiendo tus instrucciones.\n\nTEXTO:\n<<<\n${texto}\n>>>`;
     enviar(mensaje, texto);
   });
-
-  $("#btn-ajustar").addEventListener("click", () => {
-    const f = $("#f-ajuste");
-    const t = f.value.trim();
-    if (!t || !conv) return;
-    f.value = "";
-    enviar(t);
-  });
-  $("#f-ajuste").addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) $("#btn-ajustar").click();
-  });
+  for (const campo of [fTexto, fAjuste]) {
+    campo.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) $("#btn-enviar").click();
+    });
+  }
 
   $("#btn-nueva").addEventListener("click", () => {
     reiniciarConversacion();
@@ -322,7 +341,7 @@ export async function render(container) {
                 }
                 pintarConversacion();
                 panelHistorial.hidden = true;
-                $("#card-resultado").scrollIntoView({ behavior: "smooth", block: "nearest" });
+                $("#bloque-resultado").scrollIntoView({ behavior: "smooth", block: "nearest" });
               },
             },
             "Abrir"

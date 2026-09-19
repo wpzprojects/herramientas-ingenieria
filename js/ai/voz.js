@@ -22,11 +22,13 @@ const ERRORES = {
 };
 
 /**
- * Agrega un boton "Dictar" antes de `anterior` (normalmente el boton de enviar) que escribe en `campo`.
- * Clic para empezar, clic para terminar. Devuelve el boton, o null si el navegador no soporta voz.
+ * Agrega un boton "Dictar" antes de `anterior` (normalmente el boton de enviar) que escribe en el campo
+ * `objetivo` (un elemento, o una funcion que devuelve el elemento activo al empezar a dictar).
+ * Clic para empezar, clic para terminar. Devuelve el boton (con `boton.detener()`), o null si el
+ * navegador no soporta voz.
  * Detiene el dictado solo al pulsar `anterior`, al teclear en el campo o al cambiar de pantalla.
  */
-export function agregarMicrofono(campo, anterior) {
+export function agregarMicrofono(objetivo, anterior) {
   if (!Reconocimiento) return null;
 
   const boton = document.createElement("button");
@@ -49,6 +51,8 @@ export function agregarMicrofono(campo, anterior) {
     estado.classList.toggle("ia-voz-estado--error", error);
   };
 
+  const campoDe = typeof objetivo === "function" ? objetivo : () => objetivo;
+  let campo = null; // el campo donde se dicta en la sesion actual
   let rec = null;
   let activo = false; // el usuario quiere seguir dictando
   let antes = ""; // texto del campo antes del punto donde se dicta
@@ -82,7 +86,7 @@ export function agregarMicrofono(campo, anterior) {
     rec = null;
     pintar(false);
     window.removeEventListener("hashchange", detener);
-    campo.removeEventListener("input", alTeclear);
+    campo?.removeEventListener("input", alTeclear);
   };
 
   function detener() {
@@ -157,6 +161,7 @@ export function agregarMicrofono(campo, anterior) {
   boton.addEventListener("click", () => {
     if (activo) return detener();
     if (!navigator.onLine) return decir("El dictado por voz necesita conexión a internet.", true);
+    campo = campoDe();
     fijarPunto();
     activo = true;
     decir("Escuchando… vuelve a presionar el micrófono para terminar.");
@@ -176,5 +181,6 @@ export function agregarMicrofono(campo, anterior) {
   anterior.addEventListener("click", () => activo && detener(), true);
 
   anterior.before(boton);
+  boton.detener = detener;
   return boton;
 }
