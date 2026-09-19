@@ -45,8 +45,11 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   modelo de datos o las reglas, actualizar `firestore.rules`, `backend-firebase.js`,
   `backend-mock.js` (que replica las reglas) y correr `tools/verify_ia.html`.
 - La clave de Gemini del servidor va SOLO en memoria (`js/ai/clave.js`), nunca en `localStorage`.
-- Activación y pasos manuales de Firebase: ver README ("Acceso con Google y Firebase"). Las reglas
-  reales y el login de Google no se pudieron probar sin el proyecto de Firebase.
+- Proyecto de Firebase: `herramientas-ingenieria` (plan Spark), ya configurado en
+  `js/auth/firebase-config.js`. Pasos manuales y reglas: README ("Acceso con Google y Firebase").
+  Verificado contra el Firebase real: el SDK carga y las lecturas/escrituras sin sesión son
+  denegadas por el servidor; el login de Google y las reglas con usuarios reales requieren
+  probarse a mano (el arnés no puede iniciar sesión).
 
 ## Convenciones de UI/CSS
 

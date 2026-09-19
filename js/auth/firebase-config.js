@@ -2,18 +2,17 @@
 // identificadores publicos por diseno: la seguridad no depende de ocultarlos sino de las reglas de
 // Firestore (firebase/firestore.rules), que aplica el servidor de Google.
 //
-// Mientras sea null, la pantalla "Configuracion avanzada" avisa que el servicio no esta configurado.
-// Para activarlo: crear el proyecto (ver README, seccion "Acceso con Google y Firebase") y pegar aqui
-// el bloque que muestra la consola de Firebase, por ejemplo:
-//
-// export const firebaseConfig = {
-//   apiKey: "AIza...",
-//   authDomain: "mi-proyecto.firebaseapp.com",
-//   projectId: "mi-proyecto",
-//   appId: "1:1234567890:web:abcdef",
-// };
+// Si fuera null, la pantalla "Configuracion avanzada" avisaria que el servicio no esta configurado
+// (ver README, seccion "Acceso con Google y Firebase"). Proyecto: herramientas-ingenieria (plan Spark).
 
-export const firebaseConfig = null;
+export const firebaseConfig = {
+  apiKey: "AIzaSyBOfEH2PNMCqF_siaHXKCVAnZwh5gnms08",
+  authDomain: "herramientas-ingenieria.firebaseapp.com",
+  projectId: "herramientas-ingenieria",
+  storageBucket: "herramientas-ingenieria.firebasestorage.app",
+  messagingSenderId: "124980507723",
+  appId: "1:124980507723:web:dc5f215cf827fabe02c9ce",
+};
 
 // Version del SDK que se carga desde el CDN de Google (gstatic), sin build step.
 export const FIREBASE_SDK_VERSION = "11.10.0";

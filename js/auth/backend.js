@@ -35,15 +35,24 @@ export const normalizarCorreo = (s) => String(s ?? "").trim().toLowerCase();
 export const correoValido = (s) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s);
 
 let backend = null;
+let sinBackendForzado = false;
 
 /** Solo para pruebas (tools/verify_ia.html, tools/preview_ia.html). */
 export function usarBackend(b) {
   backend = b;
+  sinBackendForzado = false;
+}
+
+/** Solo para pruebas: simula que el servicio de acceso no esta configurado. */
+export function simularSinBackend() {
+  backend = null;
+  sinBackendForzado = true;
 }
 
 /** Devuelve el backend real, o null si Firebase aun no esta configurado (js/auth/firebase-config.js). */
 export async function obtenerBackend() {
   if (backend) return backend;
+  if (sinBackendForzado) return null;
   const { firebaseConfig } = await import("./firebase-config.js");
   if (!firebaseConfig) return null;
   const { crearBackendFirebase } = await import("./backend-firebase.js");

@@ -69,7 +69,7 @@ Pantalla de acceso restringido (`#/ayuda/configuracion`, tarjeta "Configuración
 
 - **Roles**: `admin` (gestiona la lista y la clave compartida) y `usuario` (entra, ve la lista y usa las claves). Un admin no puede quitarse ni bajarse el rol a sí mismo, así siempre queda al menos uno.
 - **Claves de Gemini en el servidor**: `ajustes/gemini` (compartida: la leen los autorizados y la cambian los admins) y `usuarios/{correo}/secretos/gemini` (personal: solo su dueño, ni los admins). En Funciones de IA se elige cuál usar (`js/ai/clave.js`): la clave del servidor solo vive en memoria, nunca en `localStorage`. **La clave compartida la puede leer, técnicamente, cualquier usuario autorizado**; compártela solo con gente de confianza. Ocultarla del todo exigiría un intermediario en el servidor (Cloud Functions requiere plan Blaze, o un Cloudflare Worker).
-- **Estado actual**: `js/auth/firebase-config.js` trae `firebaseConfig = null`, así que la pantalla muestra "Servicio de acceso no configurado" hasta completar los pasos de abajo. El backend simulado (`js/auth/backend-mock.js`) existe solo para pruebas y jamás se elige solo.
+- **Estado actual**: `js/auth/firebase-config.js` ya trae la configuración del proyecto `herramientas-ingenieria` (si estuviera en `null`, la pantalla mostraría "Servicio de acceso no configurado"). El backend simulado (`js/auth/backend-mock.js`) existe solo para pruebas y jamás se elige solo.
 
 **Activarlo (una vez, con tu cuenta de Google):**
 

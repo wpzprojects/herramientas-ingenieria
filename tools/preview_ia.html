@@ -70,7 +70,7 @@ gemini.usarMock(async ({ ruta, cuerpo }) => {
 
 // ---- backend de acceso simulado (solo para la vista "avanzada") ----
 if (vista === "avanzada") {
-  const { usarBackend } = await import("../js/auth/backend.js");
+  const { usarBackend, simularSinBackend } = await import("../js/auth/backend.js");
   const { crearBackendMock } = await import("../js/auth/backend-mock.js");
   const ADMIN = { email: "yo@gmail.com", nombre: "Wilsson Perez", foto: "" };
   const USUARIO = { email: "otro@gmail.com", nombre: "Otro Usuario", foto: "" };
@@ -88,6 +88,7 @@ if (vista === "avanzada") {
   };
   const cfg = escenarios[paso || "admin"];
   if (cfg) usarBackend(crearBackendMock(cfg));
+  else simularSinBackend();
 }
 
 // ---- funciones de IA usando la clave del servidor (paso=srv-sinsesion | srv-ok) ----

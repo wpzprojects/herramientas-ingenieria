@@ -337,8 +337,14 @@ const EXTRAÑO = { email: "extrano@gmail.com", nombre: "X", foto: "" };
 const semilla = () => [{ email: "yo@gmail.com", rol: "admin" }, { email: "otro@gmail.com", rol: "usuario" }];
 const falla = async (fn, tipo) => { try { await fn(); return false; } catch (e) { return e instanceof acceso.ErrorAcceso && (!tipo || e.tipo === tipo); } };
 
-await seccion("acceso: sin Firebase configurado no hay backend (el simulado nunca se elige solo)", async () => {
-  ok((await acceso.obtenerBackend()) === null, "obtenerBackend() = null mientras firebaseConfig sea null");
+await seccion("acceso: el backend real se elige solo con Firebase configurado (el simulado nunca)", async () => {
+  const { firebaseConfig } = await import("../js/auth/firebase-config.js");
+  ok(!!firebaseConfig && !!firebaseConfig.apiKey && !!firebaseConfig.projectId && !!firebaseConfig.authDomain && !!firebaseConfig.appId, "firebase-config.js trae apiKey, authDomain, projectId y appId");
+  const b = await acceso.obtenerBackend();
+  ok(!!b && b.esMock === false && b.disponible() === true, "obtenerBackend() devuelve el backend REAL de Firebase (no el simulado)");
+  acceso.simularSinBackend();
+  ok((await acceso.obtenerBackend()) === null, "con el interruptor de pruebas 'sin backend' devuelve null");
+  acceso.usarBackend(null);
 });
 
 await seccion("acceso: perfil y lista (reglas)", async () => {
@@ -425,7 +431,7 @@ await seccion("clave: fuente de la clave de Gemini (local / personal / compartid
   cfgIA.borrarClave();
 
   claves.guardarFuente("compartida");
-  acceso.usarBackend(null);
+  acceso.simularSinBackend();
   r = await claves.prepararClave();
   ok(!r.ok && r.motivo === "sin-servicio", "servidor sin Firebase configurado -> 'sin-servicio'");
 
