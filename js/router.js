@@ -1,5 +1,9 @@
 // Router SPA minimalista basado en hash (#/seccion/pantalla/:param).
 // Un modulo por pantalla, cada uno exporta render(container, params).
+// Las pantallas que el nivel de acceso actual no permite (js/auth/permisos.js) muestran un aviso en vez de abrirse.
+
+import { permitida } from "./auth/permisos.js";
+import { estadoAcceso } from "./auth/acceso.js";
 
 // Representa cualquier path (patron de ruta o hash actual) como su lista de
 // segmentos no vacios -- "/", "/calculos/" y "/calculos" quedan todos
@@ -88,6 +92,12 @@ export function initRouter({ mount, onNavigate }) {
         })
       );
       onNavigate?.(path, {});
+      return;
+    }
+
+    if (!permitida(path, estadoAcceso().nivel)) {
+      mount.innerHTML = `<div class="empty-state"><h2>Contenido para usuarios autorizados</h2><p class="text-muted">Esta pantalla está disponible al iniciar sesión con una cuenta autorizada.</p><p><a class="btn btn-primary" href="#/perfil">Ir a Perfil</a></p></div>`;
+      onNavigate?.(path, found.params);
       return;
     }
 

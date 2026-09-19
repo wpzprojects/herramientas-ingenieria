@@ -40,6 +40,9 @@ export function crearBackendMock({ usuarios = [], sesion = null, cuentaAlIniciar
   return {
     esMock: true,
     disponible: () => true,
+    async listo() {
+      requerirRed();
+    },
 
     observarSesion(cb) {
       oyentes.add(cb);

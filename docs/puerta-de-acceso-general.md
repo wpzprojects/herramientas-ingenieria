@@ -1,4 +1,4 @@
-# Puerta de acceso general con solicitud de acceso — PLAN (NO IMPLEMENTADO)
+# Puerta de acceso general con solicitud de acceso — PLAN (la puerta al abrir NO se implementó; ver CLAUDE.md «Niveles de acceso»)
 
 Análisis del 2026-09-18. **Estado: solo análisis, el usuario decidió no implementarlo todavía.** Este documento reúne todo lo necesario para retomarlo en cualquier momento sin volver a analizar. Antes de implementar: releer las "Preguntas abiertas" (sección 11) y confirmar las decisiones con el usuario.
 

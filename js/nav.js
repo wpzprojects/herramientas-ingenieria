@@ -21,9 +21,10 @@ export const sectionMeta = {
   ia: { title: "Funciones de IA", subtitle: "Análisis de escenarios con calculadoras locales y herramientas de redacción." },
 };
 
+// `libre: true` = modulo que puede abrir un visitante (el primero de cada grupo; Funciones de IA no tiene ninguno). Ver js/auth/permisos.js.
 export const sectionMenus = {
   calculos: [
-    { title: "Ocupación de ductos", desc: "Porcentaje de ocupación de ductos según NTC-2050.", icon: "ductoTerna", hash: "#/calculos/ocupacion-ductos" },
+    { title: "Ocupación de ductos", desc: "Porcentaje de ocupación de ductos según NTC-2050.", icon: "ductoTerna", hash: "#/calculos/ocupacion-ductos", libre: true },
     { title: "Pérdidas", desc: "Corriente, potencia y % de pérdidas de una línea trifásica.", icon: "alertTriangle", hash: "#/calculos/perdidas" },
     { title: "Regulación", desc: "Caída de tensión y reactancia inductiva del conductor.", icon: "activity", hash: "#/calculos/regulacion" },
     { title: "Cortocircuito", desc: "Capacidad de corriente de cortocircuito admisible.", icon: "bolt", hash: "#/calculos/cortocircuito" },
@@ -31,20 +32,20 @@ export const sectionMenus = {
     { title: "Ampacidad subterránea", desc: "Corriente admisible de cables en banco de ductos (IEC 60287-1-1).", icon: "underground", hash: "#/calculos/ampacidad-subterranea" },
   ],
   catalogos: [
-    { title: "Conductores desnudos", desc: "ACSR, AAAC, ACAR, AAC, ACSS — 342 referencias.", icon: "conductorBare", hash: "#/catalogos/desnudos" },
+    { title: "Conductores desnudos", desc: "ACSR, AAAC, ACAR, AAC, ACSS — 342 referencias.", icon: "conductorBare", hash: "#/catalogos/desnudos", libre: true },
     { title: "Conductores semiaislados", desc: "Bicapa / Tricapa AAAC-ACSR — 70 referencias.", icon: "conductorSemi", hash: "#/catalogos/semiaislados" },
     { title: "Conductores XLPE (MT)", desc: "Cables aislados de media tensión — 195 referencias.", icon: "conductorXlpe", hash: "#/catalogos/xlpe" },
     { title: "Tuberías", desc: "PVC y metálicas (EMT, IMC, RIGID) — 43 referencias.", icon: "underground", hash: "#/catalogos/tuberias" },
   ],
   normatividad: [
-    { title: "Distancias de seguridad", desc: "Tablas RETIE 3.10.x de distancias mínimas de seguridad.", icon: "ruler", hash: "#/normatividad/distancias-seguridad" },
+    { title: "Distancias de seguridad", desc: "Tablas RETIE 3.10.x de distancias mínimas de seguridad.", icon: "ruler", hash: "#/normatividad/distancias-seguridad", libre: true },
     { title: "Zona de servidumbre", desc: "Ancho de zona de servidumbre para líneas (RETIE 3.19.1.a).", icon: "map", hash: "#/normatividad/zona-servidumbre" },
     { title: "Enterramiento de ductos", desc: "Profundidad de enterramiento RETIE / NTC 2050.", icon: "layers", hash: "#/normatividad/enterramiento-ductos" },
     { title: "Corriente de conductores NTC", desc: "Tablas 310-77 a 310-80 de la NTC 2050.", icon: "fileText", hash: "#/normatividad/corriente-ntc" },
     { title: "Resoluciones del sector", desc: "Normativa CREG relevante, con resumen y alcance.", icon: "archive", hash: "#/normatividad/resoluciones" },
   ],
   varios: [
-    { title: "Codificación de entregables", desc: "Catálogo de códigos de documentos y planos.", icon: "idLetras", hash: "#/varios/codificacion" },
+    { title: "Codificación de entregables", desc: "Catálogo de códigos de documentos y planos.", icon: "idLetras", hash: "#/varios/codificacion", libre: true },
     { title: "Conversión de coordenadas", desc: "Conversión entre diferentes sistemas de coordenadas.", icon: "compass", hash: "#/varios/conversion-coordenadas" },
     { title: "Conversión de unidades", desc: "Conversión entre unidades de longitud, área, fuerza, velocidad y más.", icon: "ruler", hash: "#/varios/conversion-unidades" },
   ],

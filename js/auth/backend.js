@@ -2,6 +2,7 @@
 // Gemini en el servidor). La app habla con un "backend" que cumple este contrato:
 //
 //   disponible()                       -> true si el servicio esta configurado
+//   listo()                            -> carga el servicio; rechaza (ErrorAcceso "red") si no hay conexion. Lo usa acceso.js
 //   observarSesion(cb)                 -> cb(usuario|null) ahora y en cada cambio; devuelve funcion para dejar de observar
 //                                         usuario = { email, nombre, foto }
 //   iniciarSesion()                    -> abre el login de Google; devuelve el usuario

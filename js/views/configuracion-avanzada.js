@@ -7,6 +7,7 @@
 import { el, escapeHtml } from "../util/format.js";
 import { obtenerBackend, esperarSesion, ROLES, ErrorAcceso, correoValido, normalizarCorreo } from "../auth/backend.js";
 import { FUENTES, obtenerFuente, guardarFuente, olvidarClaveServidor } from "../ai/clave.js";
+import { estadoAcceso, venceLaCache, leerCache } from "../auth/acceso.js";
 
 const fecha = (ms) => (ms ? new Date(ms).toLocaleDateString("es-CO", { dateStyle: "medium" }) : "—");
 const mensajeDe = (e) => (e instanceof ErrorAcceso ? e.message : `Error inesperado: ${e?.message || e}`);
@@ -39,6 +40,11 @@ export async function render(container) {
   if (typeof navigator !== "undefined" && navigator.onLine === false) {
     tarjeta(`<h2>Sin conexión a internet</h2>
       <p class="text-muted">Esta sección necesita conexión para iniciar sesión y consultar el servidor.</p>
+      ${
+        estadoAcceso().nivel !== "visitante"
+          ? `<p class="text-muted">Tu acceso completo (${escapeHtml(estadoAcceso().email)}) sigue vigente sin conexión hasta el <strong>${fecha(venceLaCache(leerCache()))}</strong>; se renueva solo cada vez que abres la app con internet.</p>`
+          : ""
+      }
       <div class="btn-row"><button type="button" class="btn btn-primary" data-r>Reintentar</button></div>`)
       .querySelector("[data-r]")
       .addEventListener("click", reintentar);
@@ -110,7 +116,7 @@ export async function render(container) {
     }
     if (!perfil) {
       const t = tarjeta(`<h2>Sin acceso</h2>
-        <p class="text-muted">La cuenta <strong>${escapeHtml(u.email)}</strong> no está en la lista de usuarios autorizados. Pídele a un administrador que agregue tu correo.</p>
+        <p class="text-muted">Tu cuenta <strong>${escapeHtml(u.email)}</strong> no está autorizada. Contacta al administrador para que agregue tu correo; mientras tanto puedes usar los módulos de libre acceso.</p>
         <div class="btn-row"><button type="button" class="btn btn-primary" data-otra>Usar otra cuenta</button><button type="button" class="btn" data-salir>Cerrar sesión</button></div>`);
       t.querySelector("[data-salir]").addEventListener("click", cerrarSesion);
       t.querySelector("[data-otra]").addEventListener("click", async () => {

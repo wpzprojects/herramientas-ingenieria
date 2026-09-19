@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>verify_acceso</title>
+<!--
+  Pruebas del nivel de acceso (visitante / usuario / administrador): reglas de permisos por ruta (js/auth/permisos.js), la
+  validacion contra el servidor y la cache de 15 dias sin conexion (js/auth/acceso.js, con el backend SIMULADO y un reloj falso),
+  los menus con modulos bloqueados (tarjetas y enlaces de Ayuda sin hipervinculo) y el bloqueo de rutas en el router. Se ejecuta
+  en el navegador, sin internet.
+
+  Uso (desde la raiz del proyecto):
+    python -m http.server 8000
+    abrir http://localhost:8000/tools/verify_acceso.html   -> lista PASS/FAIL
+  o en modo consola:
+    msedge --headless --dump-dom --virtual-time-budget=35000 http://localhost:8000/tools/verify_acceso.html
+-->
+<style>body{font-family:ui-monospace,Consolas,monospace;font-size:13px;padding:12px}#stage{position:absolute;left:-9999px;width:1000px}</style>
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+<pre id="out"></pre>
+<div id="stage"></div>
+<script type="module">
+window.__BASE_PATH__ = "../";
+const out = document.getElementById("out");
+let fallos = 0;
+let total = 0;
+function ok(cond, msg) {
+  total++;
+  if (!cond) fallos++;
+  out.textContent += `${cond ? "PASS" : "FAIL"} ${msg}\n`;
+}
+async function seccion(nombre, fn) {
+  out.textContent += `\n== ${nombre}\n`;
+  try {
+    await fn();
+  } catch (err) {
+    fallos++;
+    total++;
+    out.textContent += `FAIL excepcion en "${nombre}": ${err && err.stack ? err.stack : err}\n`;
+  }
+}
+const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+const stage = document.getElementById("stage");
+const $$ = (s, r = stage) => [...r.querySelectorAll(s)];
+const DIA = 24 * 60 * 60 * 1000;
+
+const perm = await import("../js/auth/permisos.js");
+const acc = await import("../js/auth/acceso.js");
+const { usarBackend, ErrorAcceso } = await import("../js/auth/backend.js");
+const { crearBackendMock } = await import("../js/auth/backend-mock.js");
+const nav = await import("../js/nav.js");
+
+// reloj falso y conexion controlable
+let T0 = 1_800_000_000_000;
+let ahora = T0;
+acc.usarReloj(() => ahora);
+let enLinea = true;
+Object.defineProperty(navigator, "onLine", { get: () => enLinea, configurable: true });
+
+const YO = { email: "ana@empresa.com", nombre: "Ana", foto: "" };
+const ADMIN = { email: "jefe@empresa.com", nombre: "Jefe", foto: "" };
+const EXTRANO = { email: "otro@gmail.com", nombre: "Otro", foto: "" };
+const semilla = () => [{ email: "ana@empresa.com", rol: "usuario" }, { email: "jefe@empresa.com", rol: "admin" }];
+async function con(opciones, ini = {}) {
+  acc.reiniciarAccesoParaPruebas();
+  ahora = T0;
+  enLinea = true;
+  if (ini.cache) localStorage.setItem(acc.CLAVE_CACHE, JSON.stringify(ini.cache));
+  const b = crearBackendMock(opciones);
+  usarBackend(b);
+  return b;
+}
+const nivel = () => acc.estadoAcceso().nivel;
+
+await seccion("permisos por ruta", async () => {
+  ok(perm.RUTAS_LIBRES.join() === "/calculos/ocupacion-ductos,/catalogos/desnudos,/normatividad/distancias-seguridad,/varios/codificacion", `los módulos libres son el primero de cada grupo: ${perm.RUTAS_LIBRES.join(", ")}`);
+  ok(nav.sectionMenus.ia.every((i) => !i.libre), "Funciones de IA no tiene ningún módulo libre");
+  const libresPorGrupo = Object.fromEntries(Object.entries(nav.sectionMenus).map(([g, items]) => [g, items.filter((i) => i.libre).map((i) => i.title)]));
+  ok(libresPorGrupo.calculos.join() === "Ocupación de ductos" && libresPorGrupo.catalogos.join() === "Conductores desnudos" && libresPorGrupo.normatividad.join() === "Distancias de seguridad" && libresPorGrupo.varios.join() === "Codificación de entregables", "un solo módulo libre en Cálculos, Catálogos, Normatividad y Varios");
+  const v = (r) => perm.permitida(r, "visitante");
+  ok(v("/") && v("/calculos") && v("/catalogos") && v("/normatividad") && v("/ia") && v("/varios") && v("/ayuda") && v("/perfil"), "el visitante ve el Inicio, los menús de cada sección, Ayuda y Perfil");
+  ok(v("/calculos/ocupacion-ductos") && v("/catalogos/desnudos") && v("/catalogos/desnudos/12") && v("/normatividad/distancias-seguridad") && v("/varios/codificacion"), "y los módulos libres (incluida la ficha de un conductor desnudo)");
+  ok(!v("/calculos/perdidas") && !v("/calculos/regulacion") && !v("/calculos/cortocircuito") && !v("/calculos/ampacidad-aerea") && !v("/calculos/ampacidad-subterranea"), "no puede abrir las otras 5 calculadoras");
+  ok(!v("/catalogos/semiaislados") && !v("/catalogos/xlpe") && !v("/catalogos/tuberias") && !v("/catalogos/xlpe/3"), "ni los otros catálogos");
+  ok(!v("/normatividad/zona-servidumbre") && !v("/normatividad/enterramiento-ductos") && !v("/normatividad/corriente-ntc") && !v("/normatividad/resoluciones") && !v("/normatividad/resoluciones/5"), "ni las otras normas");
+  ok(!v("/ia/analisis") && !v("/ia/redaccion") && !v("/ia/configuracion"), "ninguna pantalla de Funciones de IA");
+  ok(!v("/varios/conversion-coordenadas") && !v("/varios/conversion-unidades"), "ni los conversores");
+  ok(v("/ayuda/configuracion"), "la ruta anterior del Perfil (solo redirige) queda permitida");
+  ok(!v("/calculos/ocupacion-ductos-otra") && v("/calculos/ocupacion-ductos/"), "el prefijo se compara por segmentos completos");
+  for (const n of ["usuario", "admin"]) ok(["/calculos/perdidas", "/ia/analisis", "/catalogos/xlpe", "/varios/conversion-unidades"].every((r) => perm.permitida(r, n)), `${n}: puede abrir todo`);
+  ok(perm.itemHabilitado({ libre: true }, "visitante") && !perm.itemHabilitado({}, "visitante") && perm.itemHabilitado({}, "usuario"), "itemHabilitado: libre para visitante; todo para usuario");
+});
+
+await seccion("cache: cuánto vale sin conexión", async () => {
+  const c = (dias, rol = "usuario") => ({ email: "a@b.co", rol, validadoEn: T0 - dias * DIA });
+  ok(acc.VIGENCIA_SIN_CONEXION_MS === 15 * DIA, "la vigencia sin conexión es de 15 días");
+  ok(acc.nivelDeCache(c(0), T0) === "usuario" && acc.nivelDeCache(c(14.9), T0) === "usuario" && acc.nivelDeCache(c(15), T0) === "usuario", "hasta 15 días desde la última confirmación: acceso");
+  ok(acc.nivelDeCache(c(15.01), T0) === "visitante" && acc.nivelDeCache(c(40), T0) === "visitante", "pasados los 15 días: visitante");
+  ok(acc.nivelDeCache(c(3, "admin"), T0) === "admin", "la cache conserva el rol de administrador");
+  ok(acc.nivelDeCache(null, T0) === "visitante", "sin cache: visitante");
+  ok(acc.nivelDeCache(c(-0.5), T0) === "usuario" && acc.nivelDeCache(c(-3), T0) === "visitante", "si el reloj del equipo retrocede más de un día, la cache no se acepta");
+  ok(acc.venceLaCache(c(2)) === T0 - 2 * DIA + 15 * DIA && acc.venceLaCache(null) === null, "venceLaCache: última confirmación + 15 días");
+});
+
+await seccion("validación contra el servidor", async () => {
+  // usuario en la lista
+  await con({ usuarios: semilla(), sesion: YO });
+  await acc.revalidar();
+  let e = acc.estadoAcceso();
+  ok(e.nivel === "usuario" && e.email === "ana@empresa.com" && e.fuente === "servidor" && e.validadoEn === T0, "sesión + en la lista: usuario, confirmado por el servidor");
+  const c = JSON.parse(localStorage.getItem(acc.CLAVE_CACHE));
+  ok(c.email === "ana@empresa.com" && c.rol === "usuario" && c.validadoEn === T0, "la confirmación queda guardada (correo, rol y fecha)");
+  // administrador
+  await con({ usuarios: semilla(), sesion: ADMIN });
+  await acc.revalidar();
+  ok(nivel() === "admin", "sesión de administrador: nivel admin");
+  // sin sesion
+  await con({ usuarios: semilla(), sesion: null }, { cache: { email: "ana@empresa.com", rol: "usuario", validadoEn: T0 - DIA } });
+  await acc.revalidar();
+  ok(nivel() === "visitante" && localStorage.getItem(acc.CLAVE_CACHE) === null, "sin sesión: visitante y se borra la cache (aunque estuviera vigente)");
+  // sesion pero fuera de la lista
+  await con({ usuarios: semilla(), sesion: EXTRANO });
+  await acc.revalidar();
+  ok(nivel() === "visitante" && localStorage.getItem(acc.CLAVE_CACHE) === null, "sesión con un correo fuera de la lista: visitante");
+  // quitado de la lista: pierde el acceso al instante aunque la cache este vigente
+  await con({ usuarios: [{ email: "jefe@empresa.com", rol: "admin" }], sesion: YO }, { cache: { email: "ana@empresa.com", rol: "usuario", validadoEn: T0 - DIA } });
+  await acc.revalidar();
+  ok(nivel() === "visitante" && localStorage.getItem(acc.CLAVE_CACHE) === null, "quitado de la lista: pierde el acceso de inmediato (sin esperar a que venza la cache)");
+});
+
+await seccion("sin conexión y errores de red", async () => {
+  const cache = (dias) => ({ email: "ana@empresa.com", rol: "usuario", validadoEn: T0 - dias * DIA });
+  // sin internet, cache de 10 dias
+  await con({ usuarios: semilla(), sesion: YO }, { cache: cache(10) });
+  enLinea = false;
+  acc.iniciarAcceso();
+  await acc.revalidar();
+  ok(nivel() === "usuario" && acc.estadoAcceso().fuente === "cache", "sin internet y con 10 días desde la última confirmación: acceso completo (desde la cache)");
+  // sin internet, cache de 16 dias
+  await con({ usuarios: semilla(), sesion: YO }, { cache: cache(16) });
+  enLinea = false;
+  await acc.revalidar();
+  ok(nivel() === "visitante", "sin internet y con 16 días: modo visitante");
+  ok(localStorage.getItem(acc.CLAVE_CACHE) !== null, "la cache vencida no se borra: al reconectarse se renueva");
+  enLinea = true;
+  await acc.revalidar();
+  ok(nivel() === "usuario" && acc.estadoAcceso().fuente === "servidor", "al recuperar la conexión el servidor confirma y vuelve el acceso completo");
+  // el dia 14 con internet renueva los 15 dias
+  await con({ usuarios: semilla(), sesion: YO }, { cache: cache(14) });
+  await acc.revalidar();
+  ahora = T0 + 10 * DIA; // 24 dias despues de la confirmacion original, 10 de la nueva
+  enLinea = false;
+  await acc.revalidar();
+  ok(nivel() === "usuario", "el día 14 con internet renueva: 10 días después, sin internet, sigue con acceso (24 días desde la primera confirmación)");
+  ahora = T0 + 16 * DIA;
+  await acc.revalidar();
+  ok(nivel() === "visitante", "pero 16 días después de la última confirmación sin conexión, vuelve a visitante");
+  // servidor caido (error de red al consultar el perfil): se conserva la cache
+  const b = await con({ usuarios: semilla(), sesion: YO }, { cache: cache(5) });
+  b.obtenerPerfil = async () => { throw new ErrorAcceso("No se pudo contactar al servidor.", "red"); };
+  await acc.revalidar();
+  ok(nivel() === "usuario" && acc.estadoAcceso().fuente === "cache", "con internet pero el servidor no responde: se conserva la cache vigente");
+  const b2 = await con({ usuarios: semilla(), sesion: YO });
+  b2.obtenerPerfil = async () => { throw new ErrorAcceso("No se pudo contactar al servidor.", "red"); };
+  await acc.revalidar();
+  ok(nivel() === "visitante", "servidor caído y sin cache: visitante");
+  // no se pudo cargar el servicio (listo() falla) con la red "activa": no se confunde con «sin sesion»
+  const b3 = await con({ usuarios: semilla(), sesion: null }, { cache: cache(2) });
+  b3.listo = async () => { throw new ErrorAcceso("No se pudo cargar el servicio de acceso.", "red"); };
+  await acc.revalidar();
+  ok(nivel() === "usuario" && localStorage.getItem(acc.CLAVE_CACHE) !== null, "si el servicio no carga, la cache no se borra (no se toma como «cerró sesión»)");
+});
+
+await seccion("inicio y cierre de sesión, y avisos de cambio", async () => {
+  const b = await con({ usuarios: semilla(), sesion: null, cuentaAlIniciar: YO });
+  const cambios = [];
+  const quitar = acc.alCambiarAcceso((e) => cambios.push(e.nivel));
+  await acc.revalidar();
+  ok(nivel() === "visitante" && cambios.length === 0, "sin sesión no hay cambio que avisar (ya era visitante)");
+  await b.iniciarSesion();
+  await espera(60);
+  ok(nivel() === "usuario" && cambios.join() === "usuario", "al iniciar sesión (en Perfil) el nivel sube y se avisa una vez");
+  await b.cerrarSesion();
+  await espera(60);
+  ok(nivel() === "visitante" && cambios.join() === "usuario,visitante" && localStorage.getItem(acc.CLAVE_CACHE) === null, "al cerrar sesión vuelve a visitante, se avisa y se borra la cache");
+  await acc.revalidar();
+  ok(cambios.length === 2, "revalidar sin cambios no vuelve a avisar");
+  quitar();
+});
+
+await seccion("menús: módulos bloqueados sin hipervínculo", async () => {
+  const vistas = {
+    calculos: await import("../js/views/calculos.js"),
+    catalogos: await import("../js/views/catalogos.js"),
+    normatividad: await import("../js/views/normatividad.js"),
+    varios: await import("../js/views/varios.js"),
+    ia: await import("../js/views/ia.js"),
+  };
+  const ayuda = await import("../js/views/ayuda.js");
+  const dibujar = async (mod) => {
+    stage.innerHTML = "";
+    await mod.render(stage, {});
+    await espera(20);
+  };
+  await con({ usuarios: semilla(), sesion: null });
+  await acc.revalidar();
+  const esperado = { calculos: [1, 5], catalogos: [1, 3], normatividad: [1, 4], varios: [1, 2], ia: [0, 3] };
+  for (const [g, mod] of Object.entries(vistas)) {
+    await dibujar(mod);
+    const enlaces = $$("a.menu-tile").length;
+    const bloqueados = $$("div.menu-tile--bloqueado").length;
+    ok(enlaces === esperado[g][0] && bloqueados === esperado[g][1], `${g}: ${enlaces} enlace(s) y ${bloqueados} tarjeta(s) sin enlace (visitante)`);
+  }
+  await dibujar(vistas.calculos);
+  const b = $$("div.menu-tile--bloqueado")[0];
+  ok(b.getAttribute("title") === perm.TEXTO_BLOQUEADO && b.getAttribute("aria-disabled") === "true" && !b.querySelector("a") && /Pérdidas/.test(b.textContent), "la tarjeta bloqueada conserva su texto, no lleva enlace y avisa al pasar el cursor");
+  ok(getComputedStyle(b.querySelector(".tile-icon")).color === getComputedStyle($$("a.menu-tile")[0].querySelector(".tile-icon")).color, "y mantiene el mismo color azul del icono");
+  await dibujar(ayuda);
+  const enlacesAyuda = $$("ul.ayuda-lista a").map((a) => a.textContent);
+  const bloqueadosAyuda = $$("ul.ayuda-lista .enlace-bloqueado");
+  ok(enlacesAyuda.length === 4 && bloqueadosAyuda.length === 17, `Ayuda: 4 enlaces libres y ${bloqueadosAyuda.length} títulos sin hipervínculo (21 módulos en total)`);
+  ok(bloqueadosAyuda.every((s) => getComputedStyle(s).color === getComputedStyle($$("ul.ayuda-lista a")[0]).color), "los títulos sin enlace conservan el azul de los enlaces");
+  ok(!$$("a").some((a) => /configuraci[oó]n avanzada/i.test(a.textContent)), "Ayuda ya no tiene la tarjeta de Configuración avanzada");
+  // usuario: todo con enlaces
+  await con({ usuarios: semilla(), sesion: YO });
+  await acc.revalidar();
+  for (const [g, mod] of Object.entries(vistas)) {
+    await dibujar(mod);
+    ok($$("div.menu-tile--bloqueado").length === 0 && $$("a.menu-tile").length === nav.sectionMenus[g].length, `${g}: con usuario autorizado todas las tarjetas son enlaces`);
+  }
+  await dibujar(ayuda);
+  ok($$("ul.ayuda-lista a").length === 21 && $$(".enlace-bloqueado").length === 0, "Ayuda con usuario autorizado: los 21 módulos son enlaces");
+});
+
+await seccion("router: pantallas bloqueadas", async () => {
+  const { initRouter } = await import("../js/router.js");
+  const mount = document.createElement("main");
+  stage.innerHTML = "";
+  stage.append(mount);
+  const previo = location.hash;
+  await con({ usuarios: semilla(), sesion: null });
+  await acc.revalidar();
+  const visitados = [];
+  const r = initRouter({ mount, onNavigate: (p) => visitados.push(p) });
+  const ir = async (h) => {
+    location.hash = h;
+    await espera(400);
+  };
+  await ir("#/calculos/perdidas");
+  ok(/Contenido para usuarios autorizados/.test(mount.textContent) && !!mount.querySelector('a[href="#/perfil"]'), "un visitante que escribe la dirección de una calculadora bloqueada ve el aviso con el enlace a Perfil");
+  await ir("#/ia/analisis");
+  ok(/Contenido para usuarios autorizados/.test(mount.textContent), "Funciones de IA: bloqueada por dirección");
+  await ir("#/catalogos/xlpe/3");
+  ok(/Contenido para usuarios autorizados/.test(mount.textContent), "la ficha de un catálogo bloqueado también");
+  await ir("#/calculos/ocupacion-ductos");
+  ok(!/Contenido para usuarios autorizados/.test(mount.textContent) && /Ocupación de ductos/.test(mount.textContent), "el módulo libre sí abre");
+  await ir("#/calculos");
+  ok($$("div.menu-tile--bloqueado", mount).length === 5, "el menú de Cálculos se ve con 5 tarjetas sin enlace");
+  ok(visitados.includes("/calculos/perdidas"), "el router avisa la navegación aun cuando la pantalla está bloqueada (se marca el ítem del menú)");
+  await ir("#/ayuda/configuracion");
+  ok(location.hash === "#/perfil", "la ruta anterior del Perfil redirige a #/perfil");
+
+  // al pasar a usuario autorizado, la pantalla bloqueada se abre
+  const b = await con({ usuarios: semilla(), sesion: YO });
+  await acc.revalidar();
+  await ir("#/calculos/perdidas");
+  ok(!/Contenido para usuarios autorizados/.test(mount.textContent) && /Pérdidas/.test(mount.textContent), "con un usuario autorizado la misma dirección abre la calculadora");
+  ok(typeof r.refresh === "function", "el router expone refresh() (la app lo usa al cambiar el nivel)");
+  location.hash = previo || "#/";
+});
+
+await seccion("archivos y documentación", async () => {
+  const sw = await (await fetch("../sw.js")).text();
+  const listaSw = [...sw.matchAll(/^\s*"([^"]+)",\s*$/gm)].map((m) => m[1]);
+  ok(["js/auth/acceso.js", "js/auth/permisos.js", "js/util/tiles.js"].every((f) => listaSw.includes(f)), "el service worker precachea los archivos nuevos");
+  const existen = await Promise.all(listaSw.filter((f) => f !== "./").map((f) => fetch(`../${f}`, { method: "HEAD" }).then((r) => [f, r.ok])));
+  ok(existen.every(([, okk]) => okk), "todos los archivos del APP_SHELL existen");
+  const app = await (await fetch("../js/app.js")).text();
+  ok(app.includes("iniciarAcceso()") && app.includes("alCambiarAcceso"), "la app inicia el control de acceso y repinta al cambiar el nivel");
+});
+
+out.textContent += `\nRESULT: ${fallos ? "FAIL" : "OK"} (${total - fallos}/${total})\n`;
+</script>
+</body>
+</html>

@@ -4,6 +4,8 @@
 
 import { icon } from "../icons.js";
 import { el } from "../util/format.js";
+import { estadoAcceso } from "../auth/acceso.js";
+import { itemHabilitado, TEXTO_BLOQUEADO } from "../auth/permisos.js";
 import { sectionMenus, sectionMeta } from "../nav.js";
 
 export async function render(container, params) {
@@ -17,8 +19,9 @@ export async function render(container, params) {
 
   const grid = el("div", { class: "menu-grid menu-grid--row" });
   items.forEach((item) => {
+    const habilitado = itemHabilitado(item, estadoAcceso().nivel);
     grid.append(
-      el("a", { class: "menu-tile menu-tile--row", href: item.hash }, [
+      el(habilitado ? "a" : "div", habilitado ? { class: "menu-tile menu-tile--row", href: item.hash } : { class: "menu-tile menu-tile--row menu-tile--bloqueado", "aria-disabled": "true", title: TEXTO_BLOQUEADO }, [
         el("span", { class: "tile-icon", html: icon(item.icon) }),
         el("span", { class: "tile-body" }, [
           el("span", { class: "tile-title" }, item.title),

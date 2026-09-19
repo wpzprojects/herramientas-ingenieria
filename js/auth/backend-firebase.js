@@ -53,6 +53,11 @@ export function crearBackendFirebase(firebaseConfig) {
     esMock: false,
     disponible: () => true,
 
+    /** Carga el SDK (rechaza con ErrorAcceso si no hay red). Sirve para distinguir «sin sesion» de «no se pudo comprobar». */
+    async listo() {
+      await cargar();
+    },
+
     observarSesion(cb) {
       let cancelado = false;
       let quitar = () => {};

@@ -199,7 +199,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v133); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v134); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (menú lateral → «Perfil», `js/auth/*`, `firebase/firestore.rules`)
@@ -222,9 +222,31 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   usuario el 2026-09-18). El arnés no puede iniciar sesión: los cambios en las reglas o el login
   se prueban a mano (y con el Simulador de reglas de la consola).
 
-## PENDIENTE (NO implementado): puerta de acceso general con solicitud de acceso
+## Niveles de acceso: visitante / usuario / administrador (FASE 1 implementada 2026-09-19)
 
-- Análisis del 2026-09-18; el usuario decidió NO implementarlo todavía. **Todo el detalle está en
+- Decidido con el usuario: la app se abre SIN login. Un **visitante** (sin sesión, o con sesión de un correo fuera de la lista) solo tiene el PRIMER
+  módulo de cada grupo: Ocupación de ductos, Conductores desnudos, Distancias de seguridad y Codificación de entregables (marcados
+  `libre: true` en `sectionMenus`, `nav.js`); Funciones de IA no tiene ninguno. El **usuario** (en `usuarios` con rol `usuario`) y el
+  **administrador** (`admin`, además gestiona la lista y la clave compartida en Perfil) lo tienen todo. Solo se implementó Google; el
+  inicio con Microsoft es la FASE 2 (falta que el usuario registre la app en Microsoft Entra y probar `email_verified`/tenant de Celsia;
+  ver el análisis: cuidar «nOAuth», y el error de cuenta existente con otro proveedor).
+- Piezas: `js/auth/permisos.js` (reglas por ruta, `permitida`, `itemHabilitado`, `TEXTO_BLOQUEADO`), `js/auth/acceso.js` (nivel, cache y
+  validación; `iniciarAcceso` en `app.js`), `js/util/tiles.js` (tarjeta de menú con o sin enlace), guardia en `js/router.js` (pantalla
+  «Contenido para usuarios autorizados» + botón a Perfil; también bloquea escribir la dirección a mano) y `alCambiarAcceso` → `router.refresh()`
+  (salvo en `/perfil`). Los módulos bloqueados se VEN igual (tarjetas y títulos azules de Ayuda) pero sin hipervínculo y con la ayuda «Disponible al
+  iniciar sesión con una cuenta autorizada»; Perfil no se bloquea y muestra «Tu cuenta … no está autorizada. Contacta al administrador…».
+- Vigencia sin conexión: 15 días contados desde la ÚLTIMA confirmación del servidor (no desde el login). `localStorage["acceso.cache"]` =
+  `{email, rol, validadoEn}`. Con internet se revalida al abrir, al recuperar la conexión y al volver a la app tras 6 h (renueva los 15
+  días); si el servidor dice que ya no está en la lista, pierde el acceso al instante; si hay error de red, se conserva la cache; sin
+  internet vale la cache si tiene ≤15 días (si el reloj retrocede más de 1 día no se acepta). Sin cache y sin internet: visitante.
+  La sesión de Firebase es la persistente por defecto (se inicia sesión una vez por dispositivo). `backend.listo()` distingue «no cargó el
+  SDK» de «sin sesión». Es un control de USO (los archivos son públicos); lo protegido de verdad es lo del servidor.
+- Pruebas: `tools/verify_acceso.html` (reloj falso + backend simulado). Lo que NO se prueba en el arnés: el login real (se prueba a mano).
+- Fase posterior, NO implementada: «Solicitar acceso» (`docs/puerta-de-acceso-general.md`, ya sin la puerta al abrir la app).
+
+## (Histórico) Puerta de acceso general con solicitud de acceso
+
+- Análisis del 2026-09-18 (la puerta al abrir la app NO se hizo: se optó por el modelo visitante/usuario de arriba; queda la idea de «Solicitar acceso»). **Todo el detalle está en
   `docs/puerta-de-acceso-general.md`: léelo entero antes de retomarlo** (flujo, reglas de Firestore
   en borrador, opciones de correo, diseño offline, riesgos, fases y preguntas abiertas).
 - Idea: al abrir la app se pide login con Google; si el correo está en `usuarios` entra (admin o

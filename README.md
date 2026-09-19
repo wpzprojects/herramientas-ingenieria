@@ -83,6 +83,10 @@ Sección nueva (no existía en la app original) con tres pantallas: **Análisis 
 - **Verificación**: `tools/verify_ia.html` (arnés en el navegador, sin clave ni internet, Gemini simulado: contrasta cada adaptador contra fórmulas independientes y los motores) y `tools/preview_ia.html` (vista previa de las pantallas con Gemini simulado). Ver instrucciones en el encabezado de cada archivo.
 - Si se cambia la firma de un motor de `js/calc/*.js`, hay que actualizar también su adaptador en `js/ai/tools.js` y correr `verify_ia.html`.
 
+## Niveles de acceso
+
+Sin iniciar sesión (o con un correo que no esté en la lista) la app funciona como **visitante**: solo el primer módulo de cada grupo (Ocupación de ductos, Conductores desnudos, Distancias de seguridad y Codificación de entregables); el resto se ve pero sin enlace, y Funciones de IA queda bloqueada. Con un correo autorizado (**usuario**) se habilitan todos los módulos, y el **administrador** además gestiona la lista de usuarios y la clave compartida de Gemini (Perfil). Sin internet, el acceso completo dura 15 días desde la última vez que el servidor lo confirmó (`js/auth/acceso.js`; se renueva solo al abrir con conexión). Reglas por ruta en `js/auth/permisos.js`; pruebas en `tools/verify_acceso.html`. Es un control de uso de la interfaz, no de confidencialidad (los archivos del sitio son públicos).
+
 ## Acceso con Google y Firebase (menú lateral → Perfil)
 
 Pantalla de acceso restringido (`#/perfil`, «Perfil y configuración avanzada»: ítem con icono de usuario al fondo del menú lateral, encima del botón de contraer; la ruta anterior `#/ayuda/configuracion` redirige ahí). Pide iniciar sesión con Google y solo deja entrar a los correos de una **lista guardada en el servidor** (no en este repositorio, que es público). Dentro se gestionan los usuarios y se puede guardar la clave de Gemini en el servidor. Requiere internet; el resto de la app sigue funcionando sin conexión.

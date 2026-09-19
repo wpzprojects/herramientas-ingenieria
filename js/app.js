@@ -1,5 +1,6 @@
 import { icon } from "./icons.js";
 import { sidebarLinks, perfilLink } from "./nav.js";
+import { iniciarAcceso, alCambiarAcceso } from "./auth/acceso.js";
 import { initRouter } from "./router.js";
 
 const shell = document.getElementById("app-shell");
@@ -117,12 +118,21 @@ backdrop.addEventListener("click", closeMobileNav);
   })
 );
 
-initRouter({
+// Nivel de acceso: se aplica de inmediato lo guardado en el dispositivo y se valida en segundo plano (js/auth/acceso.js)
+iniciarAcceso();
+
+const router = initRouter({
   mount,
   onNavigate: (path) => {
     setActiveLink(path);
     closeMobileNav();
   },
+});
+
+// Si el nivel cambia (termina la validacion, inicio o cierre de sesion) se vuelve a pintar la pantalla actual, salvo el
+// Perfil, que maneja su propio estado y no debe reiniciarse mientras se usa.
+alCambiarAcceso(() => {
+  if (!router.currentPath().startsWith("/perfil")) router.refresh();
 });
 
 // --- lightbox global para imagenes normativas (delegado en <body>) ---

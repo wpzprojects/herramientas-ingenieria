@@ -4,6 +4,7 @@
 // por eso se mantiene deliberadamente simple y generico.
 
 import { icon } from "../icons.js";
+import { tileMenu } from "../util/tiles.js";
 import { sectionMenus, sectionMeta } from "../nav.js";
 
 export function render(container) {
@@ -16,14 +17,7 @@ export function render(container) {
     <div class="menu-grid menu-grid--row">
       ${items
         .map(
-          (item) => `
-        <a class="menu-tile menu-tile--row" href="${item.hash}">
-          <span class="tile-icon">${icon(item.icon)}</span>
-          <span class="tile-body">
-            <span class="tile-title">${item.title}</span>
-            <span class="tile-desc">${item.desc}</span>
-          </span>
-        </a>`
+          (item) => tileMenu(item)
         )
         .join("")}
     </div>

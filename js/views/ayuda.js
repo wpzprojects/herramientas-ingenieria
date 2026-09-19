@@ -3,11 +3,14 @@
 // para que quede siempre sincronizada con la navegacion real.
 
 import { sectionMenus, sectionMeta } from "../nav.js";
+import { estadoAcceso } from "../auth/acceso.js";
+import { itemHabilitado, TEXTO_BLOQUEADO } from "../auth/permisos.js";
 
 const SECCIONES = ["calculos", "catalogos", "normatividad", "ia", "varios"];
 const APP_VERSION = "1.0.0";
 
 export function render(container) {
+  const nivel = estadoAcceso().nivel;
   container.innerHTML = `
     <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <span>Ayuda</span></div>
     <h1 class="page-title">Ayuda</h1>
@@ -24,7 +27,11 @@ export function render(container) {
               .map(
                 (item) => `
               <li>
-                <a href="${item.hash}"><strong>${item.title}</strong></a><span class="ayuda-desc"> — ${item.desc}</span>
+                ${
+                  itemHabilitado(item, nivel)
+                    ? `<a href="${item.hash}"><strong>${item.title}</strong></a>`
+                    : `<span class="enlace-bloqueado" title="${TEXTO_BLOQUEADO}"><strong>${item.title}</strong></span>`
+                }<span class="ayuda-desc"> — ${item.desc}</span>
               </li>`
               )
               .join("")}
