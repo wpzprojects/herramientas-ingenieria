@@ -18,7 +18,7 @@ import { compararCalibres } from "../calc/cortocircuito-calibre.js";
 import { calcularCortocircuito } from "../calc/cortocircuito.js";
 import { calcularAmpacidadAerea } from "../calc/ampacidad-aerea.js";
 import { calcularAmpacidadSubterranea } from "../calc/ampacidad-subterranea.js";
-import { calcularOcupacionDuctos } from "../calc/ocupacion-ductos.js";
+import { calcularOcupacionGrupos } from "../calc/ocupacion-grupos.js";
 import { convertirUnidad } from "../calc/unidades.js";
 import { SISTEMAS, convertirCoordenadas } from "../calc/coordenadas.js";
 
@@ -633,16 +633,71 @@ const T_AMP_SUBT = {
   },
 };
 
+const MAX_GRUPOS = 6;
+const CAMPOS_GRUPO_OCUPACION = [
+  I("numero_conductores", "Número de conductores de este tipo", { min: 1, max: 9 }),
+  N("diametro_conductor_mm", "Diámetro exterior de cada conductor de este tipo (o usa el catálogo XLPE con material + calibre)", { u: "mm", min: 0, minExcl: true }),
+  S("material", "Catálogo XLPE de media tensión: Cobre o Aluminio (junto con calibre; el diámetro es el exterior total del cable)"),
+  S("calibre", "Catálogo XLPE: calibre, por ejemplo '4/0', '500' o '95'"),
+  S("nivel_tension_kv", "Catálogo XLPE (opcional): nivel de tensión, por ejemplo '15 kV', '35 kV', '17.5 kV' o '36 kV'"),
+  N("porcentaje_aislamiento_pct", "Catálogo XLPE (opcional): nivel de aislamiento, 100 o 133 (solo series de 15 y 35 kV)", { min: 0 }),
+  S("pantalla", "Catálogo XLPE (opcional): 'Hilos' o 'Cinta' (pantalla de hilos o de cinta de cobre)"),
+];
+
+/** Diametro exterior (mm) de un tipo de conductor: el dado, o el del catalogo XLPE (primera coincidencia, igual que la pantalla). */
+async function diametroGrupo(t, sub, etiqueta) {
+  if (t.diametro_conductor_mm !== undefined) {
+    sub.entradas.push(ent("diametro_conductor_mm", "Diámetro del conductor", t.diametro_conductor_mm, "mm"));
+    return t.diametro_conductor_mm;
+  }
+  if (!t.material || !t.calibre) throw new ErrorHerramienta(`Indica "diametro_conductor_mm" o, del catálogo XLPE, "material" y "calibre"${etiqueta}.`);
+  const xlpe = await loadData("conductores-xlpe");
+  const materiales = distinct(xlpe, "material_conductor");
+  const material = materiales.find((m) => norm(m) === norm(t.material));
+  if (!material) throw new ErrorHerramienta(`El material "${t.material}" no existe en el catálogo XLPE. Opciones: ${materiales.join(", ")}${etiqueta}.`);
+  let filas = xlpe.filter((c) => c.material_conductor === material && normCalibre(c.calibre_awg_kcmil) === normCalibre(t.calibre));
+  if (!filas.length) {
+    throw new ErrorHerramienta(`El calibre "${t.calibre}" no existe para XLPE ${material}. Calibres disponibles: ${distinct(xlpe.filter((c) => c.material_conductor === material), "calibre_awg_kcmil").join(", ")}${etiqueta}.`);
+  }
+  if (t.nivel_tension_kv) {
+    const q = norm(t.nivel_tension_kv).replace(/kv/, "").trim();
+    filas = filas.filter((c) => norm(c.nivel_tension_kv).replace(/kv/, "").trim() === q);
+  }
+  if (t.porcentaje_aislamiento_pct !== undefined) filas = filas.filter((c) => c.porcentaje_aislamiento_pct === t.porcentaje_aislamiento_pct);
+  if (t.pantalla) filas = filas.filter((c) => norm(c.pantalla).includes(norm(t.pantalla)));
+  if (!filas.length) throw new ErrorHerramienta(`No hay un cable XLPE ${material} ${t.calibre} con ese nivel de tensión, aislamiento y pantalla${etiqueta}.`);
+  const fila = filas[0];
+  if (filas.length > 1) {
+    sub.notas.push(`Hay ${filas.length} cables XLPE ${material} ${fila.calibre_awg_kcmil} (según nivel de tensión, aislamiento y pantalla); se usó el primero (${fila.nivel_tension_kv}, ${fila.pantalla}), igual que la calculadora. Se puede fijar con nivel_tension_kv, porcentaje_aislamiento_pct y pantalla.`);
+  }
+  sub.entradas.push(ent("conductor", "Conductor (catálogo XLPE)", `${material} ${fila.calibre_awg_kcmil}, ${fila.nivel_tension_kv}, ${fila.pantalla}`), ent("diametro_conductor_mm", "Diámetro exterior total del cable (catálogo)", fila.diametro_total_conductor_mm, "mm"));
+  return fila.diametro_total_conductor_mm;
+}
+
 const T_OCUPACION = {
   nombre: "calcular_ocupacion_ductos",
   tipo: "calculo",
   titulo: "Ocupación de ductos",
   descripcion:
-    "Calcula el % de ocupación de un ducto según el número y diámetro de los conductores y lo valida contra el límite de la NTC-2050 (Cap. 9, Tabla 1). " +
-    "El diámetro interno del ducto sale del catálogo (tipo_tuberia + diametro_nominal) o se ingresa con diametro_tubo_mm.",
+    "Calcula el % de ocupación de un ducto según el número y diámetro de los conductores y lo valida contra el límite de la NTC-2050 (Cap. 9, Tabla 1, según el número TOTAL de conductores). " +
+    "Entrega también el radio de curvatura (12 veces el diámetro exterior del conductor). " +
+    "El diámetro interno del ducto sale del catálogo (tipo_tuberia + diametro_nominal) o se ingresa con diametro_tubo_mm. " +
+    "El diámetro del conductor se da con diametro_conductor_mm o se toma del catálogo XLPE (material + calibre). Para un solo tipo de conductor bastan los campos de nivel superior; " +
+    "si el ducto lleva varios tipos (p. ej. una terna de un calibre y otra de otro) usa \"grupos\", uno por tipo.",
   campos: [
-    I("numero_conductores", "Número de conductores dentro del ducto", { e: "Número de conductores", req: true, min: 1, max: 9 }),
-    N("diametro_conductor_mm", "Diámetro exterior de cada conductor", { e: "Diámetro del conductor", u: "mm", req: true, min: 0, minExcl: true }),
+    I("numero_conductores", "Número de conductores dentro del ducto (un solo tipo de conductor)", { e: "Número de conductores", min: 1, max: 9 }),
+    N("diametro_conductor_mm", "Diámetro exterior de cada conductor (un solo tipo)", { e: "Diámetro del conductor", u: "mm", min: 0, minExcl: true }),
+    S("material", "Un solo tipo, del catálogo XLPE: Cobre o Aluminio (con calibre, en lugar de diametro_conductor_mm)", { oculto: true }),
+    S("calibre", "Un solo tipo, del catálogo XLPE: calibre, por ejemplo '4/0' o '500'", { oculto: true }),
+    S("nivel_tension_kv", "Catálogo XLPE (opcional): nivel de tensión, por ejemplo '15 kV' o '35 kV'", { oculto: true }),
+    N("porcentaje_aislamiento_pct", "Catálogo XLPE (opcional): 100 o 133", { oculto: true, min: 0 }),
+    S("pantalla", "Catálogo XLPE (opcional): 'Hilos' o 'Cinta'", { oculto: true }),
+    {
+      n: "grupos",
+      t: "array",
+      d: `Solo con VARIOS tipos de conductor en el mismo ducto (hasta ${MAX_GRUPOS}): un objeto por tipo con numero_conductores y diametro_conductor_mm (o material + calibre del catálogo XLPE). Si se usa, se ignoran los campos de un solo tipo`,
+      itemCampos: CAMPOS_GRUPO_OCUPACION,
+    },
     S("tipo_tuberia", "Tipo de tubería del catálogo (usa buscar_tuberia para ver las opciones)", { oculto: true }),
     S("diametro_nominal", 'Diámetro nominal comercial, por ejemplo 2", 4" o 3/4"', { oculto: true }),
     N("diametro_tubo_mm", "Diámetro interno del ducto (opcional: reemplaza al catálogo)", { u: "mm", min: 0, minExcl: true, max: 10000, oculto: true }),
@@ -664,15 +719,43 @@ const T_OCUPACION = {
     } else {
       extra.entradas.push(ent("diametro_tubo_mm", "Diámetro interno del ducto (manual)", dTubo, "mm"));
     }
-    const r = calcularOcupacionDuctos({ numeroConductores: v.numero_conductores, diametroConductorMm: v.diametro_conductor_mm, diametroTuboMm: dTubo });
+
+    const lista = v.grupos?.length ? v.grupos : [v];
+    if (v.grupos?.length && v.numero_conductores !== undefined) extra.notas.push('Con "grupos" se ignoran los campos de un solo tipo (numero_conductores, diametro_conductor_mm…).');
+    if (lista.length > MAX_GRUPOS) throw new ErrorHerramienta(`Máximo ${MAX_GRUPOS} tipos de conductor en "grupos" (recibí ${lista.length}).`);
+    const n = lista.length;
+    const grupos = [];
+    for (const [i, t] of lista.entries()) {
+      if (t.numero_conductores === undefined) throw new ErrorHerramienta(`Falta "numero_conductores"${enTramo(i, n).replace("tramo", "tipo de conductor")}.`);
+      const sub = subNuevo();
+      const diametroMm = await diametroGrupo(t, sub, enTramo(i, n).replace("tramo", "tipo de conductor"));
+      sub.entradas.push(ent("numero_conductores", "Número de conductores", t.numero_conductores));
+      const pre = n > 1 ? `Tipo ${i + 1} — ` : "";
+      for (const e of sub.entradas) extra.entradas.push(n > 1 ? { ...e, clave: `grupo${i + 1}_${e.clave}`, etiqueta: pre + e.etiqueta } : e);
+      extra.notas.push(...sub.notas.map((x) => pre + x));
+      grupos.push({ cantidad: t.numero_conductores, diametroMm });
+    }
+
+    const r = calcularOcupacionGrupos(dTubo, grupos);
     const salida = [
       res("ocupacion_pct", "Ocupación", r.ocupacionPct, "%"),
       res("limite_pct", "Límite NTC-2050", r.limitePct, "%", 0),
       res("disponible_pct", "Disponible", r.disponiblePct, "%"),
       res("cumple", "Cumple el límite", r.cumple),
     ];
-    if (v.numero_conductores === 3) {
+    if (n > 1) salida.push(res("total_conductores", "Total de conductores en el ducto", r.totalConductores, "", 0), res("area_total_mm2", "Área ocupada por los conductores", r.areaCables, "mm²"));
+    if (r.totalConductores === 3 && r.jammingRatio !== null) {
       salida.push(res("jamming_ratio", "Relación de atascamiento (D ducto / D conductor)", r.jammingRatio, "", 2), res("riesgo_atascamiento", "Riesgo de atascamiento (2.8–3.2)", r.riesgoAtascamiento));
+    }
+    if (n === 1) salida.push(res("radio_curvatura_mm", "Radio de curvatura (12D)", r.grupos[0].radioCurvaturaMm, "mm"));
+    else {
+      r.grupos.forEach((g, i) =>
+        salida.push(
+          res(`grupo${i + 1}_area_mm2`, `Tipo ${i + 1} — Área ocupada`, g.areaTotal, "mm²"),
+          res(`grupo${i + 1}_ocupacion_pct`, `Tipo ${i + 1} — % del ducto`, g.ocupacionPct, "%"),
+          res(`grupo${i + 1}_radio_curvatura_mm`, `Tipo ${i + 1} — Radio de curvatura (12D)`, g.radioCurvaturaMm, "mm")
+        )
+      );
     }
     return salida;
   },

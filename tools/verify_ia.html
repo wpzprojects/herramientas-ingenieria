@@ -453,6 +453,56 @@ await seccion("tools: cortocircuito con corriente de falla a soportar", async ()
   ok(mala.ok === false && mala.error.includes("corriente_falla_ka"), "corriente a soportar negativa: error");
 });
 
+await seccion("tools: ocupación de ductos con varios tipos de conductor y radio de curvatura", async () => {
+  const gr = await import("../js/calc/ocupacion-grupos.js");
+  const xlpe = await cargar("conductores-xlpe");
+  const val = (ctx, clave) => ctx.log.at(-1).resultados.find((x) => x.clave === clave)?.valor;
+
+  // un solo tipo: radio de curvatura 12D
+  let ctx = ctxNuevo();
+  await tools.ejecutarLlamada("calcular_ocupacion_ductos", { numero_conductores: 3, diametro_conductor_mm: 30, diametro_tubo_mm: 100 }, ctx);
+  cerca(val(ctx, "radio_curvatura_mm"), 360, 1e-9, "un tipo de 30 mm: radio de curvatura 12 × 30 = 360 mm");
+
+  // dos tipos, diametros manuales
+  ctx = ctxNuevo();
+  const r = await tools.ejecutarLlamada("calcular_ocupacion_ductos", { diametro_tubo_mm: 150, grupos: [{ numero_conductores: 3, diametro_conductor_mm: 30 }, { numero_conductores: 3, diametro_conductor_mm: 20 }] }, ctx);
+  const esp = gr.calcularOcupacionGrupos(150, [{ cantidad: 3, diametroMm: 30 }, { cantidad: 3, diametroMm: 20 }]);
+  ok(r.ok === true, "ocupación con dos tipos de conductor");
+  cerca(val(ctx, "ocupacion_pct"), esp.ocupacionPct, 1e-9, "dos tipos: ocupación total = la de la pantalla");
+  ok(val(ctx, "limite_pct") === esp.limitePct && val(ctx, "total_conductores") === 6, `dos tipos: el límite NTC-2050 usa el total de conductores (6 → ${esp.limitePct} %)`);
+  ok(val(ctx, "cumple") === esp.cumple, "dos tipos: veredicto Cumple igual al de la pantalla");
+  cerca(val(ctx, "grupo1_radio_curvatura_mm"), 360, 1e-9, "tipo 1: radio de curvatura 360 mm");
+  cerca(val(ctx, "grupo2_radio_curvatura_mm"), 240, 1e-9, "tipo 2: radio de curvatura 240 mm");
+  cerca(val(ctx, "grupo2_ocupacion_pct"), esp.grupos[1].ocupacionPct, 1e-9, "tipo 2: % del ducto");
+  ok(val(ctx, "riesgo_atascamiento") === undefined, "con 6 conductores no se evalúa el atascamiento");
+  ok(ctx.log.at(-1).entradas.some((e) => e.etiqueta.startsWith("Tipo 2 — ")), "las entradas del log llevan «Tipo N —» cuando hay varios");
+
+  // tres conductores iguales repartidos en dos tipos: si evalua atascamiento
+  ctx = ctxNuevo();
+  await tools.ejecutarLlamada("calcular_ocupacion_ductos", { diametro_tubo_mm: 100, grupos: [{ numero_conductores: 2, diametro_conductor_mm: 30 }, { numero_conductores: 1, diametro_conductor_mm: 30 }] }, ctx);
+  ok(val(ctx, "jamming_ratio") !== undefined, "3 conductores del mismo diámetro (en dos tipos): se evalúa el atascamiento");
+
+  // catalogo XLPE
+  const fila = xlpe.find((c) => c.material_conductor === "Cobre" && c.calibre_awg_kcmil === "4/0" && c.nivel_tension_kv === "15 kV" && c.porcentaje_aislamiento_pct === 100 && c.pantalla === "Hilos de cobre");
+  ctx = ctxNuevo();
+  const c = await tools.ejecutarLlamada("calcular_ocupacion_ductos", { diametro_tubo_mm: 200, grupos: [{ numero_conductores: 3, material: "cobre", calibre: "4/0", nivel_tension_kv: "15 kV", porcentaje_aislamiento_pct: 100, pantalla: "hilos" }, { numero_conductores: 1, diametro_conductor_mm: 25 }] }, ctx);
+  ok(c.ok === true && !!fila, `tipo del catálogo XLPE (Cobre 4/0, 15 kV, hilos): ${c.error || "ok"}`);
+  cerca(val(ctx, "grupo1_radio_curvatura_mm"), 12 * fila.diametro_total_conductor_mm, 1e-9, "catálogo XLPE: el diámetro es el exterior total y el radio 12D");
+  ctx = ctxNuevo();
+  await tools.ejecutarLlamada("calcular_ocupacion_ductos", { diametro_tubo_mm: 200, numero_conductores: 3, material: "Cobre", calibre: "4/0" }, ctx);
+  ok(ctx.log.at(-1).notas.some((n) => n.includes("se usó el primero")), "un solo tipo del catálogo: si hay varios cables con ese calibre, lo dice");
+
+  // errores
+  const e1 = await tools.ejecutarLlamada("calcular_ocupacion_ductos", { diametro_tubo_mm: 100, grupos: [{ numero_conductores: 3, diametro_conductor_mm: 30 }, { diametro_conductor_mm: 20 }] }, ctxNuevo());
+  ok(e1.ok === false && e1.error.includes("numero_conductores") && e1.error.includes("tipo de conductor 2"), "tipo sin número de conductores: el error dice cuál");
+  const e2 = await tools.ejecutarLlamada("calcular_ocupacion_ductos", { diametro_tubo_mm: 100, numero_conductores: 3 }, ctxNuevo());
+  ok(e2.ok === false && e2.error.includes("diametro_conductor_mm") && e2.error.includes("material"), "sin diámetro ni catálogo: el error explica las dos formas");
+  const e3 = await tools.ejecutarLlamada("calcular_ocupacion_ductos", { diametro_tubo_mm: 100, grupos: [{ numero_conductores: 3, material: "Cobre", calibre: "999" }] }, ctxNuevo());
+  ok(e3.ok === false && e3.error.includes("Calibres disponibles"), "calibre XLPE inexistente: lista los disponibles");
+  const dOcu = tools.declaraciones().find((d) => d.name === "calcular_ocupacion_ductos").parameters;
+  ok(dOcu.properties.grupos.type === "array" && dOcu.properties.grupos.items.type === "object" && "numero_conductores" in dOcu.properties.grupos.items.properties && !(dOcu.required || []).length, "el esquema declara «grupos» y ya no hay campos obligatorios a nivel superior");
+});
+
 await seccion("tools: validación y errores orientadores", async () => {
   const a = await tools.ejecutarLlamada("calcular_perdidas", { ...LINEA, factor_potencia: 1.5, factor_carga: 0.5, resistencia_ohm_km: 0.3 }, ctxNuevo());
   ok(a.ok === false && a.error.includes("factor_potencia"), "factor de potencia fuera de rango");
