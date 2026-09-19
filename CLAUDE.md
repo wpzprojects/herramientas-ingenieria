@@ -48,8 +48,9 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Proyecto de Firebase: `herramientas-ingenieria` (plan Spark), ya configurado en
   `js/auth/firebase-config.js`. Pasos manuales y reglas: README ("Acceso con Google y Firebase").
   Verificado contra el Firebase real: el SDK carga y las lecturas/escrituras sin sesión son
-  denegadas por el servidor; el login de Google y las reglas con usuarios reales requieren
-  probarse a mano (el arnés no puede iniciar sesión).
+  denegadas por el servidor; el login de Google con el administrador funciona (confirmado por el
+  usuario el 2026-09-18). El arnés no puede iniciar sesión: los cambios en las reglas o el login
+  se prueban a mano (y con el Simulador de reglas de la consola).
 
 ## Convenciones de UI/CSS
 
