@@ -74,7 +74,7 @@ export async function render(container) {
       </div>
       <div class="btn-row" style="margin-top: 0;">
         <button type="button" class="btn btn-primary" id="btn-guardar-ajustes">Guardar ajustes</button>
-        <button type="button" class="btn btn-ghost" id="btn-restaurar-ajustes">Restablecer valores</button>
+        <button type="button" class="btn" id="btn-restaurar-ajustes">Restablecer valores</button>
       </div>
       <div id="msg-ajustes" style="margin-top: var(--space-4);"></div>
     </div>
