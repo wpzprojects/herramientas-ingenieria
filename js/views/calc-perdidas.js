@@ -82,7 +82,7 @@ export async function render(container) {
 
     <form id="form-calc" novalidate>
       <div class="card form-section">
-        <div class="form-section-title">${icon("bolt")} Datos de la línea</div>
+        <div class="form-section-title">${icon("waveSine")} Datos de la línea</div>
         <div class="grid-2">
           <div class="field">
             <label for="f-tension">Tensión de línea (kV)</label>
@@ -111,7 +111,7 @@ export async function render(container) {
           <input type="number" id="f-corriente" min="0" step="0.1" value="370">
         </div>
 
-        <div class="grid-2">
+        <div class="grid-2 ultima">
           <div class="field">
             <label for="f-fp">Factor de potencia</label>
             <input type="number" id="f-fp" min="0" max="1" step="0.01" value="0.9" required>
@@ -169,7 +169,7 @@ export async function render(container) {
     cont.innerHTML = `
       <div class="card form-section tramo-block">
         <div class="form-section-title">
-          ${icon("calculator")} <span class="tramo-titulo">Conductor — Tramo 1</span>
+          ${icon("circuitResistor")} <span class="tramo-titulo">Conductor — Tramo 1</span>
           <button type="button" class="btn btn-ghost btn-tramo-quitar" hidden>${icon("close")} Quitar</button>
         </div>
         <div class="grid-2">
@@ -200,7 +200,7 @@ export async function render(container) {
             </div>
           </div>
         </div>
-        <div class="grid-2">
+        <div class="grid-2 ultima">
           <div class="field">
             <label for="f-longitud-${id}">Longitud del tramo (km)</label>
             <input type="number" id="f-longitud-${id}" min="0" step="0.01" value="10" required>
@@ -283,7 +283,7 @@ export async function render(container) {
 
   const filaAgregar = document.createElement("div");
   filaAgregar.className = "btn-row";
-  filaAgregar.innerHTML = `<button type="button" class="btn">${icon("plus")} Agregar nuevo tramo</button>`;
+  filaAgregar.innerHTML = `<button type="button" class="btn btn-agregar-tramo">${icon("plus")} Agregar tramo</button>`;
   filaAgregar.querySelector("button").addEventListener("click", () => agregarTramo());
 
   /** Numera las tarjetas, muestra "Quitar" solo si hay mas de un tramo y deja "Agregar" en la ultima. */

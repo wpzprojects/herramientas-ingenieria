@@ -132,7 +132,7 @@ await seccion("vista: tarjetas y dato de partida", async () => {
   ok($$(".form-section-title").every((t) => t.querySelector("svg.icon")), "cada título lleva su icono");
   ok($$(".form-section-title").every((t) => t.parentElement.classList.contains("card")), "los títulos van dentro de tarjetas");
   ok($(".btn-tramo-quitar").hidden, "con un solo tramo no aparece «Quitar»");
-  ok($$(".tramo-block .btn").some((b) => texto(b).includes("Agregar nuevo tramo")), "«Agregar nuevo tramo» está dentro de la última tarjeta");
+  ok($$(".tramo-block .btn").some((b) => texto(b).includes("Agregar tramo")), "«Agregar tramo» está dentro de la última tarjeta");
 
   const visible = () => ["#wrap-potencia", "#wrap-aparente", "#wrap-corriente"].filter((s) => !$(s).hidden).join();
   ok(visible() === "#wrap-potencia" && $("#f-potencia").required && !$("#f-aparente").required, "por defecto: potencia activa (MW) visible y obligatoria");
@@ -143,6 +143,63 @@ await seccion("vista: tarjetas y dato de partida", async () => {
   elegir("#f-modo", "potencia");
   ok(visible() === "#wrap-potencia", "se puede volver a potencia activa");
   ok(texto($("#wrap-potencia label")).includes("MW") && texto($("#wrap-aparente label")).includes("MVA") && texto($("#wrap-corriente label")).includes("(A)"), "unidades: MW, MVA y A");
+});
+
+await seccion("vista: aspecto de las tarjetas", async () => {
+  const sonda = document.createElement("div");
+  stage.append(sonda);
+  const resolver = (variable) => { sonda.style.backgroundColor = `var(${variable})`; return getComputedStyle(sonda).backgroundColor; };
+  const suave = resolver("--accent-soft");
+  const acento = resolver("--accent");
+  sonda.remove();
+  ok(suave !== acento && suave !== "rgba(0, 0, 0, 0)", `colores del tema resueltos (${suave} / ${acento})`);
+
+  const titulos = $$(".form-section-title");
+  // Ojo: el contenedor de pruebas se desplaza cuando #out crece, asi que TODAS las medidas se toman antes de llamar a ok().
+  const medidas = titulos.map((t) => {
+    const card = t.closest(".card");
+    const svg = t.querySelector("svg.icon");
+    const cs = getComputedStyle(t);
+    return {
+      nombre: texto(t).replace("Quitar", "").trim(),
+      rc: card.getBoundingClientRect(),
+      rt: t.getBoundingClientRect(),
+      ri: svg.getBoundingClientRect(),
+      rTexto: t.querySelector(".tramo-titulo")?.getBoundingClientRect(),
+      fondo: cs.backgroundColor,
+      lineaColor: cs.borderBottomColor,
+      lineaGrosor: cs.borderBottomWidth,
+      colorIcono: getComputedStyle(svg).color,
+      // fin del contenido: el ultimo elemento de la tarjeta (en la ultima tarjeta es la fila del boton «Agregar tramo»)
+      ultimoCampo: card.lastElementChild.getBoundingClientRect().bottom,
+      finCampos: Math.max(...[...card.querySelectorAll(".grid-2.ultima > .field")].map((f) => f.getBoundingClientRect().bottom)),
+      tieneBoton: !!card.querySelector(".btn-agregar-tramo"),
+    };
+  });
+  for (const m of medidas) {
+    const { nombre, rc, rt, ri, rTexto } = m;
+    const centroBarra = rt.top + (rt.height - 1) / 2; // descontando la linea inferior
+    ok(Math.abs(rt.left - (rc.left + 1)) <= 0.6 && Math.abs(rt.right - (rc.right - 1)) <= 0.6, `«${nombre}»: la barra llega de borde a borde de la tarjeta`);
+    ok(rt.top - rc.top <= 1.6, `«${nombre}»: la barra queda arriba, pegada al borde superior de la tarjeta`);
+    ok(m.fondo === suave, `«${nombre}»: fondo con el color atenuado del tema`);
+    ok(m.lineaColor === acento && m.lineaGrosor === "1px", `«${nombre}»: línea inferior delgada con el color del tema`);
+    ok(m.colorIcono === acento, `«${nombre}»: el icono lleva el color pleno del tema`);
+    ok(Math.abs(ri.top + ri.height / 2 - centroBarra) <= 1, `«${nombre}»: icono centrado verticalmente en la barra (${(ri.top + ri.height / 2 - centroBarra).toFixed(1)} px)`);
+    if (rTexto) ok(Math.abs(rTexto.top + rTexto.height / 2 - centroBarra) <= 1.5, `«${nombre}»: texto centrado verticalmente en la barra (${(rTexto.top + rTexto.height / 2 - centroBarra).toFixed(1)} px)`);
+    const espacio = rc.bottom - m.ultimoCampo;
+    ok(espacio >= 15 && espacio <= 24, `«${nombre}»: margen justo bajo el último elemento (${espacio.toFixed(0)} px)`);
+    if (m.tieneBoton) {
+      const sep = m.ultimoCampo - m.finCampos; // = alto del boton + separacion sobre el
+      ok(sep > 0 && sep <= 16 + 45, `«${nombre}»: el botón «Agregar tramo» queda a poca distancia del último campo (${sep.toFixed(0)} px con el botón incluido)`);
+    }
+  }
+  ok(new Set(medidas.map((m) => Math.round(m.rt.height))).size === 1, "todas las barras de título tienen la misma altura");
+  const iconos = titulos.map((t) => t.querySelector("svg path").getAttribute("d"));
+  ok(iconos[0].startsWith("M21 12h-2c-.894") && iconos[1].startsWith("M2 12h2l2 -5l3 10"), "iconos de Tabler: onda senoidal (línea) y resistencia (conductor); ya no el rayo ni la calculadora");
+  const agregar = $$(".btn-agregar-tramo")[0];
+  ok(texto(agregar) === "Agregar tramo", `el botón dice «${texto(agregar)}»`);
+  const pad = getComputedStyle(agregar);
+  ok(parseFloat(pad.paddingLeft) <= 12 && parseFloat(pad.paddingRight) <= 12, `el botón tiene poco margen lateral (${pad.paddingLeft})`);
 });
 
 await seccion("vista: un tramo, cálculo y resultados", async () => {
@@ -195,12 +252,13 @@ await seccion("vista: dato de partida aparente y corriente", async () => {
 });
 
 await seccion("vista: varios tramos", async () => {
-  const agregar = $$(".tramo-block .btn").find((b) => texto(b).includes("Agregar nuevo tramo"));
+  const agregar = $$(".tramo-block .btn").find((b) => texto(b).includes("Agregar tramo"));
   agregar.click();
   const bloques = () => $$(".tramo-block");
   ok(bloques().length === 2 && texto($$(".tramo-titulo")[1]) === "Conductor — Tramo 2", "agregar crea la tarjeta «Conductor — Tramo 2»");
   ok($$(".btn-tramo-quitar").every((b) => !b.hidden), "con dos tramos ambos muestran «Quitar»");
-  ok(bloques()[1].contains(agregar) && !bloques()[0].contains(agregar), "«Agregar nuevo tramo» pasa a la última tarjeta");
+  ok(new Set($$(".form-section-title").map((t) => Math.round(t.getBoundingClientRect().height))).size === 1, "al aparecer «Quitar» las barras de título no cambian de altura");
+  ok(bloques()[1].contains(agregar) && !bloques()[0].contains(agregar), "«Agregar tramo» pasa a la última tarjeta");
   ok($("#f-calibre-0").value === "4/0" && $("#f-material-0").value === "ACSR", "el primer tramo conserva lo elegido");
 
   elegir("#f-red-1", "Aerea");
@@ -240,7 +298,7 @@ await seccion("vista: varios tramos", async () => {
   $$(".btn-tramo-quitar")[0].click();
   ok(bloques().length === 1 && texto($(".tramo-titulo")) === "Conductor — Tramo 1", "quitar elimina la tarjeta y renumera");
   ok($(".btn-tramo-quitar").hidden, "con un solo tramo vuelve a ocultarse «Quitar»");
-  ok(bloques()[0].contains($$(".tramo-block .btn").find((b) => texto(b).includes("Agregar nuevo tramo"))), "«Agregar nuevo tramo» sigue en la última tarjeta");
+  ok(bloques()[0].contains($$(".tramo-block .btn").find((b) => texto(b).includes("Agregar tramo"))), "«Agregar tramo» sigue en la última tarjeta");
   ok($("#f-calibre-1").value === "1/0" && $("#chk-resistencia-1").checked && $("#f-resistencia-1").value === "0.5", "el tramo que queda conserva calibre y resistencia manual");
 });
 

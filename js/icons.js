@@ -65,6 +65,11 @@ const shapes = {
     '<g stroke-width="2"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></g>',
   chartLine:
     '<g stroke-width="2"><path d="M4 19l16 0"/><path d="M4 15l4 -6l4 2l4 -5l4 4"/></g>',
+  // Tabler "wave-sine" y "circuit-resistor" (paths copiados del SVG oficial, v1.19 y circuit-*): datos de la linea y conductor.
+  waveSine:
+    '<g stroke-width="2"><path d="M21 12h-2c-.894 0 -1.662 -.857 -1.761 -2c-.296 -3.45 -.749 -6 -2.749 -6s-2.5 3.582 -2.5 8s-.5 8 -2.5 8s-2.452 -2.547 -2.749 -6c-.1 -1.147 -.867 -2 -1.763 -2h-2"/></g>',
+  circuitResistor:
+    '<g stroke-width="2"><path d="M2 12h2l2 -5l3 10l3 -10l3 10l3 -10l1.5 5h2.5"/></g>',
 };
 
 export function icon(name, cls = "") {
