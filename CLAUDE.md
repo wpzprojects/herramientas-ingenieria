@@ -33,6 +33,8 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   `convertir_coordenadas`, grupo «Varios»). Para exponer otro módulo a la IA: ficha nueva en `tools.js` (campos, `calcular`,
   resultados con `res`), marcarla `opcional` con su `grupo` y agregar sus pruebas. Cubierto por
   `tools/verify_ia.html` (secciones «agentes de análisis» y «herramientas permitidas por agente»).
+- Explicación completa de cómo la IA usa las herramientas y de cómo agregar una nueva: `docs/ia-herramientas.md` (léelo antes de
+  tocar `tools.js` o los agentes; si cambia ese comportamiento, actualízalo).
 - La IA nunca calcula: las calculadoras se exponen como herramientas (`js/ai/tools.js`) que
   llaman a los motores de `js/calc/*.js`. Si cambia la firma de un motor, actualizar su adaptador
   en `tools.js` y correr `tools/verify_ia.html` (arnés en el navegador, ver su encabezado).
