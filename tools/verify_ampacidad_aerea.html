@@ -284,6 +284,13 @@ await seccion("vista: fórmulas con KaTeX", async () => {
   ok(textoCaja.includes("balance térmico en régimen permanente") && textoCaja.includes("no está implementado") && textoCaja.includes("no hay ampacidad"), "las notas explican el balance, que Qse y θ se ingresan y cuándo no hay ampacidad");
   const rc = caja.getBoundingClientRect();
   ok($$("#formulas-katex .formula-katex").every((e) => { const r = e.getBoundingClientRect(); return r.left >= rc.left && r.right <= rc.right + 0.5; }), "las ecuaciones quedan dentro de la subtarjeta (aun las más largas)");
+  const lineaSec = $$("#formulas-katex > .result-subhead")[1];
+  const sondaLinea = document.createElement("div");
+  document.body.append(sondaLinea);
+  sondaLinea.style.backgroundColor = "var(--table-border)";
+  const colorTabla = getComputedStyle(sondaLinea).backgroundColor;
+  sondaLinea.remove();
+  ok(getComputedStyle(lineaSec).borderTopColor === colorTabla && getComputedStyle(lineaSec).borderTopColor !== getComputedStyle(caja).backgroundColor && parseFloat(getComputedStyle(lineaSec).borderTopWidth) >= 1, "la línea que separa las secciones de las fórmulas usa el borde marcado de las tablas (se ve también en el tema claro)");
 });
 
 // La pantalla se prueba tambien dentro de un iframe de ancho fijo: las media queries dependen del ancho de la ventana.

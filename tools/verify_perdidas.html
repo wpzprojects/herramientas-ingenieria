@@ -535,6 +535,13 @@ await seccion("vista: fórmulas con KaTeX", async () => {
   ok(cc.backgroundColor === cr.backgroundColor && cc.borderTopColor === cr.borderTopColor && cc.borderTopWidth === cr.borderTopWidth && cc.borderTopLeftRadius === cr.borderTopLeftRadius, `la subtarjeta tiene el fondo, borde y esquinas de la caja de Reporte (${cc.backgroundColor}, ${cc.borderTopLeftRadius})`);
   ok(cc.fontFamily !== cr.fontFamily && !cc.fontFamily.toLowerCase().includes("mono"), "la subtarjeta usa la letra normal (no la monoespaciada del reporte) para que KaTeX se vea bien");
   ok(dentro && ecuacionesEnCaja, "las 10 ecuaciones, los títulos y las notas quedan dentro de la subtarjeta");
+  const lineaSec = $$("#formulas-katex > .result-subhead")[1];
+  const sondaLinea = document.createElement("div");
+  document.body.append(sondaLinea);
+  sondaLinea.style.backgroundColor = "var(--table-border)";
+  const colorTabla = getComputedStyle(sondaLinea).backgroundColor;
+  sondaLinea.remove();
+  ok(getComputedStyle(lineaSec).borderTopColor === colorTabla && getComputedStyle(lineaSec).borderTopColor !== getComputedStyle(caja).backgroundColor && parseFloat(getComputedStyle(lineaSec).borderTopWidth) >= 1, "la línea que separa las secciones de las fórmulas usa el borde marcado de las tablas (se ve también en el tema claro)");
   ok(primerTitulo.borderTopWidth === "0px", "el primer título no repite una línea sobre el borde de la subtarjeta");
   // Descripcion de las etiquetas: subtitulo + lista con viñetas (ya no una linea corrida)
   const subtitulos = $$("#formulas-katex > .result-subhead").map(texto);
