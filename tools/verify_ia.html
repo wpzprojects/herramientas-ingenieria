@@ -139,7 +139,8 @@ const ACSR_4_0 = desnudos.find((c) => c.tipo === "ACSR" && c.calibre_awg_kcmil =
 
 await seccion("tools: esquema para Gemini", async () => {
   const decl = tools.declaraciones();
-  ok(decl.length === 9, `9 herramientas declaradas (${decl.length})`);
+  ok(decl.length === 11, `sin lista se declaran las 11 herramientas (${decl.length})`);
+  ok(tools.declaraciones(tools.HERRAMIENTAS_ESTANDAR).length === 9, "con las del estándar se declaran 9");
   ok(decl.every((d) => d.name && d.description && d.parameters.type === "object" && Object.keys(d.parameters.properties).length > 0), "todas con descripcion y propiedades no vacias");
   ok(decl.every((d) => (d.parameters.required || []).every((r) => r in d.parameters.properties)), "required subconjunto de properties");
   const barrido = decl.find((d) => d.name === "barrer_parametro").parameters.properties;
@@ -147,11 +148,76 @@ await seccion("tools: esquema para Gemini", async () => {
   ok(barrido.herramienta.enum.length === 6, "barrido: enum de 6 calculadoras");
 });
 
+await seccion("tools: Varios (conversión de unidades y de coordenadas)", async () => {
+  const { convertirCoordenadas, SISTEMAS } = await import("../js/calc/coordenadas.js");
+  const { convertirUnidad } = await import("../js/calc/unidades.js");
+  const tabla = await (await fetch("../data/factores-conversion.json")).json();
+  const unid = (o, ctx = ctxNuevo()) => tools.ejecutarLlamada("convertir_unidades", o, ctx);
+  const coor = (o, ctx = ctxNuevo()) => tools.ejecutarLlamada("convertir_coordenadas", o, ctx);
+  const decl = tools.declaraciones().filter((d) => d.name.startsWith("convertir_"));
+  ok(decl.length === 2 && decl.every((d) => d.description && Object.keys(d.parameters.properties).length >= 4), "ambas se declaran con descripción y parámetros");
+
+  // --- unidades
+  const cats = [...new Set(tabla.map((r) => r.categoria))];
+  const dUnid = decl.find((d) => d.name === "convertir_unidades").description;
+  ok(cats.every((c) => dUnid.includes(c)), `la descripción menciona las ${cats.length} categorías de la tabla (si cambia el JSON, actualizarla)`);
+  ok(cats.every((c) => { const us = [...new Set(tabla.filter((r) => r.categoria === c).flatMap((r) => [r.unidad_origen, r.unidad_destino]))]; return new Set(us.map((u) => u.toLowerCase())).size === us.length; }), "ninguna categoría tiene unidades que difieran solo en mayúsculas (la comparación tolerante no es ambigua)");
+
+  const ctx1 = ctxNuevo();
+  const u1 = await unid({ categoria: "Longitud", unidad_origen: "m", unidad_destino: "ft", valor: 10 }, ctx1);
+  const esperado1 = convertirUnidad(tabla, { categoria: "Longitud", unidadOrigen: "m", unidadDestino: "ft", valor: 10 });
+  cerca(u1.resultados[0].valor, esperado1, 1e-4, "10 m → ft coincide con el motor");
+  ok(u1.ok === true && ctx1.log.at(-1).resultados[0].dec === undefined && ctx1.log.at(-1).entradas.map((e) => e.clave).join() === "categoria,unidad_origen,unidad_destino,valor", "entradas de la corrida: categoría, unidades y valor; resultado sin decimales fijos");
+  cerca((await unid({ categoria: "Temperatura", unidad_origen: "C", unidad_destino: "F", valor: 100 })).resultados[0].valor, 212, 1e-9, "100 °C = 212 °F (factor con offset)");
+  cerca((await unid({ categoria: "Temperatura", unidad_origen: "F", unidad_destino: "C", valor: 212 })).resultados[0].valor, 100, 1e-3, "212 °F = 100 °C (conversión inversa de la tabla)");
+  cerca((await unid({ categoria: "longitud", unidad_origen: "M", unidad_destino: "FT", valor: 1 })).resultados[0].valor, 3.28084, 1e-9, "mayúsculas/minúsculas tolerantes en categoría y unidades");
+  const e1 = await unid({ categoria: "longitud", unidad_origen: "M", unidad_destino: "FT", valor: 1 });
+  ok(e1.entradas_usadas.find((e) => e.nombre === "Unidad de destino").valor === "ft", "las entradas muestran el nombre canónico de la unidad");
+  const m1 = await unid({ categoria: "Masa", unidad_origen: "kg", unidad_destino: "lb", valor: 1 });
+  ok(m1.ok === false && m1.error.includes("Categorías:") && m1.error.includes("Longitud"), "categoría inexistente: error que lista las categorías");
+  const m2 = await unid({ categoria: "Fuerza", unidad_origen: "m", unidad_destino: "N", valor: 1 });
+  ok(m2.ok === false && m2.error.includes("Fuerza") && m2.error.includes("kgf"), "unidad inexistente en la categoría: error que lista sus unidades");
+  const m3 = await unid({ categoria: "Longitud", unidad_origen: "mm", unidad_destino: "km", valor: 5 });
+  const hayDirecta = tabla.some((r) => r.categoria === "Longitud" && ((r.unidad_origen === "mm" && r.unidad_destino === "km") || (r.unidad_origen === "km" && r.unidad_destino === "mm")));
+  ok(hayDirecta ? m3.ok === true : m3.ok === false && m3.error.includes("Desde mm se puede convertir a:"), "sin conversión definida: error que indica a qué unidades sí se puede");
+  ok((await unid({ categoria: "Longitud", unidad_origen: "m", unidad_destino: "ft" })).ok === false, "falta el valor: error de parámetro");
+
+  // --- coordenadas
+  const dCoor = decl.find((d) => d.name === "convertir_coordenadas");
+  ok(dCoor.parameters.properties.sistema_origen.enum.join() === SISTEMAS.map((s) => String(s.epsg)).join() && SISTEMAS.every((s) => dCoor.description.includes(s.label)), "los 7 sistemas EPSG salen del motor (enum y descripción)");
+  const sys = (epsg) => SISTEMAS.find((s) => s.epsg === epsg);
+  const c2 = ctxNuevo();
+  const k1 = await coor({ sistema_origen: "4326", sistema_destino: "9377", este_o_longitud: -74.0721, norte_o_latitud: 4.7110 }, c2);
+  const esp = convertirCoordenadas(sys(4326), sys(9377), -74.0721, 4.7110);
+  cerca(k1.resultados.find((r) => r.nombre === "Este").valor, esp.xOut, 1e-3, "WGS84 → Origen Único: Este coincide con el motor");
+  cerca(k1.resultados.find((r) => r.nombre === "Norte").valor, esp.yOut, 1e-3, "WGS84 → Origen Único: Norte coincide con el motor");
+  ok(c2.log.at(-1).resultados.map((r) => r.clave).join() === "este,norte" && c2.log.at(-1).entradas.map((e) => e.etiqueta).join() === "Sistema de entrada,Sistema de salida,Longitud,Latitud", "entradas etiquetadas según el sistema de origen y resultados según el de destino");
+  const k2 = await coor({ sistema_origen: 9377, sistema_destino: 4326, este_o_longitud: esp.xOut, norte_o_latitud: esp.yOut });
+  cerca(k2.resultados.find((r) => r.nombre === "Longitud").valor, -74.0721, 1e-6, "ida y vuelta: longitud recuperada (el código EPSG puede llegar como número)");
+  cerca(k2.resultados.find((r) => r.nombre === "Latitud").valor, 4.7110, 1e-6, "ida y vuelta: latitud recuperada");
+  cerca(k2.entradas_usadas.find((e) => e.nombre === "Este").valor, esp.xOut, 1e-3, "el eco de las entradas conserva la precisión al metro (no se redondea a 6 cifras)");
+  const r1 = await coor({ sistema_origen: "4326", sistema_destino: "3116", este_o_longitud: 4.711, norte_o_latitud: -74.07 });
+  ok(r1.ok === true, "longitud y latitud intercambiadas pero dentro de rango no se detectan (por eso los nombres de los parámetros son explícitos)");
+  const r2 = await coor({ sistema_origen: "4326", sistema_destino: "3116", este_o_longitud: 4.7, norte_o_latitud: -200 });
+  ok(r2.ok === false && r2.error.includes("latitud"), "latitud fuera de -90..90: error");
+  const r3 = await coor({ sistema_origen: "4326", sistema_destino: "3116", este_o_longitud: 500, norte_o_latitud: 4 });
+  ok(r3.ok === false && r3.error.includes("longitud"), "longitud fuera de -180..180: error");
+  const r4 = await coor({ sistema_origen: "1234", sistema_destino: "3116", este_o_longitud: 1, norte_o_latitud: 1 });
+  ok(r4.ok === false && r4.error.includes("uno de"), "código EPSG desconocido: error que lista los válidos");
+  const r5 = await coor({ sistema_origen: "3116", sistema_destino: "4326", este_o_longitud: -74.07, norte_o_latitud: 4.71 });
+  ok(r5.ok === true && (r5.notas || []).some((n) => n.includes("parecen grados")), "valores en grados con sistema proyectado: se agrega una nota de advertencia");
+
+  // el barrido no ofrece las de Varios
+  const enumBarrido = tools.declaraciones().find((d) => d.name === "barrer_parametro").parameters.properties.herramienta.enum;
+  ok(!enumBarrido.includes("convertir_unidades") && !enumBarrido.includes("convertir_coordenadas"), "el barrido de parámetros no incluye las herramientas de Varios");
+});
+
 await seccion("tools: herramientas permitidas por agente", async () => {
   ok(tools.HERRAMIENTAS_ESTANDAR.length === 9 && Object.isFrozen(tools.HERRAMIENTAS_ESTANDAR), "el estándar habilita las 9 herramientas actuales");
   const cat = tools.catalogoHerramientas();
-  ok(cat.length === 9 && cat.every((h) => h.nombre && h.titulo && h.grupo && h.descripcion), "catálogo: 9 herramientas con título, grupo y descripción");
-  ok(new Set(cat.map((h) => h.grupo)).size === 3, "tres grupos: Calculadoras, Catálogos y Análisis");
+  ok(cat.length === 11 && cat.every((h) => h.nombre && h.titulo && h.grupo && h.descripcion), "catálogo: 11 herramientas con título, grupo y descripción");
+  ok([...new Set(cat.map((h) => h.grupo))].join() === "Calculadoras,Catálogos,Análisis,Varios", "cuatro grupos: Calculadoras, Catálogos, Análisis y Varios");
+  ok(!tools.HERRAMIENTAS_ESTANDAR.includes("convertir_unidades") && !tools.HERRAMIENTAS_ESTANDAR.includes("convertir_coordenadas"), "las de Varios son opcionales: no están en el estándar");
   ok(tools.declaraciones(["calcular_perdidas", "buscar_tuberia"]).map((d) => d.name).join() === "calcular_perdidas,buscar_tuberia", "declaraciones(permitidas) solo declara esas");
   const conBarrido = tools.declaraciones(["calcular_perdidas", "calcular_regulacion", "barrer_parametro"]).find((d) => d.name === "barrer_parametro");
   ok(conBarrido.parameters.properties.herramienta.enum.join() === "calcular_perdidas,calcular_regulacion", "el barrido solo ofrece las calculadoras permitidas");
@@ -381,6 +447,27 @@ await seccion("analisis: bucle con herramientas (Gemini simulado)", async () => 
   const rp = await analisis.ejecutarTurno({ conv: { contenidos: [] }, texto: "q", clave: "k", ajustes, ctx: ctxNuevo(), permitidas: ["calcular_perdidas", "calcular_regulacion"] });
   ok(declaradas[0] === "calcular_perdidas,calcular_regulacion", "el turno declara solo las herramientas permitidas del agente");
   ok(respuestaTuberia && respuestaTuberia.ok === false && respuestaTuberia.error.includes("no está habilitada") && rp.herramientas.length === 1 && rp.herramientas[0].ok === false, "una herramienta no permitida que el modelo pida se rechaza y se informa como error");
+
+  // Varios: fuera del estandar (por defecto la IA no las tiene), disponibles si el agente las habilita
+  const pedirConversion = async (extra) => {
+    let respuesta = null;
+    let nDecl = 0;
+    let vuelta = 0;
+    gemini.usarMock(async ({ cuerpo }) => {
+      if (++vuelta === 1) {
+        nDecl = cuerpo.tools[0].functionDeclarations.length;
+        return { candidates: [{ content: { role: "model", parts: [{ functionCall: { name: "convertir_unidades", args: { categoria: "Longitud", unidad_origen: "m", unidad_destino: "ft", valor: 100 } } }] } }] };
+      }
+      respuesta = cuerpo.contents.at(-1).parts[0].functionResponse.response;
+      return { candidates: [{ content: { role: "model", parts: [{ text: "ok" }] } }] };
+    });
+    const r = await analisis.ejecutarTurno({ conv: { contenidos: [] }, texto: "convierte", clave: "k", ajustes, ctx: ctxNuevo(), ...extra });
+    return { respuesta, nDecl, r };
+  };
+  const porDefecto = await pedirConversion({});
+  ok(porDefecto.nDecl === 9 && porDefecto.respuesta.ok === false && porDefecto.respuesta.error.includes("no está habilitada"), "por defecto (agente estándar) la IA no tiene las herramientas de Varios: se declaran 9 y una llamada a convertir_unidades se rechaza");
+  const conVarios = await pedirConversion({ permitidas: [...tools.HERRAMIENTAS_ESTANDAR, "convertir_unidades"] });
+  ok(conVarios.nDecl === 10 && conVarios.respuesta.ok === true && Math.abs(conVarios.respuesta.resultados[0].valor - 328.084) < 1e-6 && conVarios.r.herramientas[0].titulo === "Conversión de unidades", "un agente que la activa la recibe y la usa (100 m = 328.084 ft)");
   gemini.usarMock(null);
 });
 

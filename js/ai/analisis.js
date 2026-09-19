@@ -3,7 +3,7 @@
 // con los motores reales y le devuelve los resultados para que los interprete.
 
 import { generar } from "./gemini.js";
-import { declaraciones, ejecutarLlamada, tituloDe } from "./tools.js";
+import { declaraciones, ejecutarLlamada, tituloDe, HERRAMIENTAS_ESTANDAR } from "./tools.js";
 
 export const SISTEMA_ANALISIS = `Eres el asistente de análisis de la aplicación "Herramientas de Ingeniería", para líneas y redes de distribución eléctrica en Colombia (referencias: RETIE, NTC 2050, IEEE Std 738, IEC 60287, CREG). Respondes siempre en español.
 
@@ -41,11 +41,11 @@ No ejecutes cálculos nuevos salvo que sea indispensable. No inventes datos ni l
  * @param {{modelo:string, temperatura:number, maxRondas:number, maxCalculos:number}} o.ajustes
  * @param {object} o.ctx - contexto de herramientas (crearContexto)
  * @param {string} [o.sistema] - prompt de sistema del agente activo (por defecto SISTEMA_ANALISIS)
- * @param {string[]} [o.permitidas] - nombres de las herramientas que el agente puede usar (por defecto, todas)
+ * @param {string[]} [o.permitidas] - nombres de las herramientas que el agente puede usar (por defecto, las del agente estándar)
  * @param {(e:object)=>void} [o.onEvento] - { tipo:"herramienta", nombre, titulo } | { tipo:"herramienta-fin", nombre, titulo, ok }
  * @returns {Promise<{texto:string, herramientas:{titulo:string, ok:boolean}[], truncado:boolean}>}
  */
-export async function ejecutarTurno({ conv, texto, clave, ajustes, ctx, onEvento, sistema = SISTEMA_ANALISIS, permitidas }) {
+export async function ejecutarTurno({ conv, texto, clave, ajustes, ctx, onEvento, sistema = SISTEMA_ANALISIS, permitidas = HERRAMIENTAS_ESTANDAR }) {
   const marcador = conv.contenidos.length;
   const marcadorLog = ctx.log.length;
   const herramientas = [];

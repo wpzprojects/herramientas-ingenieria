@@ -17,6 +17,8 @@ import { calcularCortocircuito } from "../calc/cortocircuito.js";
 import { calcularAmpacidadAerea } from "../calc/ampacidad-aerea.js";
 import { calcularAmpacidadSubterranea } from "../calc/ampacidad-subterranea.js";
 import { calcularOcupacionDuctos } from "../calc/ocupacion-ductos.js";
+import { convertirUnidad } from "../calc/unidades.js";
+import { SISTEMAS, convertirCoordenadas } from "../calc/coordenadas.js";
 
 export class ErrorHerramienta extends Error {}
 
@@ -619,9 +621,109 @@ const T_BARRIDO = {
   ],
 };
 
+// ---------------------------------------------------------------- varios (opcionales)
+// Modulos de la seccion Varios. Son `opcional`: el agente estandar NO los usa; un agente propio los activa con su casilla.
+// Quedan fuera de CALCULADORAS, asi que el barrido de parametros tampoco los ofrece.
+
+const canonico = (texto, lista) => lista.find((x) => x === texto) ?? lista.find((x) => norm(x) === norm(texto));
+const CIFRAS_VARIOS = 12; // cifras significativas que recibe el modelo (ver paraModeloResultados)
+
+const T_CONVERTIR_UNIDADES = {
+  nombre: "convertir_unidades",
+  tipo: "calculo",
+  grupo: "Varios",
+  opcional: true,
+  titulo: "Conversión de unidades",
+  // Las categorias de la descripcion reflejan data/factores-conversion.json (lo vigila tools/verify_ia.html).
+  descripcion:
+    "Convierte un valor entre unidades de ingeniería con la tabla de factores de la aplicación. Categorías: Longitud, Velocidad, Fuerza, Area, Presion, Angulos, Temperatura, Momento y Esfuerzo. " +
+    "Las unidades van con la abreviatura de la tabla (m, mm, km, ft, in, mi, kgf, N, daN, kN, lbf, m2, mm2, kcmil, Pa, psi, MPa, deg, rad, C, F, K…); " +
+    "si la combinación no existe, el error lista las unidades y conversiones disponibles.",
+  campos: [
+    S("categoria", "Categoría de la magnitud (Longitud, Velocidad, Fuerza, Area, Presion, Angulos, Temperatura, Momento, Esfuerzo)", { req: true, oculto: true }),
+    S("unidad_origen", "Unidad en la que está el valor (abreviatura de la tabla)", { req: true, oculto: true }),
+    S("unidad_destino", "Unidad a la que se quiere convertir (abreviatura de la tabla)", { req: true, oculto: true }),
+    N("valor", "Valor a convertir, en la unidad de origen", { req: true, oculto: true }),
+  ],
+  async calcular(v, extra) {
+    const tabla = await loadData("factores-conversion");
+    const categorias = distinct(tabla, "categoria");
+    const categoria = canonico(v.categoria, categorias);
+    if (!categoria) throw new ErrorHerramienta(`La categoría "${v.categoria}" no existe. Categorías: ${categorias.join(", ")}.`);
+
+    const filas = tabla.filter((r) => r.categoria === categoria);
+    const unidades = [...new Set(filas.flatMap((r) => [r.unidad_origen, r.unidad_destino]))];
+    const origen = canonico(v.unidad_origen, unidades);
+    const destino = canonico(v.unidad_destino, unidades);
+    for (const [dado, hallada] of [[v.unidad_origen, origen], [v.unidad_destino, destino]]) {
+      if (!hallada) throw new ErrorHerramienta(`La unidad "${dado}" no existe en la categoría ${categoria}. Unidades: ${unidades.join(", ")}.`);
+    }
+
+    const valor = convertirUnidad(tabla, { categoria, unidadOrigen: origen, unidadDestino: destino, valor: v.valor });
+    if (valor === null) {
+      const alcanzables = [...new Set(filas.flatMap((r) => (r.unidad_origen === origen ? [r.unidad_destino] : r.unidad_destino === origen ? [r.unidad_origen] : [])))];
+      throw new ErrorHerramienta(`No hay conversión definida de ${origen} a ${destino} en ${categoria}. Desde ${origen} se puede convertir a: ${alcanzables.join(", ") || "(ninguna)"}.`);
+    }
+    extra.entradas.push(
+      ent("categoria", "Categoría", categoria),
+      ent("unidad_origen", "Unidad de origen", origen),
+      ent("unidad_destino", "Unidad de destino", destino),
+      { ...ent("valor", "Valor", v.valor), cifras: CIFRAS_VARIOS }
+    );
+    // sin `dec` ni unidad: los factores dan magnitudes muy distintas y la unidad ya va entre las entradas
+    return [{ ...res("valor_convertido", "Valor convertido", valor), dec: undefined, cifras: CIFRAS_VARIOS }];
+  },
+};
+
+const EPSG = SISTEMAS.map((s) => String(s.epsg));
+const sistemaDe = (epsg) => SISTEMAS.find((s) => String(s.epsg) === epsg);
+
+const T_CONVERTIR_COORDENADAS = {
+  nombre: "convertir_coordenadas",
+  tipo: "calculo",
+  grupo: "Varios",
+  opcional: true,
+  titulo: "Conversión de coordenadas",
+  descripcion:
+    `Convierte una coordenada entre sistemas de referencia (código EPSG): ${SISTEMAS.map((s) => s.label).join("; ")}. ` +
+    "En un sistema geográfico (4326) se da longitud (negativa al oeste) y latitud, en grados decimales; en uno proyectado, Este y Norte en metros. " +
+    "Siempre va primero el valor horizontal (este o longitud) y después el vertical (norte o latitud).",
+  campos: [
+    S("sistema_origen", "Código EPSG del sistema en el que está la coordenada dada", { req: true, enum: EPSG, oculto: true }),
+    S("sistema_destino", "Código EPSG del sistema al que se quiere convertir", { req: true, enum: EPSG, oculto: true }),
+    N("este_o_longitud", "Este en metros si el sistema de origen es proyectado; longitud en grados (negativa al oeste) si es geográfico (4326)", { req: true, oculto: true }),
+    N("norte_o_latitud", "Norte en metros si el sistema de origen es proyectado; latitud en grados si es geográfico (4326)", { req: true, oculto: true }),
+  ],
+  calcular(v, extra) {
+    const o = sistemaDe(v.sistema_origen);
+    const d = sistemaDe(v.sistema_destino);
+    const x = v.este_o_longitud;
+    const y = v.norte_o_latitud;
+    if (o.esGeo) {
+      if (Math.abs(x) > 180) throw new ErrorHerramienta(`La longitud debe estar entre -180 y 180 grados (recibido: ${x}). Con ${o.label}, "este_o_longitud" es la longitud y "norte_o_latitud" la latitud.`);
+      if (Math.abs(y) > 90) throw new ErrorHerramienta(`La latitud debe estar entre -90 y 90 grados (recibido: ${y}). Con ${o.label}, "este_o_longitud" es la longitud y "norte_o_latitud" la latitud.`);
+    } else if (Math.abs(x) <= 180 && Math.abs(y) <= 90) {
+      extra.notas.push(`Los valores (${x}, ${y}) parecen grados, pero el sistema de entrada (${o.label}) es proyectado y trabaja en metros: verifica que sea el sistema de origen correcto.`);
+    }
+    extra.entradas.push(
+      ent("sistema_origen", "Sistema de entrada", o.label),
+      ent("sistema_destino", "Sistema de salida", d.label),
+      { ...ent("este_o_longitud", o.esGeo ? "Longitud" : "Este", x, o.esGeo ? "°" : "m"), cifras: CIFRAS_VARIOS },
+      { ...ent("norte_o_latitud", o.esGeo ? "Latitud" : "Norte", y, o.esGeo ? "°" : "m"), cifras: CIFRAS_VARIOS }
+    );
+    const r = convertirCoordenadas(o, d, x, y);
+    const salida = r.esGeoDestino
+      ? [res("longitud", "Longitud", r.xOut, "°", 6), res("latitud", "Latitud", r.yOut, "°", 6)]
+      : [res("este", "Este", r.xOut, "m", 4), res("norte", "Norte", r.yOut, "m", 4)];
+    return salida.map((s) => ({ ...s, cifras: CIFRAS_VARIOS }));
+  },
+};
+
+const VARIOS = [T_CONVERTIR_UNIDADES, T_CONVERTIR_COORDENADAS];
+
 // ---------------------------------------------------------------- registro y ejecucion
 
-const REGISTRO = Object.fromEntries([...CALCULADORAS, T_BUSCAR_CONDUCTOR, T_BUSCAR_TUBERIA, T_BARRIDO].map((t) => [t.nombre, t]));
+const REGISTRO = Object.fromEntries([...CALCULADORAS, T_BUSCAR_CONDUCTOR, T_BUSCAR_TUBERIA, T_BARRIDO, ...VARIOS].map((t) => [t.nombre, t]));
 
 // Cada agente elige cuales herramientas puede usar. Una herramienta con `opcional: true` no forma parte de las del
 // agente estandar (queda desmarcada hasta que un agente propio la active); `grupo` la ubica en el formulario.
@@ -685,8 +787,10 @@ async function correrCalculo(tool, args) {
   };
 }
 
-const paraModeloEntradas = (es) => es.map((e) => ({ nombre: e.etiqueta, valor: redondear(e.valor), ...(e.unidad ? { unidad: e.unidad } : {}) }));
-const paraModeloResultados = (rs) => rs.map((r) => ({ nombre: r.etiqueta, valor: redondear(r.valor), ...(r.unidad ? { unidad: r.unidad } : {}) }));
+// Al modelo se le entregan 6 cifras significativas, salvo que la entrada o el resultado pida otra cantidad con `cifras`
+// (coordenadas y conversiones: 6 cifras dejarian metros de error en un Este de 4 881 143 m).
+const paraModeloEntradas = (es) => es.map((e) => ({ nombre: e.etiqueta, valor: redondear(e.valor, e.cifras), ...(e.unidad ? { unidad: e.unidad } : {}) }));
+const paraModeloResultados = (rs) => rs.map((r) => ({ nombre: r.etiqueta, valor: redondear(r.valor, r.cifras), ...(r.unidad ? { unidad: r.unidad } : {}) }));
 
 function consumir(ctx, n) {
   const p = ctx.presupuesto;

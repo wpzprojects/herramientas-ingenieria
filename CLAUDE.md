@@ -29,7 +29,9 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   propios se guardan ahí y siempre llevan `REGLA_FIJA` al final. Si cambia el prompt estándar, el predeterminado se actualiza
   solo. Cada agente elige las herramientas que puede usar (campo `herramientas`, casillas en el formulario): el filtro real es
   `declaraciones(permitidas)` + `ctx.permitidas` en `tools.js` (no solo el prompt); un agente guardado sin lista usa las del
-  estándar (`HERRAMIENTAS_ESTANDAR`; una herramienta con `opcional: true` queda fuera de ellas). Cubierto por
+  estándar (`HERRAMIENTAS_ESTANDAR`; una herramienta con `opcional: true` queda fuera de ellas: hoy `convertir_unidades` y
+  `convertir_coordenadas`, grupo «Varios»). Para exponer otro módulo a la IA: ficha nueva en `tools.js` (campos, `calcular`,
+  resultados con `res`), marcarla `opcional` con su `grupo` y agregar sus pruebas. Cubierto por
   `tools/verify_ia.html` (secciones «agentes de análisis» y «herramientas permitidas por agente»).
 - La IA nunca calcula: las calculadoras se exponen como herramientas (`js/ai/tools.js`) que
   llaman a los motores de `js/calc/*.js`. Si cambia la firma de un motor, actualizar su adaptador
@@ -57,7 +59,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v63); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v64); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (Ayuda → "Configuración avanzada", `js/auth/*`, `firebase/firestore.rules`)
