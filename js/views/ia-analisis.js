@@ -61,10 +61,9 @@ export async function render(container) {
       <div id="panel-historial" hidden style="margin-bottom:var(--space-4)"></div>
       <div class="ia-chat" id="chat" aria-live="polite"></div>
       <div class="ia-chips" id="ejemplos" aria-label="Ejemplos de preguntas"></div>
-      <div class="ia-composer">
-        <textarea id="f-pregunta" rows="3" placeholder="Ej.: analiza pérdidas y regulación de una línea de 34.5 kV, 9.9 MW, fp 0.95, 5.2 km con ACSR 4/0 y compara con 336.4…"></textarea>
+      <div class="ia-caja" style="margin-top:var(--space-4)">
+        <textarea id="f-pregunta" rows="1" placeholder="Ej.: analiza pérdidas y regulación de una línea de 34.5 kV, 9.9 MW, fp 0.95, 5.2 km con ACSR 4/0 y compara con 336.4…"></textarea>
       </div>
-      <p class="hint text-muted text-sm" style="margin-bottom:0">Ctrl + Enter para enviar. Lo que escribas o dictes se envía a Google (Gemini): no incluyas información confidencial.</p>
     </div>
     <div class="ia-acciones">
       <button type="button" class="ia-accion" id="btn-nueva" title="Empezar una conversación nueva">${icon("plus")}<span>Nueva conversación</span></button>
@@ -91,6 +90,20 @@ export async function render(container) {
   const chat = $("#chat");
   const fPregunta = $("#f-pregunta");
   agregarMicrofono(fPregunta, $("#btn-enviar"), { clase: "ia-accion" });
+
+  // Caja de texto como la del corrector de redaccion: una linea que crece al escribir (hasta el 40 % de la pantalla).
+  function ajustarAlto() {
+    if (!fPregunta.value) { // vacia: una sola linea (el texto de ejemplo no debe agrandar la caja)
+      fPregunta.style.height = "";
+      fPregunta.style.overflowY = "";
+      return;
+    }
+    const max = window.innerHeight * 0.4;
+    fPregunta.style.height = "auto";
+    fPregunta.style.height = `${Math.min(fPregunta.scrollHeight, max)}px`;
+    fPregunta.style.overflowY = fPregunta.scrollHeight > max ? "auto" : "hidden"; // sin flechas mientras quepa
+  }
+  fPregunta.addEventListener("input", ajustarAlto);
 
   // ---------- chat ----------
   function chipsHerramientas(lista) {
@@ -139,6 +152,7 @@ export async function render(container) {
             class: "ia-chip",
             onclick: () => {
               fPregunta.value = e;
+              ajustarAlto();
               fPregunta.focus();
             },
           },
@@ -237,6 +251,7 @@ export async function render(container) {
     const t = fPregunta.value.trim();
     if (!t) return fPregunta.focus();
     fPregunta.value = "";
+    ajustarAlto();
     enviar(t);
   });
   fPregunta.addEventListener("keydown", (e) => {

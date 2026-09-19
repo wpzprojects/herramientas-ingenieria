@@ -129,6 +129,11 @@ export async function render(container) {
     fTexto.placeholder = v ? PH_AJUSTE : PH_TEXTO;
   }
   function ajustarAlto() {
+    if (!fTexto.value) { // vacia: una sola linea (el texto de ejemplo no debe agrandar la caja)
+      fTexto.style.height = "";
+      fTexto.style.overflowY = "";
+      return;
+    }
     const max = window.innerHeight * 0.4;
     fTexto.style.height = "auto";
     fTexto.style.height = `${Math.min(fTexto.scrollHeight, max)}px`;
