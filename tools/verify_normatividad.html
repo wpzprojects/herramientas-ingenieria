@@ -67,6 +67,7 @@ await seccion("Enterramiento de ductos: nota al pie", async () => {
   const rn = nota.getBoundingClientRect();
   ok(rn.top >= frame.bottom - 0.5 && Math.abs(rn.left - frame.left) < 40, "la nota va DEBAJO del visor de imágenes");
   ok($("#imagenes-wrap").lastElementChild === nota, "la nota es lo último de la pantalla");
+  ok(Math.abs(rn.left - frame.left) < 1 && Math.abs(rn.right - frame.right) < 1, `la nota ocupa todo el ancho del visor de imágenes (nota ${Math.round(rn.width)} px, visor ${Math.round(frame.width)} px)`);
   const cs = getComputedStyle(nota);
   ok(cs.borderLeftWidth === "3px" && parseFloat(cs.fontSize) < parseFloat(getComputedStyle(document.documentElement).fontSize) && cs.borderTopWidth === "0px", `estilo discreto: línea vertical de 3 px a la izquierda y letra más pequeña (${cs.fontSize})`);
 
