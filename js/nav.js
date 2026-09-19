@@ -43,7 +43,7 @@ export const sectionMenus = {
   varios: [
     { title: "Codificación de entregables", desc: "Catálogo de códigos de documentos y planos.", icon: "hash", hash: "#/varios/codificacion" },
     { title: "Conversión de coordenadas", desc: "Conversión entre diferentes sistemas de coordenadas.", icon: "compass", hash: "#/varios/conversion-coordenadas" },
-    { title: "Conversión de unidades", desc: "Conversión entre unidades de longitud, área, fuerza, presión, temperatura y más.", icon: "ruler", hash: "#/varios/conversion-unidades" },
+    { title: "Conversión de unidades", desc: "Conversión entre unidades de longitud, área, fuerza, velocidad y más.", icon: "ruler", hash: "#/varios/conversion-unidades" },
   ],
   ia: [
     { title: "Análisis con calculadoras", desc: "Compara escenarios con las calculadoras y genera un reporte.", icon: "chartLine", hash: "#/ia/analisis" },
