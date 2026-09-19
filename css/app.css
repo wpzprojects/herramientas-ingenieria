@@ -361,7 +361,7 @@ td.wrap, th.wrap { white-space: normal; }
 /* Dos columnas: etiquetas a la izquierda y valores alineados a la izquierda en su propia columna (mismo borde en todas las filas). */
 .detail-row {
   display: grid; grid-template-columns: minmax(180px, 38%) 1fr; align-items: center; column-gap: var(--space-5);
-  min-height: 50px; padding: var(--space-3) var(--space-5); /* PRUEBA: 50px (antes 56px) */
+  min-height: 50px; padding: var(--space-3) var(--space-5);
   border-top: 1px solid var(--border);
 }
 .detail-row:first-child { border-top: none; }
