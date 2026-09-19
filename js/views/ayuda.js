@@ -15,7 +15,7 @@ export function render(container) {
     <div class="callout callout-info">
       Esta aplicación funciona 100% offline una vez cargada por primera vez: es instalable como
       PWA y todos los catálogos, tablas normativas y datos de cálculo viven embebidos en la app,
-      sin necesitar conexión a internet. La única excepción es la sección de Inteligencia artificial,
+      sin necesitar conexión a internet. La única excepción es la sección de Funciones de IA,
       que se conecta a Google Gemini y por tanto requiere internet y una clave de API gratuita.
     </div>
 

@@ -1,4 +1,4 @@
-// Menu de la seccion "Inteligencia artificial". Mismo patron que varios.js.
+// Menu de la seccion "Funciones de IA". Mismo patron que varios.js.
 
 import { icon } from "../icons.js";
 import { sectionMenus, sectionMeta } from "../nav.js";

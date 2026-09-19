@@ -79,7 +79,7 @@ async function peticion(ruta, { metodo = "GET", cuerpo, clave, signal } = {}) {
       tipo: "offline",
     });
   }
-  if (!clave) throw new ErrorGemini("Falta la clave de API. Configúrala en Inteligencia artificial → Configuración.", { tipo: "clave" });
+  if (!clave) throw new ErrorGemini("Falta la clave de API. Configúrala en Funciones de IA → Configuración.", { tipo: "clave" });
 
   for (let intento = 0; ; intento++) {
     let res;

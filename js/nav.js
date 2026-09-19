@@ -6,7 +6,7 @@ export const sidebarLinks = [
   { key: "catalogos", title: "Catálogos", icon: "book", hash: "#/catalogos" },
   { key: "normatividad", title: "Normatividad", icon: "archive", hash: "#/normatividad" },
   { key: "varios", title: "Varios", icon: "grid", hash: "#/varios" },
-  { key: "ia", title: "Inteligencia artificial", icon: "sparkles", hash: "#/ia" },
+  { key: "ia", title: "Funciones de IA", icon: "sparkles", hash: "#/ia" },
   { key: "ayuda", title: "Ayuda", icon: "help", hash: "#/ayuda" },
 ];
 
@@ -15,7 +15,7 @@ export const sectionMeta = {
   catalogos: { title: "Catálogos", subtitle: "Consulta técnica de conductores por familia, con filtros y ficha de detalle." },
   normatividad: { title: "Normatividad", subtitle: "Referencia normativa RETIE / NTC 2050 y resoluciones del sector eléctrico." },
   varios: { title: "Varios", subtitle: "Herramientas de apoyo: conversión de unidades, coordenadas y codificación." },
-  ia: { title: "Inteligencia artificial", subtitle: "Asistentes con IA (Google Gemini): análisis de escenarios con las calculadoras y corrección de redacción." },
+  ia: { title: "Funciones de IA", subtitle: "Asistentes con IA (Google Gemini): análisis de escenarios con las calculadoras y corrección de redacción." },
 };
 
 export const sectionMenus = {

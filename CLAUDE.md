@@ -20,7 +20,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   antes de "corregir" comportamientos que parezcan bugs (algunos son intencionales,
   replicando el comportamiento original).
 
-## Sección de Inteligencia artificial (`js/ai/*`, `js/views/ia*.js`)
+## Sección "Funciones de IA" (`js/ai/*`, `js/views/ia*.js`)
 
 - Es la ÚNICA excepción a "100% offline": se conecta a Google Gemini con la clave del propio
   usuario (BYOK, guardada en el navegador; no hay backend). Detalle en el README.

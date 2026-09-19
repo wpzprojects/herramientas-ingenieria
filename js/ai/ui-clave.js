@@ -31,7 +31,7 @@ export function abrirInstructivo() {
           <span class="hint">Si tu cuenta corporativa no tiene acceso, usa una cuenta personal de Google.</span></li>
         <li>Pulsa el botón para <strong>crear una clave de API</strong> (Create API key) y elige o crea un proyecto.</li>
         <li>Copia la clave generada (suele empezar por <code>AIza…</code>).</li>
-        <li>Vuelve a esta app: <strong>Inteligencia artificial → Configuración</strong>, pega la clave y pulsa <strong>Guardar</strong>. Luego <strong>Probar conexión</strong>.</li>
+        <li>Vuelve a esta app: <strong>Funciones de IA → Configuración</strong>, pega la clave y pulsa <strong>Guardar</strong>. Luego <strong>Probar conexión</strong>.</li>
       </ol>
       <div class="callout callout-info"><span>El plan gratuito tiene límites de uso por minuto y por día; es suficiente para uso personal. Si los superas, la app te avisará y bastará con esperar.</span></div>
       <div class="callout callout-warning"><span><strong>Cuida tu clave:</strong> es personal, no la compartas. Se guarda solo en este navegador y se envía únicamente a Google. Puedes revocarla cuando quieras desde AI Studio.</span></div>

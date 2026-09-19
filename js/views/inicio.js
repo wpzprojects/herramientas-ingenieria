@@ -1,6 +1,6 @@
 // Pantalla de bienvenida - equivalente a Pantalla_Bienvenida del original en
 // Power Apps. Estatica: solo presenta tiles grandes hacia las secciones
-// principales de la app (las 4 del original + Inteligencia artificial).
+// principales de la app (las 4 del original + Funciones de IA).
 
 import { icon } from "../icons.js";
 
@@ -30,7 +30,7 @@ const TILES = [
     hash: "#/varios",
   },
   {
-    title: "Inteligencia artificial",
+    title: "Funciones de IA",
     desc: "Análisis de escenarios con las calculadoras y corrección de redacción (Gemini).",
     icon: "sparkles",
     hash: "#/ia",
