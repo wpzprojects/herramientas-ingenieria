@@ -39,7 +39,6 @@ const TILES = [
 
 export function render(container) {
   container.innerHTML = `
-    <p class="page-subtitle">Calculadoras, catálogos y normatividad para ingeniería de líneas y redes de distribución eléctrica.</p>
     <div class="menu-grid menu-grid--row">
       ${TILES.map(
         (t) => `
