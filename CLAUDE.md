@@ -85,10 +85,14 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   en tripolar se bloquean las dos últimas), «Condiciones de operación» (icono `circuitVoltmeter`; tensión | frecuencia,
   temperatura máxima del conductor | del terreno) e «Instalación» (icono Tabler `gridDots`; resistividad del suelo | resistencia
   térmica del ducto, número de circuitos | profundidad, separación entre ductos que solo se habilita con más de 1 circuito). Los seis
-  `.hint` de antes pasaron a botones «i» con el MISMO texto. Sin funciones nuevas: una métrica en A; los errores del motor (salto
+  `.hint` de antes pasaron a botones «i» con el MISMO texto. Función tomada de la «Calculadora Normativa»: en cable MONOPOLAR el
+  resultado agrega una segunda métrica, la corriente circulante en la pantalla (A, si las pantallas van a tierra en «Ambos Extremos»)
+  o la tensión inducida a circuito abierto (V/km, con «Unipuntual» o «Cross-bonding»); en tripolar no aplica. Se calcula con la
+  ampacidad ya obtenida en `js/calc/ampacidad-subterranea-pantalla.js` (recalcula Xm y Rs,op con los mismos datos del cable) y va en
+  el reporte DESPUÉS de la ampacidad, dentro de RESULTADOS. Por lo demás sin funciones nuevas: los errores del motor (salto
   térmico insuficiente, combinación de cable inexistente) siguen como callout rojo (ahora con `escapeHtml`). Las intermedias (R, Wd,
-  λ1, T1–T4, Δθ) van en RESULTADOS del reporte. Fórmulas KaTeX: 21 ecuaciones y 34 etiquetas (incluye Kennelly y los casos de n y de
-  λ1). El motor `js/calc/ampacidad-subterranea.js` y la herramienta de la IA NO se tocan. Pruebas:
+  λ1, T1–T4, Δθ) van en RESULTADOS del reporte. Fórmulas KaTeX: 23 ecuaciones y 36 etiquetas (incluye Kennelly, los casos de n y de
+  λ1, y la pantalla). El motor `js/calc/ampacidad-subterranea.js` y la herramienta de la IA NO se tocan. Pruebas:
   `tools/verify_ampacidad_subterranea.html` (compara con el método IEC escrito aparte, incluido el banco de ductos).
 - Rediseño acordado con el usuario (2026-09-19) tomando de referencia el módulo de pérdidas de otro proyecto («Calculadora
   Normativa»): tarjeta «Datos de la línea» (con *dato de partida*: MW, MVA o A) + una tarjeta «Conductor — Tramo N» por tramo
@@ -177,7 +181,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v89); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v90); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (Ayuda → "Configuración avanzada", `js/auth/*`, `firebase/firestore.rules`)

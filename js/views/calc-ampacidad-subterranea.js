@@ -1,11 +1,13 @@
 // Calculadora de ampacidad de cables subterraneos en banco de ductos (IEC 60287-1-1).
 // La pantalla se divide en tarjetas: "Cable" (construccion, pantalla y puesta a tierra), "Condiciones de operacion" (tension,
 // frecuencia y temperaturas) e "Instalacion" (suelo, ducto y banco de ductos). Misma estructura que las demas calculadoras.
-// El motor (../calc/ampacidad-subterranea.js) no se toca.
+// El motor (../calc/ampacidad-subterranea.js) no se toca; la corriente circulante / tension inducida en la pantalla se calcula
+// aparte (../calc/ampacidad-subterranea-pantalla.js).
 
 import { fmt, loadData, distinct, escapeHtml } from "../util/format.js";
 import { icon } from "../icons.js";
 import { calcularAmpacidadSubterranea } from "../calc/ampacidad-subterranea.js";
+import { calcularPantalla } from "../calc/ampacidad-subterranea-pantalla.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 import { activarInfos } from "../util/info-campo.js";
 
@@ -64,6 +66,13 @@ const FORMULAS_TEX = [
       String.raw`T_4 = T_{4p} + T_{4m} \quad [\mathrm{K\cdot m/W}]`,
     ],
   },
+  {
+    titulo: "Pantalla del cable monopolar (con la ampacidad ya calculada)",
+    ecuaciones: [
+      String.raw`I_{pant} = I\,\dfrac{X_m}{\sqrt{R_{s,op}^{2} + X_m^{2}}} \quad [\mathrm{A}] \quad (\text{pantallas a tierra en ambos extremos})`,
+      String.raw`V_{ind} = 1000\,I\,X_m \quad [\mathrm{V/km}] \quad (\text{unipuntual o cross-bonding, circuito abierto})`,
+    ],
+  },
 ];
 
 // Descripcion de las etiquetas (simbolos) de las ecuaciones, en el orden en que aparecen; el simbolo se dibuja con KaTeX igual que en ellas.
@@ -102,6 +111,8 @@ const FORMULAS_ETIQUETAS = [
   { tex: String.raw`\rho_s`, texto: "Resistividad térmica del suelo [K·m/W]" },
   { tex: "L", texto: "Profundidad del ducto activo [m]" },
   { tex: String.raw`L_j,\,x_j`, texto: "Profundidad del ducto j y su distancia horizontal al ducto activo [m]" },
+  { tex: String.raw`I_{pant}`, texto: "Corriente circulante por la pantalla [A]" },
+  { tex: String.raw`V_{ind}`, texto: "Tensión inducida en la pantalla a circuito abierto, por kilómetro de cable [V/km]" },
 ];
 
 const FORMULAS_NOTA = `El cálculo es el de régimen permanente de la IEC 60287-1-1. La resistencia térmica externa se calcula con el método de imágenes de Kennelly: acopla el ducto activo con los demás ductos del banco.
@@ -109,6 +120,8 @@ const FORMULAS_NOTA = `El cálculo es el de régimen permanente de la IEC 60287-
 El banco se arma con hasta 3 ductos por fila (separados entre sí por la distancia indicada) y el ducto activo es el más cercano al centro geométrico del banco.
 
 En el cable tripolar el factor de proximidad es cero, λ1 = 0.02 y no se usan la separación entre fases ni la puesta a tierra de pantallas.
+
+En el cable monopolar, con las pantallas a tierra en ambos extremos circula corriente por ellas (I_pant); con puesta a tierra unipuntual o cross-bonding no circula, y queda una tensión inducida a circuito abierto (V_ind). Ambas se calculan con la ampacidad obtenida y sirven para revisar el esquema de puesta a tierra; en el cable tripolar no aplican.
 
 Limitaciones conocidas: no distingue formación en trébol de formación plana (usa la misma fórmula de proximidad para ambas) y solo calcula régimen permanente (no transitorio ni secado del suelo).
 
@@ -139,6 +152,10 @@ const FORMULAS_TEXTO = `Metodología IEC 60287-1-1 (régimen permanente):
   T2 = ρ2/(2π)·ln(1 + 2·t2/Ds)
   T3 = ρ3/(2π)·ln(1 + 2·t3/De)
   T4 = Td + ρs/(2π)·ln(4L/De) + Σj ρs/(2π)·ln( √(xj² + (Lj+L)²) / √(xj² + (Lj−L)²) )
+
+  Pantalla del cable monopolar:
+    Ipant = I·Xm / √(Rs,op² + Xm²)        [A]      (ambos extremos)
+    Vind  = 1000·I·Xm                      [V/km]   (unipuntual o cross-bonding)
 
 ${FORMULAS_NOTA}`;
 
@@ -365,6 +382,7 @@ export async function render(container) {
 
     try {
       const data = calcularAmpacidadSubterranea(p);
+      data.pantalla = calcularPantalla(p, data.ampacidad);
       renderResultado(data, p, { material, calibre, tipoPantalla, nivelAislamientoKv, nivelAislamientoPct });
     } catch (err) {
       renderError(err.message);
@@ -381,6 +399,7 @@ export async function render(container) {
     // El reporte se copia y se pega: tres etiquetas (el calculo, los parametros de entrada y los resultados).
     // Parametros = lo que el usuario dio; resultados = todo lo que sale del calculo.
     const i = data.intermedios;
+    const pant = data.pantalla;
     return [
       `CÁLCULO DE AMPACIDAD SUBTERRÁNEA`,
       ``,
@@ -415,17 +434,34 @@ export async function render(container) {
       `Δθ (salto térmico admisible): ${fmt(i.deltaTheta)} °C`,
       ``,
       `Ampacidad: ${fmt(data.ampacidad)} A`,
+      ...(pant === null ? [] : [``, pant.tipo === "circulante" ? `Corriente circulante en la pantalla: ${fmt(pant.corrienteA)} A` : `Tensión inducida en la pantalla (circuito abierto): ${fmt(pant.tensionVKm)} V/km`]),
     ].join("\n");
   }
 
   function renderResultado(data, p, ctx) {
     const wrap = container.querySelector("#resultado-wrap");
 
+    const pant = data.pantalla;
+    const metricaPantalla =
+      pant === null
+        ? ""
+        : pant.tipo === "circulante"
+          ? `<div class="result-metric">
+                <div class="value">${fmt(pant.corrienteA)}<span class="unit">A</span></div>
+                <div class="label">Corriente circulante en la pantalla</div>
+              </div>`
+          : `<div class="result-metric">
+                <div class="value">${fmt(pant.tensionVKm)}<span class="unit">V/km</span></div>
+                <div class="label">Tensión inducida en la pantalla (circuito abierto)</div>
+              </div>`;
     const resultado = `
           <div class="result-panel">
-            <div class="result-metric">
-              <div class="value">${fmt(data.ampacidad)}<span class="unit">A</span></div>
-              <div class="label">Ampacidad admisible</div>
+            <div class="${pant === null ? "" : "grid-2"}">
+              <div class="result-metric">
+                <div class="value">${fmt(data.ampacidad)}<span class="unit">A</span></div>
+                <div class="label">Ampacidad admisible</div>
+              </div>
+              ${metricaPantalla}
             </div>
           </div>`;
 
