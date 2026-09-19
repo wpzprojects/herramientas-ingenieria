@@ -21,9 +21,9 @@ export const sectionMeta = {
 export const sectionMenus = {
   calculos: [
     { title: "Ocupación de ductos", desc: "Porcentaje de ocupación de ductos según NTC-2050.", icon: "layers", hash: "#/calculos/ocupacion-ductos" },
-    { title: "Pérdidas", desc: "Corriente, potencia y % de pérdidas de una línea trifásica.", icon: "bolt", hash: "#/calculos/perdidas" },
+    { title: "Pérdidas", desc: "Corriente, potencia y % de pérdidas de una línea trifásica.", icon: "alertTriangle", hash: "#/calculos/perdidas" },
     { title: "Regulación", desc: "Caída de tensión y reactancia inductiva del conductor.", icon: "activity", hash: "#/calculos/regulacion" },
-    { title: "Cortocircuito", desc: "Capacidad de corriente de cortocircuito admisible.", icon: "alertTriangle", hash: "#/calculos/cortocircuito" },
+    { title: "Cortocircuito", desc: "Capacidad de corriente de cortocircuito admisible.", icon: "bolt", hash: "#/calculos/cortocircuito" },
     { title: "Ampacidad aérea", desc: "Corriente admisible de conductores aéreos (IEEE Std 738).", icon: "powerTower", hash: "#/calculos/ampacidad-aerea" },
     { title: "Ampacidad subterránea", desc: "Corriente admisible de cables en banco de ductos (IEC 60287-1-1).", icon: "underground", hash: "#/calculos/ampacidad-subterranea" },
   ],

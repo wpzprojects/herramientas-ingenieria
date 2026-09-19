@@ -20,7 +20,7 @@ const paths = {
   print: "M6 9V3h12v6M6 18H4a1 1 0 0 1-1-1v-5a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-2M6 14h12v7H6v-7Z",
   sun: "M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10ZM12 1v2m0 18v2M4.2 4.2l1.4 1.4m12.8 12.8 1.4 1.4M1 12h2m18 0h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4",
   moon: "M20.8 14.5A9 9 0 1 1 9.5 3.2a7 7 0 0 0 11.3 11.3Z",
-  activity: "M22 12h-4l-3 9L9 3l-3 9H2",
+  activity: "M2 12h4l3 9 6-18 3 9h4", // (espejo izquierda-derecha del trazo original, pedido del usuario; solo lo usa la tarjeta de Regulacion)
   alertTriangle: "M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0ZM12 9v4M12 17h.01",
   powerTower: "M12 2v18M6 6h12M8 10h8M12 20 7 22M12 20l5 2",
   underground: "M9 9h6v3H9zM12 3v6M3 15h4M9 15h4M15 15h4M3 18h4M9 18h4M15 18h4",
