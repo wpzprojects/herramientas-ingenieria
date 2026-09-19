@@ -108,10 +108,12 @@ export async function render(container) {
       <div class="ia-chat ia-chat--hilo" id="chat" aria-live="polite" hidden></div>
       <div class="ia-caja">
         <textarea id="f-texto" rows="1" placeholder="${PH_TEXTO}"></textarea>
-        <button type="button" class="ia-accion" id="btn-nueva" title="Empezar una conversación nueva">${icon("plus")}<span>Nueva conversación</span></button>
-        <button type="button" class="ia-accion ia-accion--enviar" id="btn-enviar" title="Enviar (Ctrl + Enter)">${icon("send")}<span>Enviar</span></button>
       </div>
-      <p class="ia-caja-pie hint" id="cuenta-caracteres"></p>
+    </div>
+    <div class="ia-acciones">
+      <button type="button" class="ia-accion" id="btn-nueva" title="Empezar una conversación nueva">${icon("plus")}<span>Nueva conversación</span></button>
+      <span class="hint" id="cuenta-caracteres"></span>
+      <button type="button" class="ia-accion ia-accion--enviar" id="btn-enviar" title="Enviar (Ctrl + Enter)">${icon("send")}<span>Enviar</span></button>
     </div>
   `
   );
@@ -128,14 +130,13 @@ export async function render(container) {
     fTexto.placeholder = v ? PH_AJUSTE : PH_TEXTO;
   }
   function ajustarAlto() {
+    const max = window.innerHeight * 0.4;
     fTexto.style.height = "auto";
-    fTexto.style.height = `${Math.min(fTexto.scrollHeight, window.innerHeight * 0.4)}px`;
+    fTexto.style.height = `${Math.min(fTexto.scrollHeight, max)}px`;
+    fTexto.style.overflowY = fTexto.scrollHeight > max ? "auto" : "hidden"; // sin flechas mientras quepa
   }
-  // El hilo se desplaza dentro del contenedor; la caja no se mueve. Si el contenedor no cabe en pantalla, se trae a la vista.
-  const alFinal = () => {
-    $("#conv").scrollIntoView({ block: "nearest" });
-    chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
-  };
+  // La tarjeta crece con la conversacion y el desplazamiento lo hace la pagina.
+  const alFinal = () => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
 
   const agenteActivo = () => agentes.find((a) => a.id === activoId) || agentes[0];
 
@@ -248,7 +249,7 @@ export async function render(container) {
       conv.contenidos.push({ role: "model", parts: [{ text: r.texto || texto }] });
       conv.mensajes.push({ rol: "model", texto });
       espera.remove();
-      chat.scrollTo({ top: Math.max(0, burbuja("model", texto).offsetTop - 8), behavior: "smooth" }); // se lee desde el inicio de la respuesta
+      burbuja("model", texto).scrollIntoView({ behavior: "smooth", block: "start" }); // se lee desde el inicio de la respuesta
       historial.guardar(conv); // en segundo plano: un guardado lento no debe bloquear la interfaz
     } catch (err) {
       // se revierte el turno del usuario para no dejar el historial desbalanceado

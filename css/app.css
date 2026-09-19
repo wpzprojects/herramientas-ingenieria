@@ -446,29 +446,18 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .ia-msg--model { align-self: flex-start; background: var(--bg-sunken); }
 .ia-msg--plano { white-space: pre-wrap; }
 .ia-msg--error { align-self: flex-start; background: var(--danger-soft); border-color: var(--danger); color: var(--danger); }
-/* Corrector de redaccion, estilo chat: una tarjeta con el hilo (crece hasta un tope y luego se desplaza por dentro, con barra discreta) y una cajita resaltada abajo. */
+/* Corrector de redaccion, estilo chat: una tarjeta que crece con la conversacion (la pagina hace el scroll), caja de texto resaltada al final y los botones de accion debajo, fuera de la tarjeta. */
 .ia-conv { display: flex; flex-direction: column; }
-.ia-chat--hilo {
-  position: relative; max-height: clamp(260px, calc(100vh - 430px), 720px); padding: var(--space-1) var(--space-2) var(--space-1) var(--space-1);
-  gap: var(--space-5); margin-bottom: var(--space-4);
-  scrollbar-width: thin; scrollbar-color: transparent transparent;
-}
-.ia-chat--hilo:hover { scrollbar-color: var(--border-strong) transparent; }
-.ia-chat--hilo::-webkit-scrollbar { width: 8px; }
-.ia-chat--hilo::-webkit-scrollbar-thumb { background: transparent; border-radius: 4px; }
-.ia-chat--hilo:hover::-webkit-scrollbar-thumb { background: var(--border-strong); }
-.ia-chat--hilo .ia-msg--model { background: transparent; border-color: transparent; padding-left: 0; padding-right: 0; max-width: 100%; }
-.ia-caja {
-  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 2px;
-  border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-sunken); padding: 4px 8px 4px 14px;
-}
+.ia-chat--hilo { max-height: none; overflow: visible; padding: 0; gap: var(--space-4); margin-bottom: var(--space-4); }
+.ia-chat--hilo .ia-msg { scroll-margin-top: calc(var(--topbar-h, 56px) + var(--space-4)); }
+.ia-caja { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-sunken); padding: 4px 14px; }
 .ia-caja:focus-within { border-color: var(--accent); }
 .ia-caja textarea, .ia-caja textarea:focus {
-  flex: 1 1 240px; min-width: 0; min-height: 40px; resize: none; border: none; outline: none; box-shadow: none;
-  background: transparent; padding: 10px 4px; line-height: 1.4;
+  display: block; width: 100%; min-height: 40px; resize: none; overflow-y: hidden; border: none; outline: none; box-shadow: none;
+  background: transparent; padding: 10px 0; line-height: 1.4;
 }
-.ia-caja-pie { margin: var(--space-1) var(--space-3) 0; text-align: right; }
-.ia-caja-pie:empty { display: none; }
+.ia-acciones { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; margin: var(--space-1) var(--space-2) var(--space-3); }
+.ia-acciones .hint { flex: 1 1 auto; margin: 0; text-align: right; }
 /* Botones de accion sin recuadro: icono + palabra, se resaltan solo al pasar el cursor */
 .ia-accion {
   display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border: none; border-radius: 999px;
