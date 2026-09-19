@@ -27,6 +27,7 @@ export async function render(container, params) {
           el("span", { class: "tile-title" }, item.title),
           el("span", { class: "tile-desc" }, item.desc),
         ]),
+        ...(habilitado ? [] : [el("span", { class: "tile-candado", html: icon("lock") })]),
       ])
     );
   });

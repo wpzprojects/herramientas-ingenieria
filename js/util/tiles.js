@@ -18,5 +18,6 @@ export function tileMenu(item) {
         </a>`
     : `
         <div class="menu-tile menu-tile--row menu-tile--bloqueado" aria-disabled="true" title="${TEXTO_BLOQUEADO}">${cuerpo}
+          <span class="tile-candado">${icon("lock")}</span>
         </div>`;
 }

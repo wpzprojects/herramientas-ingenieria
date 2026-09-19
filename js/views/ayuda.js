@@ -2,6 +2,7 @@
 // Genera la lista de herramientas de cada seccion a partir de sectionMenus
 // para que quede siempre sincronizada con la navegacion real.
 
+import { icon } from "../icons.js";
 import { sectionMenus, sectionMeta } from "../nav.js";
 import { estadoAcceso } from "../auth/acceso.js";
 import { itemHabilitado, TEXTO_BLOQUEADO } from "../auth/permisos.js";
@@ -30,7 +31,7 @@ export function render(container) {
                 ${
                   itemHabilitado(item, nivel)
                     ? `<a href="${item.hash}"><strong>${item.title}</strong></a>`
-                    : `<span class="enlace-bloqueado" title="${TEXTO_BLOQUEADO}"><strong>${item.title}</strong></span>`
+                    : `<span class="enlace-bloqueado" title="${TEXTO_BLOQUEADO}"><span class="candado-mini">${icon("lock")}</span><strong>${item.title}</strong></span>`
                 }<span class="ayuda-desc"> — ${item.desc}</span>
               </li>`
               )
