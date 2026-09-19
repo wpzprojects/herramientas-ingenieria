@@ -76,7 +76,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - `.content` (`css/app.css`) ya NO tiene `max-width`/centrado: ocupa todo el ancho
   disponible junto al sidebar en todas las vistas (se quitó el `max-width:1100px` el
   2026-09-17 porque dejaba un espacio vacío grande a la derecha en pantallas anchas).
-- Todas las tarjetas de menú (Home y los submenús Cálculos/Catálogos/Normatividad/Varios)
+- Todas las tarjetas de menú (Home y los submenús Cálculos/Catálogos/Normatividad/Funciones de IA/Varios)
   usan el layout horizontal (icono circular a la izquierda, texto a la derecha) vía las
   clases modificadoras `.menu-grid--row` / `.menu-tile--row` (renombradas desde `--home`
   el 2026-09-17 al dejar de ser exclusivas del Home). El título+descripción van envueltos
@@ -98,6 +98,16 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   ya trae el margen inferior de una pantalla sin descripción. `sectionMeta.*.subtitle` (`nav.js`)
   se conserva porque la pantalla Ayuda lo muestra en la tarjeta de cada sección.
 - Modo oscuro: `--bg` es `#0f0f0f` (antes `#1e1e1e`, se oscureció ~50% el 2026-09-17).
+- Tema claro (2026-09-18): barra de título de color sólido `#0a5f5e` (sin degradado), `--bg` `#e7eaee`
+  y `--bg-sunken` `#dce1e8`; encabezados de tabla en verde (`--thead-bg`/`--thead-fg`) y borde
+  exterior de tablas más marcado (`--table-border`). El tema oscuro conserva sus valores: al
+  cambiar colores usar estas variables, no valores fijos.
+- Ficha de detalle de conductor (`detalle-conductor.js`, 3 familias): lista de filas en dos
+  columnas (`.detail-list`/`.detail-row`, filas de 50px, valores alineados a la izquierda); en
+  <=560px la columna de etiquetas se ajusta a la más larga. `.detail-grid`/`.detail-item` se
+  conservan solo para el detalle de resoluciones: no tocarlos al cambiar la ficha de conductor.
+- Medir posiciones/tamaños en el navegador (script CDP o iframe) en vez de a ojo; el Edge de
+  pruebas reutiliza el service worker: usar un perfil limpio para ver CSS recién cambiado.
 
 ## Verificación visual de cambios de UI
 
