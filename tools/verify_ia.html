@@ -173,13 +173,12 @@ await seccion("tools: Varios (conversión de unidades y de coordenadas)", async 
   cerca((await unid({ categoria: "longitud", unidad_origen: "M", unidad_destino: "FT", valor: 1 })).resultados[0].valor, 1 / 0.3048, 1e-9, "mayúsculas/minúsculas tolerantes en categoría y unidades");
   const e1 = await unid({ categoria: "longitud", unidad_origen: "M", unidad_destino: "FT", valor: 1 });
   ok(e1.entradas_usadas.find((e) => e.nombre === "Unidad de destino").valor === "ft", "las entradas muestran el nombre canónico de la unidad");
-  const m1 = await unid({ categoria: "Masa", unidad_origen: "kg", unidad_destino: "lb", valor: 1 });
+  const m1 = await unid({ categoria: "Inventada", unidad_origen: "kg", unidad_destino: "lb", valor: 1 });
   ok(m1.ok === false && m1.error.includes("Categorías:") && m1.error.includes("Longitud"), "categoría inexistente: error que lista las categorías");
   const m2 = await unid({ categoria: "Fuerza", unidad_origen: "m", unidad_destino: "N", valor: 1 });
   ok(m2.ok === false && m2.error.includes("Fuerza") && m2.error.includes("kgf"), "unidad inexistente en la categoría: error que lista sus unidades");
   const m3 = await unid({ categoria: "Longitud", unidad_origen: "mm", unidad_destino: "km", valor: 5 });
-  const hayDirecta = tabla.some((r) => r.categoria === "Longitud" && ((r.unidad_origen === "mm" && r.unidad_destino === "km") || (r.unidad_origen === "km" && r.unidad_destino === "mm")));
-  ok(hayDirecta ? m3.ok === true : m3.ok === false && m3.error.includes("Desde mm se puede convertir a:"), "sin conversión definida: error que indica a qué unidades sí se puede");
+  ok(m3.ok === true && Math.abs(m3.resultados[0].valor - 5e-6) < 1e-15, "con el catálogo completo cualquier unidad se convierte a cualquier otra (mm → km, que no estaba en la tabla de pares)");
   ok((await unid({ categoria: "Longitud", unidad_origen: "m", unidad_destino: "ft" })).ok === false, "falta el valor: error de parámetro");
 
   // --- coordenadas
@@ -210,6 +209,51 @@ await seccion("tools: Varios (conversión de unidades y de coordenadas)", async 
   // el barrido no ofrece las de Varios
   const enumBarrido = tools.declaraciones().find((d) => d.name === "barrer_parametro").parameters.properties.herramienta.enum;
   ok(!enumBarrido.includes("convertir_unidades") && !enumBarrido.includes("convertir_coordenadas"), "el barrido de parámetros no incluye las herramientas de Varios");
+});
+
+await seccion("tools: conversión de unidades con el catálogo completo", async () => {
+  const catalogo = await (await fetch("../data/unidades.json")).json();
+  const motor = await import("../js/calc/unidades-extendido.js");
+  const unid = (o, ctx = ctxNuevo()) => tools.ejecutarLlamada("convertir_unidades", o, ctx);
+  const d = tools.declaraciones().find((x) => x.name === "convertir_unidades");
+  ok(catalogo.categorias.every((c) => d.description.includes(c.clave)), `la descripción menciona las ${catalogo.categorias.length} categorías del catálogo (si cambia data/unidades.json, actualizarla)`);
+  const val = async (o) => (await unid(o)).resultados?.[0]?.valor;
+
+  cerca(await val({ categoria: "Potencia", unidad_origen: "hp", unidad_destino: "kW", valor: 100 }), 74.569987158227, 1e-9, "100 hp = 74.57 kW (categoría nueva)");
+  cerca(await val({ categoria: "Energia", unidad_origen: "kWh", unidad_destino: "MJ", valor: 1 }), 3.6, 1e-12, "1 kWh = 3.6 MJ (la categoría se acepta sin tilde)");
+  cerca(await val({ categoria: "Energía", unidad_origen: "kWh", unidad_destino: "MJ", valor: 1 }), 3.6, 1e-12, "«Energía» con tilde también");
+  cerca(await val({ categoria: "Presión", unidad_origen: "atm", unidad_destino: "psi", valor: 1 }), 14.6959487755, 1e-8, "1 atm = 14.696 psi");
+  cerca(await val({ categoria: "Momento", unidad_origen: "kgf·m", unidad_destino: "N·m", valor: 1 }), 9.80665, 1e-12, "se aceptan los símbolos escritos con «·»");
+  cerca(await val({ categoria: "Momento", unidad_origen: "kilogramo-fuerza metro", unidad_destino: "N.m", valor: 1 }), 9.80665, 1e-12, "y también el nombre de la unidad");
+  cerca(await val({ categoria: "ResistenciaLineal", unidad_origen: "Ω/kft", unidad_destino: "ohm/km", valor: 1 }), 3.280839895, 1e-9, "1 Ω/kft = 3.2808 Ω/km");
+  cerca(await val({ categoria: "Peso por longitud", unidad_origen: "lb/kft", unidad_destino: "kg/km", valor: 1 }), 1.48816394357, 1e-9, "1 lb/kft = 1.488 kg/km (categoría por su nombre)");
+  cerca(await val({ categoria: "Tiempo", unidad_origen: "ciclos (60 Hz)", unidad_destino: "ms", valor: 6 }), 100, 1e-9, "6 ciclos a 60 Hz = 100 ms");
+  cerca(await val({ categoria: "Temperatura", unidad_origen: "°C", unidad_destino: "°F", valor: 100 }), 212, 1e-9, "100 °C = 212 °F (símbolos con °)");
+  cerca(await val({ categoria: "Longitud", unidad_origen: "mi", unidad_destino: "mm", valor: 1 }), 1609344, 1e-12, "1 mi = 1 609 344 mm (par que no existía)");
+  ok((await unid({ categoria: "Longitud", unidad_origen: "Mil", unidad_destino: "um", valor: 1 })).resultados[0].valor === 25.4 || Math.abs((await val({ categoria: "Longitud", unidad_origen: "Mil", unidad_destino: "um", valor: 1 })) - 25.4) < 1e-9, "«Mil» (milésima de pulgada) no se confunde con «mi» (milla)");
+
+  // entradas y errores
+  const ctx = ctxNuevo();
+  await unid({ categoria: "fuerza", unidad_origen: "KGF", unidad_destino: "N", valor: 2 }, ctx);
+  ok(ctx.log.at(-1).entradas.find((e) => e.clave === "unidad_origen").valor === "kgf", "las entradas muestran el símbolo canónico de la unidad");
+  const e1 = await unid({ categoria: "Fuerza", unidad_origen: "m", unidad_destino: "N", valor: 1 });
+  ok(e1.ok === false && e1.error.includes("kgf") && e1.error.includes("kilogramo-fuerza"), "unidad inexistente: el error lista símbolo y nombre");
+  const e2 = await unid({ categoria: "Fuerza", unidad_origen: "N", unidad_destino: "kN" });
+  ok(e2.ok === false && e2.error.includes("valor"), "sin valor: error");
+
+  // calibre AWG / kcmil
+  const c1 = await unid({ categoria: "Calibre", unidad_origen: "calibre", unidad_destino: "mm2", calibre: "4/0 AWG" });
+  cerca(c1.resultados[0].valor, motor.datosCalibre("4/0 AWG").areaMm2, 1e-9, "4/0 AWG → sección en mm² (igual a la pantalla)");
+  cerca((await val({ categoria: "Calibre", unidad_origen: "calibre", unidad_destino: "d_mm", calibre: "4/0" })), motor.datosCalibre("4/0 AWG").diametroMm, 1e-9, "4/0 (sin «AWG») → diámetro en mm");
+  cerca((await val({ categoria: "Calibre", unidad_origen: "calibre", unidad_destino: "kcmil", calibre: "500 kcmil" })), 500, 1e-9, "500 kcmil → 500 kcmil");
+  const c2 = await unid({ categoria: "Calibre", unidad_origen: "mm2", unidad_destino: "calibre", valor: 100 });
+  ok(c2.ok === true && c2.resultados[0].valor === "4/0 AWG" && c2.resultados.some((r) => r.nombre.startsWith("Diferencia")) && (c2.notas || []).some((n) => n.includes("más cercano")), "100 mm² → 4/0 AWG (más cercano, con nota y diferencia)");
+  const c3 = await unid({ categoria: "Calibre", unidad_origen: "calibre", unidad_destino: "mm2" });
+  ok(c3.ok === false && c3.error.includes("calibre") && c3.error.includes("4/0 AWG"), "origen calibre sin el calibre: el error lo pide y lista los válidos");
+  const c4 = await unid({ categoria: "Calibre", unidad_origen: "calibre", unidad_destino: "mm2", calibre: "999" });
+  ok(c4.ok === false && c4.error.includes("Calibres:"), "calibre inexistente: lista los válidos");
+  const c5 = await unid({ categoria: "Calibre", unidad_origen: "mm2", unidad_destino: "d_mm", valor: 50 });
+  ok(c5.ok === false && c5.error.includes("se puede convertir a"), "combinación no admitida en Calibre: el error dice a qué se puede");
 });
 
 await seccion("tools: herramientas permitidas por agente", async () => {

@@ -20,7 +20,7 @@ import { calcularAmpacidadAerea } from "../calc/ampacidad-aerea.js";
 import { calcularAmpacidadSubterranea } from "../calc/ampacidad-subterranea.js";
 import { calcularPantalla } from "../calc/ampacidad-subterranea-pantalla.js";
 import { calcularOcupacionGrupos } from "../calc/ocupacion-grupos.js";
-import { convertirUnidad } from "../calc/unidades.js";
+import { convertirBase, datosCalibre, calibrePorArea, CALIBRES } from "../calc/unidades-extendido.js";
 import { SISTEMAS, convertirCoordenadas } from "../calc/coordenadas.js";
 
 export class ErrorHerramienta extends Error {}
@@ -873,8 +873,53 @@ const T_BARRIDO = {
 // Modulos de la seccion Varios. Son `opcional`: el agente estandar NO los usa; un agente propio los activa con su casilla.
 // Quedan fuera de CALCULADORAS, asi que el barrido de parametros tampoco los ofrece.
 
-const canonico = (texto, lista) => lista.find((x) => x === texto) ?? lista.find((x) => norm(x) === norm(texto));
 const CIFRAS_VARIOS = 12; // cifras significativas que recibe el modelo (ver paraModeloResultados)
+
+// Unidades: catalogo data/unidades.json (el mismo de la pantalla con «Habilitar todas las conversiones»): cualquier unidad a
+// cualquier otra de su categoria, con factores exactos. La unidad se reconoce por codigo, simbolo o nombre («kgf.m», «kgf·m»,
+// «kilogramo-fuerza metro»); primero se busca la coincidencia exacta y luego sin mayusculas ni tildes.
+const buscarPor = (lista, dado, campos) => {
+  const textos = (x) => campos.map((c) => x[c]).filter(Boolean);
+  const exacta = lista.filter((x) => textos(x).includes(dado));
+  if (exacta.length === 1) return exacta[0];
+  const suave = lista.filter((x) => textos(x).some((t) => norm(t) === norm(dado)));
+  return suave.length === 1 ? suave[0] : exacta[0] ?? null;
+};
+const rotuloUnidad = (u) => `${u.simbolo} (${u.nombre})`;
+
+// Calibre de conductor: «calibre» (AWG/kcmil) -> mm2, kcmil o diametro; mm2 -> calibre comercial mas cercano.
+const UNIDADES_CALIBRE = [
+  { codigo: "calibre", simbolo: "AWG/kcmil", nombre: "calibre de conductor" },
+  { codigo: "mm2", simbolo: "mm²", nombre: "sección en milímetros cuadrados" },
+  { codigo: "kcmil", simbolo: "kcmil", nombre: "sección en kcmil" },
+  { codigo: "d_mm", simbolo: "mm", nombre: "diámetro en milímetros" },
+];
+const DESTINOS_CALIBRE = { calibre: ["mm2", "kcmil", "d_mm"], mm2: ["calibre"] };
+
+function convertirCalibre(v, origen, destino, extra) {
+  if (!(destino.codigo in { mm2: 1, kcmil: 1, d_mm: 1, calibre: 1 }) || !DESTINOS_CALIBRE[origen.codigo]?.includes(destino.codigo)) {
+    throw new ErrorHerramienta(`En Calibre desde ${origen.simbolo} se puede convertir a: ${DESTINOS_CALIBRE[origen.codigo]?.map((c) => UNIDADES_CALIBRE.find((u) => u.codigo === c).simbolo + " (" + c + ")").join(", ") || "(ninguna)"}.`);
+  }
+  if (origen.codigo === "calibre") {
+    if (!v.calibre) throw new ErrorHerramienta(`Indica "calibre" (por ejemplo "4/0 AWG" o "500 kcmil"). Calibres: ${CALIBRES.map((c) => c.codigo).join(", ")}.`);
+    const c = CALIBRES.find((x) => normCalibre(x.codigo) === normCalibre(v.calibre));
+    if (!c) throw new ErrorHerramienta(`El calibre "${v.calibre}" no está en la lista. Calibres: ${CALIBRES.map((x) => x.codigo).join(", ")}.`);
+    const d = datosCalibre(c.codigo);
+    extra.entradas.push(ent("categoria", "Categoría", "Calibre de conductor"), ent("calibre", "Calibre", d.codigo), ent("unidad_destino", "Unidad de destino", destino.simbolo));
+    const valor = { mm2: d.areaMm2, kcmil: d.kcmil, d_mm: d.diametroMm }[destino.codigo];
+    return [{ ...res("valor_convertido", `${destino.codigo === "d_mm" ? "Diámetro" : "Sección"} de ${d.codigo}`, valor, destino.simbolo), dec: undefined, cifras: CIFRAS_VARIOS }];
+  }
+  if (v.valor === undefined) throw new ErrorHerramienta('Falta "valor" (la sección en mm²).');
+  const c = calibrePorArea(v.valor);
+  if (!c) throw new ErrorHerramienta("La sección debe ser mayor que cero.");
+  extra.entradas.push(ent("categoria", "Categoría", "Calibre de conductor"), { ...ent("valor", "Sección", v.valor, "mm²"), cifras: CIFRAS_VARIOS });
+  if (!c.exacto) extra.notas.push(`No hay un calibre comercial de exactamente ${v.valor} mm²: se da el más cercano (${c.codigo}, ${c.areaMm2.toFixed(2)} mm², ${c.diferenciaPct > 0 ? "+" : ""}${c.diferenciaPct.toFixed(1)} %).`);
+  return [
+    res("valor_convertido", "Calibre comercial más cercano", c.codigo),
+    { ...res("area_calibre_mm2", "Sección de ese calibre", c.areaMm2, "mm²"), dec: undefined, cifras: CIFRAS_VARIOS },
+    res("diferencia_pct", "Diferencia con la sección pedida", c.diferenciaPct, "%", 2),
+  ];
+}
 
 const T_CONVERTIR_UNIDADES = {
   nombre: "convertir_unidades",
@@ -882,40 +927,45 @@ const T_CONVERTIR_UNIDADES = {
   grupo: "Varios",
   opcional: true,
   titulo: "Conversión de unidades",
-  // Las categorias de la descripcion reflejan data/factores-conversion.json (lo vigila tools/verify_ia.html).
+  // Las categorias de la descripcion reflejan data/unidades.json (lo vigila tools/verify_ia.html).
   descripcion:
-    "Convierte un valor entre unidades de ingeniería con la tabla de factores de la aplicación. Categorías: Longitud, Velocidad, Fuerza, Area, Presion, Angulos, Temperatura, Momento y Esfuerzo. " +
-    "Las unidades van con la abreviatura de la tabla (m, mm, km, ft, in, mi, kgf, N, daN, kN, lbf, m2, mm2, kcmil, Pa, psi, MPa, deg, rad, C, F, K…); " +
-    "si la combinación no existe, el error lista las unidades y conversiones disponibles.",
+    "Convierte un valor entre unidades de ingeniería (cualquier unidad a cualquier otra de su categoría, con factores exactos). " +
+    "Categorías: Longitud, Area, Volumen, Masa, Densidad, Fuerza, Presion, Esfuerzo, Momento, Potencia, Energia, Velocidad, Tiempo, Temperatura, Angulos, PesoLineal (peso por longitud), ResistenciaLineal (resistencia por longitud), ResistividadTermica (resistividad térmica del suelo) y Calibre (calibre AWG/kcmil ↔ mm²). " +
+    "La unidad se puede escribir con su abreviatura o su nombre (m, mm, ft, in, km, mi, kgf, N, kN, lbf, kgf.m, N.m, Pa, kPa, MPa, psi, bar, atm, kW, hp, kWh, BTU, kg, lb, L, gal, ohm/km, ohm/kft, K.m/W, C, F, K, deg, rad…); " +
+    "si no existe, el error lista las unidades de la categoría. Para Calibre: de \"calibre\" (con el parámetro calibre, p. ej. \"4/0 AWG\") a mm2, kcmil o d_mm (diámetro), o de mm2 (con valor) a \"calibre\" (el comercial más cercano).",
   campos: [
-    S("categoria", "Categoría de la magnitud (Longitud, Velocidad, Fuerza, Area, Presion, Angulos, Temperatura, Momento, Esfuerzo)", { req: true, oculto: true }),
-    S("unidad_origen", "Unidad en la que está el valor (abreviatura de la tabla)", { req: true, oculto: true }),
-    S("unidad_destino", "Unidad a la que se quiere convertir (abreviatura de la tabla)", { req: true, oculto: true }),
-    N("valor", "Valor a convertir, en la unidad de origen", { req: true, oculto: true }),
+    S("categoria", "Categoría de la magnitud (Longitud, Area, Volumen, Masa, Densidad, Fuerza, Presion, Esfuerzo, Momento, Potencia, Energia, Velocidad, Tiempo, Temperatura, Angulos, PesoLineal, ResistenciaLineal, ResistividadTermica, Calibre)", { req: true, oculto: true }),
+    S("unidad_origen", "Unidad en la que está el valor (abreviatura o nombre; en Calibre: 'calibre' o 'mm2')", { req: true, oculto: true }),
+    S("unidad_destino", "Unidad a la que se quiere convertir (abreviatura o nombre; en Calibre: 'mm2', 'kcmil', 'd_mm' o 'calibre')", { req: true, oculto: true }),
+    N("valor", "Valor a convertir, en la unidad de origen (no se usa cuando el origen de Calibre es 'calibre')", { oculto: true }),
+    S("calibre", "Solo categoría Calibre con origen 'calibre': el calibre, por ejemplo '4/0 AWG', '2 AWG' o '500 kcmil'", { oculto: true }),
   ],
   async calcular(v, extra) {
-    const tabla = await loadData("factores-conversion");
-    const categorias = distinct(tabla, "categoria");
-    const categoria = canonico(v.categoria, categorias);
-    if (!categoria) throw new ErrorHerramienta(`La categoría "${v.categoria}" no existe. Categorías: ${categorias.join(", ")}.`);
+    const catalogo = await loadData("unidades");
+    const categorias = catalogo.categorias;
+    const cat = buscarPor(categorias, v.categoria, ["clave", "nombre"]);
+    if (!cat) throw new ErrorHerramienta(`La categoría "${v.categoria}" no existe. Categorías: ${categorias.map((c) => c.clave).join(", ")}.`);
 
-    const filas = tabla.filter((r) => r.categoria === categoria);
-    const unidades = [...new Set(filas.flatMap((r) => [r.unidad_origen, r.unidad_destino]))];
-    const origen = canonico(v.unidad_origen, unidades);
-    const destino = canonico(v.unidad_destino, unidades);
+    if (cat.especial === "calibre") {
+      const origen = buscarPor(UNIDADES_CALIBRE, v.unidad_origen, ["codigo", "simbolo", "nombre"]);
+      const destino = buscarPor(UNIDADES_CALIBRE, v.unidad_destino, ["codigo", "simbolo", "nombre"]);
+      for (const [dado, hallada] of [[v.unidad_origen, origen], [v.unidad_destino, destino]]) {
+        if (!hallada) throw new ErrorHerramienta(`La unidad "${dado}" no existe en Calibre. Unidades: ${UNIDADES_CALIBRE.map((u) => u.codigo).join(", ")}.`);
+      }
+      return convertirCalibre(v, origen, destino, extra);
+    }
+
+    const origen = buscarPor(cat.unidades, v.unidad_origen, ["codigo", "simbolo", "nombre"]);
+    const destino = buscarPor(cat.unidades, v.unidad_destino, ["codigo", "simbolo", "nombre"]);
     for (const [dado, hallada] of [[v.unidad_origen, origen], [v.unidad_destino, destino]]) {
-      if (!hallada) throw new ErrorHerramienta(`La unidad "${dado}" no existe en la categoría ${categoria}. Unidades: ${unidades.join(", ")}.`);
+      if (!hallada) throw new ErrorHerramienta(`La unidad "${dado}" no existe en la categoría ${cat.clave}. Unidades: ${cat.unidades.map(rotuloUnidad).join(", ")}.`);
     }
-
-    const valor = convertirUnidad(tabla, { categoria, unidadOrigen: origen, unidadDestino: destino, valor: v.valor });
-    if (valor === null) {
-      const alcanzables = [...new Set(filas.flatMap((r) => (r.unidad_origen === origen ? [r.unidad_destino] : r.unidad_destino === origen ? [r.unidad_origen] : [])))];
-      throw new ErrorHerramienta(`No hay conversión definida de ${origen} a ${destino} en ${categoria}. Desde ${origen} se puede convertir a: ${alcanzables.join(", ") || "(ninguna)"}.`);
-    }
+    if (v.valor === undefined) throw new ErrorHerramienta('Falta el parámetro "valor".');
+    const valor = convertirBase(catalogo, cat.clave, origen.codigo, destino.codigo, v.valor);
     extra.entradas.push(
-      ent("categoria", "Categoría", categoria),
-      ent("unidad_origen", "Unidad de origen", origen),
-      ent("unidad_destino", "Unidad de destino", destino),
+      ent("categoria", "Categoría", cat.clave),
+      ent("unidad_origen", "Unidad de origen", origen.simbolo),
+      ent("unidad_destino", "Unidad de destino", destino.simbolo),
       { ...ent("valor", "Valor", v.valor), cifras: CIFRAS_VARIOS }
     );
     // sin `dec` ni unidad: los factores dan magnitudes muy distintas y la unidad ya va entre las entradas

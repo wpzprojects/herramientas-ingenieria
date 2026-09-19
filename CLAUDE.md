@@ -153,7 +153,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   cercano) y unidades escritas «símbolo — nombre».
 - `data/unidades.json` y los factores de `factores-conversion.json` se GENERAN con `tools/generar_unidades.py` (editar ahí, no a
   mano): los 71 pares se recalculan con factores exactos (antes tenían ~6 cifras, p. ej. m→ft 3.28084). La herramienta de la IA
-  (`convertir_unidades`) sigue con la tabla de pares (sin el modo completo); sus valores cambiaron en las cifras 7+ por esa corrección.
+  (`convertir_unidades`) usa desde 2026-09-19 el mismo catálogo completo (`unidades.json`), incluido el calibre AWG/kcmil.
 - Resultado del modo completo: 6 cifras significativas (`fmtSig`, sin recortar enteros; científica si <1e-4 o ≥1e9); el modo normal
   sigue con 4 decimales. Pruebas: `tools/verify_unidades.html`.
 
@@ -198,7 +198,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v128); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v129); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (Ayuda → "Configuración avanzada", `js/auth/*`, `firebase/firestore.rules`)
