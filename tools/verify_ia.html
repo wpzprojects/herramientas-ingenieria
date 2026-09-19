@@ -307,6 +307,46 @@ await seccion("tools: ampacidad subterránea", async () => {
   ok(mal.ok === false && /46/.test(mal.error), "46 kV/133% no existe -> error orientador");
 });
 
+await seccion("tools: ampacidad subterránea con corriente circulante / tensión inducida en la pantalla", async () => {
+  const pant = await import("../js/calc/ampacidad-subterranea-pantalla.js");
+  const val = (ctx, clave) => ctx.log.at(-1).resultados.find((x) => x.clave === clave)?.valor;
+  const cable = cables.find((c) => c.material === "Cobre" && c.calibre_awg_kcmil === "1/0 AWG" && c.tipo_pantalla === "Hilos" && c.nivel_aislamiento_kv === 15 && c.nivel_aislamiento_pct === 100);
+  const datos = (puestaTierra, tipoCable = "Monopolar") => ({
+    tipoCable, cable, tipoPantalla: "Hilos", nivelAislamientoKv: 15, puestaTierra, tensionSistemaKv: 34.5, frecuenciaHz: 60,
+    tempMaxC: 90, tempTerrenoC: 25, rhoSueloKmW: 1, uDuctoKmW: 0.3, separacionFasesM: 0.04, numCircuitos: 1, profundidadBancoM: 1, separacionDuctosM: 0.2,
+  });
+  const base = { material: "Cobre", calibre: "1/0", tipo_pantalla: "Hilos", nivel_aislamiento_kv: 15 };
+
+  // ambos extremos: corriente circulante
+  let ctx = ctxNuevo();
+  await tools.ejecutarLlamada("calcular_ampacidad_subterranea", { ...base, puesta_tierra: "Ambos Extremos" }, ctx);
+  const amp = val(ctx, "ampacidad_a");
+  const esp = pant.calcularPantalla(datos("Ambos Extremos"), amp);
+  ok(esp.tipo === "circulante", "el motor de pantalla da corriente circulante con ambos extremos");
+  cerca(val(ctx, "corriente_circulante_pantalla_a"), esp.corrienteA, 1e-9, "corriente circulante = la de la pantalla de la app");
+  ok(val(ctx, "tension_inducida_pantalla_v_km") === undefined, "ambos extremos: no se informa tensión inducida");
+  ok(val(ctx, "corriente_circulante_pantalla_a") > 0 && val(ctx, "corriente_circulante_pantalla_a") < amp, "la corriente circulante es positiva y menor que la ampacidad");
+
+  // unipuntual y cross-bonding: tension inducida
+  for (const pt of ["Unipuntual", "Cross-bonding"]) {
+    ctx = ctxNuevo();
+    await tools.ejecutarLlamada("calcular_ampacidad_subterranea", { ...base, puesta_tierra: pt }, ctx);
+    const e = pant.calcularPantalla(datos(pt), val(ctx, "ampacidad_a"));
+    cerca(val(ctx, "tension_inducida_pantalla_v_km"), e.tensionVKm, 1e-9, `${pt}: tensión inducida (V/km) = la de la pantalla de la app`);
+    ok(val(ctx, "corriente_circulante_pantalla_a") === undefined && ctx.log.at(-1).notas.some((n) => n.includes("no circula corriente")), `${pt}: sin corriente circulante y con nota explicativa`);
+  }
+
+  // tripolar: no aplica
+  ctx = ctxNuevo();
+  await tools.ejecutarLlamada("calcular_ampacidad_subterranea", { ...base, tipo_cable: "Tripolar" }, ctx);
+  ok(val(ctx, "corriente_circulante_pantalla_a") === undefined && val(ctx, "tension_inducida_pantalla_v_km") === undefined && val(ctx, "ampacidad_a") > 0, "tripolar: no se calcula la pantalla (la ampacidad sí)");
+
+  // la ampacidad no cambia con lo agregado
+  ctx = ctxNuevo();
+  await tools.ejecutarLlamada("calcular_ampacidad_subterranea", base, ctx);
+  cerca(val(ctx, "ampacidad_a"), engAmpSubt.calcularAmpacidadSubterranea(datos("Unipuntual")).ampacidad, 1e-9, "la ampacidad sigue igual al motor");
+});
+
 await seccion("tools: ocupación de ductos", async () => {
   const ctx = ctxNuevo();
   await tools.ejecutarLlamada("calcular_ocupacion_ductos", { numero_conductores: 3, diametro_conductor_mm: 30, diametro_tubo_mm: 100 }, ctx);

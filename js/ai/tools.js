@@ -18,6 +18,7 @@ import { compararCalibres } from "../calc/cortocircuito-calibre.js";
 import { calcularCortocircuito } from "../calc/cortocircuito.js";
 import { calcularAmpacidadAerea } from "../calc/ampacidad-aerea.js";
 import { calcularAmpacidadSubterranea } from "../calc/ampacidad-subterranea.js";
+import { calcularPantalla } from "../calc/ampacidad-subterranea-pantalla.js";
 import { calcularOcupacionGrupos } from "../calc/ocupacion-grupos.js";
 import { convertirUnidad } from "../calc/unidades.js";
 import { SISTEMAS, convertirCoordenadas } from "../calc/coordenadas.js";
@@ -561,7 +562,8 @@ const T_AMP_SUBT = {
   titulo: "Ampacidad subterránea",
   descripcion:
     "Calcula la corriente admisible (A) de un cable de media tensión en banco de ductos, en régimen permanente (IEC 60287-1-1). " +
-    "La construcción del cable sale del catálogo según material, calibre, pantalla y nivel de aislamiento.",
+    "La construcción del cable sale del catálogo según material, calibre, pantalla y nivel de aislamiento. " +
+    "En cable monopolar también entrega la corriente circulante en la pantalla (puesta a tierra «Ambos Extremos») o la tensión inducida a circuito abierto en V/km («Unipuntual» y «Cross-bonding»).",
   campos: [
     S("tipo_cable", "Tipo de cable", { enum: ["Monopolar", "Tripolar"], defecto: "Monopolar" }),
     S("material", "Material del conductor", { enum: ["Cobre", "Aluminio"], req: true }),
@@ -604,7 +606,7 @@ const T_AMP_SUBT = {
     extra.entradas.push(ent("cable", "Construcción de cable", `${v.material} ${cable.calibre_awg_kcmil}, pantalla de ${v.tipo_pantalla}`));
     if (v.tipo_cable === "Tripolar") extra.notas.push("En cable tripolar la puesta a tierra y la separación entre fases no influyen en el cálculo (igual que la calculadora).");
 
-    const r = calcularAmpacidadSubterranea({
+    const datos = {
       tipoCable: v.tipo_cable,
       cable,
       tipoPantalla: v.tipo_pantalla,
@@ -620,9 +622,10 @@ const T_AMP_SUBT = {
       numCircuitos: v.num_circuitos,
       profundidadBancoM: v.profundidad_banco_m,
       separacionDuctosM: v.separacion_ductos_m,
-    });
+    };
+    const r = calcularAmpacidadSubterranea(datos);
     const i = r.intermedios;
-    return [
+    const salida = [
       res("ampacidad_a", "Ampacidad", r.ampacidad, "A", 1),
       res("resistencia_ac_ohm_m", "Resistencia AC efectiva (R)", i.varR, "Ω/m", 8),
       res("perdida_dielectrica_w_m", "Pérdida dieléctrica (Wd)", i.varWd, "W/m", 6),
@@ -630,6 +633,17 @@ const T_AMP_SUBT = {
       res("t4_kmw", "Resistencia térmica externa (T4)", i.T4, "K·m/W", 4),
       res("delta_theta_c", "Salto térmico admisible (Δθ)", i.deltaTheta, "°C", 1),
     ];
+    // Pantalla del cable monopolar (misma logica de la pantalla de la app): solo aplica a monopolar.
+    const pant = calcularPantalla(datos, r.ampacidad);
+    if (pant) {
+      salida.push(res("reactancia_mutua_ohm_m", "Reactancia mutua conductor–pantalla (Xm)", pant.xmOhmM, "Ω/m", 8), res("resistencia_pantalla_ohm_m", "Resistencia de la pantalla a la temperatura máxima (Rs,op)", pant.rsOpOhmM, "Ω/m", 8));
+      if (pant.tipo === "circulante") salida.push(res("corriente_circulante_pantalla_a", "Corriente circulante en la pantalla", pant.corrienteA, "A", 1));
+      else {
+        salida.push(res("tension_inducida_pantalla_v_km", "Tensión inducida en la pantalla a circuito abierto", pant.tensionVKm, "V/km", 1));
+        extra.notas.push(`Con puesta a tierra «${v.puesta_tierra}» no circula corriente por la pantalla: queda una tensión inducida a circuito abierto (V por km de cable).`);
+      }
+    }
+    return salida;
   },
 };
 
