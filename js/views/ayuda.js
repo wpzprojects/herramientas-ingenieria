@@ -19,12 +19,12 @@ export function render(container) {
         <div class="card">
           <h2 class="section-title" style="margin-top:0">${meta.title}</h2>
           <p class="text-muted">${meta.subtitle}</p>
-          <ul>
+          <ul class="ayuda-lista">
             ${items
               .map(
                 (item) => `
               <li>
-                <a href="${item.hash}"><strong>${item.title}</strong></a> — ${item.desc}
+                <a href="${item.hash}"><strong>${item.title}</strong></a><span class="ayuda-desc"> — ${item.desc}</span>
               </li>`
               )
               .join("")}

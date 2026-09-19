@@ -192,6 +192,14 @@ button { font-family: inherit; }
   .grid-2, .grid-3 { grid-template-columns: 1fr; }
 }
 
+/* ---------- listas de la pantalla Ayuda ---------- */
+/* Descripcion con el mismo color y tamano que .tile-desc de las tarjetas de menu; titulo un poco mas pequeno que el texto
+   base. line-height y margen mantienen (y afloja un poco) el espaciado entre viñetas. */
+.ayuda-lista { padding-left: 1.2rem; }
+.ayuda-lista li { font-size: 0.92rem; line-height: 1.45; margin-bottom: 4px; }
+.ayuda-lista li:last-child { margin-bottom: 0; }
+.ayuda-lista .ayuda-desc { color: var(--text-muted); font-size: 0.85rem; }
+
 /* ---------- tarjeta de desarrollador (Ayuda) ---------- */
 .dev-card { display: flex; flex-direction: column; gap: var(--space-4); }
 .dev-header { display: flex; align-items: center; gap: var(--space-3); }
