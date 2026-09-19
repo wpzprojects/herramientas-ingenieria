@@ -59,6 +59,8 @@
   /* encabezados de tabla: en el tema claro llevan el verde (teal) de la app */
   --thead-bg: #d6ecea;
   --thead-fg: #0a5f5e;
+  /* borde exterior de las tablas: mas marcado que --border para que no se pierda contra el fondo del area de contenido */
+  --table-border: #a3b3c7;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -99,6 +101,7 @@
 
   --thead-bg: var(--bg-sunken);
   --thead-fg: var(--text-muted);
+  --table-border: var(--border);
   }
 }
 
@@ -139,4 +142,5 @@
 
   --thead-bg: var(--bg-sunken);
   --thead-fg: var(--text-muted);
+  --table-border: var(--border);
 }

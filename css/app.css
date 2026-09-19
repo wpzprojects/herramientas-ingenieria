@@ -319,7 +319,7 @@ input:disabled, select:disabled { opacity: 0.55; }
 
 .row-count { color: var(--text-faint); font-size: 0.8rem; margin-bottom: var(--space-2); }
 
-.table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-elevated); }
+.table-wrap { overflow-x: auto; border: 1px solid var(--table-border); border-radius: var(--radius-md); background: var(--bg-elevated); }
 table { border-collapse: collapse; width: 100%; font-size: 0.86rem; }
 thead th {
   text-align: left; padding: var(--space-3); background: var(--thead-bg);
