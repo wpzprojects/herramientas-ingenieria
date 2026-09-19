@@ -74,8 +74,9 @@ const collapseBtn = document.getElementById("sidebar-collapse");
 
 function applySidebarCollapsed(collapsed) {
   document.documentElement.classList.toggle("sb-collapsed", collapsed);
-  collapseBtn.innerHTML = icon(collapsed ? "sidebarExpand" : "sidebarCollapse");
   const label = collapsed ? "Expandir menú" : "Contraer menú";
+  // con el menú abierto se lee «Contraer menú» junto al icono; contraído solo queda el icono (.nav-label se oculta)
+  collapseBtn.innerHTML = `<span class="nav-icon">${icon(collapsed ? "sidebarExpand" : "sidebarCollapse")}</span><span class="nav-label">${label}</span>`;
   collapseBtn.setAttribute("aria-label", label);
   collapseBtn.setAttribute("title", label);
   collapseBtn.setAttribute("aria-expanded", String(!collapsed));
