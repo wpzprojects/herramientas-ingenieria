@@ -55,6 +55,8 @@ Los `data/*.json` son la **fuente de verdad** de los catálogos y se editan dire
 
 `tools/verify_ampacidad_aerea.html` hace lo mismo con la pantalla de Ampacidad aérea (balance térmico contra una versión independiente de la IEEE 738, catálogo y «Manual», aviso cuando no hay corriente admisible, reporte y fórmulas).
 
+`tools/verify_ampacidad_subterranea.html` hace lo mismo con la pantalla de Ampacidad subterránea (IEC 60287-1-1 contra una versión independiente: monopolar/tripolar, puestas a tierra, banco de ductos con imágenes de Kennelly, reporte y fórmulas).
+
 `tools/verify_perdidas.html` (arnés en el navegador, sin internet) prueba la pantalla de Pérdidas: la lógica de varios tramos (`js/calc/perdidas-tramos.js`) contra fórmulas escritas de forma independiente, y la vista real manejada como lo haría una persona (dato de partida, agregar/quitar tramos, resultados, fórmulas con KaTeX, archivos del service worker). Se ejecuta igual que `verify_ia.html` (ver su encabezado).
 
 ## Funciones de IA (Gemini)

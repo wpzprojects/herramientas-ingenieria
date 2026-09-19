@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>verify_ampacidad_subterranea</title>
+<!--
+  Pruebas de la pantalla de Ampacidad subterranea (js/views/calc-ampacidad-subterranea.js) y del motor
+  (js/calc/ampacidad-subterranea.js). Se ejecuta en el navegador, sin internet: la vista real se renderiza en un contenedor
+  oculto y se maneja como lo haria una persona; los numeros se comparan con el metodo IEC 60287-1-1 escrito aqui de forma
+  independiente (a partir de las ecuaciones de la pestaña Fórmulas).
+
+  Uso (desde la raiz del proyecto):
+    python -m http.server 8000
+    abrir http://localhost:8000/tools/verify_ampacidad_subterranea.html   -> lista PASS/FAIL
+  o en modo consola:
+    msedge --headless --dump-dom --virtual-time-budget=35000 http://localhost:8000/tools/verify_ampacidad_subterranea.html
+-->
+<style>body{font-family:ui-monospace,Consolas,monospace;font-size:13px;padding:12px}#stage{position:absolute;left:-9999px;width:1000px}</style>
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+<pre id="out"></pre>
+<div id="stage"></div>
+<script type="module">
+window.__BASE_PATH__ = "../";
+const out = document.getElementById("out");
+let fallos = 0;
+let total = 0;
+function ok(cond, msg) {
+  total++;
+  if (!cond) fallos++;
+  out.textContent += `${cond ? "PASS" : "FAIL"} ${msg}\n`;
+}
+function cerca(a, b, tol, msg) {
+  ok(Math.abs(a - b) <= tol, `${msg} (obtenido ${a}, esperado ${b})`);
+}
+async function seccion(nombre, fn) {
+  out.textContent += `\n== ${nombre}\n`;
+  try {
+    await fn();
+  } catch (err) {
+    fallos++;
+    total++;
+    out.textContent += `FAIL excepcion en "${nombre}": ${err && err.stack ? err.stack : err}\n`;
+  }
+}
+const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const motor = await import("../js/calc/ampacidad-subterranea.js");
+const cables = await (await fetch("../data/construccion-cable-subterraneo.json")).json();
+const fila = (material, calibre, pantalla, kv, pct) => cables.find((c) => c.material === material && c.calibre_awg_kcmil === calibre && c.tipo_pantalla === pantalla && c.nivel_aislamiento_kv === kv && c.nivel_aislamiento_pct === pct);
+const CABLE = fila("Cobre", "4/0 AWG", "Hilos", 15, 100);
+
+// Metodo IEC 60287-1-1 escrito de forma independiente, siguiendo las ecuaciones de la pestaña Fórmulas.
+function ref(c, o) {
+  const n = o.tripolar ? 1 : 3;
+  const Rp = c.r0_ohm_m * (1 + c.alpha20 * (o.thc - 20));
+  const x2 = ((8 * Math.PI * o.f) / Rp) * 1e-7;
+  const ys = x2 ** 2 / (192 + 0.8 * x2 ** 2);
+  const q = (c.dc_m / o.s) ** 2;
+  const yp = o.tripolar ? 0 : ys * q * (0.312 * q + 1.18 / (ys + 0.27));
+  const R = Rp * (1 + ys + yp);
+  const C = (c.epsilon_r * 1e-9) / (18 * Math.log(c.ds_m / c.dc_m));
+  const U0 = (1000 * o.V) / Math.sqrt(3);
+  const Wd = 2 * Math.PI * o.f * C * U0 ** 2 * c.tan_delta;
+  const Rs = o.pantalla === "Hilos" ? c.rs_ohm_m : 1.7241e-8 / ((o.kv === 15 ? 0.000127 : 0.000203) * (0.88 * Math.PI * c.ds_m));
+  const Rsop = Rs * (1 + c.alpha20 * (o.thc - 20));
+  const Xm = 4 * Math.PI * o.f * 1e-7 * Math.log((2 * o.s) / c.ds_m);
+  const lam = o.tripolar ? 0.02 : o.tierra === "Ambos Extremos" ? (Rsop / R) / (1 + (Rsop / Xm) ** 2) + 0.01 : 0.02;
+  const T1 = (c.rho_aislamiento / (2 * Math.PI)) * Math.log(1 + (2 * c.t1_m) / c.dc_m);
+  const T2 = (c.rho_relleno / (2 * Math.PI)) * Math.log(1 + (2 * c.t2_m) / c.ds_m);
+  const T3 = (c.rho_chaqueta / (2 * Math.PI)) * Math.log(1 + (2 * c.t3_m) / c.de_m);
+  // banco: hasta 3 ductos por fila; el activo es el mas cercano al centro geometrico
+  const ductos = Array.from({ length: o.N }, (_, i) => ({ x: (i % 3) * o.sd, L: o.L0 + Math.floor(i / 3) * o.sd }));
+  const cx = ductos.reduce((a, d) => a + d.x, 0) / o.N;
+  const cy = ductos.reduce((a, d) => a + d.L, 0) / o.N;
+  let act = 0;
+  ductos.forEach((d, i) => { if (Math.hypot(d.x - cx, d.L - cy) < Math.hypot(ductos[act].x - cx, ductos[act].L - cy)) act = i; });
+  const A = ductos[act];
+  const T4p = o.Td + (o.rho / (2 * Math.PI)) * Math.log((4 * A.L) / c.de_m);
+  const T4m = ductos.reduce((s, d, i) => (i === act ? s : s + (o.rho / (2 * Math.PI)) * Math.log(Math.sqrt((d.x - A.x) ** 2 + (d.L + A.L) ** 2) / Math.sqrt((d.x - A.x) ** 2 + (d.L - A.L) ** 2))), 0);
+  const T4 = T4p + T4m;
+  const dth = o.thc - o.ths;
+  const num = dth - Wd * (0.5 * T1 + n * (T2 + T3 + T4));
+  const den = R * T1 + n * R * (1 + lam) * (T2 + T3 + T4);
+  return { I: Math.sqrt(num / den), num, R, Wd, lam, T1, T2, T3, T4, T4m, dth, act: act + 1 };
+}
+const BASE = { V: 34.5, f: 60, thc: 90, ths: 25, rho: 1, Td: 0.3, s: 0.04, N: 1, L0: 1, sd: 0.2, tierra: "Unipuntual", pantalla: "Hilos", kv: 15, tripolar: false };
+const aMotor = (c, o) => motor.calcularAmpacidadSubterranea({ tipoCable: o.tripolar ? "Tripolar" : "Monopolar", cable: c, tipoPantalla: o.pantalla, nivelAislamientoKv: o.kv, puestaTierra: o.tierra, tensionSistemaKv: o.V, frecuenciaHz: o.f, tempMaxC: o.thc, tempTerrenoC: o.ths, rhoSueloKmW: o.rho, uDuctoKmW: o.Td, separacionFasesM: o.s, numCircuitos: o.N, profundidadBancoM: o.L0, separacionDuctosM: o.sd });
+
+await seccion("ampacidad-subterranea: motor", async () => {
+  const casos = [
+    ["monopolar, 1 circuito, unipuntual (por defecto)", CABLE, BASE],
+    ["monopolar, ambos extremos", CABLE, { ...BASE, tierra: "Ambos Extremos" }],
+    ["monopolar, cross-bonding", CABLE, { ...BASE, tierra: "Cross-bonding" }],
+    ["tripolar", CABLE, { ...BASE, tripolar: true }],
+    ["pantalla de cinta 15 kV, ambos extremos", fila("Cobre", "4/0 AWG", "Cinta", 15, 100), { ...BASE, pantalla: "Cinta", tierra: "Ambos Extremos" }],
+    ["pantalla de cinta 35 kV 133 %, ambos extremos", fila("Aluminio", "500 kcmil", "Cinta", 35, 133), { ...BASE, pantalla: "Cinta", kv: 35, tierra: "Ambos Extremos" }],
+    ["2 circuitos", CABLE, { ...BASE, N: 2 }],
+    ["4 circuitos (2 filas)", CABLE, { ...BASE, N: 4 }],
+    ["6 circuitos", CABLE, { ...BASE, N: 6, sd: 0.3 }],
+    ["suelo seco (2.5 K·m/W), profundidad 1.5 m, 50 Hz", CABLE, { ...BASE, rho: 2.5, L0: 1.5, f: 50 }],
+    ["aluminio 1000 kcmil, 46 kV", fila("Aluminio", "1000 kcmil", "Hilos", 46, 100), { ...BASE, kv: 46, V: 44 }],
+  ];
+  for (const [nombre, c, o] of casos) {
+    const e = ref(c, o);
+    const r = aMotor(c, o);
+    cerca(r.ampacidad / e.I, 1, 1e-9, `${nombre}: ${e.I.toFixed(2)} A`);
+  }
+  const e = ref(CABLE, { ...BASE, N: 4 });
+  const r = aMotor(CABLE, { ...BASE, N: 4 });
+  ok(r.intermedios.ductoActivo.ductoId === e.act, `con 4 circuitos el ducto activo es el ${e.act} (el más cercano al centro del banco)`);
+  cerca(r.intermedios.T4mutuo, e.T4m, 1e-9, "resistencia térmica mutua (imágenes de Kennelly)");
+  cerca(r.intermedios.T4, e.T4, 1e-9, "T4 = propia + mutua");
+  cerca(r.intermedios.varWd, e.Wd, 1e-12, "pérdida dieléctrica");
+  cerca(r.intermedios.varR, e.R, 1e-12, "resistencia AC efectiva");
+  ok(aMotor(CABLE, { ...BASE, N: 1 }).intermedios.T4mutuo === 0, "con un solo circuito no hay calentamiento mutuo");
+  const amp = (o) => aMotor(CABLE, { ...BASE, ...o }).ampacidad;
+  ok(amp({ N: 3 }) < amp({ N: 1 }) && amp({ rho: 2 }) < amp({ rho: 1 }) && amp({ ths: 35 }) < amp({ ths: 25 }) && amp({ L0: 2 }) < amp({ L0: 1 }), "más circuitos, suelo más resistivo, terreno más caliente o más profundidad bajan la ampacidad");
+  ok(amp({ tripolar: true, s: 0.04 }) === aMotor(CABLE, { ...BASE, tripolar: true, s: 0.5 }).ampacidad, "en tripolar la separación entre fases no influye");
+  let msg = "";
+  try { aMotor(CABLE, { ...BASE, ths: 90 }); } catch (err) { msg = err.message; }
+  ok(msg.includes("salto térmico"), "con Δθ = 0 el motor lanza el error de salto térmico insuficiente");
+});
+
+const stage = document.getElementById("stage");
+const $ = (s, r = stage) => r.querySelector(s);
+const $$ = (s, r = stage) => [...r.querySelectorAll(s)];
+const poner = (sel, v, ev = "input") => { const e = $(sel); e.value = v; e.dispatchEvent(new Event("input", { bubbles: true })); if (ev !== "input") e.dispatchEvent(new Event(ev, { bubbles: true })); };
+const elegir = (sel, v) => poner(sel, v, "change");
+const texto = (e) => (e ? e.textContent.replace(/\s+/g, " ").trim() : "");
+const calcular = () => $("#form-calc").requestSubmit();
+const resultadoA = () => parseFloat(texto($(".result-metric .value")));
+
+const { render } = await import("../js/views/calc-ampacidad-subterranea.js");
+await render(stage, {});
+
+// deja el formulario con el cable y los valores de BASE
+const cargarBase = () => {
+  elegir("#f-tipocable", "Monopolar");
+  elegir("#f-material", "Cobre");
+  elegir("#f-calibre", "4/0 AWG");
+  elegir("#f-pantalla", "Hilos");
+  elegir("#f-nivelkv", "15");
+  elegir("#f-nivelpct", "100");
+  elegir("#f-tierra", "Unipuntual");
+  poner("#f-tension", "34.5");
+  poner("#f-frecuencia", "60");
+  poner("#f-tempmax", "90");
+  poner("#f-tempterreno", "25");
+  poner("#f-rhosuelo", "1");
+  poner("#f-uducto", "0.3");
+  poner("#f-sepfases", "0.04");
+  poner("#f-ncircuitos", "1");
+  poner("#f-profundidad", "1");
+  poner("#f-sepductos", "0.2");
+};
+
+await seccion("vista: tarjetas y campos", async () => {
+  const titulos = $$(".form-section-title").map(texto);
+  ok($$(".card.form-section").length === 3 && titulos[0].includes("Cable") && titulos[1].includes("Condiciones de operación") && titulos[2].includes("Instalación"), `tres tarjetas: «${titulos.join("», «")}»`);
+  ok($$(".form-section-title").every((t) => t.querySelector("svg.icon") && t.parentElement.classList.contains("card")), "cada título lleva su icono y va dentro de su tarjeta");
+  ok(new Set($$(".form-section-title svg").map((s) => s.innerHTML)).size === 3, "las tres tarjetas tienen iconos distintos");
+  ok($$(".card").every((c) => c.classList.contains("tarjeta-borde")), "las tarjetas llevan el borde marcado");
+  ok($$(".hint").length === 0, "no quedan textos de ayuda fijos (.hint) debajo de los campos");
+  const tarjetas = $$(".form-section").map((c) => c.getBoundingClientRect());
+  ok(tarjetas.slice(1).every((r, i) => Math.abs(r.top - tarjetas[i].bottom - 16) < 0.6), "las tarjetas están separadas 16 px");
+
+  const filas = (card) => {
+    const campos = $$(".field", card).map((f) => ({ n: texto($(":scope > label:first-child", f)), r: f.getBoundingClientRect() }));
+    const fs = [];
+    for (const c of campos) { const f = fs.find((x) => Math.abs(x[0].r.top - c.r.top) < 2); if (f) f.push(c); else fs.push([c]); }
+    return fs.map((f) => f.map((c) => c.n).join(" | ")).join(" // ");
+  };
+  const [c1, c2, c3] = $$(".form-section");
+  ok(filas(c1) === "Tipo de cable | Material // Calibre | Tipo de pantalla // Nivel de aislamiento (kV) | % de aislamiento // Puesta a tierra de pantallas | Separación entre fases (m)", `tarjeta Cable: ${filas(c1)}`);
+  ok(filas(c2) === "Tensión del sistema (kV, línea-línea) | Frecuencia (Hz) // Temperatura máxima del conductor (°C) | Temperatura del terreno (°C)", `tarjeta Condiciones de operación: ${filas(c2)}`);
+  ok(filas(c3) === "Resistividad térmica del suelo (K·m/W) | Resistencia térmica del ducto (K·m/W) // Número de circuitos en el banco | Profundidad de enterramiento del banco (m) // Separación entre ductos (m)", `tarjeta Instalación: ${filas(c3)}`);
+});
+
+await seccion("vista: dependencias entre campos", async () => {
+  ok($$("#f-nivelkv option").map((o) => o.value).join() === "15,35,46", "niveles de aislamiento: 15, 35 y 46 kV");
+  ok($$("#f-nivelpct option").map((o) => o.value).join() === "100,133", "15 kV: 100 % y 133 %");
+  elegir("#f-nivelkv", "46");
+  ok($$("#f-nivelpct option").map((o) => o.value).join() === "100", "46 kV: solo 100 %");
+  elegir("#f-nivelkv", "15");
+  ok(!$("#f-tierra").disabled && !$("#f-sepfases").disabled, "monopolar: puesta a tierra y separación entre fases habilitadas");
+  elegir("#f-tipocable", "Tripolar");
+  ok($("#f-tierra").disabled && $("#f-sepfases").disabled, "tripolar: puesta a tierra y separación entre fases bloqueadas");
+  elegir("#f-tipocable", "Monopolar");
+  ok($("#f-sepductos").disabled, "con 1 circuito la separación entre ductos está bloqueada");
+  poner("#f-ncircuitos", "2");
+  ok(!$("#f-sepductos").disabled, "con 2 circuitos se habilita la separación entre ductos");
+  poner("#f-ncircuitos", "1");
+  ok($("#f-sepductos").disabled, "al volver a 1 circuito se bloquea otra vez");
+  ok($("#f-tension").value === "34.5" && $("#f-frecuencia").value === "60" && $("#f-tempmax").value === "90" && $("#f-tempterreno").value === "25" && $("#f-rhosuelo").value === "1" && $("#f-uducto").value === "0.3" && $("#f-sepfases").value === "0.04" && $("#f-profundidad").value === "1" && $("#f-sepductos").value === "0.2", "valores por defecto: 34.5 kV, 60 Hz, 90 °C, 25 °C, 1 K·m/W, 0.3 K·m/W, 0.04 m, 1 m y 0.2 m");
+});
+
+await seccion("vista: cálculo y resultados", async () => {
+  cargarBase();
+  calcular();
+  const e = ref(CABLE, BASE);
+  cerca(resultadoA(), e.I, 0.006, `resultado por defecto: ${e.I.toFixed(2)} A`);
+  ok(texto($(".result-metric .label")) === "Ampacidad admisible" && texto($(".result-metric .unit")) === "A", "la métrica muestra la ampacidad admisible en A");
+
+  // otro cable y varios circuitos
+  elegir("#f-material", "Aluminio");
+  elegir("#f-calibre", "500 kcmil");
+  elegir("#f-pantalla", "Cinta");
+  elegir("#f-nivelkv", "35");
+  elegir("#f-nivelpct", "133");
+  elegir("#f-tierra", "Ambos Extremos");
+  poner("#f-tension", "34.5");
+  poner("#f-ncircuitos", "4");
+  poner("#f-sepductos", "0.25");
+  poner("#f-rhosuelo", "1.5");
+  poner("#f-profundidad", "1.2");
+  calcular();
+  const c2 = fila("Aluminio", "500 kcmil", "Cinta", 35, 133);
+  const o2 = { ...BASE, pantalla: "Cinta", kv: 35, tierra: "Ambos Extremos", N: 4, sd: 0.25, rho: 1.5, L0: 1.2 };
+  cerca(resultadoA(), ref(c2, o2).I, 0.006, `aluminio 500 kcmil, cinta, 35 kV 133 %, ambos extremos, 4 circuitos: ${ref(c2, o2).I.toFixed(2)} A`);
+
+  // tripolar: ignora puesta a tierra y separacion entre fases
+  elegir("#f-tipocable", "Tripolar");
+  calcular();
+  cerca(resultadoA(), ref(c2, { ...o2, tripolar: true }).I, 0.006, "cable tripolar");
+
+  // combinacion sin construccion (46 kV, aluminio 1000 kcmil, cinta)
+  elegir("#f-tipocable", "Monopolar");
+  elegir("#f-nivelkv", "46");
+  elegir("#f-calibre", "1000 kcmil");
+  elegir("#f-pantalla", "Cinta");
+  calcular();
+  ok(!!$("#resultado-wrap .callout-danger") && texto($("#resultado-wrap .callout-danger")).includes("No existe una construcción de cable"), "una combinación que no existe en el catálogo se avisa con un mensaje");
+
+  // salto termico insuficiente
+  cargarBase();
+  poner("#f-tempterreno", "90");
+  calcular();
+  ok(!!$("#resultado-wrap .callout-danger") && texto($("#resultado-wrap .callout-danger")).includes("salto térmico") && !$(".result-metric"), "con Δθ = 0 se avisa el salto térmico insuficiente (sin mostrar un resultado)");
+  poner("#f-tempterreno", "25");
+  calcular();
+  cerca(resultadoA(), e.I, 0.006, "corregido el dato se recupera el resultado");
+});
+
+await seccion("vista: estructura del reporte (se copia y se pega)", async () => {
+  const leer = () => { calcular(); return $('[data-panel="reporte"] .report-block').textContent.split("\n"); };
+  const LINEA = /^-{30}$/;
+  const etiquetasEn = (l) => l.filter((x) => /^[A-ZÁÉÍÓÚÑ ]{4,}:?$/.test(x));
+  const tiene = (l, inicio) => l.some((x) => x.trim().startsWith(inicio));
+  const a = leer();
+  const iRes = a.indexOf("RESULTADOS:");
+  const params = a.slice(4, iRes - 1);
+  const res = a.slice(iRes + 2);
+  ok(a[0] === "CÁLCULO DE AMPACIDAD SUBTERRÁNEA" && a[1] === "" && a[2] === "PARÁMETROS DE ENTRADA:" && LINEA.test(a[3]), "«CÁLCULO DE AMPACIDAD SUBTERRÁNEA», línea en blanco, «PARÁMETROS DE ENTRADA:» y su línea divisoria DEBAJO");
+  ok(iRes > 4 && a[iRes - 1] === "" && LINEA.test(a[iRes + 1]), "«RESULTADOS:» con una línea en blanco antes y su línea divisoria DEBAJO");
+  ok(!LINEA.test(a[2]) && !LINEA.test(a[iRes - 1]) && !LINEA.test(a[4]) && !LINEA.test(a[iRes + 2]), "encima de las etiquetas no hay línea y debajo de la línea sigue directamente el contenido");
+  ok(etiquetasEn(a).join("|") === "CÁLCULO DE AMPACIDAD SUBTERRÁNEA|PARÁMETROS DE ENTRADA:|RESULTADOS:" && a.filter((x) => LINEA.test(x)).length === 2, "tres etiquetas y dos líneas divisorias");
+  for (const inicio of ["Tipo de cable: Monopolar", "Material: Cobre", "Calibre: 4/0 AWG", "Tipo de pantalla: Hilos", "Nivel de aislamiento: 15 kV — 100%", "Puesta a tierra de pantallas: Unipuntual", "Separación entre fases: 0.04 m", "Tensión del sistema: 34.50 kV", "Frecuencia: 60 Hz", "Temperatura máxima del conductor: 90.00 °C", "Temperatura del terreno: 25.00 °C", "Resistividad térmica del suelo: 1.00 K·m/W", "Resistencia térmica del ducto: 0.30 K·m/W", "Número de circuitos en el banco: 1", "Profundidad de enterramiento del banco: 1.00 m", "Separación entre ductos: N/A (1 circuito)"]) {
+    ok(tiene(params, inicio.replace("0.04 m", "0.04 m")), `parámetros de entrada incluye «${inicio}»`);
+  }
+  for (const inicio of ["R (", "Wd", "λ1", "T1", "T2", "T3", "T4", "Δθ", "Ampacidad"]) {
+    ok(!tiene(params, inicio), `«${inicio}…» NO está en los parámetros (es un resultado)`);
+  }
+  for (const inicio of ["R (resistencia AC efectiva)", "Wd (pérdida dieléctrica)", "λ1 (factor de pérdidas en pantalla)", "T1 (resistencia térmica del aislamiento)", "T2 (resistencia térmica del relleno)", "T3 (resistencia térmica de la chaqueta)", "T4 (resistencia térmica externa)", "Δθ (salto térmico admisible)", "Ampacidad:"]) {
+    ok(tiene(res, inicio), `resultados incluye «${inicio}»`);
+  }
+  ok(a.at(-1).startsWith("Ampacidad: ") && a.at(-1).endsWith(" A") && !tiene(res, "Tensión") && !tiene(res, "Calibre") && !tiene(res, "Temperatura"), "el reporte termina con la ampacidad y los datos de entrada no se repiten en los resultados");
+  const negritas = $$('[data-panel="reporte"] .report-block strong');
+  const pesos = negritas.map((e) => parseInt(getComputedStyle(e).fontWeight, 10));
+  ok(negritas.map((e) => e.textContent).join("|") === "CÁLCULO DE AMPACIDAD SUBTERRÁNEA|PARÁMETROS DE ENTRADA:|RESULTADOS:" && pesos.every((w) => w >= 700), `las tres etiquetas están en negrita (${pesos.join(", ")}) y solo ellas`);
+
+  // tripolar y varios circuitos: los N/A cambian de lugar
+  elegir("#f-tipocable", "Tripolar");
+  poner("#f-ncircuitos", "3");
+  const b = leer();
+  const pb = b.slice(4, b.indexOf("RESULTADOS:") - 1);
+  ok(tiene(pb, "Puesta a tierra de pantallas: N/A (tripolar)") && tiene(pb, "Separación entre fases: N/A (tripolar)") && tiene(pb, "Separación entre ductos: 0.20 m") && tiene(pb, "Número de circuitos en el banco: 3"), "tripolar con 3 circuitos: puesta a tierra y separación entre fases «N/A (tripolar)», y sí aparece la separación entre ductos");
+  elegir("#f-tipocable", "Monopolar");
+  poner("#f-ncircuitos", "1");
+});
+
+await seccion("vista: fórmulas con KaTeX", async () => {
+  calcular();
+  ok(!window.katex, "KaTeX no se carga hasta abrir la pestaña Fórmulas");
+  $$(".tab-btn").find((b) => b.dataset.tab === "formulas").click();
+  for (let i = 0; i < 40 && !$$("#formulas-katex .katex").length; i++) await espera(100);
+  await document.fonts.ready;
+  await espera(150);
+  const caja = $("#formulas-katex");
+  const subtitulos = $$("#formulas-katex > .result-subhead").map(texto);
+  const items = $$("#formulas-katex ul.formula-etiquetas > li");
+  const izq = items.map((li) => li.lastElementChild.getBoundingClientRect().left);
+  const n = $$("#formulas-katex .formula-katex").length;
+  ok(window.katex && n === 21 && $$("#formulas-katex .katex-display").length === 21, `KaTeX cargado y ${n} ecuaciones dibujadas`);
+  ok($$("#formulas-katex .katex-error").length === 0, "ninguna ecuación con error de sintaxis");
+  ok($("#formulas-plano").hidden && !caja.hidden, "al dibujarse las fórmulas se oculta el texto plano y aparece la subtarjeta");
+  ok(subtitulos.join("|") === "Ampacidad (IEC 60287-1-1)|Resistencia AC del conductor (efecto piel y proximidad)|Pérdida dieléctrica|Pérdidas en la pantalla (λ1)|Resistencias térmicas del cable|Resistencia térmica externa (ducto y suelo, método de imágenes de Kennelly)|Descripción de las etiquetas|Notas", `subtítulos: ${subtitulos.join(" | ")}`);
+  ok(items.length === 34 && items.every((li) => li.querySelector(".formula-simbolo .katex")), `la descripción de las etiquetas es una lista de ${items.length} viñetas con el símbolo dibujado`);
+  ok(Math.max(...izq) - Math.min(...izq) < 1, "los textos de las viñetas quedan alineados");
+  ok($$("#formulas-katex .katex .sqrt").length >= 2 && $$("#formulas-katex .katex .mop").some((m) => m.textContent.includes("ln")) && $$("#formulas-katex .katex .mtable").length >= 2, "hay raíces, logaritmos y los casos de n y de λ1 dibujados");
+  const textoCaja = texto(caja);
+  ok(textoCaja.includes("IEC 60287-1-1") && textoCaja.includes("Kennelly") && textoCaja.includes("trébol"), "las notas mencionan la norma, el método de Kennelly y la limitación trébol/plana");
+  const rc = caja.getBoundingClientRect();
+  ok($$("#formulas-katex .formula-katex").every((e) => { const r = e.getBoundingClientRect(); return r.left >= rc.left && r.right <= rc.right + 0.5; }), "las ecuaciones quedan dentro de la subtarjeta");
+});
+
+// La pantalla se prueba tambien dentro de un iframe de ancho fijo: las media queries dependen del ancho de la ventana.
+const cargarMarco = (ancho) => new Promise((resolve) => {
+  const marco = document.createElement("iframe");
+  marco.style.cssText = `position:fixed;left:-99999px;top:0;width:${ancho}px;height:3600px;border:0`;
+  const alRecibir = (e) => {
+    if (e.source !== marco.contentWindow || e.data !== "listo") return;
+    window.removeEventListener("message", alRecibir);
+    resolve(marco);
+  };
+  window.addEventListener("message", alRecibir);
+  marco.srcdoc = `<!doctype html><html><head><link rel="stylesheet" href="../css/tokens.css"><link rel="stylesheet" href="../css/app.css"></head><body><div id="c" class="content"></div><script type="module">window.__BASE_PATH__ = "../"; const { render } = await import("../js/views/calc-ampacidad-subterranea.js"); const c = document.getElementById("c"); await render(c, {}); c.querySelector("#form-calc").requestSubmit(); parent.postMessage("listo", "*");<\/script></body></html>`;
+  document.body.append(marco);
+});
+
+await seccion("vista: aspecto (barra de título, 16 px laterales y espaciado uniforme)", async () => {
+  const medir = (marco) => {
+    const d = marco.contentDocument;
+    const izq = (e) => e.getBoundingClientRect().left;
+    const sonda = d.createElement("div");
+    d.body.append(sonda);
+    const token = (v) => { sonda.style.backgroundColor = `var(${v})`; return d.defaultView.getComputedStyle(sonda).backgroundColor; };
+    sonda.style.borderBottomColor = "color-mix(in srgb, var(--accent) 65%, var(--accent-soft))";
+    const mezcla = d.defaultView.getComputedStyle(sonda).borderBottomColor;
+    const suave = token("--accent-soft");
+    const acento = token("--accent");
+    sonda.remove();
+    const cs = (e) => d.defaultView.getComputedStyle(e);
+    const tarjetas = [...d.querySelectorAll(".form-section")];
+    const res = d.querySelector("#resultado-wrap > .card");
+    const panel = res.querySelector(".result-panel");
+    const barras = tarjetas.map((card) => {
+      const t = card.querySelector(".form-section-title");
+      const rc = card.getBoundingClientRect();
+      const rt = t.getBoundingClientRect();
+      const svg = t.querySelector("svg");
+      const ri = svg.getBoundingClientRect();
+      return { llegaBordes: Math.abs(rt.left - (rc.left + 1)) <= 0.6 && Math.abs(rt.right - (rc.right - 1)) <= 0.6, arriba: rt.top - rc.top <= 1.6, fondo: cs(t).backgroundColor === suave, linea: cs(t).borderBottomColor === mezcla && cs(t).borderBottomWidth === "1px", icono: cs(svg).color === acento, centrado: Math.abs(ri.top + ri.height / 2 - (rt.top + (rt.height - 1) / 2)) <= 1, altura: Math.round(rt.height) };
+    });
+    const separaciones = tarjetas.map((card) => {
+      const rects = [...card.querySelectorAll(".field")].filter((f) => f.getClientRects().length).map((f) => f.getBoundingClientRect());
+      return rects.slice(1).map((r, i) => r.top - rects[i].bottom);
+    });
+    return {
+      barras,
+      separaciones,
+      lateral: { cable: izq(tarjetas[0].querySelector("select, input")) - izq(tarjetas[0]), operacion: izq(tarjetas[1].querySelector("select, input")) - izq(tarjetas[1]), instalacion: izq(tarjetas[2].querySelector("select, input")) - izq(tarjetas[2]), icono: izq(tarjetas[2].querySelector(".form-section-title svg")) - izq(tarjetas[2]), tabs: izq(res.querySelector(".tabs")) - izq(res), panel: izq(panel) - izq(res) },
+    };
+  };
+  const angosto = await cargarMarco(600);
+  const mAng = medir(angosto);
+  angosto.remove();
+  const ancho = await cargarMarco(1000);
+  const mAnc = medir(ancho);
+  ancho.remove();
+
+  for (const [nombre, m] of [["600 px", mAng], ["1000 px", mAnc]]) {
+    m.barras.forEach((b, i) => {
+      const t = ["Cable", "Condiciones de operación", "Instalación"][i];
+      ok(b.llegaBordes && b.arriba && b.fondo && b.linea && b.icono && b.centrado, `ancho ${nombre}, «${t}»: barra de borde a borde con el color atenuado, línea 35 % menos intensa, icono en color pleno y centrado`);
+    });
+    ok(new Set(m.barras.map((b) => b.altura)).size === 1, `ancho ${nombre}: las barras tienen la misma altura`);
+    ok(Object.values(m.lateral).every((v) => v === 17), `ancho ${nombre}: 17 px del borde al contenido (1 + 16) en tarjetas, resultados y panel (${Object.values(m.lateral).join(", ")})`);
+  }
+  mAng.separaciones.forEach((s, i) => {
+    ok(s.length >= 3 && s.every((v) => Math.abs(v - 16) <= 0.6), `ancho 600 px, tarjeta ${i + 1}: todos los campos a 16 px unos de otros (${s.map((v) => v.toFixed(0)).join(", ")})`);
+  });
+});
+
+await seccion("vista: ayuda de los campos con botón de información", async () => {
+  // etiquetas: con o sin boton deben medir lo mismo (todas las medidas juntas, antes de ok())
+  const campos = $$("#form-calc .field").filter((f) => f.getClientRects().length && f.querySelector(":scope > label"));
+  const medidas = campos.map((f) => {
+    const label = f.querySelector(":scope > label");
+    const control = f.querySelector("input, select");
+    return { conInfo: !!label.querySelector(".info-btn"), alto: Math.round(label.getBoundingClientRect().height * 10) / 10, desfase: Math.round((control.getBoundingClientRect().top - f.getBoundingClientRect().top) * 10) / 10 };
+  });
+  ok(medidas.filter((m) => m.conInfo).length === 6 && medidas.filter((m) => !m.conInfo).length >= 8, "se comparan campos con y sin botón de información");
+  ok(new Set(medidas.map((m) => m.alto)).size === 1 && new Set(medidas.map((m) => m.desfase)).size === 1, `el botón no cambia la altura de las etiquetas ni la posición de las casillas (${[...new Set(medidas.map((m) => m.alto))].join(", ")} px)`);
+
+  const botones = $$(".info-btn");
+  const nombres = botones.map((b) => b.getAttribute("aria-label").replace("Más información sobre ", ""));
+  ok(nombres.join("|") === "Puesta a tierra de pantallas|Separación entre fases (m)|Temperatura del terreno (°C)|Resistividad térmica del suelo (K·m/W)|Resistencia térmica del ducto (K·m/W)|Separación entre ductos (m)", `botones de información junto al nombre de: ${nombres.join(" | ")}`);
+  ok(botones.every((b) => b.tagName === "BUTTON" && b.type === "button" && b.getAttribute("aria-expanded") === "false" && document.getElementById(b.getAttribute("aria-controls"))), "son botones reales, con aria-expanded y aria-controls");
+  const textos = botones.map((b) => document.getElementById(b.getAttribute("aria-controls")).textContent);
+  ok(textos[0] === "Unipuntual: en un extremo del cable." && textos[1] === "Valores típicos entre 0.04 y 0.10 m entre fases." && textos[2].startsWith("Valores típicos: 15-20°C") && textos[3].startsWith("Tipos de suelo:") && textos[4].startsWith("Típicos: PVC") && textos[5].startsWith("Depende de la norma"), "los seis textos son los mismos que antes estaban fijos debajo de los campos");
+  const b0 = botones[3];
+  const campo = b0.closest(".field");
+  const card = b0.closest(".card");
+  const pop = document.getElementById(b0.getAttribute("aria-controls"));
+  const antes = card.getBoundingClientRect().height;
+  b0.click();
+  const abierto = { oculto: pop.hidden, abajo: pop.classList.contains("info-popover--abajo"), rp: pop.getBoundingClientRect(), rl: campo.querySelector("label").getBoundingClientRect(), rc: campo.getBoundingClientRect(), card: card.getBoundingClientRect().height };
+  b0.click();
+  ok(!abierto.oculto && !abierto.abajo && abierto.rp.bottom <= abierto.rl.top + 0.5, "el cuadro (aun el largo de los tipos de suelo) se abre arriba de la etiqueta");
+  ok(abierto.rp.left >= abierto.rc.left - 0.5 && abierto.rp.right <= abierto.rc.right + 0.5, "el cuadro queda dentro del ancho del campo");
+  ok(Math.abs(abierto.card - antes) < 0.5 && pop.hidden, "abrir el cuadro no mueve el formulario y un segundo clic lo cierra");
+});
+
+await seccion("service worker y otros archivos", async () => {
+  const sw = await (await fetch("../sw.js")).text();
+  const lista = [...sw.matchAll(/^\s*"([^"]+)",\s*$/gm)].map((m) => m[1]);
+  ok(["js/calc/ampacidad-subterranea.js", "js/views/calc-ampacidad-subterranea.js", "js/util/info-campo.js", "js/util/resultados-ui.js"].every((f) => lista.includes(f)), "el service worker precachea los módulos que usa la pantalla");
+  const existen = await Promise.all(lista.filter((f) => f !== "./").map((f) => fetch(`../${f}`, { method: "HEAD" }).then((r) => [f, r.ok])));
+  const faltan = existen.filter(([, okk]) => !okk).map(([f]) => f);
+  ok(faltan.length === 0, `todos los archivos del APP_SHELL existen${faltan.length ? ": " + faltan.join(", ") : ""}`);
+  const tool = await (await fetch("../js/ai/tools.js")).text();
+  ok(tool.includes('nombre: "calcular_ampacidad_subterranea"') && tool.includes('from "../calc/ampacidad-subterranea.js"'), "la herramienta de la IA sigue usando el motor original de ampacidad subterránea (sin cambios)");
+});
+
+out.textContent += `\nRESULT: ${fallos ? "FAIL" : "OK"} (${total - fallos}/${total})\n`;
+</script>
+</body>
+</html>

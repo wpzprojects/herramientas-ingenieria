@@ -1,40 +1,149 @@
-// Calculadora de ampacidad de cables subterraneos en banco de ductos
-// (IEC 60287-1-1).
+// Calculadora de ampacidad de cables subterraneos en banco de ductos (IEC 60287-1-1).
+// La pantalla se divide en tarjetas: "Cable" (construccion, pantalla y puesta a tierra), "Condiciones de operacion" (tension,
+// frecuencia y temperaturas) e "Instalacion" (suelo, ducto y banco de ductos). Misma estructura que las demas calculadoras.
+// El motor (../calc/ampacidad-subterranea.js) no se toca.
 
 import { fmt, loadData, distinct, escapeHtml } from "../util/format.js";
+import { icon } from "../icons.js";
 import { calcularAmpacidadSubterranea } from "../calc/ampacidad-subterranea.js";
+import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
+import { activarInfos } from "../util/info-campo.js";
 
 const ORDEN_CALIBRES = ["1/0 AWG", "2/0 AWG", "3/0 AWG", "4/0 AWG", "250 kcmil", "350 kcmil", "500 kcmil", "750 kcmil", "1000 kcmil"];
 
-const FORMULAS_HTML = `Metodología IEC 60287-1-1 (régimen permanente):
+// Ecuaciones (LaTeX) de la pestaña Fórmulas: las del motor, con las mismas unidades (m, °C, Ω/m, W/m y K·m/W).
+const FORMULAS_TEX = [
+  {
+    titulo: "Ampacidad (IEC 60287-1-1)",
+    ecuaciones: [
+      String.raw`I = \sqrt{\dfrac{\Delta\theta - W_d\left(0.5\,T_1 + n\,(T_2 + T_3 + T_4)\right)}{R\,T_1 + n\,R\,(1 + \lambda_1)\,(T_2 + T_3 + T_4)}} \quad [\mathrm{A}]`,
+      String.raw`\Delta\theta = \theta_c - \theta_s \quad [^{\circ}\mathrm{C}]`,
+      String.raw`n = \begin{cases} 3 & \text{cable monopolar} \\ 1 & \text{cable tripolar} \end{cases}`,
+    ],
+  },
+  {
+    titulo: "Resistencia AC del conductor (efecto piel y proximidad)",
+    ecuaciones: [
+      String.raw`R' = R_0\,\left[1 + \alpha_{20}\,(\theta_c - 20)\right] \quad [\Omega/\mathrm{m}]`,
+      String.raw`x^{2} = \dfrac{8\pi f}{R'} \times 10^{-7}`,
+      String.raw`y_s = \dfrac{x^{4}}{192 + 0.8\,x^{4}}`,
+      String.raw`y_p = y_s \left(\dfrac{d_c}{s}\right)^{2}\left[0.312\left(\dfrac{d_c}{s}\right)^{2} + \dfrac{1.18}{y_s + 0.27}\right] \quad (y_p = 0 \text{ en cable tripolar})`,
+      String.raw`R = R'\,\left(1 + y_s + y_p\right) \quad [\Omega/\mathrm{m}]`,
+    ],
+  },
+  {
+    titulo: "Pérdida dieléctrica",
+    ecuaciones: [
+      String.raw`C = \dfrac{\varepsilon_r \times 10^{-9}}{18\,\ln\left(D_s / d_c\right)} \quad [\mathrm{F/m}]`,
+      String.raw`U_0 = \dfrac{1000\,V}{\sqrt{3}} \quad [\mathrm{V}]`,
+      String.raw`W_d = 2\pi f\,C\,U_0^{2}\,\tan\delta \quad [\mathrm{W/m}]`,
+    ],
+  },
+  {
+    titulo: "Pérdidas en la pantalla (λ1)",
+    ecuaciones: [
+      String.raw`R_s = \dfrac{1.7241 \times 10^{-8}}{t_c\,(0.88\,\pi\,D_s)} \quad [\Omega/\mathrm{m}] \quad (\text{pantalla de cinta})`,
+      String.raw`R_{s,op} = R_s\,\left[1 + \alpha_{20}\,(\theta_c - 20)\right] \quad [\Omega/\mathrm{m}]`,
+      String.raw`X_m = 4\pi f \times 10^{-7}\,\ln\left(\dfrac{2\,s}{D_s}\right) \quad [\Omega/\mathrm{m}]`,
+      String.raw`\lambda_1 = \begin{cases} \dfrac{R_{s,op}}{R}\cdot\dfrac{1}{1 + \left(R_{s,op}/X_m\right)^{2}} + 0.01 & \text{monopolar, ambos extremos} \\[2ex] 0.02 & \text{tripolar, unipuntual o cross-bonding} \end{cases}`,
+    ],
+  },
+  {
+    titulo: "Resistencias térmicas del cable",
+    ecuaciones: [
+      String.raw`T_1 = \dfrac{\rho_1}{2\pi}\,\ln\left(1 + \dfrac{2\,t_1}{d_c}\right) \quad [\mathrm{K\cdot m/W}]`,
+      String.raw`T_2 = \dfrac{\rho_2}{2\pi}\,\ln\left(1 + \dfrac{2\,t_2}{D_s}\right) \quad [\mathrm{K\cdot m/W}]`,
+      String.raw`T_3 = \dfrac{\rho_3}{2\pi}\,\ln\left(1 + \dfrac{2\,t_3}{D_e}\right) \quad [\mathrm{K\cdot m/W}]`,
+    ],
+  },
+  {
+    titulo: "Resistencia térmica externa (ducto y suelo, método de imágenes de Kennelly)",
+    ecuaciones: [
+      String.raw`T_{4p} = T_d + \dfrac{\rho_s}{2\pi}\,\ln\left(\dfrac{4L}{D_e}\right) \quad [\mathrm{K\cdot m/W}]`,
+      String.raw`T_{4m} = \sum_{j}\dfrac{\rho_s}{2\pi}\,\ln\left(\dfrac{\sqrt{x_j^{2} + (L_j + L)^{2}}}{\sqrt{x_j^{2} + (L_j - L)^{2}}}\right) \quad [\mathrm{K\cdot m/W}]`,
+      String.raw`T_4 = T_{4p} + T_{4m} \quad [\mathrm{K\cdot m/W}]`,
+    ],
+  },
+];
 
-  Ampacidad = √( (Δθ − Wd·(0.5·T1 + n·(T2+T3+T4))) / (n·R·[T1/n + (1+λ1)·(T2+T3+T4)]) )
+// Descripcion de las etiquetas (simbolos) de las ecuaciones, en el orden en que aparecen; el simbolo se dibuja con KaTeX igual que en ellas.
+const FORMULAS_ETIQUETAS = [
+  { tex: "I", texto: "Ampacidad (corriente admisible) [A]" },
+  { tex: String.raw`\Delta\theta`, texto: "Salto térmico admisible entre el conductor y el terreno [°C]" },
+  { tex: String.raw`\theta_c`, texto: "Temperatura máxima del conductor [°C]" },
+  { tex: String.raw`\theta_s`, texto: "Temperatura del terreno [°C]" },
+  { tex: "n", texto: "Número de conductores del cable (3 monopolar, 1 tripolar)" },
+  { tex: "R", texto: "Resistencia AC efectiva del conductor [Ω/m]" },
+  { tex: "R'", texto: "Resistencia AC a la temperatura máxima, sin efecto piel ni proximidad [Ω/m]" },
+  { tex: "R_0", texto: "Resistencia del conductor a 20 °C [Ω/m]" },
+  { tex: String.raw`\alpha_{20}`, texto: "Coeficiente de temperatura del material a 20 °C" },
+  { tex: "f", texto: "Frecuencia [Hz]" },
+  { tex: "x", texto: "Variable auxiliar de los efectos piel y proximidad" },
+  { tex: "y_s,\\,y_p", texto: "Factores de efecto piel y de efecto de proximidad" },
+  { tex: "d_c", texto: "Diámetro del conductor [m]" },
+  { tex: "s", texto: "Separación entre fases [m]" },
+  { tex: String.raw`\varepsilon_r,\,\tan\delta`, texto: "Permitividad relativa y factor de pérdidas del aislamiento" },
+  { tex: "D_s", texto: "Diámetro sobre el aislamiento [m]" },
+  { tex: "C", texto: "Capacitancia del cable [F/m]" },
+  { tex: "V", texto: "Tensión del sistema, línea-línea [kV]" },
+  { tex: "U_0", texto: "Tensión fase-tierra [V]" },
+  { tex: "W_d", texto: "Pérdida dieléctrica [W/m]" },
+  { tex: "t_c", texto: "Espesor de la cinta de la pantalla [m] (0.127 mm en 15 kV; 0.203 mm en los demás niveles)" },
+  { tex: "R_s,\\,R_{s,op}", texto: "Resistencia de la pantalla a 20 °C y a la temperatura máxima [Ω/m]" },
+  { tex: "X_m", texto: "Reactancia mutua entre conductor y pantalla [Ω/m]" },
+  { tex: String.raw`\lambda_1`, texto: "Factor de pérdidas en la pantalla" },
+  { tex: String.raw`T_1,\,T_2,\,T_3`, texto: "Resistencias térmicas del aislamiento, del relleno y de la chaqueta [K·m/W]" },
+  { tex: String.raw`\rho_1,\,\rho_2,\,\rho_3`, texto: "Resistividades térmicas del aislamiento, del relleno y de la chaqueta [K·m/W]" },
+  { tex: String.raw`t_1,\,t_2,\,t_3`, texto: "Espesores del aislamiento, del relleno y de la chaqueta [m]" },
+  { tex: "D_e", texto: "Diámetro exterior del cable [m]" },
+  { tex: "T_4", texto: "Resistencia térmica externa (ducto y suelo) [K·m/W]" },
+  { tex: String.raw`T_{4p},\,T_{4m}`, texto: "Parte propia y parte por el calentamiento mutuo de los demás ductos [K·m/W]" },
+  { tex: "T_d", texto: "Resistencia térmica del ducto [K·m/W]" },
+  { tex: String.raw`\rho_s`, texto: "Resistividad térmica del suelo [K·m/W]" },
+  { tex: "L", texto: "Profundidad del ducto activo [m]" },
+  { tex: String.raw`L_j,\,x_j`, texto: "Profundidad del ducto j y su distancia horizontal al ducto activo [m]" },
+];
 
-  R  = resistencia AC del conductor, incluyendo efecto piel y de proximidad
-  Wd = pérdida dieléctrica del aislamiento
-  λ1 = factor de pérdidas por corrientes inducidas/circulantes en la pantalla
-  T1 = resistencia térmica del aislamiento
-  T2 = resistencia térmica de la cubierta/relleno
-  T3 = resistencia térmica de la chaqueta exterior
-  T4 = resistencia térmica externa (suelo + ducto), calculada con el método
-       de imágenes de Kennelly para el acoplamiento térmico entre el ducto
-       activo y los demás ductos del banco
-  Δθ = salto térmico admisible entre el conductor y el terreno
+const FORMULAS_NOTA = `El cálculo es el de régimen permanente de la IEC 60287-1-1. La resistencia térmica externa se calcula con el método de imágenes de Kennelly: acopla el ducto activo con los demás ductos del banco.
 
-Limitaciones conocidas:
-  • No distingue formación en trébol vs. formación plana — usa la misma
-    fórmula de proximidad para ambas.
-  • Solo calcula régimen permanente (no transitorio ni secado del suelo).`;
+El banco se arma con hasta 3 ductos por fila (separados entre sí por la distancia indicada) y el ducto activo es el más cercano al centro geométrico del banco.
 
-const HINTS = {
-  puestaTierra:
-    "Unipuntual: en un extremo del cable.",
-  tempTerreno: "Valores típicos: 15-20°C en clima frío, 25-30°C en clima cálido/tropical.",
-  rhoSuelo: "Tipos de suelo: Saturado / muy húmedo: 0.5-0.7; Arena o arcilla húmeda: 0.7-1.0; Tierra común compactada: 1.0-1.2; Arena seca: 2.0-3.0; Roca/suelo muy seco: 2.5-3.5",
-  uDucto: "Típicos: PVC ≈ 0.3 - 0.4 K·m/W; Fibra de vidrio: 0.2 - 0.3; Metálico: 0.05 - 0.1; Cualquier ducto embebido en concreto: 0.1 - 0.2",
-  separacionFases: "Valores típicos entre 0.04 y 0.10 m entre fases.",
-  separacionDuctos: "Depende de la norma; valores típicos entre 0.15 y 0.30 m",
-};
+En el cable tripolar el factor de proximidad es cero, λ1 = 0.02 y no se usan la separación entre fases ni la puesta a tierra de pantallas.
+
+Limitaciones conocidas: no distingue formación en trébol de formación plana (usa la misma fórmula de proximidad para ambas) y solo calcula régimen permanente (no transitorio ni secado del suelo).
+
+Si el salto térmico no alcanza para cubrir la pérdida dieléctrica, el cálculo no es válido y se avisa.`;
+
+// Texto plano de respaldo si KaTeX no se puede cargar.
+const FORMULAS_TEXTO = `Metodología IEC 60287-1-1 (régimen permanente):
+
+  I = √( (Δθ − Wd·(0.5·T1 + n·(T2+T3+T4))) / (R·T1 + n·R·(1+λ1)·(T2+T3+T4)) )     [A]
+
+  Δθ = θc − θs        n = 3 (monopolar) / 1 (tripolar)
+
+  R' = R0·(1 + α20·(θc − 20))
+  x² = 8π·f / R' · 1e-7
+  ys = x⁴ / (192 + 0.8·x⁴)
+  yp = ys·(dc/s)²·(0.312·(dc/s)² + 1.18/(ys + 0.27))      (0 en tripolar)
+  R  = R'·(1 + ys + yp)
+
+  C  = εr·1e-9 / (18·ln(Ds/dc))
+  U0 = 1000·V / √3
+  Wd = 2π·f·C·U0²·tan δ
+
+  Rs (cinta) = 1.7241e-8 / (tc·0.88·π·Ds)      Rs,op = Rs·(1 + α20·(θc − 20))
+  Xm = 4π·f·1e-7·ln(2s/Ds)
+  λ1 = Rs,op/R · 1/(1 + (Rs,op/Xm)²) + 0.01   (monopolar, ambos extremos); 0.02 en los demás casos
+
+  T1 = ρ1/(2π)·ln(1 + 2·t1/dc)
+  T2 = ρ2/(2π)·ln(1 + 2·t2/Ds)
+  T3 = ρ3/(2π)·ln(1 + 2·t3/De)
+  T4 = Td + ρs/(2π)·ln(4L/De) + Σj ρs/(2π)·ln( √(xj² + (Lj+L)²) / √(xj² + (Lj−L)²) )
+
+${FORMULAS_NOTA}`;
+
+// Lineas del reporte que son etiquetas: van en negrita (el texto que se copia es el mismo).
+const ETIQUETAS_REPORTE = ["CÁLCULO DE AMPACIDAD SUBTERRÁNEA", "PARÁMETROS DE ENTRADA:", "RESULTADOS:"];
 
 export async function render(container) {
   const cables = await loadData("construccion-cable-subterraneo");
@@ -47,118 +156,117 @@ export async function render(container) {
     <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/calculos">Cálculos</a> <span>/</span> <span>Ampacidad subterránea</span></div>
     <h1 class="page-title">Ampacidad de cables subterráneos</h1>
 
-    <form class="card" id="form-calc" novalidate>
-      <div class="grid-2">
-        <div class="field">
-          <label for="f-tipocable">Tipo de cable</label>
-          <select id="f-tipocable" required>
-            <option value="Monopolar">Monopolar</option>
-            <option value="Tripolar">Tripolar</option>
-          </select>
+    <form id="form-calc" novalidate>
+      <div class="card tarjeta-borde form-section">
+        <div class="form-section-title">${icon("plugConnected")} Cable</div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="f-tipocable">Tipo de cable</label>
+            <select id="f-tipocable" required>
+              <option value="Monopolar">Monopolar</option>
+              <option value="Tripolar">Tripolar</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-material">Material</label>
+            <select id="f-material" required>
+              ${materiales.map((m) => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join("")}
+            </select>
+          </div>
         </div>
-        <div class="field">
-          <label for="f-material">Material</label>
-          <select id="f-material" required>
-            ${materiales.map((m) => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join("")}
-          </select>
+        <div class="grid-2">
+          <div class="field">
+            <label for="f-calibre">Calibre</label>
+            <select id="f-calibre" required>
+              ${calibres.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("")}
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-pantalla">Tipo de pantalla</label>
+            <select id="f-pantalla" required>
+              ${tiposPantalla.map((t) => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("")}
+            </select>
+          </div>
         </div>
-      </div>
-
-      <div class="grid-2">
-        <div class="field">
-          <label for="f-calibre">Calibre</label>
-          <select id="f-calibre" required>
-            ${calibres.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("")}
-          </select>
+        <div class="grid-2">
+          <div class="field">
+            <label for="f-nivelkv">Nivel de aislamiento (kV)</label>
+            <select id="f-nivelkv" required>
+              ${nivelesKv.map((k) => `<option value="${k}">${k}</option>`).join("")}
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-nivelpct">% de aislamiento</label>
+            <select id="f-nivelpct" required></select>
+          </div>
         </div>
-        <div class="field">
-          <label for="f-pantalla">Tipo de pantalla</label>
-          <select id="f-pantalla" required>
-            ${tiposPantalla.map((t) => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("")}
-          </select>
-        </div>
-      </div>
-
-      <div class="grid-2">
-        <div class="field">
-          <label for="f-nivelkv">Nivel de aislamiento (kV)</label>
-          <select id="f-nivelkv" required>
-            ${nivelesKv.map((k) => `<option value="${k}">${k}</option>`).join("")}
-          </select>
-        </div>
-        <div class="field">
-          <label for="f-nivelpct">% de aislamiento</label>
-          <select id="f-nivelpct" required></select>
-        </div>
-      </div>
-
-      <div class="field">
-        <label for="f-tierra">Puesta a tierra de pantallas</label>
-        <select id="f-tierra" required>
-          <option value="Unipuntual">Unipuntual</option>
-          <option value="Ambos Extremos">Ambos Extremos</option>
-          <option value="Cross-bonding">Cross-bonding</option>
-        </select>
-        <span class="hint">${HINTS.puestaTierra}</span>
-      </div>
-
-      <div class="grid-2">
-        <div class="field">
-          <label for="f-tension">Tensión del sistema (kV, línea-línea)</label>
-          <input type="number" id="f-tension" min="0" max="46" step="0.1" value="34.5" required>
-        </div>
-        <div class="field">
-          <label for="f-frecuencia">Frecuencia (Hz)</label>
-          <input type="number" id="f-frecuencia" min="0" max="300" step="1" value="60" required>
+        <div class="grid-2 ultima">
+          <div class="field">
+            <label for="f-tierra" data-info="Unipuntual: en un extremo del cable.">Puesta a tierra de pantallas</label>
+            <select id="f-tierra" required>
+              <option value="Unipuntual">Unipuntual</option>
+              <option value="Ambos Extremos">Ambos Extremos</option>
+              <option value="Cross-bonding">Cross-bonding</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-sepfases" data-info="Valores típicos entre 0.04 y 0.10 m entre fases.">Separación entre fases (m)</label>
+            <input type="number" id="f-sepfases" min="0" max="1" step="0.01" value="0.04" required>
+          </div>
         </div>
       </div>
 
-      <div class="grid-2">
-        <div class="field">
-          <label for="f-tempmax">Temperatura máxima del conductor (°C)</label>
-          <input type="number" id="f-tempmax" min="0" max="300" step="0.1" value="90" required>
+      <div class="card tarjeta-borde form-section">
+        <div class="form-section-title">${icon("circuitVoltmeter")} Condiciones de operación</div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="f-tension">Tensión del sistema (kV, línea-línea)</label>
+            <input type="number" id="f-tension" min="0" max="46" step="0.1" value="34.5" required>
+          </div>
+          <div class="field">
+            <label for="f-frecuencia">Frecuencia (Hz)</label>
+            <input type="number" id="f-frecuencia" min="0" max="300" step="1" value="60" required>
+          </div>
         </div>
-        <div class="field">
-          <label for="f-tempterreno">Temperatura del terreno (°C)</label>
-          <input type="number" id="f-tempterreno" min="-100" max="100" step="0.1" value="25" required>
-          <span class="hint">${HINTS.tempTerreno}</span>
-        </div>
-      </div>
-
-      <div class="grid-2">
-        <div class="field">
-          <label for="f-rhosuelo">Resistividad térmica del suelo (K·m/W)</label>
-          <input type="number" id="f-rhosuelo" min="-100" max="1000" step="0.01" value="1" required>
-          <span class="hint">${HINTS.rhoSuelo}</span>
-        </div>
-        <div class="field">
-          <label for="f-uducto">Resistencia térmica del ducto (K·m/W)</label>
-          <input type="number" id="f-uducto" min="0" max="5" step="0.01" value="0.3" required>
-          <span class="hint">${HINTS.uDucto}</span>
-        </div>
-      </div>
-
-      <div class="grid-2">
-        <div class="field">
-          <label for="f-sepfases">Separación entre fases (m)</label>
-          <input type="number" id="f-sepfases" min="0" max="1" step="0.01" value="0.04" required>
-          <span class="hint">${HINTS.separacionFases}</span>
-        </div>
-        <div class="field">
-          <label for="f-ncircuitos">Número de circuitos en el banco</label>
-          <input type="number" id="f-ncircuitos" min="0" max="6" step="1" value="1" required>
+        <div class="grid-2 ultima">
+          <div class="field">
+            <label for="f-tempmax">Temperatura máxima del conductor (°C)</label>
+            <input type="number" id="f-tempmax" min="0" max="300" step="0.1" value="90" required>
+          </div>
+          <div class="field">
+            <label for="f-tempterreno" data-info="Valores típicos: 15-20°C en clima frío, 25-30°C en clima cálido/tropical.">Temperatura del terreno (°C)</label>
+            <input type="number" id="f-tempterreno" min="-100" max="100" step="0.1" value="25" required>
+          </div>
         </div>
       </div>
 
-      <div class="grid-2">
-        <div class="field">
-          <label for="f-profundidad">Profundidad de enterramiento del banco (m)</label>
-          <input type="number" id="f-profundidad" min="0" max="10" step="0.01" value="1" required>
+      <div class="card tarjeta-borde form-section">
+        <div class="form-section-title">${icon("gridDots")} Instalación</div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="f-rhosuelo" data-info="Tipos de suelo: Saturado / muy húmedo: 0.5-0.7; Arena o arcilla húmeda: 0.7-1.0; Tierra común compactada: 1.0-1.2; Arena seca: 2.0-3.0; Roca/suelo muy seco: 2.5-3.5">Resistividad térmica del suelo (K·m/W)</label>
+            <input type="number" id="f-rhosuelo" min="-100" max="1000" step="0.01" value="1" required>
+          </div>
+          <div class="field">
+            <label for="f-uducto" data-info="Típicos: PVC ≈ 0.3 - 0.4 K·m/W; Fibra de vidrio: 0.2 - 0.3; Metálico: 0.05 - 0.1; Cualquier ducto embebido en concreto: 0.1 - 0.2">Resistencia térmica del ducto (K·m/W)</label>
+            <input type="number" id="f-uducto" min="0" max="5" step="0.01" value="0.3" required>
+          </div>
         </div>
-        <div class="field">
-          <label for="f-sepductos">Separación entre ductos (m)</label>
-          <input type="number" id="f-sepductos" min="0.05" max="1" step="0.01" value="0.2" required disabled>
-          <span class="hint">${HINTS.separacionDuctos}</span>
+        <div class="grid-2">
+          <div class="field">
+            <label for="f-ncircuitos">Número de circuitos en el banco</label>
+            <input type="number" id="f-ncircuitos" min="0" max="6" step="1" value="1" required>
+          </div>
+          <div class="field">
+            <label for="f-profundidad">Profundidad de enterramiento del banco (m)</label>
+            <input type="number" id="f-profundidad" min="0" max="10" step="0.01" value="1" required>
+          </div>
+        </div>
+        <div class="grid-2 ultima">
+          <div class="field">
+            <label for="f-sepductos" data-info="Depende de la norma; valores típicos entre 0.15 y 0.30 m">Separación entre ductos (m)</label>
+            <input type="number" id="f-sepductos" min="0.05" max="1" step="0.01" value="0.2" required disabled>
+          </div>
         </div>
       </div>
 
@@ -170,6 +278,7 @@ export async function render(container) {
     <div id="resultado-wrap"></div>
   `;
 
+  activarInfos(container);
   const form = container.querySelector("#form-calc");
   const selTipoCable = container.querySelector("#f-tipocable");
   const selMaterial = container.querySelector("#f-material");
@@ -264,32 +373,38 @@ export async function render(container) {
 
   function renderError(msg) {
     const wrap = container.querySelector("#resultado-wrap");
-    wrap.innerHTML = `<div class="callout callout-danger">${msg}</div>`;
+    wrap.innerHTML = `<div class="callout callout-danger">${escapeHtml(msg)}</div>`;
     wrap.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 
-  function renderResultado(data, p, ctx) {
-    const wrap = container.querySelector("#resultado-wrap");
+  function reporteTexto(data, p, ctx) {
+    // El reporte se copia y se pega: tres etiquetas (el calculo, los parametros de entrada y los resultados).
+    // Parametros = lo que el usuario dio; resultados = todo lo que sale del calculo.
     const i = data.intermedios;
-
-    const reporte = [
+    return [
+      `CÁLCULO DE AMPACIDAD SUBTERRÁNEA`,
+      ``,
+      `PARÁMETROS DE ENTRADA:`,
+      LINEA_REPORTE,
       `Tipo de cable: ${p.tipoCable}`,
       `Material: ${ctx.material}`,
       `Calibre: ${ctx.calibre}`,
       `Tipo de pantalla: ${ctx.tipoPantalla}`,
       `Nivel de aislamiento: ${fmt(ctx.nivelAislamientoKv, 0)} kV — ${fmt(ctx.nivelAislamientoPct, 0)}%`,
       `Puesta a tierra de pantallas: ${p.tipoCable === "Tripolar" ? "N/A (tripolar)" : p.puestaTierra}`,
+      `Separación entre fases: ${p.tipoCable === "Tripolar" ? "N/A (tripolar)" : `${fmt(p.separacionFasesM)} m`}`,
       `Tensión del sistema: ${fmt(p.tensionSistemaKv)} kV`,
       `Frecuencia: ${fmt(p.frecuenciaHz, 0)} Hz`,
       `Temperatura máxima del conductor: ${fmt(p.tempMaxC)} °C`,
       `Temperatura del terreno: ${fmt(p.tempTerrenoC)} °C`,
       `Resistividad térmica del suelo: ${fmt(p.rhoSueloKmW)} K·m/W`,
       `Resistencia térmica del ducto: ${fmt(p.uDuctoKmW)} K·m/W`,
-      `Separación entre fases: ${p.tipoCable === "Tripolar" ? "N/A (tripolar)" : fmt(p.separacionFasesM)} m`,
       `Número de circuitos en el banco: ${fmt(p.numCircuitos, 0)}`,
       `Profundidad de enterramiento del banco: ${fmt(p.profundidadBancoM)} m`,
-      `Separación entre ductos: ${p.numCircuitos > 1 ? fmt(p.separacionDuctosM) + " m" : "N/A (1 circuito)"}`,
+      `Separación entre ductos: ${p.numCircuitos > 1 ? `${fmt(p.separacionDuctosM)} m` : "N/A (1 circuito)"}`,
       ``,
+      `RESULTADOS:`,
+      LINEA_REPORTE,
       `R (resistencia AC efectiva): ${fmt(i.varR, 8)} Ω/m`,
       `Wd (pérdida dieléctrica): ${fmt(i.varWd, 6)} W/m`,
       `λ1 (factor de pérdidas en pantalla): ${fmt(i.lambda1, 4)}`,
@@ -301,39 +416,25 @@ export async function render(container) {
       ``,
       `Ampacidad: ${fmt(data.ampacidad)} A`,
     ].join("\n");
+  }
 
-    wrap.innerHTML = `
-      <div class="card">
-        <div class="tabs">
-          <button type="button" class="tab-btn active" data-tab="resultado">Resultado</button>
-          <button type="button" class="tab-btn" data-tab="reporte">Reporte</button>
-          <button type="button" class="tab-btn" data-tab="formulas">Fórmulas</button>
-        </div>
-        <div class="tab-panel" data-panel="resultado">
+  function renderResultado(data, p, ctx) {
+    const wrap = container.querySelector("#resultado-wrap");
+
+    const resultado = `
           <div class="result-panel">
             <div class="result-metric">
               <div class="value">${fmt(data.ampacidad)}<span class="unit">A</span></div>
               <div class="label">Ampacidad admisible</div>
             </div>
-          </div>
-        </div>
-        <div class="tab-panel" data-panel="reporte" hidden>
-          <div class="report-block">${reporte}</div>
-        </div>
-        <div class="tab-panel" data-panel="formulas" hidden>
-          <div class="formula-block">${FORMULAS_HTML}</div>
-        </div>
-      </div>
-    `;
+          </div>`;
 
-    wrap.querySelectorAll(".tab-btn").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        wrap.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b === btn));
-        wrap.querySelectorAll(".tab-panel").forEach((panel) => {
-          panel.hidden = panel.dataset.panel !== btn.dataset.tab;
-        });
-      });
+    wrap.innerHTML = tarjetaResultadosHtml({
+      resultado,
+      reporte: reporteHtml(reporteTexto(data, p, ctx), ETIQUETAS_REPORTE),
+      formulasPlano: FORMULAS_TEXTO,
     });
+    activarPestanas(wrap, { grupos: FORMULAS_TEX, etiquetas: FORMULAS_ETIQUETAS, nota: FORMULAS_NOTA });
 
     wrap.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }

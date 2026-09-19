@@ -80,6 +80,16 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   (la herramienta de la IA ya hacía lo mismo). Las intermedias (Qc, Qr, Qs, R) van en RESULTADOS del reporte. Fórmulas KaTeX: balance,
   propiedades del aire, convección, radiación y resistencia (15 ecuaciones, 23 etiquetas). El motor `js/calc/ampacidad-aerea.js` y la
   herramienta de la IA NO se tocan. Pruebas: `tools/verify_ampacidad_aerea.html`.
+- Ampacidad subterránea (2026-09-19, la ÚLTIMA calculadora rediseñada: ya están las seis) sigue el mismo patrón. Tres tarjetas: «Cable»
+  (icono `plugConnected`; tipo | material, calibre | pantalla, nivel kV | % de aislamiento, puesta a tierra | separación entre fases;
+  en tripolar se bloquean las dos últimas), «Condiciones de operación» (icono `circuitVoltmeter`; tensión | frecuencia,
+  temperatura máxima del conductor | del terreno) e «Instalación» (icono Tabler `gridDots`; resistividad del suelo | resistencia
+  térmica del ducto, número de circuitos | profundidad, separación entre ductos que solo se habilita con más de 1 circuito). Los seis
+  `.hint` de antes pasaron a botones «i» con el MISMO texto. Sin funciones nuevas: una métrica en A; los errores del motor (salto
+  térmico insuficiente, combinación de cable inexistente) siguen como callout rojo (ahora con `escapeHtml`). Las intermedias (R, Wd,
+  λ1, T1–T4, Δθ) van en RESULTADOS del reporte. Fórmulas KaTeX: 21 ecuaciones y 34 etiquetas (incluye Kennelly y los casos de n y de
+  λ1). El motor `js/calc/ampacidad-subterranea.js` y la herramienta de la IA NO se tocan. Pruebas:
+  `tools/verify_ampacidad_subterranea.html` (compara con el método IEC escrito aparte, incluido el banco de ductos).
 - Rediseño acordado con el usuario (2026-09-19) tomando de referencia el módulo de pérdidas de otro proyecto («Calculadora
   Normativa»): tarjeta «Datos de la línea» (con *dato de partida*: MW, MVA o A) + una tarjeta «Conductor — Tramo N» por tramo
   (agregar/quitar, conductores por fase). Los COLORES no cambian (solo tokens existentes) y los resultados van en los formatos
@@ -120,8 +130,9 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   Relleno de esas tarjetas y del panel azul de resultados: 16px (`--pad-tarjeta`, pedido por el usuario; antes 24px = `--space-5`),
   así que del borde exterior al contenido hay 17px (1 de borde). La barra de título usa la misma variable para llegar al borde.
   Solo aplica a `.tarjeta-borde`: las demás `.card` y `.result-panel` de la app siguen en 24px.
-- Siguen pendientes por decisión del usuario: gráficos de resultado y aplicar este mismo patrón (tarjetas, etc.) a otras
-  calculadoras; los refinamientos visuales de esta pantalla (iconos, títulos) los irá indicando él.
+- Las seis calculadoras ya usan este patrón (Pérdidas, Regulación, Ocupación de ductos, Cortocircuito, Ampacidad aérea y subterránea).
+  Sigue pendiente por decisión del usuario: los gráficos de resultado; y las pantallas fuera de las calculadoras (catálogos, Varios,
+  IA…) aún usan `.hint` y el estilo anterior. Los refinamientos visuales (iconos, títulos) los irá indicando él.
 - `assets/ejemplos/` (o `assets/Ejemplos/`) es una carpeta TEMPORAL de referencia del usuario, con un repo git anidado: NO subirla.
   Está excluida en `.git/info/exclude` (local); aun así, hacer `git add` solo con rutas explícitas, nunca `git add -A`/`.`.
 
@@ -166,7 +177,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v88); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v89); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (Ayuda → "Configuración avanzada", `js/auth/*`, `firebase/firestore.rules`)
