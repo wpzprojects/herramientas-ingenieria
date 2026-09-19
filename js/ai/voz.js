@@ -13,9 +13,45 @@ export const vozDisponible = () => !!Reconocimiento;
 const IDIOMA = "es-CO";
 
 // Chrome en Android no se porta como en escritorio: en modo continuo entrega cada resultado acumulado
-// (cada uno repite todo lo dicho antes) y el texto se duplica ("elel dictadoel dictado por..."). Alli se
-// usan sesiones cortas (sin modo continuo, se reanudan solas tras cada pausa) y se toma solo el ultimo resultado.
+// (cada uno repite todo lo dicho antes) y, al concatenarlos, el texto se duplica ("elel dictadoel dictado por...").
+// Se mantiene el modo continuo (reiniciar el reconocimiento hace sonar el pitido del sistema en cada pausa)
+// y en Android los resultados se fusionan con unirAcumulados().
 const ES_ANDROID = /Android/i.test(navigator.userAgent);
+
+const palabras = (t) =>
+  t
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "") // quita las tildes
+    .replace(/[^\p{L}\p{N}\s]/gu, "")
+    .split(/\s+/)
+    .filter(Boolean);
+
+/**
+ * Une los resultados que entrega Android. Cada uno suele repetir (y a veces corregir) el anterior: si comparte
+ * casi todo su comienzo con lo acumulado se toma como una version mas completa; si no, es una frase nueva y se agrega.
+ */
+export function unirAcumulados(partes) {
+  let acum = "";
+  for (const bruto of partes) {
+    const t = bruto.trim();
+    if (!t) continue;
+    if (!acum) {
+      acum = t;
+      continue;
+    }
+    const pa = palabras(acum);
+    const pt = palabras(t);
+    let comun = 0;
+    while (comun < pa.length && comun < pt.length && pa[comun] === pt[comun]) comun++;
+    if (comun > 0 && comun >= Math.min(pa.length, pt.length) * 0.6) {
+      if (pt.length >= pa.length) acum = t; // version mas completa (o corregida)
+    } else {
+      acum += " " + t; // frase nueva
+    }
+  }
+  return acum;
+}
 
 const ERRORES = {
   "not-allowed": "El navegador no tiene permiso para usar el micrófono. Habilítalo en el candado de la barra de direcciones.",
@@ -110,7 +146,7 @@ export function agregarMicrofono(objetivo, anterior, { clase = "btn" } = {}) {
     const esta = new Reconocimiento();
     rec = esta;
     esta.lang = IDIOMA;
-    esta.continuous = !ES_ANDROID;
+    esta.continuous = true;
     esta.interimResults = true;
     ultimoInicio = Date.now();
 
@@ -119,9 +155,8 @@ export function agregarMicrofono(objetivo, anterior, { clase = "btn" } = {}) {
     esta.onresult = (e) => {
       if (rec !== esta) return;
       if (!campo.isConnected) return detener();
-      const resultados = [...e.results];
-      const usados = ES_ANDROID ? resultados.slice(-1) : resultados;
-      mostrado = usados.map((r) => r[0].transcript).join("").trim();
+      const partes = [...e.results].map((r) => r[0].transcript);
+      mostrado = (ES_ANDROID ? unirAcumulados(partes) : partes.join("")).trim();
       escribir(mostrado);
     };
 
@@ -134,7 +169,7 @@ export function agregarMicrofono(objetivo, anterior, { clase = "btn" } = {}) {
     esta.onend = () => {
       if (rec !== esta) return;
       if (!campo.isConnected) return limpiar();
-      // El navegador corta la sesion cada cierto tiempo (en Android, tras cada pausa): si el usuario sigue
+      // El navegador corta la sesion cada cierto tiempo: si el usuario sigue
       // dictando, se reanuda desde donde quedo el texto (salvo que la sesion haya durado <1 s, para no entrar en bucle).
       if (activo && Date.now() - ultimoInicio > 1000) {
         if (mostrado) {
