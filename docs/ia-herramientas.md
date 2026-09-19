@@ -110,7 +110,7 @@ Un **agente** es: nombre, descripción, prompt de sistema (`instrucciones`), ins
 2. `ejecutarLlamada` con `ctx.permitidas`: si Gemini pide una herramienta no habilitada, se rechaza con "no está habilitada para este agente" y no se ejecuta nada.
 3. Imports: `tools.js` importa únicamente los motores que expone. Lo que no está ahí no es alcanzable.
 
-**Refuerzo por prompt (regla 9 del estándar):** si piden algo para lo que no hay herramienta, la IA no debe escribir ningún valor y debe remitir a Agentes. Es una instrucción al modelo: reduce el riesgo pero no lo elimina. Las tres capas anteriores garantizan que una herramienta no habilitada **nunca se ejecuta**, pero no impiden que el modelo escriba en su texto un número inventado; por eso existe esta regla y por eso conviene revisar la etiqueta `✓` de la herramienta y la sección "Cálculos ejecutados" cuando importe que un número provenga de un cálculo.
+**Refuerzo por prompt (regla 10 del estándar):** si piden algo para lo que no hay herramienta, la IA no debe escribir ningún valor y debe remitir a Agentes. Es una instrucción al modelo: reduce el riesgo pero no lo elimina. Las tres capas anteriores garantizan que una herramienta no habilitada **nunca se ejecuta**, pero no impiden que el modelo escriba en su texto un número inventado; por eso existe esta regla y por eso conviene revisar la etiqueta `✓` de la herramienta y la sección "Cálculos ejecutados" cuando importe que un número provenga de un cálculo.
 
 Si las instrucciones de un agente nombran una herramienta que desmarcó, la IA dirá que no la tiene (el formulario lo avisa).
 

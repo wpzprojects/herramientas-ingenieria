@@ -707,8 +707,9 @@ await seccion("agentes de análisis", async () => {
   ok(def.instrucciones === analisis.SISTEMA_ANALISIS && def.reporte === analisis.PROMPT_REPORTE, "el predeterminado usa el prompt y el reporte estándar del código");
   ok(Object.isFrozen(def), "el predeterminado está congelado (no se puede mutar)");
   ok(agAn.construirSistema(def) === analisis.SISTEMA_ANALISIS, "el sistema del predeterminado se envía tal cual");
-  ok(/\n9\. Si te piden un cálculo, una conversión o un dato/.test(analisis.SISTEMA_ANALISIS) && analisis.SISTEMA_ANALISIS.includes("NO escribas ningún valor") && analisis.SISTEMA_ANALISIS.includes("Herramientas que puede usar"), "el estándar prohíbe escribir valores cuando falta la herramienta (regla 9) y remite a Agentes");
-  ok(analisis.SISTEMA_ANALISIS.startsWith("Eres el asistente de análisis") && /\n8\. Da respuestas claras/.test(analisis.SISTEMA_ANALISIS) && analisis.SISTEMA_ANALISIS.includes("No las cuestiones ni las \"corrijas\"."), "las reglas 1 a 8 del estándar siguen ahí");
+  ok(/\n10\. Si te piden un cálculo, una conversión o un dato/.test(analisis.SISTEMA_ANALISIS) && analisis.SISTEMA_ANALISIS.includes("NO escribas ningún valor") && analisis.SISTEMA_ANALISIS.includes("Herramientas que puede usar"), "el estándar prohíbe escribir valores cuando falta la herramienta (regla 9) y remite a Agentes");
+  ok(analisis.SISTEMA_ANALISIS.includes("REFERENCIAS DE DISEÑO") && analisis.SISTEMA_ANALISIS.includes("nunca las llames «norma»") && analisis.SISTEMA_ANALISIS.includes("«tramos»") && analisis.SISTEMA_ANALISIS.includes("corriente_falla_ka"), "el prompt estándar explica que Óptimo/Aceptable/Elevado son referencias de diseño (no norma) y cómo usar tramos, grupos y corriente de falla");
+  ok(analisis.SISTEMA_ANALISIS.startsWith("Eres el asistente de análisis") && /\n9\. Da respuestas claras/.test(analisis.SISTEMA_ANALISIS) && analisis.SISTEMA_ANALISIS.includes("No las cuestiones ni las \"corrijas\"."), "las reglas 1 a 8 del estándar siguen ahí");
 
   // propio: duplicar, guardar, cargar
   const copia = agAn.duplicarAgente(def);
