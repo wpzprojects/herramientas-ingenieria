@@ -396,6 +396,63 @@ await seccion("tools: pérdidas y regulación con varios tramos, dato de partida
   ok(bar.puntos[1].resultados.perdidas_pct > bar.puntos[0].resultados.perdidas_pct, "el barrido de Fc sobre 2 tramos crece con el factor de carga");
 });
 
+await seccion("tools: cortocircuito con corriente de falla a soportar", async () => {
+  const cc = await import("../js/calc/cortocircuito-calibre.js");
+  const eng = await import("../js/calc/cortocircuito.js");
+  const val = (ctx, clave) => ctx.log.at(-1).resultados.find((x) => x.clave === clave)?.valor;
+  const A = ACSR_4_0.area_seccion_aluminio_mm2;
+  const capa = eng.calcularCortocircuito({ material: "Aluminio", areaMm2: A, tempOperacionC: 75, tempFallaC: 250, tiempoS: 0.3 }).capacidadCcKa;
+
+  // sin el campo: igual que antes (un solo resultado)
+  let ctx = ctxNuevo();
+  await tools.ejecutarLlamada("calcular_cortocircuito", { red: "Aerea", material: "ACSR", calibre: "4/0" }, ctx);
+  ok(ctx.log.at(-1).resultados.length === 1, "sin corriente a soportar el resultado es solo la capacidad, como antes");
+
+  // el calibre no alcanza: sugiere otro
+  ctx = ctxNuevo();
+  const objetivo = capa * 1.5;
+  const r = await tools.ejecutarLlamada("calcular_cortocircuito", { red: "Aerea", material: "ACSR", calibre: "4/0", corriente_falla_ka: objetivo }, ctx);
+  ok(r.ok === true, "ejecuta con corriente a soportar");
+  ok(val(ctx, "cumple_corriente") === false, "4/0 no soporta 1.5 veces su capacidad: No cumple");
+  cerca(val(ctx, "margen_ka"), capa - objetivo, 1e-9, "margen = capacidad − corriente a soportar");
+  const cand = [];
+  const vistos = new Set();
+  for (const f of desnudos) if (f.tipo === "ACSR" && f.calibre_awg_kcmil && f.area_seccion_aluminio_mm2 != null && !vistos.has(f.calibre_awg_kcmil)) { vistos.add(f.calibre_awg_kcmil); cand.push({ calibre: f.calibre_awg_kcmil, area: f.area_seccion_aluminio_mm2 }); }
+  const esp = cc.compararCalibres(cand, { material: "Aluminio", tempOperacionC: 75, tempFallaC: 250, tiempoS: 0.3 }, objetivo, "4/0");
+  cerca(val(ctx, "area_minima_mm2"), esp.areaMinimaMm2, 1e-9, "área mínima = la de la pantalla");
+  ok(val(ctx, "calibre_sugerido") === esp.sugerido.calibre, `calibre sugerido = el de la pantalla (${esp.sugerido.calibre})`);
+  ok(esp.sugerido.area > A, "el sugerido tiene más área que el 4/0");
+  cerca(val(ctx, "capacidad_calibre_sugerido_ka"), esp.sugerido.capacidadCcKa, 1e-9, "capacidad del calibre sugerido");
+  ok(esp.sugerido.capacidadCcKa >= objetivo, "el sugerido sí soporta la corriente");
+
+  // el calibre alcanza
+  ctx = ctxNuevo();
+  await tools.ejecutarLlamada("calcular_cortocircuito", { red: "Aerea", material: "ACSR", calibre: "4/0", corriente_falla_ka: capa * 0.5 }, ctx);
+  ok(val(ctx, "cumple_corriente") === true, "con la mitad de su capacidad: Cumple");
+  ok(val(ctx, "calibre_sugerido") !== undefined && val(ctx, "area_minima_mm2") < A, "el área mínima es menor que la del calibre elegido");
+
+  // ningún calibre alcanza
+  ctx = ctxNuevo();
+  await tools.ejecutarLlamada("calcular_cortocircuito", { red: "Aerea", material: "ACSR", calibre: "4/0", corriente_falla_ka: 900 }, ctx);
+  ok(ctx.log.at(-1).resultados.some((x) => x.clave === "calibre_sugerido" && x.etiqueta.startsWith("Ningún calibre")), "ningún calibre alcanza: lo dice y da el de mayor capacidad");
+
+  // área manual: veredicto y área mínima, sin calibre
+  ctx = ctxNuevo();
+  await tools.ejecutarLlamada("calcular_cortocircuito", { area_mm2: 100, material_electrico: "Cobre", temp_operacion_c: 90, temp_falla_c: 250, tiempo_s: 1, corriente_falla_ka: 20 }, ctx);
+  const capM = (100 * 341 * Math.sqrt(Math.log10((250 + 234) / (90 + 234)) / 1)) / 1000;
+  ok(val(ctx, "cumple_corriente") === (capM >= 20) && val(ctx, "calibre_sugerido") === undefined, "área manual: veredicto sin calibre sugerido");
+  cerca(val(ctx, "area_minima_mm2"), (20 / capM) * 100, 1e-9, "área mínima = corriente / capacidad por mm²");
+  ok(ctx.log.at(-1).notas.some((n) => n.includes("área manual")), "área manual: nota explicando que no se sugiere calibre");
+
+  // subterránea
+  ctx = ctxNuevo();
+  const s = await tools.ejecutarLlamada("calcular_cortocircuito", { red: "Subterranea", material: "Cobre", calibre: "4/0", corriente_falla_ka: 30 }, ctx);
+  ok(s.ok === true && val(ctx, "area_minima_mm2") > 0, "subterránea (XLPE): también entrega área mínima y veredicto");
+
+  const mala = await tools.ejecutarLlamada("calcular_cortocircuito", { red: "Aerea", material: "ACSR", calibre: "4/0", corriente_falla_ka: -3 }, ctxNuevo());
+  ok(mala.ok === false && mala.error.includes("corriente_falla_ka"), "corriente a soportar negativa: error");
+});
+
 await seccion("tools: validación y errores orientadores", async () => {
   const a = await tools.ejecutarLlamada("calcular_perdidas", { ...LINEA, factor_potencia: 1.5, factor_carga: 0.5, resistencia_ohm_km: 0.3 }, ctxNuevo());
   ok(a.ok === false && a.error.includes("factor_potencia"), "factor de potencia fuera de rango");

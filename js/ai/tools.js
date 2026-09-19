@@ -14,6 +14,7 @@ import { loadData, distinct } from "../util/format.js";
 import { calcularPerdidasTramos, clasificarPerdidas, UMBRAL_OPTIMO_PCT as P_OPT, UMBRAL_ACEPTABLE_PCT as P_ACE } from "../calc/perdidas-tramos.js";
 import { calcularRegulacionTramos, clasificarRegulacion, UMBRAL_OPTIMO_PCT as R_OPT, UMBRAL_ACEPTABLE_PCT as R_ACE } from "../calc/regulacion-tramos.js";
 import { potenciaActivaMw } from "../calc/circuito.js";
+import { compararCalibres } from "../calc/cortocircuito-calibre.js";
 import { calcularCortocircuito } from "../calc/cortocircuito.js";
 import { calcularAmpacidadAerea } from "../calc/ampacidad-aerea.js";
 import { calcularAmpacidadSubterranea } from "../calc/ampacidad-subterranea.js";
@@ -409,18 +410,22 @@ const T_CORTOCIRCUITO = {
   titulo: "Cortocircuito",
   descripcion:
     "Calcula la corriente de cortocircuito admisible (kA) de un conductor según el límite térmico y el tiempo de despeje. " +
-    "El área sale del catálogo (red+material+calibre) o se ingresa manualmente con area_mm2 + material_electrico.",
+    "El área sale del catálogo (red+material+calibre) o se ingresa manualmente con area_mm2 + material_electrico. " +
+    "Con corriente_falla_ka (la corriente de falla que el conductor debe soportar) además dice si el calibre elegido cumple, el área mínima requerida y, con conductor del catálogo, el calibre más pequeño del mismo tipo y material que la soporta.",
   campos: [
     ...CAMPOS_CONDUCTOR,
     N("area_mm2", "Área del conductor (opcional: reemplaza al catálogo)", { u: "mm²", min: 0, minExcl: true, max: 10000, oculto: true }),
     S("material_electrico", "Cobre o Aluminio; solo necesario con area_mm2 manual", { enum: ["Cobre", "Aluminio"], oculto: true }),
     N("temp_operacion_c", "Temperatura de operación del conductor (por defecto 75 en red aérea, 90 en subterránea)", { e: "Temperatura de operación", u: "°C", min: 0, max: 500 }),
-    N("temp_falla_c", "Temperatura máxima admisible en falla", { e: "Temperatura en falla", u: "°C", min: 0, max: 500, defecto: 250 }),    N("tiempo_s", "Tiempo de despeje de la falla", { u: "s", min: 0, minExcl: true, max: 60, defecto: 0.3 }),
+    N("temp_falla_c", "Temperatura máxima admisible en falla", { e: "Temperatura en falla", u: "°C", min: 0, max: 500, defecto: 250 }),
+    N("tiempo_s", "Tiempo de despeje de la falla", { u: "s", min: 0, minExcl: true, max: 60, defecto: 0.3 }),
+    N("corriente_falla_ka", "OPCIONAL: corriente de falla que el conductor debe soportar (activa el veredicto, el área mínima y el calibre sugerido)", { e: "Corriente de falla a soportar", u: "kA", min: 0, minExcl: true, max: 1000 }),
   ],
   async calcular(v, extra) {
     let area;
     let materialElectrico;
     let red = v.red;
+    let fila = null;
     if (v.area_mm2 !== undefined) {
       area = v.area_mm2;
       materialElectrico = v.material_electrico || (red === "Aerea" ? "Aluminio" : null);
@@ -429,6 +434,7 @@ const T_CORTOCIRCUITO = {
     } else {
       const c = await resolverConductor(v, extra);
       red = c.red;
+      fila = c.fila;
       area = red === "Aerea" ? c.fila.area_seccion_aluminio_mm2 : c.fila.area_conductor_mm2;
       if (!Number.isFinite(area)) throw new ErrorHerramienta(`El conductor ${c.etiqueta} no tiene área en el catálogo; indica "area_mm2".`);
       // igual que la vista: en red aerea todos los tipos son de aluminio
@@ -447,7 +453,43 @@ const T_CORTOCIRCUITO = {
     if (v.temp_falla_c <= top) throw new ErrorHerramienta("La temperatura de falla debe ser mayor que la temperatura de operación.");
 
     const r = calcularCortocircuito({ material: materialElectrico, areaMm2: area, tempOperacionC: top, tempFallaC: v.temp_falla_c, tiempoS: v.tiempo_s });
-    return [res("capacidad_cc_ka", "Corriente de cortocircuito admisible", r.capacidadCcKa, "kA")];
+    const salida = [res("capacidad_cc_ka", "Corriente de cortocircuito admisible", r.capacidadCcKa, "kA")];
+    if (v.corriente_falla_ka === undefined) return salida;
+
+    // Corriente a soportar: igual que la pantalla (cortocircuito-calibre.js). Los candidatos son los calibres del mismo tipo y material.
+    const objetivo = v.corriente_falla_ka;
+    const cond = { material: materialElectrico, tempOperacionC: top, tempFallaC: v.temp_falla_c, tiempoS: v.tiempo_s };
+    const aereo = red === "Aerea";
+    let candidatos = [];
+    if (fila) {
+      const catalogo = await loadData(aereo ? "conductores-desnudos" : "conductores-xlpe");
+      const campoMaterial = aereo ? "tipo" : "material_conductor";
+      const campoArea = aereo ? "area_seccion_aluminio_mm2" : "area_conductor_mm2";
+      const vistos = new Set();
+      candidatos = catalogo
+        .filter((f) => {
+          if (f[campoMaterial] !== fila[campoMaterial] || !f.calibre_awg_kcmil || f[campoArea] == null || vistos.has(f.calibre_awg_kcmil)) return false;
+          vistos.add(f.calibre_awg_kcmil);
+          return true;
+        })
+        .map((f) => ({ calibre: f.calibre_awg_kcmil, area: f[campoArea] }));
+    }
+    const cmp = compararCalibres(candidatos, cond, objetivo, fila ? fila.calibre_awg_kcmil : null);
+    salida.push(
+      res("cumple_corriente", "El conductor soporta la corriente de falla", r.capacidadCcKa >= objetivo),
+      res("margen_ka", "Margen (capacidad − corriente a soportar)", r.capacidadCcKa - objetivo, "kA"),
+      res("area_minima_mm2", "Área mínima requerida", cmp.areaMinimaMm2, "mm²")
+    );
+    if (fila) {
+      if (cmp.sugerido) {
+        salida.push(res("calibre_sugerido", "Calibre más pequeño que la soporta (mismo tipo y material)", cmp.sugerido.calibre), res("area_calibre_sugerido_mm2", "Área del calibre sugerido", cmp.sugerido.area, "mm²"), res("capacidad_calibre_sugerido_ka", "Capacidad del calibre sugerido", cmp.sugerido.capacidadCcKa, "kA"));
+      } else if (cmp.mayor) {
+        salida.push(res("calibre_sugerido", "Ningún calibre del catálogo la soporta; el de mayor capacidad es", cmp.mayor.calibre), res("capacidad_calibre_sugerido_ka", "Capacidad de ese calibre", cmp.mayor.capacidadCcKa, "kA"));
+      }
+    } else {
+      extra.notas.push("Con área manual no se sugiere calibre: solo se informa el área mínima requerida.");
+    }
+    return salida;
   },
 };
 

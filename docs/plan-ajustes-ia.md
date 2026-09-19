@@ -9,7 +9,7 @@ Regla de trabajo: un punto por commit (`git add` con rutas explícitas, push inm
 ## Puntos
 
 - [x] 1. (HECHO, commit «IA: pérdidas y regulación…») Pérdidas y Regulación (`calcular_perdidas`, `calcular_regulacion`): varios tramos (`perdidas-tramos.js`, `regulacion-tramos.js`), dato de partida MW/MVA/A, conductores por fase (y separación del haz en regulación), clasificación Óptimo/Aceptable/Elevado en el resultado. Mantener compatibilidad con la llamada de un solo tramo actual.
-- [ ] 2. Cortocircuito: campo opcional «corriente de falla a soportar (kA)» → veredicto Cumple/No cumple, área mínima y calibre sugerido (`cortocircuito-calibre.js`).
+- [x] 2. (HECHO) Cortocircuito: campo opcional «corriente de falla a soportar (kA)» → veredicto Cumple/No cumple, área mínima y calibre sugerido (`cortocircuito-calibre.js`).
 - [ ] 3. Ocupación de ductos: varios tipos de conductor (`ocupacion-grupos.js`) y radio de curvatura 12D por tipo.
 - [ ] 4. Ampacidad subterránea: corriente circulante / tensión inducida en la pantalla (monopolar; `ampacidad-subterranea-pantalla.js`).
 - [ ] 5. Umbrales de diseño: las herramientas devuelven las referencias (1 %/3 % pérdidas, 5 %/10 % regulación) y el prompt (`SISTEMA_ANALISIS` en `js/ai/analisis.js`) dice que son referencias de diseño, nunca «límite normativo» / «fuera de norma».
@@ -20,4 +20,4 @@ Regla de trabajo: un punto por commit (`git add` con rutas explícitas, push inm
 ## Notas de avance
 
 - Punto 1: en `tools.js` `esquemaDe`/`normalizar` ahora admiten listas de objetos (`itemCampos`). Campos nuevos en pérdidas/regulación: `potencia_mva`, `corriente_a` (dato de partida: exactamente uno de los tres; `potencia_mw` y `longitud_km` ya no son obligatorios a nivel superior), `conductores_por_fase`, `separacion_haz_m` y `tramos` (lista; cada tramo hereda del nivel superior lo que no traiga). Resultados nuevos: `perdidas_mw`, `potencia_activa_mw` (si el dato no es MW), `tramoN_*` (con varios tramos), `clasificacion` (Óptimo/Aceptable/Elevado) y una nota con las referencias de diseño (ya cubre parte del punto 5: falta la regla en el prompt). Helpers reutilizables en `tools.js`: `datoPartida`, `listaTramos`, `volcarTramo`, `campoTramos`. Pruebas: sección «pérdidas y regulación con varios tramos…» de `verify_ia.html` (221 en total). Script para insertar secciones de prueba: ver el patrón de `insertar.py` (inserta antes de la sección «tools: validación y errores orientadores»).
-
+- Punto 2: `calcular_cortocircuito` acepta `corriente_falla_ka` (opcional, máx. 1000): agrega `cumple_corriente`, `margen_ka`, `area_minima_mm2` y, con conductor del catálogo, `calibre_sugerido` (+ área y capacidad; o «Ningún calibre… el de mayor capacidad es»). Con área manual solo veredicto y área mínima (nota). Usa `compararCalibres` de `cortocircuito-calibre.js`. Pruebas: sección «cortocircuito con corriente de falla a soportar» (238 en total).
