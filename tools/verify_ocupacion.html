@@ -78,6 +78,9 @@ await seccion("ocupacion-grupos: logica", async () => {
   cerca(dos.grupos[0].ocupacionPct + dos.grupos[1].ocupacionPct, dos.ocupacionPct, 1e-9, "la ocupación de cada tipo suma la total");
   cerca(dos.grupos[1].areaTotal, 3 * area(30.5), 1e-9, "área total del segundo tipo = 3·área de un conductor");
   cerca(dos.disponiblePct, 100 - e.pct, 1e-9, "disponible = 100 − ocupación");
+  cerca(dos.grupos[0].radioCurvaturaMm, 12 * 22.3, 1e-9, "radio de curvatura del tipo 1 = 12 × 22.3 mm");
+  cerca(dos.grupos[1].radioCurvaturaMm, 12 * 30.5, 1e-9, "radio de curvatura del tipo 2 = 12 × 30.5 mm");
+  ok(uno.grupos[0].radioCurvaturaMm === 360 && og.FACTOR_RADIO_CURVATURA === 12, "un conductor de 30 mm: radio de curvatura 360 mm (factor 12 fijo)");
 
   // limites segun el total (1 → 53, 2 → 31, 3 o mas → 40), aunque vengan de tipos distintos
   const lim = (l) => og.calcularOcupacionGrupos(100, l).limitePct;
@@ -174,6 +177,8 @@ await seccion("vista: un tipo de conductor, cálculo y resultados", async () => 
   ok(texto(metrica("Porcentaje de ocupación")).includes("límite 40.00%") || texto(metrica("Porcentaje de ocupación")).includes("límite 40"), "la etiqueta indica el límite aplicable");
   ok($(".result-panel > div > div[style*='conic-gradient']"), "se conserva la dona de ocupación");
   ok(!$$(".tabla-resultado").length, "con un solo tipo no hay tabla por tipo");
+  const rc = metrica("Radio de curvatura (12D)");
+  ok(!!rc && texto($(".value", rc)) === "360.00mm" && texto($(".label", rc)) === "Radio de curvatura (12D)", `con un solo tipo hay una métrica «Radio de curvatura (12D)»: ${texto($(".value", rc))} (12 × 30 mm)`);
 
   // no cumple
   poner("#f-diametro-0", "60");
@@ -282,6 +287,11 @@ await seccion("vista: varios tipos de conductor", async () => {
   cerca(parseFloat(texto(filas[1].querySelectorAll("td")[5])), (3 * area(f250.diametro_total_conductor_mm) * 100) / area(D_TUBO), 0.006, "tabla: % del ducto del tipo 2");
   cerca(parseFloat(texto(filas[2].querySelectorAll("td")[3])), e.areaC, 0.006, "tabla: área total");
   ok(texto(filas[1]).includes("Catálogo XLPE") && texto(filas[0]).includes("Ingresado manualmente"), "la tabla indica el origen de cada diámetro");
+  ok(texto($$(".tabla-resultado thead th").at(-1)) === "Radio de curvatura (12D) (mm)", "la tabla trae la columna «Radio de curvatura (12D) (mm)»");
+  cerca(parseFloat(texto(filas[0].querySelectorAll("td")[6])), 12 * 30, 0.006, "tabla: radio de curvatura del tipo 1 (12 × 30 mm)");
+  cerca(parseFloat(texto(filas[1].querySelectorAll("td")[6])), 12 * f250.diametro_total_conductor_mm, 0.006, `tabla: radio de curvatura del tipo 2 (12 × ${f250.diametro_total_conductor_mm} mm)`);
+  ok(texto(filas[2].querySelectorAll("td").item(5)) === "" && filas[2].querySelectorAll("td").length === 6 && texto(filas[2].querySelector("td")) === "Total", "la fila Total deja vacía la columna del radio de curvatura");
+  ok(!metrica("Radio de curvatura"), "con varios tipos no hay métrica aparte: el radio va en la tabla");
   ok(texto(metrica("Porcentaje de ocupación")).includes("límite 40"), "el límite usa el total de conductores");
   ok(!$("#resultado-wrap .callout-warning"), "con 6 conductores no se avisa atascamiento");
 
@@ -316,7 +326,7 @@ await seccion("vista: estructura del reporte (se copia y se pega)", async () => 
   for (const inicio of ["Área", "Porcentaje", "Límite", "Cumple", "Número total"]) {
     ok(!tiene(sa.params, inicio), `«${inicio}…» NO está en los parámetros (es un resultado)`);
   }
-  for (const inicio of ["Número total de conductores: 3", "Tipo 1:", "Área de un conductor", "Área total del tipo", "Área total de conductores", "Área interna del ducto", "Porcentaje de ocupación", "Porcentaje disponible", "Límite aplicable (NTC-2050)", "Cumple:"]) {
+  for (const inicio of ["Número total de conductores: 3", "Tipo 1:", "Área de un conductor", "Área total del tipo", "Radio de curvatura (12D): 360.00 mm", "Área total de conductores", "Área interna del ducto", "Porcentaje de ocupación", "Porcentaje disponible", "Límite aplicable (NTC-2050)", "Cumple:"]) {
     ok(tiene(sa.res, inicio), `resultados incluye «${inicio}»`);
   }
   ok(!tiene(sa.res, "Diámetro del conductor") && !tiene(sa.res, "Tipo de tubería") && !tiene(sa.res, "Diámetro interno"), "los datos de entrada no se repiten en los resultados");
@@ -342,6 +352,7 @@ await seccion("vista: estructura del reporte (se copia y se pega)", async () => 
   ok(etiquetasEn(d).length === 3 && d.filter((x) => LINEA.test(x)).length === 2, "con dos tipos siguen siendo tres etiquetas y dos líneas");
   ok(sd.params.filter((x) => /^Conductores — Tipo \d:$/.test(x)).join() === "Conductores — Tipo 1:,Conductores — Tipo 2:" && sd.res.filter((x) => /^Tipo \d:$/.test(x)).join() === "Tipo 1:,Tipo 2:", "los dos tipos aparecen en los parámetros y en los resultados");
   ok(tiene(sd.params, "Origen del diámetro: Catálogo XLPE: 15 kV (100 %), Cobre, Cinta de cobre, calibre 2"), "el tipo del catálogo indica de dónde salió el diámetro");
+  ok(sd.res.filter((x) => x.trim().startsWith("Radio de curvatura (12D): ")).length === 2, "con dos tipos, el reporte trae el radio de curvatura de cada uno");
   ok(tiene(sd.res, "Número total de conductores: 6") && d.at(-1).startsWith("Cumple:"), "el total de conductores va en los resultados y el reporte termina con «Cumple»");
   $$(".btn-tramo-quitar").at(-1).click();
 });
@@ -357,11 +368,11 @@ await seccion("vista: fórmulas con KaTeX", async () => {
   const items = $$("#formulas-katex ul.formula-etiquetas > li");
   const izq = items.map((li) => li.lastElementChild.getBoundingClientRect().left);
   const n = $$("#formulas-katex .formula-katex").length;
-  ok(window.katex && n === 8 && $$("#formulas-katex .katex-display").length === 8, `KaTeX cargado y ${n} ecuaciones dibujadas`);
+  ok(window.katex && n === 9 && $$("#formulas-katex .katex-display").length === 9, `KaTeX cargado y ${n} ecuaciones dibujadas`);
   ok($$("#formulas-katex .katex-error").length === 0, "ninguna ecuación con error de sintaxis");
   ok($("#formulas-plano").hidden && !caja.hidden, "al dibujarse las fórmulas se oculta el texto plano y aparece la subtarjeta");
-  ok(subtitulos.join("|") === "Áreas|Ocupación|Límite de ocupación (NTC-2050, Cap. 9, Tabla 1)|Riesgo de atascamiento (jamming ratio)|Descripción de las etiquetas|Notas", `subtítulos: ${subtitulos.join(" | ")}`);
-  ok(items.length === 11 && items.every((li) => li.querySelector(".formula-simbolo .katex")), `la descripción de las etiquetas es una lista de ${items.length} viñetas con el símbolo dibujado`);
+  ok(subtitulos.join("|") === "Áreas|Ocupación|Límite de ocupación (NTC-2050, Cap. 9, Tabla 1)|Radio de curvatura|Riesgo de atascamiento (jamming ratio)|Descripción de las etiquetas|Notas", `subtítulos: ${subtitulos.join(" | ")}`);
+  ok(items.length === 12 && items.every((li) => li.querySelector(".formula-simbolo .katex")), `la descripción de las etiquetas es una lista de ${items.length} viñetas con el símbolo dibujado`);
   ok(Math.max(...izq) - Math.min(...izq) < 1, "los textos de las viñetas quedan alineados");
   ok($$("#formulas-katex .katex").some((k) => k.textContent.includes("53") && k.textContent.includes("31") && k.textContent.includes("40")), "el límite (53 %, 31 %, 40 %) se dibuja como ecuación por casos");
   const textoCaja = texto(caja);

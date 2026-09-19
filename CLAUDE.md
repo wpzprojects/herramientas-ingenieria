@@ -58,7 +58,9 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   encadenan y conservan la selección si sigue disponible. El límite NTC-2050 (53/31/40 %) usa el número TOTAL de conductores (línea
   «Total de conductores…» bajo las tarjetas) y el atascamiento (jamming) solo se evalúa con 3 en total y del mismo diámetro. El motor
   `js/calc/ocupacion-ductos.js` y la herramienta de la IA NO se tocan; la suma de tipos vive en `js/calc/ocupacion-grupos.js`. Se
-  conserva la dona del resultado (ya existía; los «sin gráficos» eran de Pérdidas/Regulación). Pruebas: `tools/verify_ocupacion.html`.
+  agrega el RADIO DE CURVATURA = 12D (12 × diámetro exterior del conductor, en mm; factor fijo, sin campos; `radioCurvaturaMm`
+  por tipo en `ocupacion-grupos.js`): métrica «Radio de curvatura (12D)» con un solo tipo, columna en la tabla por tipo con varios
+  (la celda del Total queda VACÍA, pedido del usuario), línea en el reporte y ecuación en Fórmulas. Se conserva la dona del resultado (ya existía; los «sin gráficos» eran de Pérdidas/Regulación). Pruebas: `tools/verify_ocupacion.html`.
   `#tramos-container, #grupos-container` llevan el margen superior que separa las tarjetas de la primera.
 - Cortocircuito (2026-09-19) sigue el mismo patrón. Dos tarjetas: «Conductor» (icono `plugConnected`; red | material, calibre | área con
   «Manual») y «Condiciones de la falla» (icono `temperature`, Tabler; temperatura de operación y de falla, cada una con «Manual», y
@@ -181,7 +183,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v119); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v120); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (Ayuda → "Configuración avanzada", `js/auth/*`, `firebase/firestore.rules`)

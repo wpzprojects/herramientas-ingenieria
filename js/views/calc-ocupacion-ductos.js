@@ -29,6 +29,10 @@ const FORMULAS_TEX = [
     ecuaciones: [String.raw`L = \begin{cases} 53\,\% & N = 1 \\ 31\,\% & N = 2 \\ 40\,\% & N \geq 3 \end{cases}`],
   },
   {
+    titulo: "Radio de curvatura",
+    ecuaciones: [String.raw`R_c = 12\,d_i \quad [\mathrm{mm}]`],
+  },
+  {
     titulo: "Riesgo de atascamiento (jamming ratio)",
     ecuaciones: [String.raw`J = \dfrac{D_i}{d}`, String.raw`\text{riesgo si } N = 3 \text{ y } 2.8 < J < 3.2`],
   },
@@ -46,9 +50,12 @@ const FORMULAS_ETIQUETAS = [
   { tex: String.raw`\%Disp`, texto: "Porcentaje disponible" },
   { tex: "L", texto: "Límite de ocupación aplicable (NTC-2050)" },
   { tex: "J", texto: "Razón entre el diámetro interno del ducto y el del conductor" },
+  { tex: String.raw`R_c`, texto: "Radio de curvatura (12 veces el diámetro exterior del conductor) [mm]" },
 ];
 
 const FORMULAS_NOTA = `El ducto puede llevar varios tipos de conductor (por ejemplo, una terna de un calibre y otra de otro): el área ocupada es la suma de las áreas de todos los conductores y el límite depende del número TOTAL de conductores.
+
+El radio de curvatura de cada tipo de conductor es 12 veces su diámetro exterior (12D).
 
 El riesgo de atascamiento durante el halado se evalúa solo cuando en total hay exactamente 3 conductores del mismo diámetro; con diámetros distintos no se calcula.
 
@@ -66,6 +73,8 @@ Límites de ocupación (NTC-2050, Cap. 9, Tabla 1):
   1 conductor  → 53%
   2 conductores → 31%
   3 o más conductores → 40%
+
+Radio de curvatura: Rc = 12·di  [mm]
 
 Jamming ratio: J = Di / d. Riesgo con exactamente 3 conductores si 2.8 < J < 3.2.
 
@@ -379,13 +388,13 @@ export async function render(container) {
 
   function tablaGruposHtml(data, ctx) {
     const filas = data.grupos
-      .map((g, i) => `<tr><td>Tipo ${g.numero}</td><td class="wrap">${escapeHtml(origenTexto(ctx.estados[i]))}</td><td class="num">${g.cantidad}</td><td class="num">${fmt(g.diametroMm)}</td><td class="num">${fmt(g.areaTotal)}</td><td class="num">${fmtPercent(g.ocupacionPct)}</td></tr>`)
+      .map((g, i) => `<tr><td>Tipo ${g.numero}</td><td class="wrap">${escapeHtml(origenTexto(ctx.estados[i]))}</td><td class="num">${g.cantidad}</td><td class="num">${fmt(g.diametroMm)}</td><td class="num">${fmt(g.areaTotal)}</td><td class="num">${fmtPercent(g.ocupacionPct)}</td><td class="num">${fmt(g.radioCurvaturaMm)}</td></tr>`)
       .join("");
     return `
       <div class="result-subhead">Conductores por tipo</div>
       <div class="table-wrap tabla-resultado"><table>
-        <thead><tr><th>Tipo</th><th>Conductor</th><th class="num">Cantidad</th><th class="num">Diámetro (mm)</th><th class="num">Área total (mm²)</th><th class="num">% del ducto</th></tr></thead>
-        <tbody>${filas}<tr class="total-row"><td colspan="2">Total</td><td class="num">${data.totalConductores}</td><td class="num"></td><td class="num">${fmt(data.areaCables)}</td><td class="num">${fmtPercent(data.ocupacionPct)}</td></tr></tbody>
+        <thead><tr><th>Tipo</th><th>Conductor</th><th class="num">Cantidad</th><th class="num">Diámetro (mm)</th><th class="num">Área total (mm²)</th><th class="num">% del ducto</th><th class="num">Radio de curvatura (12D) (mm)</th></tr></thead>
+        <tbody>${filas}<tr class="total-row"><td colspan="2">Total</td><td class="num">${data.totalConductores}</td><td class="num"></td><td class="num">${fmt(data.areaCables)}</td><td class="num">${fmtPercent(data.ocupacionPct)}</td><td class="num"></td></tr></tbody>
       </table></div>`;
   }
 
@@ -395,7 +404,7 @@ export async function render(container) {
       ? [`Tubería: ingresada manualmente`, `Diámetro interno de la tubería: ${fmt(ctx.diametroTuboMm)} mm`]
       : [`Tipo de tubería: ${ctx.tubo.tipo}`, `Diámetro nominal: ${ctx.tubo.nominal}`, `Diámetro interno de la tubería: ${fmt(ctx.diametroTuboMm)} mm`];
     const parametrosGrupos = ctx.estados.map((e, i) => [``, `Conductores — Tipo ${i + 1}:`, `  Número de conductores: ${e.cantidad}`, `  Diámetro del conductor: ${fmt(e.diametroMm)} mm`, `  Origen del diámetro: ${origenTexto(e)}`].join("\n"));
-    const resultadosGrupos = data.grupos.map((g) => [``, `Tipo ${g.numero}:`, `  Área de un conductor: ${fmt(g.areaCable)} mm²`, `  Área total del tipo: ${fmt(g.areaTotal)} mm²`].join("\n"));
+    const resultadosGrupos = data.grupos.map((g) => [``, `Tipo ${g.numero}:`, `  Área de un conductor: ${fmt(g.areaCable)} mm²`, `  Área total del tipo: ${fmt(g.areaTotal)} mm²`, `  Radio de curvatura (12D): ${fmt(g.radioCurvaturaMm)} mm`].join("\n"));
     return [
       `CÁLCULO DE OCUPACIÓN DE DUCTOS`,
       ``,
@@ -446,6 +455,14 @@ export async function render(container) {
                   <div class="value">${fmtPercent(data.disponiblePct)}</div>
                   <div class="label">Porcentaje disponible</div>
                 </div>
+                ${
+                  data.grupos.length === 1
+                    ? `<div class="result-metric">
+                  <div class="value">${fmt(data.grupos[0].radioCurvaturaMm)}<span class="unit">mm</span></div>
+                  <div class="label">Radio de curvatura (12D)</div>
+                </div>`
+                    : ""
+                }
               </div>
             </div>
             ${data.grupos.length > 1 ? tablaGruposHtml(data, ctx) : ""}

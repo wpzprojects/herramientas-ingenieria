@@ -6,6 +6,9 @@ import { calcularOcupacionDuctos, getLimiteOcupacion } from "./ocupacion-ductos.
 
 export { getLimiteOcupacion };
 
+/** Radio de curvatura = 12 veces el diametro exterior del conductor (12D). */
+export const FACTOR_RADIO_CURVATURA = 12;
+
 /**
  * @param {number} diametroTuboMm - diametro interno de la tuberia (mm)
  * @param {{cantidad:number, diametroMm:number}[]} grupos - un elemento por tipo de conductor (cantidad y diametro exterior)
@@ -13,7 +16,7 @@ export { getLimiteOcupacion };
 export function calcularOcupacionGrupos(diametroTuboMm, grupos) {
   const porGrupo = grupos.map((g, i) => {
     const r = calcularOcupacionDuctos({ numeroConductores: g.cantidad, diametroConductorMm: g.diametroMm, diametroTuboMm });
-    return { numero: i + 1, cantidad: g.cantidad, diametroMm: g.diametroMm, areaCable: r.areaCable, areaTotal: r.areaCables, ocupacionPct: r.ocupacionPct, areaTubo: r.areaTubo };
+    return { numero: i + 1, cantidad: g.cantidad, diametroMm: g.diametroMm, areaCable: r.areaCable, areaTotal: r.areaCables, ocupacionPct: r.ocupacionPct, areaTubo: r.areaTubo, radioCurvaturaMm: FACTOR_RADIO_CURVATURA * g.diametroMm };
   });
 
   const totalConductores = porGrupo.reduce((s, g) => s + g.cantidad, 0);
