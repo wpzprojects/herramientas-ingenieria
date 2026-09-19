@@ -285,13 +285,14 @@ input:disabled, select:disabled { opacity: 0.55; }
 .field { position: relative; }
 .info-btn {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 20px; height: 20px; margin-left: var(--space-1); padding: 0; vertical-align: middle;
+  /* el boton (20px) es mas alto que la linea de la etiqueta (~17px): los margenes verticales negativos evitan que la agrande y empuje el campo hacia abajo */
+  width: 20px; height: 20px; margin: -4px 0 -4px var(--space-1); padding: 0; vertical-align: middle;
   border: 0; border-radius: 50%; background: transparent; color: var(--text-faint); cursor: pointer;
 }
 .info-btn .icon { width: 16px; height: 16px; }
 .info-btn:hover, .info-btn[aria-expanded="true"] { color: var(--accent); }
 .info-popover {
-  position: absolute; z-index: 30; left: 0; top: 26px;
+  position: absolute; z-index: 30; left: 0; top: 22px; /* justo bajo la etiqueta (17px + 4px de separacion) */
   width: max-content; max-width: 100%; box-sizing: border-box;
   padding: var(--space-2) var(--space-3); border-radius: var(--radius-md);
   background: var(--bg-elevated); color: var(--text); border: 1px solid var(--border-strong); box-shadow: var(--shadow-md);

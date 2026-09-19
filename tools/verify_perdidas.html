@@ -572,6 +572,23 @@ await seccion("vista: fórmulas con KaTeX", async () => {
   ok(fuentesOk.every(Boolean), "las fuentes locales de KaTeX existen");
 });
 
+await seccion("vista: el botón de información no altera la altura de las etiquetas", async () => {
+  // Todas las medidas juntas, antes de ok(). Cada campo: alto de su etiqueta y distancia del borde superior del campo a su casilla.
+  const campos = $$("#form-calc .field").filter((f) => f.getClientRects().length && f.querySelector(":scope > label"));
+  const medidas = campos.map((f) => {
+    const label = f.querySelector(":scope > label");
+    const control = f.querySelector("input, select");
+    return { nombre: texto(label), conInfo: !!label.querySelector(".info-btn"), alto: Math.round(label.getBoundingClientRect().height * 10) / 10, desfase: Math.round((control.getBoundingClientRect().top - f.getBoundingClientRect().top) * 10) / 10 };
+  });
+  const conInfo = medidas.filter((m) => m.conInfo);
+  const sinInfo = medidas.filter((m) => !m.conInfo);
+  const altos = [...new Set(medidas.map((m) => m.alto))];
+  const desfases = [...new Set(medidas.map((m) => m.desfase))];
+  ok(conInfo.length >= 2 && sinInfo.length >= 3, `se comparan ${conInfo.length} campos con botón de información y ${sinInfo.length} sin él`);
+  ok(altos.length === 1, `todas las etiquetas miden lo mismo, con o sin botón (${altos.join(", ")} px)`);
+  ok(desfases.length === 1, `todas las casillas empiezan a la misma distancia bajo su nombre (${desfases.join(", ")} px)`);
+});
+
 await seccion("vista: ayuda de los campos con botón de información", async () => {
   const tramosN = $$(".tramo-block").length;
   const ESPERADOS = ["Factor de carga (Fc)", ...Array(tramosN).fill("Conductores por fase")];
