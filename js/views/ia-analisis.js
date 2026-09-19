@@ -71,9 +71,9 @@ export async function render(container) {
         <h2 class="section-title" style="margin:0">Consulta</h2>
         <div class="grupo">
           <span class="badge" title="Modelo activo (cámbialo en Configuración)">${escapeHtml(ajustes0.modelo)}</span>
-          <span class="badge" id="badge-agente" title="Agente activo (cámbialo en Configuración)"></span>
+          <span class="badge" id="badge-agente" title="Agente activo (cámbialo en Agentes)"></span>
           <button type="button" class="btn btn-sm" id="btn-historial">Historial</button>
-          <button type="button" class="btn btn-sm" id="btn-config">Configuración</button>
+          <button type="button" class="btn btn-sm" id="btn-config">Agentes</button>
         </div>
       </div>
       <div id="panel-config" hidden style="margin-top:var(--space-4)"></div>

@@ -12,7 +12,7 @@ export const ID_PREDETERMINADO = "analisis-estandar";
 
 export const AGENTE_PREDETERMINADO = Object.freeze({
   id: ID_PREDETERMINADO,
-  nombre: "Análisis estándar",
+  nombre: "Agente estándar",
   descripcion: "Reglas y reporte originales de la aplicación (solo lectura).",
   temperatura: null, // null = la de Configuracion de IA
   instrucciones: SISTEMA_ANALISIS,
