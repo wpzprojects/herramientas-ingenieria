@@ -118,7 +118,7 @@ export async function render(container) {
         </div>
         <div class="grid-2 ultima">
           <div class="field">
-            <label for="f-interno" data-info="Diámetro interno mínimo de la tubería del catálogo.">Diámetro interno de la tubería (mm)</label>
+            <label for="f-interno" data-info="Diámetro interno mínimo de la tubería.">Diámetro interno de la tubería (mm)</label>
             <div class="input-with-toggle">
               <input type="number" id="f-interno" min="0" max="10000" step="any" required disabled>
               <label class="checkbox-row"><input type="checkbox" id="chk-manual"> Manual</label>
