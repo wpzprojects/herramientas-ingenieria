@@ -96,8 +96,9 @@ export async function render(container, params) {
     sel.addEventListener("change", () => pintarImagen(Number(sel.value)));
     pintarImagen(0);
   } else {
+    // Con varias imagenes van lado a lado (2 columnas); con una sola (Corriente NTC 2050) ocupa todo el ancho, como los demas visores.
     wrap.innerHTML = `
-      <div class="grid-2">
+      <div${tema.opciones.length > 1 ? ' class="grid-2"' : ""}>
         ${tema.opciones
           .map(
             (op) => `

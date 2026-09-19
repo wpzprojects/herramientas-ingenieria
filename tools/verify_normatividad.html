@@ -138,6 +138,24 @@ await seccion("el selector de tabla / figura muestra los títulos completos", as
   stage.innerHTML = "";
 });
 
+await seccion("todos los visores ocupan el ancho disponible", async () => {
+  await cargarTema("enterramiento-ductos");
+  const ref = $("#frame-imagen").getBoundingClientRect();
+  const contenedor = $("#imagenes-wrap").getBoundingClientRect();
+  ok(Math.abs(ref.width - contenedor.width) < 1, `Enterramiento (referencia): el visor ocupa todo el ancho (${Math.round(ref.width)} de ${Math.round(contenedor.width)} px)`);
+  await cargarTema("distancias-seguridad");
+  ok(Math.abs($("#frame-imagen").getBoundingClientRect().width - $("#imagenes-wrap").getBoundingClientRect().width) < 1, "Distancias de seguridad: el visor ocupa todo el ancho");
+  await cargarTema("corriente-ntc");
+  const f = $(".image-frame").getBoundingClientRect();
+  const w = $("#imagenes-wrap").getBoundingClientRect();
+  ok(Math.abs(f.width - w.width) < 1 && Math.abs(f.left - w.left) < 1, `Corriente de conductores NTC 2050: el visor ocupa todo el ancho (${Math.round(f.width)} de ${Math.round(w.width)} px), igual que los otros`);
+  ok(!$("#imagenes-wrap > .grid-2") && texto($(".section-title")) === "Capacidad de corriente de conductores" && !!$(".image-frame img"), "sigue con su título y su imagen, sin la rejilla de 2 columnas");
+  await cargarTema("zona-servidumbre");
+  const marcos = $$(".image-frame").map((e) => e.getBoundingClientRect());
+  const w2 = $("#imagenes-wrap").getBoundingClientRect();
+  ok(marcos.length === 2 && Math.abs(marcos[0].top - marcos[1].top) < 1 && marcos[1].left > marcos[0].right - 1 && marcos[0].width < w2.width * 0.6, "Zona de servidumbre: sus dos imágenes siguen lado a lado, cada una en su mitad");
+});
+
 await seccion("la imagen del numeral ya no existe", async () => {
   ok(!(await existe("assets/normativa/numeral-3-20-6-3-g.jpg")), "el archivo numeral-3-20-6-3-g.jpg ya no está en assets/normativa");
   const fuente = await (await fetch("../js/views/normativa-imagen.js")).text();
