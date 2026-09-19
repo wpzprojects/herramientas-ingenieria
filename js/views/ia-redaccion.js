@@ -70,6 +70,9 @@ function descargar(nombre, contenido, tipo) {
 
 const fechaCorta = (ms) => new Date(ms).toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" });
 
+const PH_TEXTO = "Pega aquí el texto a corregir (correo, descripción, acta…)";
+const PH_AJUSTE = "Pide un ajuste: más formal, más corto, agrega un cierre…";
+
 export async function render(container) {
   container.innerHTML = `
     <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/ia">Funciones de IA</a> <span>/</span> <span>Corrector de redacción</span></div>
@@ -100,28 +103,17 @@ export async function render(container) {
     <div id="panel-historial" class="card" hidden></div>
     <div id="panel-gestor" class="card" hidden></div>
 
-    <div class="card">
-      <div class="field" style="margin-bottom:0">
-        <label for="f-texto">Texto a corregir</label>
-        <textarea id="f-texto" rows="9" placeholder="Pega aquí el texto (correo, descripción, acta…)"></textarea>
-        <span class="hint" id="cuenta-caracteres"></span>
-      </div>
-      <div id="bloque-resultado" style="margin-top:var(--space-5)" hidden>
-        <h2 class="section-title" style="margin-top:0">Resultado</h2>
-        <div class="ia-chat" id="chat" aria-live="polite"></div>
-      </div>
-    </div>
+    <div class="ia-chat ia-chat--hilo" id="chat" aria-live="polite" hidden></div>
 
-    <div class="card" id="card-ajuste" hidden>
-      <div class="field" style="margin-bottom:0">
-        <label for="f-ajuste">Pedir un ajuste</label>
-        <textarea id="f-ajuste" rows="2" placeholder="Pide un ajuste: más formal, más corto, agrega un cierre…"></textarea>
+    <div class="ia-caja-fija">
+      <div class="ia-caja">
+        <textarea id="f-texto" rows="3" placeholder="${PH_TEXTO}"></textarea>
+        <div class="ia-caja-barra">
+          <button type="button" class="btn btn-ghost" id="btn-nueva">Nueva conversación</button>
+          <span class="hint" id="cuenta-caracteres"></span>
+          <button type="button" class="btn btn-primary" id="btn-enviar" title="Ctrl + Enter">Enviar</button>
+        </div>
       </div>
-    </div>
-
-    <div class="btn-row">
-      <button type="button" class="btn btn-primary" id="btn-enviar">Enviar</button>
-      <button type="button" class="btn" id="btn-nueva">Nueva conversación</button>
     </div>
   `
   );
@@ -129,17 +121,19 @@ export async function render(container) {
   const $ = (s) => container.querySelector(s);
   const chat = $("#chat");
   const fTexto = $("#f-texto");
-  const fAjuste = $("#f-ajuste");
-  // Un solo juego de botones: actua sobre el texto a corregir o, con una conversacion en curso, sobre el ajuste.
-  const mic = agregarMicrofono(() => (conv ? fAjuste : fTexto), $("#btn-enviar"));
+  const mic = agregarMicrofono(fTexto, $("#btn-enviar"));
 
-  // Con resultado se muestra el cuadro de ajuste y el texto original queda de solo lectura.
-  function mostrarResultado(v) {
+  // Estilo chat: una sola caja abajo. Sin conversacion recibe el texto a corregir; con una en curso, los ajustes.
+  function mostrarHilo(v) {
     mic?.detener();
-    $("#bloque-resultado").hidden = !v;
-    $("#card-ajuste").hidden = !v;
-    fTexto.readOnly = v;
+    chat.hidden = !v;
+    fTexto.placeholder = v ? PH_AJUSTE : PH_TEXTO;
   }
+  function ajustarAlto() {
+    fTexto.style.height = "auto";
+    fTexto.style.height = `${Math.min(fTexto.scrollHeight, window.innerHeight * 0.4)}px`;
+  }
+  const alFinal = () => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
 
   const agenteActivo = () => agentes.find((a) => a.id === activoId) || agentes[0];
 
@@ -195,21 +189,19 @@ export async function render(container) {
       );
     }
     chat.append(nodo);
-    chat.scrollTop = chat.scrollHeight;
     return nodo;
   }
 
   function reiniciarConversacion() {
     conv = null;
     chat.innerHTML = "";
-    fAjuste.value = "";
-    mostrarResultado(false);
+    mostrarHilo(false);
   }
 
   function pintarConversacion() {
     chat.innerHTML = "";
     for (const m of conv.mensajes) burbuja(m.rol, m.texto);
-    mostrarResultado(true);
+    mostrarHilo(true);
   }
 
   function bloquear(v) {
@@ -232,13 +224,13 @@ export async function render(container) {
         contenidos: [],
       };
     }
-    mostrarResultado(true);
+    mostrarHilo(true);
     conv.contenidos.push({ role: "user", parts: [{ text: textoUsuario }] });
     conv.mensajes.push({ rol: "user", texto: textoVisible || textoUsuario });
     burbuja("user", textoVisible || textoUsuario);
     const espera = el("div", { class: "ia-msg ia-msg--model" }, [el("span", { class: "ia-typing", "aria-label": "Generando respuesta" }, [el("span"), el("span"), el("span")])]);
     chat.append(espera);
-    chat.scrollTop = chat.scrollHeight;
+    alFinal();
     bloquear(true);
 
     try {
@@ -254,7 +246,7 @@ export async function render(container) {
       conv.contenidos.push({ role: "model", parts: [{ text: r.texto || texto }] });
       conv.mensajes.push({ rol: "model", texto });
       espera.remove();
-      burbuja("model", texto);
+      burbuja("model", texto).scrollIntoView({ behavior: "smooth", block: "start" }); // se lee desde el inicio de la respuesta
       historial.guardar(conv); // en segundo plano: un guardado lento no debe bloquear la interfaz
     } catch (err) {
       // se revierte el turno del usuario para no dejar el historial desbalanceado
@@ -263,54 +255,67 @@ export async function render(container) {
       espera.remove();
       // la burbuja del usuario queda visible junto al error para que sea claro que no se envio
       burbuja("error", err instanceof ErrorGemini ? err.message : `Error inesperado: ${err.message || err}`);
+      alFinal();
+      if (!fTexto.value) {
+        // se devuelve lo escrito a la caja para poder reintentar sin volver a pegarlo
+        fTexto.value = textoVisible || textoUsuario;
+        ajustarAlto();
+        contarCaracteres();
+      }
       if (!conv.contenidos.length) {
-        // fallo el primer envio: se vuelve al modo "texto" para poder reintentar
+        // fallo el primer envio: se vuelve al modo "texto"
         conv = null;
-        $("#card-ajuste").hidden = true;
-        fTexto.readOnly = false;
+        fTexto.placeholder = PH_TEXTO;
+        contarCaracteres();
       }
     } finally {
       bloquear(false);
     }
   }
 
-  // "Enviar" sin conversacion corrige el texto; con una en curso envia el ajuste.
+  // "Enviar" sin conversacion corrige el texto; con una en curso envia el ajuste. La caja se vacia al enviar.
   $("#btn-enviar").addEventListener("click", () => {
-    if (conv) {
-      const t = fAjuste.value.trim();
-      if (!t) return fAjuste.focus();
-      fAjuste.value = "";
-      enviar(t);
-      return;
-    }
     const texto = fTexto.value.trim();
     if (!texto) return fTexto.focus();
-    if (texto.length > MAX_CARACTERES) {
-      alert(`El texto es demasiado largo (${texto.length} caracteres). El máximo es ${MAX_CARACTERES}.`);
-      return;
+    let mensaje = texto;
+    if (!conv) {
+      if (texto.length > MAX_CARACTERES) {
+        alert(`El texto es demasiado largo (${texto.length} caracteres). El máximo es ${MAX_CARACTERES}.`);
+        return;
+      }
+      chat.innerHTML = ""; // por si quedo el error de un intento anterior
+      mensaje = `Corrige el siguiente texto siguiendo tus instrucciones.
+
+TEXTO:
+<<<
+${texto}
+>>>`;
     }
-    chat.innerHTML = ""; // por si quedo el error de un intento anterior
-    const mensaje = `Corrige el siguiente texto siguiendo tus instrucciones.\n\nTEXTO:\n<<<\n${texto}\n>>>`;
+    fTexto.value = "";
+    ajustarAlto();
+    contarCaracteres();
     enviar(mensaje, texto);
   });
-  for (const campo of [fTexto, fAjuste]) {
-    campo.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) $("#btn-enviar").click();
-    });
-  }
+  fTexto.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) $("#btn-enviar").click();
+  });
 
   $("#btn-nueva").addEventListener("click", () => {
     reiniciarConversacion();
     fTexto.value = "";
+    ajustarAlto();
     contarCaracteres();
     fTexto.focus();
   });
 
   function contarCaracteres() {
-    const n = fTexto.value.length;
+    const n = conv ? 0 : fTexto.value.length; // el limite solo aplica al texto a corregir
     $("#cuenta-caracteres").textContent = n ? `${n.toLocaleString("es-CO")} caracteres` : "";
   }
-  fTexto.addEventListener("input", contarCaracteres);
+  fTexto.addEventListener("input", () => {
+    contarCaracteres();
+    ajustarAlto();
+  });
 
   // ---------- historial ----------
   const panelHistorial = $("#panel-historial");
@@ -341,7 +346,8 @@ export async function render(container) {
                 }
                 pintarConversacion();
                 panelHistorial.hidden = true;
-                $("#bloque-resultado").scrollIntoView({ behavior: "smooth", block: "nearest" });
+                contarCaracteres();
+                alFinal();
               },
             },
             "Abrir"

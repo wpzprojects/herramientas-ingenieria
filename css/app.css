@@ -446,6 +446,16 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .ia-msg--model { align-self: flex-start; background: var(--bg-sunken); }
 .ia-msg--plano { white-space: pre-wrap; }
 .ia-msg--error { align-self: flex-start; background: var(--danger-soft); border-color: var(--danger); color: var(--danger); }
+/* Corrector de redaccion, estilo chat: hilo sin caja propia y una caja de texto fija al final. */
+.ia-chat--hilo { max-height: none; overflow: visible; padding: 0; gap: var(--space-5); margin-top: var(--space-2); }
+.ia-chat--hilo .ia-msg { scroll-margin-top: calc(var(--topbar-h, 56px) + var(--space-4)); }
+.ia-chat--hilo .ia-msg--model { background: transparent; border-color: transparent; padding-left: 0; padding-right: 0; max-width: 100%; }
+.ia-caja-fija { position: sticky; bottom: 0; z-index: 5; background: var(--bg); padding: var(--space-3) 0 var(--space-4); }
+.ia-caja { border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--bg-elevated); padding: var(--space-3); }
+.ia-caja:focus-within { border-color: var(--accent); }
+.ia-caja textarea, .ia-caja textarea:focus { width: 100%; min-height: 72px; resize: none; border: none; outline: none; box-shadow: none; background: transparent; padding: var(--space-1); }
+.ia-caja-barra { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-top: var(--space-2); }
+.ia-caja-barra .hint { flex: 1 1 auto; margin: 0; text-align: right; }
 .ia-msg-acciones { display: flex; gap: var(--space-2); margin-top: var(--space-2); }
 .ia-tools { display: flex; flex-wrap: wrap; gap: 6px; align-self: flex-start; }
 .ia-toolchip {
