@@ -9,6 +9,7 @@ const APP_VERSION = "1.0.0";
 
 export function render(container) {
   container.innerHTML = `
+    <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <span>Ayuda</span></div>
     <h1 class="page-title">Ayuda</h1>
 
     ${SECCIONES.map((key) => {
