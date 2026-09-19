@@ -14,6 +14,7 @@ import { ejecutarTurno, PROMPT_REPORTE } from "../ai/analisis.js";
 import { escenariosHtml, reporteMd, reporteHtmlExportable, armarTablas, AVISO_REPORTE } from "../ai/reporte.js";
 import * as historial from "../ai/historial.js";
 import { agregarMicrofono } from "../ai/voz.js";
+import { icon } from "../icons.js";
 
 const EJEMPLOS = [
   "Compara las pérdidas de una línea de 34.5 kV, 9.9 MW, factor de potencia 0.95 y 5.2 km con ACSR 4/0, 266.8 y 477, con factor de carga 0.56.",
@@ -55,7 +56,6 @@ export async function render(container) {
         <div class="grupo">
           <span class="badge" title="Modelo activo (cámbialo en Configuración)">${escapeHtml(ajustes0.modelo)}</span>
           <button type="button" class="btn btn-sm" id="btn-historial">Historial</button>
-          <button type="button" class="btn btn-sm" id="btn-nueva">Nueva conversación</button>
         </div>
       </div>
       <div id="panel-historial" hidden style="margin-bottom:var(--space-4)"></div>
@@ -63,9 +63,12 @@ export async function render(container) {
       <div class="ia-chips" id="ejemplos" aria-label="Ejemplos de preguntas"></div>
       <div class="ia-composer">
         <textarea id="f-pregunta" rows="3" placeholder="Ej.: analiza pérdidas y regulación de una línea de 34.5 kV, 9.9 MW, fp 0.95, 5.2 km con ACSR 4/0 y compara con 336.4…"></textarea>
-        <button type="button" class="btn btn-primary" id="btn-enviar">Enviar</button>
       </div>
       <p class="hint text-muted text-sm" style="margin-bottom:0">Ctrl + Enter para enviar. Lo que escribas o dictes se envía a Google (Gemini): no incluyas información confidencial.</p>
+    </div>
+    <div class="ia-acciones">
+      <button type="button" class="ia-accion" id="btn-nueva" title="Empezar una conversación nueva">${icon("plus")}<span>Nueva conversación</span></button>
+      <button type="button" class="ia-accion ia-accion--enviar" id="btn-enviar" title="Enviar (Ctrl + Enter)">${icon("send")}<span>Enviar</span></button>
     </div>
 
     <div class="card ia-reporte-card" id="card-reporte" hidden>
@@ -87,7 +90,7 @@ export async function render(container) {
   const $ = (s) => container.querySelector(s);
   const chat = $("#chat");
   const fPregunta = $("#f-pregunta");
-  agregarMicrofono(fPregunta, $("#btn-enviar"));
+  agregarMicrofono(fPregunta, $("#btn-enviar"), { clase: "ia-accion" });
 
   // ---------- chat ----------
   function chipsHerramientas(lista) {
