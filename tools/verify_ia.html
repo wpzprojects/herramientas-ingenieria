@@ -329,6 +329,87 @@ await seccion("analisis: bucle con herramientas (Gemini simulado)", async () => 
   gemini.usarMock(null);
 });
 
+const acceso = await import("../js/auth/backend.js");
+const { crearBackendMock } = await import("../js/auth/backend-mock.js");
+const YO = { email: "Yo@Gmail.com", nombre: "Yo", foto: "" };
+const OTRO = { email: "otro@gmail.com", nombre: "Otro", foto: "" };
+const EXTRAÑO = { email: "extrano@gmail.com", nombre: "X", foto: "" };
+const semilla = () => [{ email: "yo@gmail.com", rol: "admin" }, { email: "otro@gmail.com", rol: "usuario" }];
+const falla = async (fn, tipo) => { try { await fn(); return false; } catch (e) { return e instanceof acceso.ErrorAcceso && (!tipo || e.tipo === tipo); } };
+
+await seccion("acceso: sin Firebase configurado no hay backend (el simulado nunca se elige solo)", async () => {
+  ok((await acceso.obtenerBackend()) === null, "obtenerBackend() = null mientras firebaseConfig sea null");
+});
+
+await seccion("acceso: perfil y lista (reglas)", async () => {
+  const b = crearBackendMock({ usuarios: semilla(), sesion: YO });
+  ok((await b.obtenerPerfil()).rol === "admin" && (await b.obtenerPerfil()).email === "yo@gmail.com", "el correo se normaliza a minúsculas y se reconoce al admin");
+  ok((await esperarSesionOk(b)) === YO, "esperarSesion devuelve la sesión inicial");
+  b._entrarComo(OTRO);
+  ok((await b.obtenerPerfil()).rol === "usuario", "usuario normal");
+  b._entrarComo(EXTRAÑO);
+  ok((await b.obtenerPerfil()) === null, "correo fuera de la lista => sin acceso (null)");
+  ok(await falla(() => b.listarUsuarios(), "permiso"), "no autorizado no puede listar usuarios");
+  ok(await falla(() => b.leerClaveCompartida(), "permiso"), "no autorizado no puede leer la clave compartida");
+  b._entrarComo(null);
+  ok((await b.obtenerPerfil()) === null, "sin sesión => null");
+  async function esperarSesionOk(x) { return acceso.esperarSesion(x); }
+});
+
+await seccion("acceso: gestión de usuarios (solo admin)", async () => {
+  const b = crearBackendMock({ usuarios: semilla(), sesion: YO });
+  await b.guardarUsuario("  Nuevo@Gmail.COM ", "usuario");
+  ok((await b.listarUsuarios()).some((u) => u.email === "nuevo@gmail.com" && u.rol === "usuario" && u.agregadoPor === "yo@gmail.com"), "admin agrega (correo en minúsculas, registra quién lo agregó)");
+  ok(await falla(() => b.guardarUsuario("no-es-correo", "usuario"), "invalido"), "rechaza correo inválido");
+  ok(await falla(() => b.guardarUsuario("a@b.co", "superadmin"), "invalido"), "rechaza rol inválido");
+  await b.guardarUsuario("nuevo@gmail.com", "admin");
+  ok((await b.listarUsuarios()).find((u) => u.email === "nuevo@gmail.com").rol === "admin", "admin cambia el rol de otro");
+  await b.quitarUsuario("nuevo@gmail.com");
+  ok(!(await b.listarUsuarios()).some((u) => u.email === "nuevo@gmail.com"), "admin quita a otro");
+  ok(await falla(() => b.quitarUsuario("yo@gmail.com"), "permiso"), "un admin no puede quitarse a sí mismo (siempre queda un admin)");
+  ok(await falla(() => b.guardarUsuario("yo@gmail.com", "usuario"), "permiso"), "un admin no puede bajarse el rol a sí mismo");
+  b._entrarComo(OTRO);
+  ok(await falla(() => b.guardarUsuario("z@z.co", "usuario"), "permiso"), "un usuario normal NO puede agregar");
+  ok(await falla(() => b.quitarUsuario("yo@gmail.com"), "permiso"), "un usuario normal NO puede quitar");
+  ok((await b.listarUsuarios()).length === 2, "un usuario normal sí puede ver la lista");
+});
+
+await seccion("acceso: claves de Gemini en el servidor", async () => {
+  const b = crearBackendMock({ usuarios: semilla(), sesion: YO, claveCompartida: null });
+  await b.guardarClaveCompartida("CLAVE-COMPARTIDA");
+  b._entrarComo(OTRO);
+  ok((await b.leerClaveCompartida()) === "CLAVE-COMPARTIDA", "un usuario autorizado lee la clave compartida");
+  ok(await falla(() => b.guardarClaveCompartida("otra"), "permiso"), "solo un admin cambia la compartida");
+  await b.guardarClavePersonal("CLAVE-DE-OTRO");
+  ok((await b.leerClavePersonal()) === "CLAVE-DE-OTRO", "guarda y lee su clave personal");
+  b._entrarComo(YO);
+  ok((await b.leerClavePersonal()) === null, "la clave personal de otro NO es visible (ni siquiera para un admin)");
+  await b.guardarClavePersonal("CLAVE-MIA");
+  b._entrarComo(OTRO);
+  ok((await b.leerClavePersonal()) === "CLAVE-DE-OTRO", "cada usuario conserva la suya");
+  await b.guardarClavePersonal(null);
+  ok((await b.leerClavePersonal()) === null, "borrar la clave personal");
+  b._entrarComo(YO);
+  await b.guardarClaveCompartida(null);
+  ok((await b.leerClaveCompartida()) === null, "el admin borra la compartida");
+  b._entrarComo(EXTRAÑO);
+  ok(await falla(() => b.leerClavePersonal(), "permiso"), "no autorizado no lee claves");
+});
+
+await seccion("acceso: login, logout y conexión", async () => {
+  const b = crearBackendMock({ usuarios: semilla(), cuentaAlIniciar: OTRO });
+  ok((await acceso.esperarSesion(b)) === null, "arranca sin sesión");
+  const u = await b.iniciarSesion();
+  ok(u.email === "otro@gmail.com" && (await b.obtenerPerfil()).rol === "usuario", "iniciarSesion deja la sesión activa");
+  await b.cerrarSesion();
+  ok((await b.obtenerPerfil()) === null, "cerrarSesion");
+  const c = crearBackendMock({ usuarios: semilla(), sesion: YO });
+  c._conexion(false);
+  ok(await falla(() => c.listarUsuarios(), "offline"), "sin conexión => error 'offline'");
+  const cancel = crearBackendMock({ usuarios: semilla(), cuentaAlIniciar: null });
+  ok(await falla(() => cancel.iniciarSesion(), "cancelado"), "login cancelado => error 'cancelado'");
+});
+
 /*__SECCIONES_EXTRA__*/
 
 out.textContent += `\nRESULT: ${fallos ? "FAIL" : "OK"} (${total - fallos}/${total})\n`;

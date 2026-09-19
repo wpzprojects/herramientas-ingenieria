@@ -1,0 +1,66 @@
+rules_version = '2';
+
+// Reglas de seguridad de Firestore para "Configuracion avanzada".
+// Se pegan en Firebase Console > Firestore Database > Reglas > Publicar.
+//
+// Modelo de datos:
+//   usuarios/{correo}                { rol: 'admin' | 'usuario', agregadoPor, fecha }   (el ID es el correo en minusculas)
+//   usuarios/{correo}/secretos/gemini { clave }                                          (clave personal de Gemini)
+//   ajustes/gemini                    { clave, actualizadoPor, fecha }                   (clave compartida de Gemini)
+//
+// Quien tiene acceso: cualquier correo VERIFICADO por Google que tenga un documento en /usuarios.
+// El primer administrador se crea a mano en la consola (la consola ignora estas reglas).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function autenticado() {
+      return request.auth != null
+        && request.auth.token.email_verified == true;
+    }
+
+    function correo() {
+      return request.auth.token.email.lower();
+    }
+
+    function esUsuario() {
+      return autenticado()
+        && exists(/databases/$(database)/documents/usuarios/$(correo()));
+    }
+
+    function esAdmin() {
+      return esUsuario()
+        && get(/databases/$(database)/documents/usuarios/$(correo())).data.rol == 'admin';
+    }
+
+    function usuarioValido(id) {
+      return request.resource.data.keys().hasOnly(['rol', 'agregadoPor', 'fecha'])
+        && request.resource.data.rol in ['admin', 'usuario']
+        && id == id.lower()
+        && id.matches('^[^@ ]+@[^@ ]+[.][^@ ]+$');
+    }
+
+    match /usuarios/{id} {
+      // Cualquiera con sesion puede leer SU PROPIO documento (asi se sabe si tiene acceso, sin error de permisos).
+      allow get: if autenticado() && (id == correo() || esUsuario());
+      allow list: if esUsuario();
+
+      // Solo un admin gestiona la lista. Un admin no puede quitarse ni bajarse el rol a si mismo:
+      // asi siempre queda al menos un administrador.
+      allow create: if esAdmin() && usuarioValido(id);
+      allow update: if esAdmin() && usuarioValido(id)
+                    && (id != correo() || request.resource.data.rol == 'admin');
+      allow delete: if esAdmin() && id != correo();
+
+      // Clave personal de Gemini: solo la lee/escribe su dueno (ni siquiera los admins).
+      match /secretos/{doc} {
+        allow read, write: if esUsuario() && id == correo();
+      }
+    }
+
+    // Clave compartida de Gemini: la leen los autorizados y solo la cambia un admin.
+    match /ajustes/{doc} {
+      allow read: if esUsuario();
+      allow write: if esAdmin();
+    }
+  }
+}
