@@ -266,7 +266,7 @@ await seccion("pantalla: un solo formulario (sin botón ni tarjeta aparte)", asy
   ok(visible("#campos-lista") && !visible("#campos-epsg") && visible("#campos-punto") && !visible("#campo-lote"), "por defecto: las dos listas de siempre y longitud / latitud");
   const conv = $$(".btn-row .btn")[1].getBoundingClientRect();
   const lote = $("#btn-lotes").getBoundingClientRect();
-  ok(texto($$(".btn-row .btn")[1]) === "Convertir" && texto($("#btn-lotes .activo")) === "Convertir por lotes" && Math.abs(conv.top - lote.top) < 2 && conv.left > lote.right, "«Convertir por lotes» va primero y «Convertir» a su derecha");
+  ok(texto($$(".btn-row .btn")[1]) === "Convertir" && texto($("#btn-lotes .activo")) === "Convertir por lotes" && Math.abs(conv.top - lote.top) < 2 && conv.left > lote.right && Math.abs(conv.right - ($("#form-coordenadas").getBoundingClientRect().right - 17)) < 1 && Math.abs(lote.left - ($("#form-coordenadas").getBoundingClientRect().left + 17)) < 1, "«Convertir por lotes» a la izquierda y «Convertir» justificado a la derecha, cada uno en su borde");
   ok($("#btn-lotes").dataset.lotes === "false" && $("#btn-lotes").type === "button", "«Convertir por lotes» empieza apagado y no envía el formulario");
 });
 
@@ -341,7 +341,7 @@ await seccion("pantalla: habilitar todos los sistemas (códigos EPSG)", async ()
 await seccion("pantalla: convertir por lotes", async () => {
   $("#btn-lotes").click();
   ok($("#btn-lotes").dataset.lotes === "true" && !visible("#campos-punto") && visible("#campo-lote"), "«Convertir por lotes» reemplaza longitud y latitud por un cuadro de texto");
-  ok(texto($("#btn-lotes .activo")) === "Convertir un solo punto", "encendido, el botón dice «Convertir un solo punto» (para volver a convertir de a una coordenada)");
+  ok(texto($("#btn-lotes .activo")) === "Convertir un punto", "encendido, el botón dice «Convertir un punto» (para volver a convertir de a una coordenada)");
   const ta = $("#f-lote").getBoundingClientRect();
   ok(ta.height > 120 && ta.width > $("#f-sistema-origen").getBoundingClientRect().width * 1.5, `el cuadro es de lado a lado y más alto que un campo (${Math.round(ta.width)} × ${Math.round(ta.height)} px)`);
   const nota = $("#campo-lote .hint");
@@ -481,10 +481,56 @@ await seccion("pantalla: nada se corre al habilitar todos los sistemas ni al cam
     const r = await cuentas(ancho);
     ok(Math.abs(r.formAlto0 - r.formAlto4) < 0.6 && r.formAlto1 === r.formAlto0 && r.formAlto2 === r.formAlto0, `ancho ${ancho} px: el formulario mide siempre lo mismo (${r.formAlto0.toFixed(1)} px) con las listas, con los campos EPSG vacíos y con el nombre del sistema`);
     ok(r.botones0 === r.botones1 && r.botones1 === r.botones2 && r.botones2 === r.botones3 && r.botones3 === r.botones4, `ancho ${ancho} px: los botones no se mueven al habilitar todos los sistemas, al escribir un código (${r.hintDestino}), con el mensaje de error ni al volver [${r.botones0}, ${r.botones1}, ${r.botones2}, ${r.botones3}, ${r.botones4}]`);
-    ok(Math.abs(r.anchoUno - r.anchoDos) < 0.5 && Math.abs(r.anchoDos - r.anchoTres) < 0.5 && r.textoDos === "Convertir un solo punto" && r.cabe, `ancho ${ancho} px: el botón de lotes mide siempre lo mismo (${Math.round(r.anchoUno)} px) con sus dos textos`);
+    ok(Math.abs(r.anchoUno - r.anchoDos) < 0.5 && Math.abs(r.anchoDos - r.anchoTres) < 0.5 && r.textoDos === "Convertir un punto" && r.cabe, `ancho ${ancho} px: el botón de lotes mide siempre lo mismo (${Math.round(r.anchoUno)} px) con sus dos textos`);
   }
   const b = $("#btn-lotes");
   ok([...b.children].map((c) => getComputedStyle(c).visibility).join() === "visible,hidden" && b.children[1].getClientRects().length > 0, "solo se ve un texto a la vez (el otro queda oculto pero ocupa su lugar)");
+});
+
+await seccion("espaciado de 16 px en tarjetas y resultados (coordenadas y unidades)", async () => {
+  const izq = (e, r) => Math.round((e.getBoundingClientRect().left - r.getBoundingClientRect().left) * 10) / 10;
+  const abajo = (e, r) => Math.round((r.getBoundingClientRect().bottom - e.getBoundingClientRect().bottom) * 10) / 10;
+  const arriba = (e, r) => Math.round((e.getBoundingClientRect().top - r.getBoundingClientRect().top) * 10) / 10;
+
+  // conversion de coordenadas: un punto
+  $("#f-x").value = "-74.0817";
+  $("#f-y").value = "4.6097";
+  await enviar();
+  const tarjeta = $("#form-coordenadas");
+  const panel = $("#resultado-wrap .result-panel");
+  ok(tarjeta.classList.contains("tarjeta-borde") && panel.classList.contains("compacto"), "la tarjeta y el panel de resultado de coordenadas usan el espaciado compacto (como las calculadoras)");
+  ok(izq($("#f-sistema-origen"), tarjeta) === 17 && izq($(".btn-row .btn"), tarjeta) === 17 && arriba($("#f-sistema-origen").closest(".field"), tarjeta) <= 17 + 1, `coordenadas: 17 px del borde de la tarjeta al contenido (1 de borde + 16): campos ${izq($("#f-sistema-origen"), tarjeta)} px, botones ${izq($(".btn-row .btn"), tarjeta)} px`);
+  ok(izq($("#resultado-wrap .value"), panel) === 17 && arriba($("#resultado-wrap .result-metric"), panel) === 17 && abajo($("#resultado-wrap .label"), panel) === 17, `coordenadas: 17 px alrededor del contenido del resultado (izquierda ${izq($("#resultado-wrap .value"), panel)}, arriba ${arriba($("#resultado-wrap .result-metric"), panel)}, abajo ${abajo($("#resultado-wrap .label"), panel)} px)`);
+  // por lotes
+  $("#btn-lotes").click();
+  $("#f-lote").value = "-74.0817 4.6097";
+  await enviar();
+  const panel2 = $("#resultado-wrap .result-panel");
+  ok(izq($("#f-lote"), tarjeta) === 17 && izq($("#resultado-wrap .report-block"), panel2) === 17 && abajo($("#resultado-wrap .report-block"), panel2) === 17, `coordenadas por lotes: 17 px del borde al cuadro y alrededor de la salida (${izq($("#f-lote"), tarjeta)}, ${izq($("#resultado-wrap .report-block"), panel2)}, ${abajo($("#resultado-wrap .report-block"), panel2)} px)`);
+  $("#btn-lotes").click();
+
+  // conversion de unidades
+  const marco = document.createElement("div");
+  marco.style.width = "1000px";
+  stage.append(marco);
+  const unidades = await import("../js/views/conversion-unidades.js");
+  await unidades.render(marco, {});
+  await espera(150);
+  const q = (x) => marco.querySelector(x);
+  const elegir2 = (x, v) => { q(x).value = v; q(x).dispatchEvent(new Event("change", { bubbles: true })); };
+  elegir2("#f-categoria", "Longitud");
+  elegir2("#f-origen", "m");
+  elegir2("#f-destino", "ft");
+  q("#f-valor").value = "10";
+  q("#form-conversion").requestSubmit();
+  await espera(120);
+  const t2 = q("#form-conversion");
+  const p2 = q("#resultado-wrap .result-panel");
+  ok(t2.classList.contains("tarjeta-borde") && !!p2 && p2.classList.contains("compacto"), "la tarjeta y el resultado de unidades usan el espaciado compacto");
+  ok(izq(q("#f-categoria"), t2) === 17 && izq(q(".btn-row .btn"), t2) === 17, `unidades: 17 px del borde de la tarjeta al contenido (campos ${izq(q("#f-categoria"), t2)} px, botón ${izq(q(".btn-row .btn"), t2)} px)`);
+  ok(izq(q("#resultado-wrap .value"), p2) === 17 && arriba(q("#resultado-wrap .result-metric"), p2) === 17 && abajo(q("#resultado-wrap .label"), p2) === 17, `unidades: 17 px alrededor del resultado (izquierda ${izq(q("#resultado-wrap .value"), p2)}, arriba ${arriba(q("#resultado-wrap .result-metric"), p2)}, abajo ${abajo(q("#resultado-wrap .label"), p2)} px)`);
+  ok(p2.getBoundingClientRect().top - t2.getBoundingClientRect().bottom >= 15.5, "unidades: el resultado no queda pegado a la tarjeta (16 px)");
+  marco.remove();
 });
 
 await seccion("archivos, service worker y otros", async () => {

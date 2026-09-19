@@ -24,7 +24,7 @@ export function render(container) {
     <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/varios">Varios</a> <span>/</span> <span>Conversión de coordenadas</span></div>
     <h1 class="page-title">Conversión de coordenadas</h1>
 
-    <form class="card" id="form-coordenadas" novalidate>
+    <form class="card tarjeta-borde" id="form-coordenadas" novalidate>
       <div class="campos-sistemas">
       <div class="grid-2" id="campos-lista">
         <div class="field">
@@ -72,8 +72,8 @@ export function render(container) {
       </div>
 
       <div class="btn-row">
-        <button type="button" class="btn btn-toggle btn-dos-textos" id="btn-lotes" data-lotes="false"><span class="activo">Convertir por lotes</span><span>Convertir un solo punto</span></button>
-        <button type="submit" class="btn btn-primary">Convertir</button>
+        <button type="button" class="btn btn-toggle btn-dos-textos" id="btn-lotes" data-lotes="false"><span class="activo">Convertir por lotes</span><span>Convertir un punto</span></button>
+        <button type="submit" class="btn btn-primary" style="margin-left: auto;">Convertir</button>
       </div>
     </form>
 
@@ -251,7 +251,7 @@ export function render(container) {
         const r = convertirPunto(numeroFlexible(fX.value), numeroFlexible(fY.value), o, d);
         const texto = r.esGeoDestino ? `Longitud: ${fmt(r.x, 6)}   Latitud: ${fmt(r.y, 6)}` : `Este: ${fmt(r.x, 4)}   Norte: ${fmt(r.y, 4)}`;
         wrap.innerHTML = `
-          <div class="result-panel" ${MARGEN}>
+          <div class="result-panel compacto" ${MARGEN}>
             <div class="result-metric">
               <div class="value" style="font-size: 1.4rem;">${texto}</div>
               <div class="label">${cabecera}</div>
@@ -298,7 +298,7 @@ export function render(container) {
       texto: lineas.length === validas ? texto : `${texto} Líneas: ${lineas.slice(0, 12).join(", ")}${lineas.length > 12 ? "…" : ""}.`,
     }));
     wrap.innerHTML = `
-      <div class="result-panel" ${MARGEN}>
+      <div class="result-panel compacto" ${MARGEN}>
         <div class="result-metric">
           <div class="label" style="margin-bottom: var(--space-3);">${validas} de ${salida.length} puntos convertidos: ${cabecera}${encabezado ? " (se omitió la fila de encabezado)" : ""}</div>
           <div class="report-block">${salida.map(escapeHtml).join("\n")}</div>

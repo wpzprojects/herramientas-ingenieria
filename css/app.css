@@ -314,7 +314,7 @@ input:disabled, select:disabled { opacity: 0.55; }
    (que casi se pierde contra el fondo) y en el oscuro es el mismo --border de siempre. Se mantiene en 1px: mas grueso se veria pesado. */
 .card.tarjeta-borde { border-color: var(--table-border); --pad-tarjeta: var(--space-4); padding: var(--pad-tarjeta); }
 .card.tarjeta-borde.form-section { padding-bottom: 12px; } /* las tarjetas de datos: un poco menos abajo (ver .grid-2.ultima) */
-.tarjeta-borde .result-panel { padding: var(--space-4); }  /* panel azul de resultados: tambien 16px (en otras calculadoras sigue en 24px) */
+.tarjeta-borde .result-panel, .result-panel.compacto { padding: var(--space-4); }  /* panel azul de resultados: tambien 16px (en otras calculadoras sigue en 24px) */
 /* Subtarjeta de las formulas (KaTeX): mismo aspecto que la caja de «Reporte» (fondo hundido, borde y esquinas), sin su letra monoespaciada */
 .formula-caja {
   background: var(--bg-sunken);
@@ -354,7 +354,7 @@ input:disabled, select:disabled { opacity: 0.55; }
 .btn-ghost:hover { background: var(--bg-sunken); }
 .btn-row { display: flex; gap: var(--space-3); flex-wrap: wrap; margin-top: var(--space-4); }
 /* Boton con dos textos que se alternan: ambos ocupan el mismo lugar (el oculto sigue midiendo), asi el boton no cambia de ancho */
-.btn.btn-dos-textos { display: inline-grid; justify-items: center; }
+.btn.btn-dos-textos { display: inline-grid; justify-items: center; padding-left: 12px; padding-right: 12px; } /* el ancho es el del texto mas largo, con poco relleno */
 .btn-dos-textos > span { grid-area: 1 / 1; visibility: hidden; }
 .btn-dos-textos > span.activo { visibility: visible; }
 .btn[disabled] { opacity: 0.5; cursor: not-allowed; }

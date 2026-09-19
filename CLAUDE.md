@@ -181,7 +181,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v116); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v118); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (Ayuda → "Configuración avanzada", `js/auth/*`, `firebase/firestore.rules`)
@@ -260,7 +260,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   (que el usuario consideró demasiado complejo; tampoco quiso una tarjeta/nota aparte: los campos se explican solos).
   Las listas y los campos EPSG ocupan el MISMO lugar (`.campos-sistemas`: la pareja inactiva solo se oculta con
   `visibility`), y bajo cada campo hay una línea de nombre reservada (`.hint-linea`, una sola línea con «…»): así habilitar todos los
-  sistemas NO corre nada hacia abajo (pedido del usuario; probado en las pruebas). El botón «Convertir por lotes» (junto a Convertir) cambia su texto a «Convertir un solo punto» al encenderse (ambos textos ocupan el mismo lugar: `.btn-dos-textos`,
+  sistemas NO corre nada hacia abajo (pedido del usuario; probado en las pruebas). El botón «Convertir por lotes» (junto a Convertir) cambia su texto a «Convertir un punto» al encenderse (ambos textos ocupan el mismo lugar: `.btn-dos-textos`,
   el botón mide siempre lo mismo; estado en `data-lotes`) y cambia longitud/latitud por un cuadro (la casilla de todos los
   sistemas va DEBAJO de la tarjeta, abajo a la izquierda, con el cuadro a la izquierda del texto: ubicación elegida por el usuario).
   Lectura de datos pegados de Excel/CSV (`parsearPareja` y `numeroFlexible` en `coordenadas-epsg.js`, con pruebas): separadores tabulación,

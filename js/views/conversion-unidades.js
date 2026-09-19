@@ -13,7 +13,7 @@ export async function render(container) {
     <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/varios">Varios</a> <span>/</span> <span>Conversión de unidades</span></div>
     <h1 class="page-title">Conversión de unidades</h1>
 
-    <form class="card" id="form-conversion" novalidate>
+    <form class="card tarjeta-borde" id="form-conversion" novalidate>
       <div class="grid-3">
         <div class="field">
           <label for="f-categoria">Categoría</label>
@@ -100,13 +100,13 @@ export async function render(container) {
 
     if (resultado === null) {
       wrap.innerHTML = `
-        <div class="callout callout-danger">No existe conversión definida para esa combinación.</div>
+        <div class="callout callout-danger" style="margin-top: var(--space-4);">No existe conversión definida para esa combinación.</div>
       `;
       return;
     }
 
     wrap.innerHTML = `
-      <div class="result-panel">
+      <div class="result-panel compacto" style="margin-top: var(--space-4);">
         <div class="result-metric">
           <div class="value">${fmt(resultado, 4)}<span class="unit">${unidadDestino}</span></div>
           <div class="label">${valor} ${unidadOrigen} → ${unidadDestino}</div>
