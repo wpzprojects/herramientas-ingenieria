@@ -9,7 +9,9 @@ export const URL_AI_STUDIO = "https://aistudio.google.com/apikey";
 
 export const AVISO_PRIVACIDAD =
   "Lo que envíes a la IA se transmite a los servidores de Google (Gemini). Con el plan gratuito, Google puede usar esas " +
-  "conversaciones para mejorar sus productos. No pegues información confidencial de la empresa, datos personales ni datos de clientes.";
+  "conversaciones para mejorar sus productos. No pegues información confidencial de la empresa, datos personales ni datos de clientes. " +
+  "Si usas el dictado por voz (botón del micrófono), el audio lo transcribe el servicio de reconocimiento de voz de tu navegador " +
+  "(Google en Chrome, Microsoft en Edge), por lo que necesita internet.";
 
 export function htmlAvisoPrivacidad() {
   return `<div class="callout callout-warning"><span><strong>Privacidad:</strong> ${AVISO_PRIVACIDAD}</span></div>`;

@@ -455,6 +455,14 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .ia-toolchip--error { background: var(--danger-soft); color: var(--danger); }
 .ia-composer { display: flex; gap: var(--space-3); align-items: flex-end; margin-top: var(--space-4); }
 .ia-composer textarea { flex: 1 1 auto; min-height: 64px; }
+.ia-mic { min-width: 112px; }
+.ia-mic[aria-pressed="true"] { background: var(--danger-soft); border-color: var(--danger); color: var(--danger); }
+.ia-mic[aria-pressed="true"] .icon { animation: ia-mic-pulso 1.2s infinite ease-in-out; }
+.ia-voz-estado { margin: var(--space-2) 0 0; font-size: 0.82rem; color: var(--text-muted); }
+.ia-voz-estado:empty { display: none; }
+.ia-voz-estado--error { color: var(--danger); }
+@keyframes ia-mic-pulso { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .ia-mic[aria-pressed="true"] .icon { animation: none; } }
 .ia-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
 .ia-chip {
   border: 1px solid var(--border-strong); background: var(--bg-elevated); color: var(--text-muted);

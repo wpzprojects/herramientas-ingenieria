@@ -9,6 +9,7 @@ import { claveEnUso } from "../ai/clave.js";
 import { generar, ErrorGemini } from "../ai/gemini.js";
 import { verificarAcceso, htmlAvisoPrivacidad } from "../ai/ui-clave.js";
 import * as historial from "../ai/historial.js";
+import { agregarMicrofono } from "../ai/voz.js";
 import {
   TONOS,
   cargarAgentes,
@@ -130,6 +131,8 @@ export async function render(container) {
   const $ = (s) => container.querySelector(s);
   const chat = $("#chat");
   const fTexto = $("#f-texto");
+  agregarMicrofono(fTexto, $("#btn-corregir"));
+  agregarMicrofono($("#f-ajuste"), $("#btn-ajustar"));
 
   const agenteActivo = () => agentes.find((a) => a.id === activoId) || agentes[0];
 

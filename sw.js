@@ -3,7 +3,7 @@
 // sirve cache-first con relleno en segundo plano (stale-while-revalidate)
 // para lo que no estuviera precacheado.
 
-const CACHE_VERSION = "v37";
+const CACHE_VERSION = "v38";
 const CACHE_NAME = `herramientas-ingenieria-${CACHE_VERSION}`;
 
 const SCOPE = self.registration.scope;
@@ -38,6 +38,7 @@ const APP_SHELL = [
   "js/ai/analisis.js",
   "js/ai/reporte.js",
   "js/ai/clave.js",
+  "js/ai/voz.js",
   "js/auth/backend.js",
   "js/auth/backend-firebase.js",
   "js/auth/firebase-config.js",

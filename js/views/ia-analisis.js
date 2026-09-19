@@ -13,6 +13,7 @@ import { crearContexto } from "../ai/tools.js";
 import { ejecutarTurno, PROMPT_REPORTE } from "../ai/analisis.js";
 import { escenariosHtml, reporteMd, reporteHtmlExportable, armarTablas, AVISO_REPORTE } from "../ai/reporte.js";
 import * as historial from "../ai/historial.js";
+import { agregarMicrofono } from "../ai/voz.js";
 
 const EJEMPLOS = [
   "Compara las pérdidas de una línea de 34.5 kV, 9.9 MW, factor de potencia 0.95 y 5.2 km con ACSR 4/0, 266.8 y 477, con factor de carga 0.56.",
@@ -64,7 +65,7 @@ export async function render(container) {
         <textarea id="f-pregunta" rows="3" placeholder="Ej.: analiza pérdidas y regulación de una línea de 34.5 kV, 9.9 MW, fp 0.95, 5.2 km con ACSR 4/0 y compara con 336.4…"></textarea>
         <button type="button" class="btn btn-primary" id="btn-enviar">Enviar</button>
       </div>
-      <p class="hint text-muted text-sm" style="margin-bottom:0">Ctrl + Enter para enviar. Lo que escribas se envía a Google (Gemini): no incluyas información confidencial.</p>
+      <p class="hint text-muted text-sm" style="margin-bottom:0">Ctrl + Enter para enviar. Lo que escribas o dictes se envía a Google (Gemini): no incluyas información confidencial.</p>
     </div>
 
     <div class="card ia-reporte-card" id="card-reporte" hidden>
@@ -86,6 +87,7 @@ export async function render(container) {
   const $ = (s) => container.querySelector(s);
   const chat = $("#chat");
   const fPregunta = $("#f-pregunta");
+  agregarMicrofono(fPregunta, $("#btn-enviar"));
 
   // ---------- chat ----------
   function chipsHerramientas(lista) {
