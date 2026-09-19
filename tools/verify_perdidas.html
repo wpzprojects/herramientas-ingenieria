@@ -395,6 +395,68 @@ await seccion("vista: varios tramos", async () => {
   ok($("#f-calibre-1").value === "1/0" && $("#chk-resistencia-1").checked && $("#f-resistencia-1").value === "0.5", "el tramo que queda conserva calibre y resistencia manual");
 });
 
+await seccion("vista: estructura del reporte (se copia y se pega)", async () => {
+  const leer = () => { $("#form-calc").requestSubmit(); return $('[data-panel="reporte"] .report-block').textContent.split("\n"); };
+  const LINEA = /^-{30}$/;
+  const etiquetasEn = (l) => l.filter((x) => /^[A-ZÁÉÍÓÚÑ ]{4,}$/.test(x));
+  const secciones = (l) => {
+    const iRes = l.indexOf("RESULTADOS");
+    return { iRes, params: l.slice(3, iRes), res: l.slice(iRes + 2) };
+  };
+  const tiene = (l, inicio) => l.some((x) => x.trim().startsWith(inicio));
+
+  // --- un tramo, partiendo de la potencia activa
+  elegir("#f-modo", "potencia");
+  const a = leer();
+  const sa = secciones(a);
+  ok(a[0] === "CÁLCULO DE PÉRDIDAS" && a[1] === "", "primera etiqueta: «CÁLCULO DE PÉRDIDAS», seguida de una línea en blanco");
+  ok(a[2] === "PARÁMETROS DE ENTRADA" && LINEA.test(a[3]), "segunda etiqueta: «PARÁMETROS DE ENTRADA» con su línea divisoria debajo");
+  ok(sa.iRes > 3 && a[sa.iRes - 1] === "" && LINEA.test(a[sa.iRes + 1]), "tercera etiqueta: «RESULTADOS» (con una línea en blanco antes) y su línea divisoria debajo");
+  ok(etiquetasEn(a).join("|") === "CÁLCULO DE PÉRDIDAS|PARÁMETROS DE ENTRADA|RESULTADOS" && a.filter((x) => LINEA.test(x)).length === 2, "son exactamente tres etiquetas y dos líneas divisorias");
+  ok(a[sa.iRes + 2].startsWith("Factor de pérdidas (Fp = 0.7·Fc + 0.3): 0.6948"), `el resultado arranca con el factor de pérdidas (${a[sa.iRes + 2]})`);
+  for (const inicio of ["Tensión de línea", "Dato de partida", "Potencia activa", "Factor de potencia", "Factor de carga", "Tramo 1:", "Tipo de red", "Material/Tipo", "Calibre", "Resistencia AC a 75°C", "Conductores por fase", "Longitud del tramo"]) {
+    ok(tiene(sa.params, inicio), `parámetros de entrada incluye «${inicio}»`);
+  }
+  for (const inicio of ["Factor de pérdidas", "Resistencia efectiva", "Porcentaje de pérdidas", "Pérdidas del tramo", "Pérdidas de potencia", "Corriente", "Potencia aparente", "Potencia reactiva"]) {
+    ok(!tiene(sa.params, inicio), `«${inicio}» NO está en los parámetros (es un resultado)`);
+  }
+  for (const inicio of ["Factor de pérdidas", "Corriente", "Potencia aparente", "Potencia reactiva", "Tramo 1:", "Resistencia efectiva", "Porcentaje de pérdidas del tramo", "Pérdidas del tramo", "Porcentaje de pérdidas:", "Pérdidas de potencia"]) {
+    ok(tiene(sa.res, inicio), `resultados incluye «${inicio}»`);
+  }
+  ok(!tiene(sa.res, "Tensión de línea") && !tiene(sa.res, "Calibre") && !tiene(sa.res, "Longitud del tramo"), "los datos de entrada no se repiten en los resultados");
+
+  // --- partiendo de la potencia aparente: la potencia activa se calcula, asi que va en resultados
+  elegir("#f-modo", "aparente");
+  poner("#f-aparente", "22.11");
+  const b = leer();
+  const sb = secciones(b);
+  ok(tiene(sb.params, "Dato de partida: Potencia aparente (22.11 MVA)") && !tiene(sb.params, "Potencia activa:"), "desde potencia aparente: en los parámetros solo el dato de partida");
+  ok(tiene(sb.res, "Potencia activa: 19.90 MW"), "desde potencia aparente: la potencia activa calculada va en los resultados");
+  ok(etiquetasEn(b).length === 3, "sigue habiendo tres etiquetas");
+  elegir("#f-modo", "corriente");
+  poner("#f-corriente", "370");
+  const c = leer();
+  const sc = secciones(c);
+  ok(tiene(sc.params, "Dato de partida: Corriente (370.00 A)") && !tiene(sc.params, "Potencia activa:") && tiene(sc.res, "Potencia activa: 19.90 MW"), "desde corriente: igual, la potencia activa va en los resultados");
+  elegir("#f-modo", "potencia");
+
+  // --- dos tramos: cada tramo aparece en los parametros (lo que se dio) y en los resultados (lo que se calculó)
+  $$(".tramo-block .btn-agregar-tramo")[0].click();
+  const nueva = $$(".tramo-block").at(-1);
+  const sel = (p) => nueva.querySelector(`select[id^="${p}"]`);
+  sel("f-material-").value = "AAAC";
+  sel("f-material-").dispatchEvent(new Event("change", { bubbles: true }));
+  sel("f-calibre-").selectedIndex = 4;
+  sel("f-calibre-").dispatchEvent(new Event("change", { bubbles: true }));
+  const d = leer();
+  const sd = secciones(d);
+  ok(etiquetasEn(d).length === 3 && d.filter((x) => LINEA.test(x)).length === 2, "con dos tramos siguen siendo tres etiquetas y dos líneas");
+  ok(sd.params.filter((x) => /^Tramo \d:$/.test(x)).join() === "Tramo 1:,Tramo 2:" && sd.res.filter((x) => /^Tramo \d:$/.test(x)).join() === "Tramo 1:,Tramo 2:", "los dos tramos aparecen en los parámetros y en los resultados");
+  ok(sd.params.filter((x) => x.includes("Longitud del tramo")).length === 2 && sd.res.filter((x) => x.includes("Porcentaje de pérdidas del tramo")).length === 2, "cada tramo: su longitud en los parámetros y su % de pérdidas en los resultados");
+  ok(tiene(sd.res, "Porcentaje de pérdidas total:") && d.at(-1).startsWith("Pérdidas de potencia:"), "el reporte termina con el % total y las pérdidas de potencia");
+  ok(sd.res.indexOf(sd.res.find((x) => x.startsWith("Porcentaje de pérdidas total"))) > sd.res.lastIndexOf("Tramo 2:"), "los totales van después del detalle de los tramos");
+});
+
 await seccion("vista: fórmulas con KaTeX", async () => {
   ok(!window.katex, "KaTeX no se carga hasta abrir la pestaña Fórmulas");
   $$(".tab-btn").find((b) => b.dataset.tab === "formulas").click();

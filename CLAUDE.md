@@ -50,6 +50,11 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   `sw.js`. El usuario quiere extenderlo a las pestañas «Fórmulas» de las demás calculadoras, una por una. Las ecuaciones van
   DENTRO de una subtarjeta (`.formula-caja`: mismo fondo hundido, borde y esquinas que la caja de «Reporte», sin letra mono); mientras
   KaTeX carga (o si falla) se ve el texto plano `.formula-block`.
+- Pestaña «Reporte» de Pérdidas (texto para copiar y pegar), estructura pedida por el usuario: `CÁLCULO DE PÉRDIDAS`, línea en
+  blanco, `PARÁMETROS DE ENTRADA` + línea de 30 guiones, y `RESULTADOS` + línea de 30 guiones. Parámetros = lo que el usuario dio
+  (tensión, dato de partida, FP, Fc y, por tramo, red/material/calibre/R/conductores por fase/longitud); resultados = todo lo que
+  sale del cálculo (Fp primero, corriente, potencias, detalle por tramo con R efectiva, % y MW, y totales). Si el dato de partida no
+  es la potencia activa, esta va en resultados. Cubierto por la sección «estructura del reporte» de `verify_perdidas.html`.
 - Las tarjetas de Pérdidas llevan `.tarjeta-borde` (borde `--table-border`: en claro más marcado que `--border`, que casi se perdía
   contra el fondo; en oscuro no cambia). Se dejó en 1px; si aún se ve tenue, probar 1.5px antes que un color nuevo.
 - Siguen pendientes por decisión del usuario: gráficos de resultado y aplicar este mismo patrón (tarjetas, etc.) a otras
@@ -98,7 +103,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v75); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v76); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (Ayuda → "Configuración avanzada", `js/auth/*`, `firebase/firestore.rules`)

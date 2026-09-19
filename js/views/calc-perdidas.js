@@ -80,6 +80,9 @@ Dato de partida: P = S·cos φ   |   P = √3·V·I·cos φ / 1000
 
 ${FORMULAS_NOTA}`;
 
+// Linea divisoria del reporte de texto: corta (30 caracteres) para que no se parta en pantallas angostas.
+const LINEA_REPORTE = "-".repeat(30);
+
 const MODOS = {
   potencia: "Potencia activa",
   aparente: "Potencia aparente",
@@ -411,36 +414,48 @@ export async function render(container) {
   }
 
   function reporteTexto(r, base, estados, { modo, datoPartida }) {
+    // El reporte se copia y se pega: tres etiquetas en mayuscula (el calculo, los parametros de entrada y los resultados).
+    // Parametros = lo que el usuario dio; resultados = todo lo que sale del calculo (incluidos el factor de pérdidas y lo de cada tramo).
     const unidadDato = { potencia: "MW", aparente: "MVA", corriente: "A" }[modo];
-    const lineasTramos = r.tramos.map((t, i) => {
-      const e = estados[i];
-      return [
-        ``,
-        `Tramo ${t.numero}:`,
-        `  Tipo de red: ${nombreRed(e.red)}`,
-        `  Material/Tipo de conductor: ${e.material}`,
-        `  Calibre: ${e.calibre}`,
-        `  Resistencia AC a 75°C (por conductor): ${fmt(e.resistenciaOhmKm)} Ω/km`,
-        `  Conductores por fase: ${e.numConductoresPorFase}`,
-        `  Resistencia efectiva (R/N): ${fmt(t.resistenciaEfectivaOhmKm)} Ω/km`,
-        `  Longitud del tramo: ${fmt(e.longitudKm)} km`,
-        `  Porcentaje de pérdidas del tramo: ${fmtPercent(t.perdidasPct)}`,
-        `  Pérdidas del tramo: ${fmt(t.perdidasMw, 3)} MW`,
-      ].join("\n");
-    });
+    const parametrosTramos = estados.map((e, i) => [
+      ``,
+      `Tramo ${i + 1}:`,
+      `  Tipo de red: ${nombreRed(e.red)}`,
+      `  Material/Tipo de conductor: ${e.material}`,
+      `  Calibre: ${e.calibre}`,
+      `  Resistencia AC a 75°C (por conductor): ${fmt(e.resistenciaOhmKm)} Ω/km`,
+      `  Conductores por fase: ${e.numConductoresPorFase}`,
+      `  Longitud del tramo: ${fmt(e.longitudKm)} km`,
+    ].join("\n"));
+    const resultadosTramos = r.tramos.map((t) => [
+      ``,
+      `Tramo ${t.numero}:`,
+      `  Resistencia efectiva (R/N): ${fmt(t.resistenciaEfectivaOhmKm)} Ω/km`,
+      `  Porcentaje de pérdidas del tramo: ${fmtPercent(t.perdidasPct)}`,
+      `  Pérdidas del tramo: ${fmt(t.perdidasMw, 3)} MW`,
+    ].join("\n"));
+    const potenciaActiva = `Potencia activa: ${fmt(base.potenciaActivaMw)} MW`;
     return [
+      `CÁLCULO DE PÉRDIDAS`,
+      ``,
+      `PARÁMETROS DE ENTRADA`,
+      LINEA_REPORTE,
       `Tensión de línea: ${fmt(base.tensionLineaKv)} kV`,
       `Dato de partida: ${MODOS[modo]} (${fmt(datoPartida)} ${unidadDato})`,
-      `Potencia activa: ${fmt(base.potenciaActivaMw)} MW`,
+      ...(modo === "potencia" ? [potenciaActiva] : []), // si parte de otro dato, la potencia activa se calcula y va en resultados
       `Factor de potencia: ${fmt(base.factorPotencia)}`,
       `Factor de carga (Fc): ${fmt(base.factorCarga, 4)}`,
+      ...parametrosTramos,
       ``,
+      `RESULTADOS`,
+      LINEA_REPORTE,
       `Factor de pérdidas (Fp = 0.7·Fc + 0.3): ${fmt(r.factorPerdidas, 4)}`,
-      ...lineasTramos,
-      ``,
+      ...(modo === "potencia" ? [] : [potenciaActiva]),
       `Corriente: ${fmt(r.corriente)} A`,
       `Potencia aparente: ${fmt(r.potenciaS)} MVA`,
       `Potencia reactiva: ${fmt(r.potenciaQ)} MVAR`,
+      ...resultadosTramos,
+      ``,
       `Porcentaje de pérdidas${r.tramos.length > 1 ? " total" : ""}: ${fmtPercent(r.perdidasPct)}`,
       `Pérdidas de potencia: ${fmt(r.perdidasMw, 3)} MW`,
     ].join("\n");
