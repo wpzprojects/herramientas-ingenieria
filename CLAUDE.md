@@ -25,7 +25,11 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Regulación (2026-09-19) replica el rediseño de Pérdidas (mismas tarjetas, iconos, relleno, reporte y fórmulas). Diferencias: sin
   factor de carga; por tramo agrega radio medio geométrico (mm, del catálogo, editable con «Manual»), conductores por fase con
   «Separación entre subconductores del haz» (RMG equivalente del haz, `calcularRmgHaz`) y las 3 distancias entre fases (propias de
-  cada tramo). Referencias de diseño 5 % (Óptimo) / 10 % (Adecuado) / «Elevado» por encima; NO son límite normativo. El motor
+  cada tramo). Referencias de diseño 5 % (Óptimo) / 10 % (Adecuado) / «Elevado» por encima; NO son límite normativo, y en pantalla
+  el texto es solo «Referencias de diseño: hasta X% óptimo · hasta Y% adecuado.» (el usuario pidió quitar la aclaración entre
+  paréntesis; no volver a poner «límite normativo» en la interfaz). Orden de los campos del tramo IGUAL al de la «Calculadora
+  Normativa» (red|material, longitud|conductores por fase, calibre|resistencia, separación del haz|RMG, distancias A-B|A-C|B-C);
+  Pérdidas conserva su propio orden (calibre|resistencia antes de longitud|conductores), no tocarlo. El motor
   `js/calc/regulacion.js` y la herramienta de la IA NO se tocan. Lógica en `js/calc/regulacion-tramos.js`; pruebas en
   `tools/verify_regulacion.html`. Las dos fórmulas de caída (`√3·I·Z·L·100/(V·1000)` y `P[kW]·L·K`) son equivalentes (verificado).
 - Código compartido para las próximas calculadoras: `js/calc/circuito.js` (dato de partida, `clasificarPorUmbrales`,
@@ -64,8 +68,9 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   DENTRO de una subtarjeta (`.formula-caja`: mismo fondo hundido, borde y esquinas que la caja de «Reporte», sin letra mono); mientras
   KaTeX carga (o si falla) se ve el texto plano `.formula-block`.
 - Pestaña «Reporte» (texto para copiar y pegar), estructura pedida por el usuario: `CÁLCULO DE …` (sin dos puntos), línea en
-  blanco, línea de 30 guiones y `PARÁMETROS DE ENTRADA:`, línea en blanco, línea de 30 guiones y `RESULTADOS:` (la línea va ENCIMA
-  de esas dos etiquetas, con dos puntos al final; las tres etiquetas van en negrita con `<strong>`, el texto copiado no cambia).
+  blanco, `PARÁMETROS DE ENTRADA:` y DEBAJO una línea de 30 guiones, línea en blanco, `RESULTADOS:` y DEBAJO otra línea de 30 guiones
+  (el usuario probó la línea encima y pidió volver a debajo; dos puntos al final de esas dos etiquetas; las tres etiquetas van en
+  negrita con `<strong>`, el texto copiado no cambia).
   Parámetros = lo que el usuario dio; resultados = todo lo que sale del cálculo (en Pérdidas el Fp va primero; detalle por tramo
   con lo calculado y totales). Si el dato de partida no es la potencia activa, esta va en resultados. Cubierto por la sección
   «estructura del reporte» de `verify_perdidas.html` y `verify_regulacion.html`.
@@ -120,7 +125,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v78); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v79); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (Ayuda → "Configuración avanzada", `js/auth/*`, `firebase/firestore.rules`)

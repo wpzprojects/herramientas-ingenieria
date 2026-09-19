@@ -222,6 +222,17 @@ export async function render(container) {
         </div>
         <div class="grid-2">
           <div class="field">
+            <label for="f-longitud-${id}">Longitud del tramo (km)</label>
+            <input type="number" id="f-longitud-${id}" min="0" step="0.01" value="5.2" required>
+          </div>
+          <div class="field">
+            <label for="f-n-${id}">Conductores por fase</label>
+            <input type="number" id="f-n-${id}" min="1" max="8" step="1" value="1" required>
+            <span class="hint">Resistencia efectiva: R conductor / # conductores por fase.</span>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="field">
             <label for="f-calibre-${id}">Calibre</label>
             <select id="f-calibre-${id}" required disabled>
               <option value="">Seleccione un material primero</option>
@@ -237,27 +248,16 @@ export async function render(container) {
         </div>
         <div class="grid-2">
           <div class="field">
-            <label for="f-longitud-${id}">Longitud del tramo (km)</label>
-            <input type="number" id="f-longitud-${id}" min="0" step="0.01" value="5.2" required>
+            <label for="f-sephaz-${id}">Separación entre subconductores del haz (m)</label>
+            <input type="number" id="f-sephaz-${id}" min="0.01" max="5" step="0.01" value="0.4" disabled>
+            <span class="hint">Solo aplica con más de un conductor por fase.</span>
           </div>
-          <div class="field">
-            <label for="f-n-${id}">Conductores por fase</label>
-            <input type="number" id="f-n-${id}" min="1" max="8" step="1" value="1" required>
-            <span class="hint">Resistencia efectiva: R conductor / # conductores por fase.</span>
-          </div>
-        </div>
-        <div class="grid-2">
           <div class="field">
             <label for="f-rmg-${id}">Radio medio geométrico (mm)</label>
             <div class="input-with-toggle">
               <input type="number" id="f-rmg-${id}" min="0" step="any" required disabled>
               <label class="checkbox-row"><input type="checkbox" id="chk-rmg-${id}"> Manual</label>
             </div>
-          </div>
-          <div class="field">
-            <label for="f-sephaz-${id}">Separación entre subconductores del haz (m)</label>
-            <input type="number" id="f-sephaz-${id}" min="0.01" max="5" step="0.01" value="0.4" disabled>
-            <span class="hint">Solo aplica con más de un conductor por fase.</span>
           </div>
         </div>
         <div class="grid-3 ultima">
@@ -511,16 +511,16 @@ export async function render(container) {
     return [
       `CÁLCULO DE REGULACIÓN`,
       ``,
-      LINEA_REPORTE,
       `PARÁMETROS DE ENTRADA:`,
+      LINEA_REPORTE,
       `Tensión de línea: ${fmt(base.tensionLineaKv)} kV`,
       `Dato de partida: ${MODOS[modo]} (${fmt(datoPartida)} ${unidadDato})`,
       ...(modo === "potencia" ? [potenciaActiva] : []), // si parte de otro dato, la potencia activa se calcula y va en resultados
       `Factor de potencia: ${fmt(base.factorPotencia)}`,
       ...parametrosTramos,
       ``,
-      LINEA_REPORTE,
       `RESULTADOS:`,
+      LINEA_REPORTE,
       ...(modo === "potencia" ? [] : [potenciaActiva]),
       `Corriente: ${fmt(r.corriente)} A`,
       `Potencia aparente: ${fmt(r.potenciaS)} MVA`,
@@ -568,7 +568,7 @@ export async function render(container) {
                 <div class="label">Caída de tensión${varios ? " total" : ""}${clase ? ` <span class="badge ${clase.clase}">${clase.etiqueta}</span>` : ""}</div>
               </div>
             </div>
-            <p class="text-muted text-sm" style="margin: var(--space-3) 0 0;">Referencias de diseño (no son un límite normativo): hasta ${UMBRAL_OPTIMO_PCT}% óptimo · hasta ${UMBRAL_ADECUADO_PCT}% adecuado.</p>
+            <p class="text-muted text-sm" style="margin: var(--space-3) 0 0;">Referencias de diseño: hasta ${UMBRAL_OPTIMO_PCT}% óptimo · hasta ${UMBRAL_ADECUADO_PCT}% adecuado.</p>
             ${varios ? tablaTramosHtml(r, estados) : comparacionCalibresHtml(base, estados[0])}
           </div>`;
 

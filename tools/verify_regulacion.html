@@ -155,6 +155,18 @@ await seccion("vista: tarjetas y dato de partida", async () => {
 });
 
 await seccion("vista: campos del tramo (mm, haz y distancias)", async () => {
+  // Orden y ubicacion como en la calculadora normativa: fila a fila, de izquierda a derecha.
+  const ordenReferencia = ["Tipo de red", "Material / Tipo de conductor", "Longitud del tramo (km)", "Conductores por fase", "Calibre", "Resistencia AC a 75°C (Ω/km)", "Separación entre subconductores del haz (m)", "Radio medio geométrico (mm)", "Distancia entre fases A-B (m)", "Distancia entre fases A-C (m)", "Distancia entre fases B-C (m)"];
+  const camposTramo = $$(".tramo-block .field").map((f) => ({ nombre: texto($(":scope > label:first-child", f)), r: f.getBoundingClientRect() }));
+  const filasTramo = [];
+  for (const c of camposTramo) {
+    const fila = filasTramo.find((f) => Math.abs(f[0].r.top - c.r.top) < 2);
+    if (fila) fila.push(c);
+    else filasTramo.push([c]);
+  }
+  ok(camposTramo.map((c) => c.nombre).join("|") === ordenReferencia.join("|"), `orden de los campos del tramo: ${camposTramo.map((c) => c.nombre).join(" → ")}`);
+  ok(filasTramo.map((f) => f.map((c) => c.nombre).join(" | ")).join(" // ") === "Tipo de red | Material / Tipo de conductor // Longitud del tramo (km) | Conductores por fase // Calibre | Resistencia AC a 75°C (Ω/km) // Separación entre subconductores del haz (m) | Radio medio geométrico (mm) // Distancia entre fases A-B (m) | Distancia entre fases A-C (m) | Distancia entre fases B-C (m)", "ubicación por filas: red y material; longitud y conductores por fase; calibre y resistencia; separación del haz y radio medio geométrico; y las tres distancias");
+  ok(filasTramo.every((f) => f.every((c, i) => i === 0 || c.r.left > f[i - 1].r.left)), "dentro de cada fila los campos van de izquierda a derecha en ese orden");
   const etiquetas = $$(".tramo-block .field > label:first-child").map(texto);
   for (const e of ["Tipo de red", "Material / Tipo de conductor", "Calibre", "Resistencia AC a 75°C (Ω/km)", "Longitud del tramo (km)", "Conductores por fase", "Radio medio geométrico (mm)", "Separación entre subconductores del haz (m)", "Distancia entre fases A-B (m)", "Distancia entre fases A-C (m)", "Distancia entre fases B-C (m)"]) {
     ok(etiquetas.includes(e), `campo del tramo: «${e}»`);
@@ -197,8 +209,8 @@ await seccion("vista: un tramo, cálculo y resultados", async () => {
   cerca(valorDe("Constante de regulación"), E1.K, 5e-8, "resultado: constante de regulación");
   const badge = $(".badge", metrica("Caída de tensión"));
   ok(badge && texto(badge) === "Óptimo" && badge.classList.contains("badge-success"), `con ${E1.pct.toFixed(2)} % la etiqueta es «${texto(badge)}»`);
-  ok(texto($("#resultado-wrap")).includes("Referencias de diseño (no son un límite normativo): hasta 5% óptimo · hasta 10% adecuado."), "se aclara que 5 % y 10 % son referencias de diseño");
-  ok(!/norma\b/i.test(texto($("#resultado-wrap")).replace("no son un límite normativo", "")), "ninguna etiqueta habla de «fuera de norma»");
+  ok(texto($("#resultado-wrap")).includes("Referencias de diseño: hasta 5% óptimo · hasta 10% adecuado.") && !texto($("#resultado-wrap")).includes("(no son un límite"), "las referencias se muestran como «Referencias de diseño: hasta 5% óptimo · hasta 10% adecuado.» (sin paréntesis)");
+  ok(!/norma/i.test(texto($("#resultado-wrap"))), "en los resultados no aparece la palabra «norma» ni «normativo» en ninguna parte");
   ok(!$$(".result-panel svg, .result-gauge").length, "sin gráficos");
 
   const filas = $$(".tabla-resultado tbody tr");
@@ -287,7 +299,7 @@ await seccion("vista: estructura del reporte (se copia y se pega)", async () => 
   const leer = () => { calcular(); return $('[data-panel="reporte"] .report-block').textContent.split("\n"); };
   const LINEA = /^-{30}$/;
   const etiquetasEn = (l) => l.filter((x) => /^[A-ZÁÉÍÓÚÑ ]{4,}:?$/.test(x));
-  const secciones = (l) => { const iRes = l.indexOf("RESULTADOS:"); return { iRes, params: l.slice(4, iRes - 2), res: l.slice(iRes + 1) }; };
+  const secciones = (l) => { const iRes = l.indexOf("RESULTADOS:"); return { iRes, params: l.slice(4, iRes - 1), res: l.slice(iRes + 2) }; };
   const tiene = (l, inicio) => l.some((x) => x.trim().startsWith(inicio));
 
   // un tramo (se quita el de sobra para dejar solo el 1) y potencia activa como dato de partida
@@ -301,9 +313,9 @@ await seccion("vista: estructura del reporte (se copia y se pega)", async () => 
   poner("#f-dbc-1", "0.84");
   const a = leer();
   const sa = secciones(a);
-  ok(a[0] === "CÁLCULO DE REGULACIÓN" && a[1] === "" && LINEA.test(a[2]) && a[3] === "PARÁMETROS DE ENTRADA:", "«CÁLCULO DE REGULACIÓN», línea en blanco, línea divisoria y «PARÁMETROS DE ENTRADA:»");
-  ok(sa.iRes > 4 && a[sa.iRes - 2] === "" && LINEA.test(a[sa.iRes - 1]), "«RESULTADOS:» con la línea divisoria ENCIMA y una línea en blanco antes de ella");
-  ok(!LINEA.test(a[4]) && !LINEA.test(a[sa.iRes + 1]), "debajo de las etiquetas sigue directamente el contenido");
+  ok(a[0] === "CÁLCULO DE REGULACIÓN" && a[1] === "" && a[2] === "PARÁMETROS DE ENTRADA:" && LINEA.test(a[3]), "«CÁLCULO DE REGULACIÓN», línea en blanco, «PARÁMETROS DE ENTRADA:» y su línea divisoria DEBAJO");
+  ok(sa.iRes > 4 && a[sa.iRes - 1] === "" && LINEA.test(a[sa.iRes + 1]), "«RESULTADOS:» con una línea en blanco antes y su línea divisoria DEBAJO");
+  ok(!LINEA.test(a[2]) && !LINEA.test(a[sa.iRes - 1]) && !LINEA.test(a[4]) && !LINEA.test(a[sa.iRes + 2]), "encima de las etiquetas no hay línea y debajo de la línea sigue directamente el contenido");
   ok(etiquetasEn(a).join("|") === "CÁLCULO DE REGULACIÓN|PARÁMETROS DE ENTRADA:|RESULTADOS:" && a.filter((x) => LINEA.test(x)).length === 2, "tres etiquetas y dos líneas divisorias");
   for (const inicio of ["Tensión de línea", "Dato de partida: Potencia activa (9.90 MW)", "Potencia activa: 9.90 MW", "Factor de potencia", "Tramo 1:", "Tipo de red", "Material/Tipo", "Calibre", "Resistencia AC a 75°C", "Radio medio geométrico (por conductor): 4.61 mm", "Conductores por fase", "Separación entre subconductores del haz: N/A (1 conductor)", "Longitud del tramo", "Distancia entre fases A-B: 2.00 m", "Distancia entre fases A-C: 2.84 m", "Distancia entre fases B-C: 0.84 m"]) {
     ok(tiene(sa.params, inicio), `parámetros de entrada incluye «${inicio}»`);

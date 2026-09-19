@@ -438,8 +438,8 @@ export async function render(container) {
     return [
       `CÁLCULO DE PÉRDIDAS`,
       ``,
-      LINEA_REPORTE,
       `PARÁMETROS DE ENTRADA:`,
+      LINEA_REPORTE,
       `Tensión de línea: ${fmt(base.tensionLineaKv)} kV`,
       `Dato de partida: ${MODOS[modo]} (${fmt(datoPartida)} ${unidadDato})`,
       ...(modo === "potencia" ? [potenciaActiva] : []), // si parte de otro dato, la potencia activa se calcula y va en resultados
@@ -447,8 +447,8 @@ export async function render(container) {
       `Factor de carga (Fc): ${fmt(base.factorCarga, 4)}`,
       ...parametrosTramos,
       ``,
-      LINEA_REPORTE,
       `RESULTADOS:`,
+      LINEA_REPORTE,
       `Factor de pérdidas (Fp = 0.7·Fc + 0.3): ${fmt(r.factorPerdidas, 4)}`,
       ...(modo === "potencia" ? [] : [potenciaActiva]),
       `Corriente: ${fmt(r.corriente)} A`,
@@ -494,7 +494,7 @@ export async function render(container) {
                 <div class="label">Pérdidas de potencia</div>
               </div>
             </div>
-            <p class="text-muted text-sm" style="margin: var(--space-3) 0 0;">Referencias de diseño (no son un límite normativo): hasta ${UMBRAL_OPTIMO_PCT}% óptimo · hasta ${UMBRAL_ADECUADO_PCT}% adecuado.</p>
+            <p class="text-muted text-sm" style="margin: var(--space-3) 0 0;">Referencias de diseño: hasta ${UMBRAL_OPTIMO_PCT}% óptimo · hasta ${UMBRAL_ADECUADO_PCT}% adecuado.</p>
             ${varios ? tablaTramosHtml(r, estados) : comparacionCalibresHtml(base, estados[0])}
           </div>`;
 
