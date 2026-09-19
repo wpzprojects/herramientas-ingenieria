@@ -142,6 +142,21 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - `assets/ejemplos/` (o `assets/Ejemplos/`) es una carpeta TEMPORAL de referencia del usuario, con un repo git anidado: NO subirla.
   Está excluida en `.git/info/exclude` (local); aun así, hacer `git add` solo con rutas explícitas, nunca `git add -A`/`.`.
 
+## Conversión de unidades (`js/views/conversion-unidades.js`, `data/unidades.json`)
+
+- Dos modos (2026-09-19, pedido del usuario). Casilla «Habilitar todas las conversiones» DEBAJO de la tarjeta (mismo estilo que la de
+  coordenadas). Apagada: mismas categorías/unidades/pares de siempre (`data/factores-conversion.json`, motor `convertirUnidad`), con
+  Ángulos al final y nombres con tilde (Área, Presión, Ángulos). Encendida: catálogo `data/unidades.json` (cada unidad con factor a la
+  base de su categoría y offset solo en temperatura), motor `js/calc/unidades-extendido.js` (cualquier unidad a cualquier otra), 19
+  categorías (alfabético, Ángulos al final; nuevas: Potencia, Energía, Masa, Peso por longitud, Resistencia por longitud,
+  Resistividad térmica, Volumen, Tiempo con «ciclos (60 Hz)», Densidad y Calibre de conductor AWG/kcmil ↔ mm²/diámetro/calibre más
+  cercano) y unidades escritas «símbolo — nombre».
+- `data/unidades.json` y los factores de `factores-conversion.json` se GENERAN con `tools/generar_unidades.py` (editar ahí, no a
+  mano): los 71 pares se recalculan con factores exactos (antes tenían ~6 cifras, p. ej. m→ft 3.28084). La herramienta de la IA
+  (`convertir_unidades`) sigue con la tabla de pares (sin el modo completo); sus valores cambiaron en las cifras 7+ por esa corrección.
+- Resultado del modo completo: 6 cifras significativas (`fmtSig`, sin recortar enteros; científica si <1e-4 o ≥1e9); el modo normal
+  sigue con 4 decimales. Pruebas: `tools/verify_unidades.html`.
+
 ## Sección "Funciones de IA" (`js/ai/*`, `js/views/ia*.js`)
 
 - Es la ÚNICA excepción a "100% offline": se conecta a Google Gemini con la clave del propio

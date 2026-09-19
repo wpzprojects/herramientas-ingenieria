@@ -170,7 +170,7 @@ await seccion("tools: Varios (conversión de unidades y de coordenadas)", async 
   ok(u1.ok === true && ctx1.log.at(-1).resultados[0].dec === undefined && ctx1.log.at(-1).entradas.map((e) => e.clave).join() === "categoria,unidad_origen,unidad_destino,valor", "entradas de la corrida: categoría, unidades y valor; resultado sin decimales fijos");
   cerca((await unid({ categoria: "Temperatura", unidad_origen: "C", unidad_destino: "F", valor: 100 })).resultados[0].valor, 212, 1e-9, "100 °C = 212 °F (factor con offset)");
   cerca((await unid({ categoria: "Temperatura", unidad_origen: "F", unidad_destino: "C", valor: 212 })).resultados[0].valor, 100, 1e-3, "212 °F = 100 °C (conversión inversa de la tabla)");
-  cerca((await unid({ categoria: "longitud", unidad_origen: "M", unidad_destino: "FT", valor: 1 })).resultados[0].valor, 3.28084, 1e-9, "mayúsculas/minúsculas tolerantes en categoría y unidades");
+  cerca((await unid({ categoria: "longitud", unidad_origen: "M", unidad_destino: "FT", valor: 1 })).resultados[0].valor, 1 / 0.3048, 1e-9, "mayúsculas/minúsculas tolerantes en categoría y unidades");
   const e1 = await unid({ categoria: "longitud", unidad_origen: "M", unidad_destino: "FT", valor: 1 });
   ok(e1.entradas_usadas.find((e) => e.nombre === "Unidad de destino").valor === "ft", "las entradas muestran el nombre canónico de la unidad");
   const m1 = await unid({ categoria: "Masa", unidad_origen: "kg", unidad_destino: "lb", valor: 1 });
@@ -467,7 +467,7 @@ await seccion("analisis: bucle con herramientas (Gemini simulado)", async () => 
   const porDefecto = await pedirConversion({});
   ok(porDefecto.nDecl === 9 && porDefecto.respuesta.ok === false && porDefecto.respuesta.error.includes("no está habilitada"), "por defecto (agente estándar) la IA no tiene las herramientas de Varios: se declaran 9 y una llamada a convertir_unidades se rechaza");
   const conVarios = await pedirConversion({ permitidas: [...tools.HERRAMIENTAS_ESTANDAR, "convertir_unidades"] });
-  ok(conVarios.nDecl === 10 && conVarios.respuesta.ok === true && Math.abs(conVarios.respuesta.resultados[0].valor - 328.084) < 1e-6 && conVarios.r.herramientas[0].titulo === "Conversión de unidades", "un agente que la activa la recibe y la usa (100 m = 328.084 ft)");
+  ok(conVarios.nDecl === 10 && conVarios.respuesta.ok === true && Math.abs(conVarios.respuesta.resultados[0].valor - 100 / 0.3048) < 1e-6 && conVarios.r.herramientas[0].titulo === "Conversión de unidades", "un agente que la activa la recibe y la usa (100 m = 328.0840 ft)");
   gemini.usarMock(null);
 });
 

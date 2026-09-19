@@ -1,0 +1,1179 @@
+{
+ "orden_basico": [
+  "Area",
+  "Esfuerzo",
+  "Fuerza",
+  "Longitud",
+  "Momento",
+  "Presion",
+  "Temperatura",
+  "Velocidad",
+  "Angulos"
+ ],
+ "orden_completo": [
+  "Area",
+  "Calibre",
+  "Densidad",
+  "Energia",
+  "Esfuerzo",
+  "Fuerza",
+  "Longitud",
+  "Masa",
+  "Momento",
+  "PesoLineal",
+  "Potencia",
+  "Presion",
+  "ResistenciaLineal",
+  "ResistividadTermica",
+  "Temperatura",
+  "Tiempo",
+  "Velocidad",
+  "Volumen",
+  "Angulos"
+ ],
+ "categorias": [
+  {
+   "clave": "Area",
+   "nombre": "Área",
+   "base": "m2",
+   "solo_completo": false,
+   "unidades": [
+    {
+     "codigo": "m2",
+     "simbolo": "m²",
+     "nombre": "metro cuadrado",
+     "factor": 1,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "mm2",
+     "simbolo": "mm²",
+     "nombre": "milímetro cuadrado",
+     "factor": 1e-06,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "cm2",
+     "simbolo": "cm²",
+     "nombre": "centímetro cuadrado",
+     "factor": 0.0001,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "km2",
+     "simbolo": "km²",
+     "nombre": "kilómetro cuadrado",
+     "factor": 1000000,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "in2",
+     "simbolo": "in²",
+     "nombre": "pulgada cuadrada",
+     "factor": 0.00064516,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "ft2",
+     "simbolo": "ft²",
+     "nombre": "pie cuadrado",
+     "factor": 0.09290304,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "yd2",
+     "simbolo": "yd²",
+     "nombre": "yarda cuadrada",
+     "factor": 0.83612736,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "Ha",
+     "simbolo": "ha",
+     "nombre": "hectárea",
+     "factor": 10000,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "acre",
+     "simbolo": "acre",
+     "nombre": "acre",
+     "factor": 4046.8564224,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "kcmil",
+     "simbolo": "kcmil",
+     "nombre": "mil circular mils",
+     "factor": 5.06707479097498e-07,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "cmil",
+     "simbolo": "cmil",
+     "nombre": "circular mil",
+     "factor": 5.06707479097498e-10,
+     "offset": 0,
+     "basica": false
+    }
+   ]
+  },
+  {
+   "clave": "Esfuerzo",
+   "nombre": "Esfuerzo",
+   "base": "Pa",
+   "solo_completo": false,
+   "unidades": [
+    {
+     "codigo": "Pa",
+     "simbolo": "Pa",
+     "nombre": "pascal",
+     "factor": 1,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "kPa",
+     "simbolo": "kPa",
+     "nombre": "kilopascal",
+     "factor": 1000,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "MPa",
+     "simbolo": "MPa",
+     "nombre": "megapascal",
+     "factor": 1000000,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "GPa",
+     "simbolo": "GPa",
+     "nombre": "gigapascal",
+     "factor": 1000000000,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "N/mm2",
+     "simbolo": "N/mm²",
+     "nombre": "newton por milímetro cuadrado",
+     "factor": 1000000,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "kg/mm2",
+     "simbolo": "kgf/mm²",
+     "nombre": "kilogramo-fuerza por milímetro cuadrado",
+     "factor": 9806650,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "kgf/cm2",
+     "simbolo": "kgf/cm²",
+     "nombre": "kilogramo-fuerza por centímetro cuadrado",
+     "factor": 98066.5,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "psi",
+     "simbolo": "psi",
+     "nombre": "libra-fuerza por pulgada cuadrada",
+     "factor": 6894.75729316836,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "ksi",
+     "simbolo": "ksi",
+     "nombre": "kilolibra-fuerza por pulgada cuadrada",
+     "factor": 6894757.29316836,
+     "offset": 0,
+     "basica": false
+    }
+   ]
+  },
+  {
+   "clave": "Fuerza",
+   "nombre": "Fuerza",
+   "base": "N",
+   "solo_completo": false,
+   "unidades": [
+    {
+     "codigo": "N",
+     "simbolo": "N",
+     "nombre": "newton",
+     "factor": 1,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "daN",
+     "simbolo": "daN",
+     "nombre": "decanewton",
+     "factor": 10,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "kN",
+     "simbolo": "kN",
+     "nombre": "kilonewton",
+     "factor": 1000,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "MN",
+     "simbolo": "MN",
+     "nombre": "meganewton",
+     "factor": 1000000,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "kgf",
+     "simbolo": "kgf",
+     "nombre": "kilogramo-fuerza",
+     "factor": 9.80665,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "tf",
+     "simbolo": "tf",
+     "nombre": "tonelada-fuerza",
+     "factor": 9806.65,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "lbf",
+     "simbolo": "lbf",
+     "nombre": "libra-fuerza",
+     "factor": 4.4482216152605,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "kip",
+     "simbolo": "kip",
+     "nombre": "kilolibra-fuerza",
+     "factor": 4448.2216152605,
+     "offset": 0,
+     "basica": false
+    }
+   ]
+  },
+  {
+   "clave": "Longitud",
+   "nombre": "Longitud",
+   "base": "m",
+   "solo_completo": false,
+   "unidades": [
+    {
+     "codigo": "m",
+     "simbolo": "m",
+     "nombre": "metro",
+     "factor": 1,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "mm",
+     "simbolo": "mm",
+     "nombre": "milímetro",
+     "factor": 0.001,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "km",
+     "simbolo": "km",
+     "nombre": "kilómetro",
+     "factor": 1000,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "um",
+     "simbolo": "µm",
+     "nombre": "micrómetro",
+     "factor": 1e-06,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "cm",
+     "simbolo": "cm",
+     "nombre": "centímetro",
+     "factor": 0.01,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "in",
+     "simbolo": "in",
+     "nombre": "pulgada",
+     "factor": 0.0254,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "mil",
+     "simbolo": "mil",
+     "nombre": "milésima de pulgada",
+     "factor": 2.54e-05,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "ft",
+     "simbolo": "ft",
+     "nombre": "pie",
+     "factor": 0.3048,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "yd",
+     "simbolo": "yd",
+     "nombre": "yarda",
+     "factor": 0.9144,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "mi",
+     "simbolo": "mi",
+     "nombre": "milla",
+     "factor": 1609.344,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "nmi",
+     "simbolo": "nmi",
+     "nombre": "milla náutica",
+     "factor": 1852,
+     "offset": 0,
+     "basica": false
+    }
+   ]
+  },
+  {
+   "clave": "Momento",
+   "nombre": "Momento",
+   "base": "N.m",
+   "solo_completo": false,
+   "unidades": [
+    {
+     "codigo": "N.m",
+     "simbolo": "N·m",
+     "nombre": "newton metro",
+     "factor": 1,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "N.mm",
+     "simbolo": "N·mm",
+     "nombre": "newton milímetro",
+     "factor": 0.001,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "daN.m",
+     "simbolo": "daN·m",
+     "nombre": "decanewton metro",
+     "factor": 10,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "kN.m",
+     "simbolo": "kN·m",
+     "nombre": "kilonewton metro",
+     "factor": 1000,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "kgf.m",
+     "simbolo": "kgf·m",
+     "nombre": "kilogramo-fuerza metro",
+     "factor": 9.80665,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "kgf.cm",
+     "simbolo": "kgf·cm",
+     "nombre": "kilogramo-fuerza centímetro",
+     "factor": 0.0980665,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "lbf.ft",
+     "simbolo": "lbf·ft",
+     "nombre": "libra-fuerza pie",
+     "factor": 1.3558179483314,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "lbf.in",
+     "simbolo": "lbf·in",
+     "nombre": "libra-fuerza pulgada",
+     "factor": 0.112984829027617,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "kip.ft",
+     "simbolo": "kip·ft",
+     "nombre": "kilolibra-fuerza pie",
+     "factor": 1355.8179483314,
+     "offset": 0,
+     "basica": false
+    }
+   ]
+  },
+  {
+   "clave": "Presion",
+   "nombre": "Presión",
+   "base": "Pa",
+   "solo_completo": false,
+   "unidades": [
+    {
+     "codigo": "Pa",
+     "simbolo": "Pa",
+     "nombre": "pascal",
+     "factor": 1,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "kPa",
+     "simbolo": "kPa",
+     "nombre": "kilopascal",
+     "factor": 1000,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "MPa",
+     "simbolo": "MPa",
+     "nombre": "megapascal",
+     "factor": 1000000,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "bar",
+     "simbolo": "bar",
+     "nombre": "bar",
+     "factor": 100000,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "atm",
+     "simbolo": "atm",
+     "nombre": "atmósfera",
+     "factor": 101325,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "mmHg",
+     "simbolo": "mmHg",
+     "nombre": "milímetro de mercurio",
+     "factor": 133.322368421053,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "kg/m2",
+     "simbolo": "kgf/m²",
+     "nombre": "kilogramo-fuerza por metro cuadrado",
+     "factor": 9.80665,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "kgf/cm2",
+     "simbolo": "kgf/cm²",
+     "nombre": "kilogramo-fuerza por centímetro cuadrado",
+     "factor": 98066.5,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "daN/m2",
+     "simbolo": "daN/m²",
+     "nombre": "decanewton por metro cuadrado",
+     "factor": 10,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "lb/ft2",
+     "simbolo": "lbf/ft²",
+     "nombre": "libra-fuerza por pie cuadrado",
+     "factor": 47.8802589803358,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "psi",
+     "simbolo": "psi",
+     "nombre": "libra-fuerza por pulgada cuadrada",
+     "factor": 6894.75729316836,
+     "offset": 0,
+     "basica": true
+    }
+   ]
+  },
+  {
+   "clave": "Temperatura",
+   "nombre": "Temperatura",
+   "base": "K",
+   "solo_completo": false,
+   "unidades": [
+    {
+     "codigo": "K",
+     "simbolo": "K",
+     "nombre": "kelvin",
+     "factor": 1,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "C",
+     "simbolo": "°C",
+     "nombre": "grado Celsius",
+     "factor": 1,
+     "offset": 273.15,
+     "basica": true
+    },
+    {
+     "codigo": "F",
+     "simbolo": "°F",
+     "nombre": "grado Fahrenheit",
+     "factor": 0.555555555555556,
+     "offset": 255.372222222222,
+     "basica": true
+    },
+    {
+     "codigo": "R",
+     "simbolo": "°R",
+     "nombre": "grado Rankine",
+     "factor": 0.555555555555556,
+     "offset": 0,
+     "basica": false
+    }
+   ]
+  },
+  {
+   "clave": "Velocidad",
+   "nombre": "Velocidad",
+   "base": "m/s",
+   "solo_completo": false,
+   "unidades": [
+    {
+     "codigo": "m/s",
+     "simbolo": "m/s",
+     "nombre": "metro por segundo",
+     "factor": 1,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "cm/s",
+     "simbolo": "cm/s",
+     "nombre": "centímetro por segundo",
+     "factor": 0.01,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "km/h",
+     "simbolo": "km/h",
+     "nombre": "kilómetro por hora",
+     "factor": 0.277777777777778,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "mph",
+     "simbolo": "mph",
+     "nombre": "milla por hora",
+     "factor": 0.44704,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "ft/s",
+     "simbolo": "ft/s",
+     "nombre": "pie por segundo",
+     "factor": 0.3048,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "kn",
+     "simbolo": "kn",
+     "nombre": "nudo",
+     "factor": 0.514444444444444,
+     "offset": 0,
+     "basica": false
+    }
+   ]
+  },
+  {
+   "clave": "Angulos",
+   "nombre": "Ángulos",
+   "base": "rad",
+   "solo_completo": false,
+   "unidades": [
+    {
+     "codigo": "rad",
+     "simbolo": "rad",
+     "nombre": "radián",
+     "factor": 1,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "deg",
+     "simbolo": "°",
+     "nombre": "grado sexagesimal",
+     "factor": 0.0174532925199433,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "gon",
+     "simbolo": "gon",
+     "nombre": "gradián",
+     "factor": 0.015707963267949,
+     "offset": 0,
+     "basica": true
+    },
+    {
+     "codigo": "arcmin",
+     "simbolo": "′",
+     "nombre": "minuto de arco",
+     "factor": 0.000290888208665722,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "arcsec",
+     "simbolo": "″",
+     "nombre": "segundo de arco",
+     "factor": 4.84813681109536e-06,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "rev",
+     "simbolo": "rev",
+     "nombre": "revolución",
+     "factor": 6.28318530717959,
+     "offset": 0,
+     "basica": false
+    }
+   ]
+  },
+  {
+   "clave": "Potencia",
+   "nombre": "Potencia",
+   "base": "W",
+   "solo_completo": true,
+   "unidades": [
+    {
+     "codigo": "W",
+     "simbolo": "W",
+     "nombre": "vatio",
+     "factor": 1,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "kW",
+     "simbolo": "kW",
+     "nombre": "kilovatio",
+     "factor": 1000,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "MW",
+     "simbolo": "MW",
+     "nombre": "megavatio",
+     "factor": 1000000,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "hp",
+     "simbolo": "hp",
+     "nombre": "caballo de fuerza (mecánico)",
+     "factor": 745.69987158227,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "CV",
+     "simbolo": "CV",
+     "nombre": "caballo de vapor (métrico)",
+     "factor": 735.49875,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "BTU/h",
+     "simbolo": "BTU/h",
+     "nombre": "BTU por hora",
+     "factor": 0.29307107017222,
+     "offset": 0,
+     "basica": false
+    }
+   ]
+  },
+  {
+   "clave": "Energia",
+   "nombre": "Energía",
+   "base": "J",
+   "solo_completo": true,
+   "unidades": [
+    {
+     "codigo": "J",
+     "simbolo": "J",
+     "nombre": "julio",
+     "factor": 1,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "kJ",
+     "simbolo": "kJ",
+     "nombre": "kilojulio",
+     "factor": 1000,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "MJ",
+     "simbolo": "MJ",
+     "nombre": "megajulio",
+     "factor": 1000000,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "Wh",
+     "simbolo": "Wh",
+     "nombre": "vatio-hora",
+     "factor": 3600,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "kWh",
+     "simbolo": "kWh",
+     "nombre": "kilovatio-hora",
+     "factor": 3600000,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "MWh",
+     "simbolo": "MWh",
+     "nombre": "megavatio-hora",
+     "factor": 3600000000,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "kcal",
+     "simbolo": "kcal",
+     "nombre": "kilocaloría",
+     "factor": 4184,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "BTU",
+     "simbolo": "BTU",
+     "nombre": "BTU (tabla internacional)",
+     "factor": 1055.05585262,
+     "offset": 0,
+     "basica": false
+    }
+   ]
+  },
+  {
+   "clave": "Masa",
+   "nombre": "Masa",
+   "base": "kg",
+   "solo_completo": true,
+   "unidades": [
+    {
+     "codigo": "kg",
+     "simbolo": "kg",
+     "nombre": "kilogramo",
+     "factor": 1,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "g",
+     "simbolo": "g",
+     "nombre": "gramo",
+     "factor": 0.001,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "t",
+     "simbolo": "t",
+     "nombre": "tonelada métrica",
+     "factor": 1000,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "lb",
+     "simbolo": "lb",
+     "nombre": "libra",
+     "factor": 0.45359237,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "oz",
+     "simbolo": "oz",
+     "nombre": "onza",
+     "factor": 0.028349523125,
+     "offset": 0,
+     "basica": false
+    }
+   ]
+  },
+  {
+   "clave": "PesoLineal",
+   "nombre": "Peso por longitud",
+   "base": "kg/m",
+   "solo_completo": true,
+   "unidades": [
+    {
+     "codigo": "kg/m",
+     "simbolo": "kg/m",
+     "nombre": "kilogramo por metro",
+     "factor": 1,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "kg/km",
+     "simbolo": "kg/km",
+     "nombre": "kilogramo por kilómetro",
+     "factor": 0.001,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "lb/ft",
+     "simbolo": "lb/ft",
+     "nombre": "libra por pie",
+     "factor": 1.48816394356955,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "lb/kft",
+     "simbolo": "lb/kft",
+     "nombre": "libra por mil pies",
+     "factor": 0.00148816394356955,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "lb/mi",
+     "simbolo": "lb/mi",
+     "nombre": "libra por milla",
+     "factor": 0.000281849231736658,
+     "offset": 0,
+     "basica": false
+    }
+   ]
+  },
+  {
+   "clave": "ResistenciaLineal",
+   "nombre": "Resistencia por longitud",
+   "base": "ohm/m",
+   "solo_completo": true,
+   "unidades": [
+    {
+     "codigo": "ohm/m",
+     "simbolo": "Ω/m",
+     "nombre": "ohmio por metro",
+     "factor": 1,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "ohm/km",
+     "simbolo": "Ω/km",
+     "nombre": "ohmio por kilómetro",
+     "factor": 0.001,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "ohm/ft",
+     "simbolo": "Ω/ft",
+     "nombre": "ohmio por pie",
+     "factor": 3.28083989501312,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "ohm/kft",
+     "simbolo": "Ω/kft",
+     "nombre": "ohmio por mil pies",
+     "factor": 0.00328083989501312,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "ohm/mi",
+     "simbolo": "Ω/mi",
+     "nombre": "ohmio por milla",
+     "factor": 0.000621371192237334,
+     "offset": 0,
+     "basica": false
+    }
+   ]
+  },
+  {
+   "clave": "ResistividadTermica",
+   "nombre": "Resistividad térmica",
+   "base": "K.m/W",
+   "solo_completo": true,
+   "unidades": [
+    {
+     "codigo": "K.m/W",
+     "simbolo": "K·m/W",
+     "nombre": "kelvin metro por vatio",
+     "factor": 1,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "C.cm/W",
+     "simbolo": "°C·cm/W",
+     "nombre": "grado Celsius centímetro por vatio",
+     "factor": 0.01,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "C.in/W",
+     "simbolo": "°C·in/W",
+     "nombre": "grado Celsius pulgada por vatio",
+     "factor": 0.0254,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "F.ft.h/BTU",
+     "simbolo": "°F·ft·h/BTU",
+     "nombre": "grado Fahrenheit pie hora por BTU",
+     "factor": 0.577789316543003,
+     "offset": 0,
+     "basica": false
+    }
+   ]
+  },
+  {
+   "clave": "Volumen",
+   "nombre": "Volumen",
+   "base": "m3",
+   "solo_completo": true,
+   "unidades": [
+    {
+     "codigo": "m3",
+     "simbolo": "m³",
+     "nombre": "metro cúbico",
+     "factor": 1,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "L",
+     "simbolo": "L",
+     "nombre": "litro",
+     "factor": 0.001,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "mL",
+     "simbolo": "mL",
+     "nombre": "mililitro",
+     "factor": 1e-06,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "in3",
+     "simbolo": "in³",
+     "nombre": "pulgada cúbica",
+     "factor": 1.6387064e-05,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "ft3",
+     "simbolo": "ft³",
+     "nombre": "pie cúbico",
+     "factor": 0.028316846592,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "yd3",
+     "simbolo": "yd³",
+     "nombre": "yarda cúbica",
+     "factor": 0.764554857984,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "gal",
+     "simbolo": "gal",
+     "nombre": "galón (EE. UU.)",
+     "factor": 0.003785411784,
+     "offset": 0,
+     "basica": false
+    }
+   ]
+  },
+  {
+   "clave": "Tiempo",
+   "nombre": "Tiempo",
+   "base": "s",
+   "solo_completo": true,
+   "unidades": [
+    {
+     "codigo": "ms",
+     "simbolo": "ms",
+     "nombre": "milisegundo",
+     "factor": 0.001,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "s",
+     "simbolo": "s",
+     "nombre": "segundo",
+     "factor": 1,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "min",
+     "simbolo": "min",
+     "nombre": "minuto",
+     "factor": 60,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "h",
+     "simbolo": "h",
+     "nombre": "hora",
+     "factor": 3600,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "dia",
+     "simbolo": "día",
+     "nombre": "día",
+     "factor": 86400,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "ciclo60",
+     "simbolo": "ciclos (60 Hz)",
+     "nombre": "ciclos de una red de 60 Hz",
+     "factor": 0.0166666666666667,
+     "offset": 0,
+     "basica": false
+    }
+   ]
+  },
+  {
+   "clave": "Densidad",
+   "nombre": "Densidad",
+   "base": "kg/m3",
+   "solo_completo": true,
+   "unidades": [
+    {
+     "codigo": "kg/m3",
+     "simbolo": "kg/m³",
+     "nombre": "kilogramo por metro cúbico",
+     "factor": 1,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "g/cm3",
+     "simbolo": "g/cm³",
+     "nombre": "gramo por centímetro cúbico",
+     "factor": 1000,
+     "offset": 0,
+     "basica": false
+    },
+    {
+     "codigo": "lb/ft3",
+     "simbolo": "lb/ft³",
+     "nombre": "libra por pie cúbico",
+     "factor": 16.0184633739601,
+     "offset": 0,
+     "basica": false
+    }
+   ]
+  },
+  {
+   "clave": "Calibre",
+   "nombre": "Calibre de conductor",
+   "solo_completo": true,
+   "especial": "calibre",
+   "unidades": []
+  }
+ ]
+}

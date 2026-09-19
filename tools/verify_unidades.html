@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>verify_unidades</title>
+<!--
+  Pruebas de la pantalla Conversion de unidades (js/views/conversion-unidades.js): modo normal (mismos pares de siempre, Angulos al
+  final, factores exactos) y modo «Habilitar todas las conversiones» (catalogo data/unidades.json, cualquier unidad a cualquier otra,
+  categorias nuevas, calibre AWG/kcmil <-> mm²). Se ejecuta en el navegador, sin internet.
+
+  Uso (desde la raiz del proyecto):
+    python -m http.server 8000
+    abrir http://localhost:8000/tools/verify_unidades.html   -> lista PASS/FAIL
+  o en modo consola:
+    msedge --headless --dump-dom --virtual-time-budget=35000 http://localhost:8000/tools/verify_unidades.html
+-->
+<style>body{font-family:ui-monospace,Consolas,monospace;font-size:13px;padding:12px}#stage{position:absolute;left:-9999px;width:1000px}</style>
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+<pre id="out"></pre>
+<div id="stage"></div>
+<script type="module">
+window.__BASE_PATH__ = "../";
+const out = document.getElementById("out");
+let fallos = 0;
+let total = 0;
+function ok(cond, msg) {
+  total++;
+  if (!cond) fallos++;
+  out.textContent += `${cond ? "PASS" : "FAIL"} ${msg}\n`;
+}
+async function seccion(nombre, fn) {
+  out.textContent += `\n== ${nombre}\n`;
+  try {
+    await fn();
+  } catch (err) {
+    fallos++;
+    total++;
+    out.textContent += `FAIL excepcion en "${nombre}": ${err && err.stack ? err.stack : err}\n`;
+  }
+}
+const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+const cerca = (a, b, tol = 1e-9) => Math.abs(a - b) <= tol * Math.max(1, Math.abs(b));
+
+const catalogo = await (await fetch("../data/unidades.json")).json();
+const tabla = await (await fetch("../data/factores-conversion.json")).json();
+const stage = document.getElementById("stage");
+const $ = (s, r = stage) => r.querySelector(s);
+const $$ = (s, r = stage) => [...r.querySelectorAll(s)];
+const texto = (e) => (e ? e.textContent.replace(/\s+/g, " ").trim() : "");
+const motor = await import("../js/calc/unidades-extendido.js");
+const viejo = await import("../js/calc/unidades.js");
+const vista = await import("../js/views/conversion-unidades.js");
+
+async function abrir() {
+  stage.innerHTML = "";
+  await vista.render(stage, {});
+  await espera(100);
+}
+function elegir(sel, valor) {
+  sel.value = valor;
+  sel.dispatchEvent(new Event("change"));
+}
+async function convertir(cat, origen, destino, valor) {
+  elegir($("#f-categoria"), cat);
+  elegir($("#f-origen"), origen);
+  elegir($("#f-destino"), destino);
+  if (valor !== undefined) $("#f-valor").value = String(valor);
+  $("#form-conversion").requestSubmit();
+  await espera(60);
+  return texto($("#resultado-wrap .value"));
+}
+const textos = (sel) => $$("option", sel).filter((o) => o.value).map((o) => texto(o));
+const claves = (sel) => $$("option", sel).filter((o) => o.value).map((o) => o.value);
+
+await seccion("factores del modo normal: exactos y mismos pares", async () => {
+  ok(tabla.length === 71, `siguen las 71 conversiones de siempre (${tabla.length})`);
+  const f = (c, o, d) => tabla.find((r) => r.categoria === c && r.unidad_origen === o && r.unidad_destino === d);
+  ok(cerca(f("Longitud", "m", "ft").factor, 1 / 0.3048, 1e-11), `m → ft = 1/0.3048 (${f("Longitud", "m", "ft").factor})`);
+  ok(cerca(f("Longitud", "m", "in").factor, 1 / 0.0254, 1e-11), "m → in = 1/0.0254");
+  ok(cerca(f("Presion", "psi", "Pa").factor, 6894.757293168, 1e-11), "psi → Pa = 6894.757293168");
+  ok(cerca(f("Angulos", "deg", "rad").factor, Math.PI / 180, 1e-11), "° → rad = π/180");
+  ok(cerca(f("Fuerza", "N", "kgf").factor, 1 / 9.80665, 1e-11), "N → kgf = 1/9.80665");
+  ok(f("Temperatura", "C", "F").factor === 1.8 && f("Temperatura", "C", "F").offset === 32, "°C → °F = ·1.8 + 32");
+  ok(f("Temperatura", "C", "K").offset === 273.15, "°C → K = +273.15");
+  // cada par de la tabla coincide con el modelo por unidad base
+  let malos = [];
+  for (const r of tabla) {
+    const v = 7.3;
+    const a = viejo.convertirUnidad(tabla, { categoria: r.categoria, unidadOrigen: r.unidad_origen, unidadDestino: r.unidad_destino, valor: v });
+    const b = motor.convertirBase(catalogo, r.categoria, r.unidad_origen, r.unidad_destino, v);
+    if (!cerca(a, b, 1e-10)) malos.push(`${r.categoria} ${r.unidad_origen}→${r.unidad_destino}: ${a} vs ${b}`);
+  }
+  ok(malos.length === 0, `los 71 pares de la tabla dan lo mismo que el catálogo por unidad base${malos.length ? ": " + malos.join("; ") : ""}`);
+  // ida y vuelta de todos los pares
+  malos = [];
+  for (const c of catalogo.categorias.filter((x) => !x.especial)) {
+    for (const a of c.unidades) for (const b of c.unidades) {
+      const ida = motor.convertirBase(catalogo, c.clave, a.codigo, b.codigo, 123.456);
+      const vuelta = motor.convertirBase(catalogo, c.clave, b.codigo, a.codigo, ida);
+      if (!cerca(vuelta, 123.456, 1e-9)) malos.push(`${c.clave} ${a.codigo}↔${b.codigo}`);
+    }
+  }
+  ok(malos.length === 0, `en todas las categorías, ir y volver entre cualquier par de unidades devuelve el mismo valor${malos.length ? ": " + malos.slice(0, 5).join("; ") : ""}`);
+  ok(catalogo.categorias.filter((c) => !c.especial).every((c) => c.unidades.every((u) => u.simbolo && u.nombre)), "todas las unidades tienen símbolo y nombre");
+});
+
+await seccion("valores conocidos del modo completo", async () => {
+  const c = (cat, o, d, v) => motor.convertirBase(catalogo, cat, o, d, v);
+  ok(cerca(c("Potencia", "hp", "kW", 1), 0.74569987158227), "1 hp = 0.7457 kW");
+  ok(cerca(c("Potencia", "CV", "W", 1), 735.49875), "1 CV = 735.49875 W");
+  ok(cerca(c("Energia", "kWh", "MJ", 1), 3.6), "1 kWh = 3.6 MJ");
+  ok(cerca(c("Energia", "BTU", "J", 1), 1055.05585262), "1 BTU = 1055.06 J");
+  ok(cerca(c("Masa", "lb", "kg", 1), 0.45359237), "1 lb = 0.45359237 kg");
+  ok(cerca(c("Masa", "oz", "g", 16), 453.59237), "16 oz = 1 lb");
+  ok(cerca(c("PesoLineal", "lb/kft", "kg/km", 1000), 453.59237 / 0.3048 * 1 / 1 * 1 * (1000 / 1000) / 1, 1e-6) || cerca(c("PesoLineal", "lb/kft", "kg/km", 1), 1.48816394357, 1e-9), "1 lb/kft = 1.48816 kg/km");
+  ok(cerca(c("ResistenciaLineal", "ohm/kft", "ohm/km", 1), 3.280839895, 1e-9), "1 Ω/kft = 3.2808 Ω/km");
+  ok(cerca(c("ResistenciaLineal", "ohm/mi", "ohm/km", 1), 1 / 1.609344, 1e-9), "1 Ω/mi = 0.6214 Ω/km");
+  ok(cerca(c("ResistividadTermica", "C.cm/W", "K.m/W", 90), 0.9), "90 °C·cm/W = 0.9 K·m/W");
+  ok(cerca(c("ResistividadTermica", "F.ft.h/BTU", "K.m/W", 1), 0.5777889, 1e-6), "1 °F·ft·h/BTU = 0.5778 K·m/W");
+  ok(cerca(c("Volumen", "gal", "L", 1), 3.785411784), "1 gal = 3.785411784 L");
+  ok(cerca(c("Volumen", "ft3", "L", 1), 28.316846592), "1 ft³ = 28.3168 L");
+  ok(cerca(c("Tiempo", "ciclo60", "ms", 1), 1000 / 60), "1 ciclo a 60 Hz = 16.667 ms");
+  ok(cerca(c("Tiempo", "dia", "h", 1), 24), "1 día = 24 h");
+  ok(cerca(c("Densidad", "g/cm3", "kg/m3", 1), 1000), "1 g/cm³ = 1000 kg/m³");
+  ok(cerca(c("Densidad", "lb/ft3", "kg/m3", 1), 16.01846337, 1e-8), "1 lb/ft³ = 16.0185 kg/m³");
+  ok(cerca(c("Temperatura", "F", "R", 32), 491.67), "32 °F = 491.67 °R");
+  ok(cerca(c("Temperatura", "C", "F", 100), 212), "100 °C = 212 °F");
+  ok(cerca(c("Temperatura", "K", "C", 0), -273.15), "0 K = −273.15 °C");
+  ok(cerca(c("Presion", "atm", "kPa", 1), 101.325) && cerca(c("Presion", "bar", "kPa", 1), 100), "1 atm = 101.325 kPa; 1 bar = 100 kPa");
+  ok(cerca(c("Presion", "kgf/cm2", "kPa", 1), 98.0665) && cerca(c("Presion", "mmHg", "Pa", 760), 101325), "1 kgf/cm² = 98.0665 kPa; 760 mmHg = 1 atm");
+  ok(cerca(c("Esfuerzo", "ksi", "MPa", 1), 6.894757293168, 1e-10) && cerca(c("Esfuerzo", "N/mm2", "MPa", 5), 5), "1 ksi = 6.8948 MPa; 1 N/mm² = 1 MPa");
+  ok(cerca(c("Fuerza", "kip", "kN", 1), 4.4482216152605) && cerca(c("Fuerza", "tf", "kN", 1), 9.80665), "1 kip = 4.4482 kN; 1 tf = 9.80665 kN");
+  ok(cerca(c("Momento", "kip.ft", "kN.m", 1), 1.3558179483314), "1 kip·ft = 1.3558 kN·m");
+  ok(cerca(c("Longitud", "nmi", "m", 1), 1852) && cerca(c("Longitud", "yd", "m", 1), 0.9144) && cerca(c("Longitud", "mil", "um", 1), 25.4), "1 nmi = 1852 m; 1 yd = 0.9144 m; 1 mil = 25.4 µm");
+  ok(cerca(c("Area", "acre", "m2", 1), 4046.8564224) && cerca(c("Area", "km2", "Ha", 1), 100) && cerca(c("Area", "cmil", "kcmil", 1000), 1), "1 acre = 4046.856 m²; 1 km² = 100 ha; 1000 cmil = 1 kcmil");
+  ok(cerca(c("Velocidad", "kn", "km/h", 1), 1.852) && cerca(c("Velocidad", "ft/s", "m/s", 1), 0.3048), "1 nudo = 1.852 km/h; 1 ft/s = 0.3048 m/s");
+  ok(cerca(c("Angulos", "rev", "deg", 1), 360) && cerca(c("Angulos", "arcmin", "deg", 60), 1) && cerca(c("Angulos", "arcsec", "arcmin", 60), 1), "1 rev = 360°; 60′ = 1°; 60″ = 1′");
+  ok(motor.convertirBase(catalogo, "Longitud", "m", "x", 1) === null, "una unidad que no existe devuelve null");
+});
+
+await seccion("calibre AWG / kcmil", async () => {
+  const d = (c) => motor.datosCalibre(c);
+  ok(cerca(d("4/0 AWG").diametroMm, 11.684, 1e-4), `4/0 AWG: diámetro 11.684 mm (${d("4/0 AWG").diametroMm.toFixed(3)})`);
+  ok(cerca(d("4/0 AWG").areaMm2, 107.2, 2e-3), `4/0 AWG: 107.2 mm² (${d("4/0 AWG").areaMm2.toFixed(2)})`);
+  ok(cerca(d("1/0 AWG").areaMm2, 53.49, 2e-3), `1/0 AWG: 53.49 mm² (${d("1/0 AWG").areaMm2.toFixed(2)})`);
+  ok(cerca(d("2 AWG").areaMm2, 33.62, 2e-3) && cerca(d("4 AWG").areaMm2, 21.15, 2e-3) && cerca(d("6 AWG").areaMm2, 13.30, 2e-3), "2 AWG 33.62, 4 AWG 21.15 y 6 AWG 13.30 mm²");
+  ok(cerca(d("10 AWG").areaMm2, 5.261, 2e-3) && cerca(d("12 AWG").areaMm2, 3.309, 2e-3) && cerca(d("14 AWG").areaMm2, 2.081, 2e-3), "10 AWG 5.261, 12 AWG 3.309 y 14 AWG 2.081 mm²");
+  ok(cerca(d("250 kcmil").areaMm2, 126.68, 1e-4) && cerca(d("500 kcmil").areaMm2, 253.35, 1e-4) && cerca(d("1000 kcmil").areaMm2, 506.71, 1e-4), "250 kcmil 126.68, 500 kcmil 253.35 y 1000 kcmil 506.71 mm²");
+  ok(cerca(d("4/0 AWG").kcmil, 211.6, 2e-3), `4/0 AWG = 211.6 kcmil (${d("4/0 AWG").kcmil.toFixed(1)})`);
+  const areas = motor.CALIBRES.map((c) => d(c.codigo).areaMm2);
+  ok(areas.every((a, i) => i === 0 || a > areas[i - 1]), "la lista de calibres va de menor a mayor sección");
+  const c1 = motor.calibrePorArea(107.2);
+  ok(c1.codigo === "4/0 AWG" && c1.exacto, "107.2 mm² → 4/0 AWG (exacto)");
+  const c2 = motor.calibrePorArea(100);
+  ok(c2.codigo === "4/0 AWG" && !c2.exacto && c2.diferenciaPct > 0, `100 mm² → 4/0 AWG más cercano, no exacto (${c2.diferenciaPct.toFixed(1)} %)`);
+  ok(motor.calibrePorArea(0) === null && motor.calibrePorArea(-3) === null, "una sección no positiva no da calibre");
+});
+
+await seccion("pantalla — modo normal", async () => {
+  await abrir();
+  ok($("#chk-todas") && !$("#chk-todas").checked, "existe la casilla «Habilitar todas las conversiones» y está apagada");
+  const fila = $("#chk-todas").closest("label");
+  ok(texto(fila) === "Habilitar todas las conversiones" && fila.classList.contains("checkbox-row"), "el texto de la casilla y su estilo son los del conversor de coordenadas");
+  ok(fila.compareDocumentPosition($("#form-conversion")) & Node.DOCUMENT_POSITION_PRECEDING, "la casilla queda DEBAJO de la tarjeta");
+  const r = fila.getBoundingClientRect(), t = $("#form-conversion").getBoundingClientRect();
+  ok(Math.abs(r.left - t.left) < 1, `la casilla está alineada a la izquierda de la tarjeta (${r.left.toFixed(1)} vs ${t.left.toFixed(1)})`);
+  ok(fila.firstElementChild.tagName === "INPUT", "el cuadro va a la izquierda del texto");
+  ok(textos($("#f-categoria")).join("|") === "Área|Esfuerzo|Fuerza|Longitud|Momento|Presión|Temperatura|Velocidad|Ángulos", `categorías en el orden pedido, Ángulos al final y con tildes: ${textos($("#f-categoria")).join(", ")}`);
+  elegir($("#f-categoria"), "Longitud");
+  ok(claves($("#f-origen")).join("|") === "ft|in|km|m|mi|mm", `Longitud: mismas unidades de origen (${claves($("#f-origen")).join(", ")})`);
+  elegir($("#f-origen"), "m");
+  ok(claves($("#f-destino")).join("|") === "ft|in", `m → solo ft e in, como siempre (${claves($("#f-destino")).join(", ")})`);
+  elegir($("#f-categoria"), "Area");
+  ok(textos($("#f-origen")).join("|") === "ha|in²|kcmil|m²|mm²", `Área: unidades escritas con símbolo (${textos($("#f-origen")).join(", ")})`);
+  ok(await convertir("Longitud", "m", "ft", 10) === "32.8084ft", "10 m → 32.8084 ft (igual que antes)");
+  ok(await convertir("Temperatura", "C", "F", 100) === "212.0000°F", `100 °C → 212.0000 °F (${texto($("#resultado-wrap .value"))})`);
+  ok(texto($("#resultado-wrap .label")) === "100 °C → °F", `etiqueta del resultado: ${texto($("#resultado-wrap .label"))}`);
+  ok(await convertir("Momento", "kgf.m", "N.m", 1) === "9.8066N·m", `Momento: 1 kgf·m → 9.8066 N·m (${texto($("#resultado-wrap .value"))})`);
+  ok(await convertir("Angulos", "rad", "deg", 3.141592653589793) === "180.0000°", `π rad → 180° (${texto($("#resultado-wrap .value"))})`);
+  elegir($("#f-categoria"), "Longitud");
+  ok($("#resultado-wrap").innerHTML === "", "al cambiar de categoría se borra el resultado");
+});
+
+await seccion("pantalla — todas las conversiones", async () => {
+  await abrir();
+  $("#chk-todas").checked = true;
+  $("#chk-todas").dispatchEvent(new Event("change"));
+  const nombres = textos($("#f-categoria"));
+  ok(nombres.length === 19 && nombres[nombres.length - 1] === "Ángulos", `19 categorías y Ángulos al final (${nombres.length}: ${nombres.join(", ")})`);
+  const sinAngulos = nombres.slice(0, -1);
+  ok(sinAngulos.every((n, i) => i === 0 || n.localeCompare(sinAngulos[i - 1], "es") > 0), "las demás van en orden alfabético");
+  ok(["Potencia", "Energía", "Masa", "Peso por longitud", "Resistencia por longitud", "Resistividad térmica", "Volumen", "Tiempo", "Densidad", "Calibre de conductor"].every((n) => nombres.includes(n)), "aparecen las categorías nuevas");
+  elegir($("#f-categoria"), "Longitud");
+  ok(claves($("#f-origen")).length === 11, `Longitud: 11 unidades (${claves($("#f-origen")).length})`);
+  ok(textos($("#f-origen")).includes("mm — milímetro") && textos($("#f-origen")).includes("µm — micrómetro"), "las unidades se ven con símbolo y nombre");
+  elegir($("#f-origen"), "mi");
+  ok(claves($("#f-destino")).length === 10 && !claves($("#f-destino")).includes("mi"), "cualquier unidad a cualquier otra (todas menos la de origen)");
+  ok(await convertir("Longitud", "mi", "mm", 1) === "1609344mm", `1 mi → mm, combinación que antes no existía (${texto($("#resultado-wrap .value"))})`);
+  ok(await convertir("Presion", "atm", "psi", 1) === "14.6959psi", `1 atm → 14.6959 psi (${texto($("#resultado-wrap .value"))})`);
+  ok(await convertir("Esfuerzo", "Pa", "GPa", 2.5e9) === "2.5GPa", `2.5e9 Pa → 2.5 GPa (${texto($("#resultado-wrap .value"))})`);
+  ok(/e-/.test(await convertir("Esfuerzo", "Pa", "GPa", 3)), `un resultado muy pequeño sale en notación científica (${texto($("#resultado-wrap .value"))})`);
+  ok(await convertir("Tiempo", "s", "ciclo60", 0.5) === "30ciclos (60 Hz)", `0.5 s → 30 ciclos (${texto($("#resultado-wrap .value"))})`);
+  ok(await convertir("Potencia", "hp", "kW", 100) === "74.57kW", `100 hp → 74.57 kW (${texto($("#resultado-wrap .value"))})`);
+  ok(await convertir("ResistenciaLineal", "ohm/kft", "ohm/km", 1) === "3.28084Ω/km", `1 Ω/kft → 3.28084 Ω/km (${texto($("#resultado-wrap .value"))})`);
+  ok(await convertir("Momento", "kgf.m", "N.m", 1) === "9.80665N·m", `1 kgf·m → 9.80665 N·m (${texto($("#resultado-wrap .value"))})`);
+  // apagar vuelve al modo normal
+  $("#chk-todas").checked = false;
+  $("#chk-todas").dispatchEvent(new Event("change"));
+  ok(textos($("#f-categoria")).length === 9 && $("#resultado-wrap").innerHTML === "", "apagar la casilla vuelve a las 9 categorías y borra el resultado");
+});
+
+await seccion("pantalla — calibre de conductor", async () => {
+  await abrir();
+  $("#chk-todas").checked = true;
+  $("#chk-todas").dispatchEvent(new Event("change"));
+  elegir($("#f-categoria"), "Calibre");
+  ok(claves($("#f-origen")).join("|") === "calibre|mm2", "el calibre se puede dar como AWG/kcmil o como sección en mm²");
+  elegir($("#f-origen"), "calibre");
+  ok(!$("#campo-calibre").hidden && $("#campo-valor").hidden, "con origen AWG/kcmil se elige el calibre de una lista (no se escribe un número)");
+  ok($$("option", $("#f-calibre")).length === 24, `la lista trae 23 calibres (${$$("option", $("#f-calibre")).length - 1})`);
+  elegir($("#f-destino"), "mm2");
+  $("#f-calibre").value = "4/0 AWG";
+  $("#form-conversion").requestSubmit();
+  await espera(60);
+  ok(texto($("#resultado-wrap .value")) === "107.219mm²", `4/0 AWG → sección (${texto($("#resultado-wrap .value"))})`);
+  elegir($("#f-destino"), "d");
+  $("#form-conversion").requestSubmit();
+  await espera(60);
+  ok(texto($("#resultado-wrap .value")) === "11.684mm", `4/0 AWG → diámetro (${texto($("#resultado-wrap .value"))})`);
+  elegir($("#f-destino"), "kcmil");
+  $("#form-conversion").requestSubmit();
+  await espera(60);
+  ok(/^211\.6\d*kcmil$/.test(texto($("#resultado-wrap .value"))), `4/0 AWG → kcmil (${texto($("#resultado-wrap .value"))})`);
+  elegir($("#f-origen"), "mm2");
+  ok($("#campo-calibre").hidden && !$("#campo-valor").hidden, "con origen en mm² se vuelve a escribir un número");
+  elegir($("#f-destino"), "calibre");
+  $("#f-valor").value = "100";
+  $("#form-conversion").requestSubmit();
+  await espera(60);
+  ok(texto($("#resultado-wrap .value")) === "4/0 AWG" && /más cercano/.test(texto($("#resultado-wrap .label"))), `100 mm² → ${texto($("#resultado-wrap .value"))}: ${texto($("#resultado-wrap .label"))}`);
+  $("#f-valor").value = "0";
+  $("#form-conversion").requestSubmit();
+  await espera(60);
+  ok(!!$("#resultado-wrap .callout-danger"), "una sección de 0 mm² da un aviso");
+});
+
+await seccion("herramienta de la IA y service worker", async () => {
+  const sw = await (await fetch("../sw.js")).text();
+  const listaSw = [...sw.matchAll(/^\s*"([^"]+)",\s*$/gm)].map((m) => m[1]);
+  ok(["js/calc/unidades-extendido.js", "js/calc/unidades.js", "data/unidades.json", "data/factores-conversion.json"].every((f) => listaSw.includes(f)), "el service worker precachea el motor nuevo y los dos catálogos");
+  const existen = await Promise.all(listaSw.filter((f) => f !== "./").map((f) => fetch(`../${f}`, { method: "HEAD" }).then((r) => [f, r.ok])));
+  ok(existen.every(([, okk]) => okk), "todos los archivos del APP_SHELL existen");
+  const tools = await (await fetch("../js/ai/tools.js")).text();
+  ok(tools.includes('loadData("factores-conversion")') && !tools.includes("unidades-extendido"), "la herramienta de la IA sigue con la tabla de pares y el motor de siempre");
+});
+
+out.textContent += `\nRESULT: ${fallos ? "FAIL" : "OK"} (${total - fallos}/${total})\n`;
+</script>
+</body>
+</html>

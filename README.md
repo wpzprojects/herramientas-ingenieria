@@ -59,6 +59,8 @@ Los `data/*.json` son la **fuente de verdad** de los catálogos y se editan dire
 
 `tools/verify_catalogo_tuberias.html` prueba el catálogo de Tuberías (tarjeta en Catálogos, listado con filtro por tipo y buscador, ficha de detalle) y que los tres catálogos de conductores sigan igual.
 
+`tools/verify_unidades.html` prueba la pantalla Conversión de unidades (modo normal con factores exactos y Ángulos al final; casilla «Habilitar todas las conversiones» con 19 categorías, cualquier unidad a cualquier otra y calibre AWG/kcmil). `data/unidades.json` y los factores de `data/factores-conversion.json` se generan con `tools/generar_unidades.py`.
+
 `tools/verify_normatividad.html` prueba el visor de imágenes normativas (nota al pie de «Enterramiento de ductos», que las demás imágenes existan y estén en el service worker).
 
 `tools/verify_coordenadas_epsg.html` prueba el conversor de coordenadas (casilla de todos los sistemas EPSG, conversión por lotes y avisos de área de uso): que los ~500 códigos EPSG del catálogo convierten y regresan, que da lo mismo que el conversor original en los 7 sistemas, puntos conocidos por definición, las 32 cuadrículas urbanas de Colombia, los avisos y el panel.
