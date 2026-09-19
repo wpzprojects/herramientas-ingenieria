@@ -41,7 +41,7 @@ export const sectionMenus = {
     { title: "Resoluciones del sector", desc: "Normativa CREG relevante, con resumen y alcance.", icon: "archive", hash: "#/normatividad/resoluciones" },
   ],
   varios: [
-    { title: "Codificación de entregables", desc: "Catálogo de códigos de documentos y planos.", icon: "hash", hash: "#/varios/codificacion" },
+    { title: "Codificación de entregables", desc: "Catálogo de códigos de documentos y planos.", icon: "idLetras", hash: "#/varios/codificacion" },
     { title: "Conversión de coordenadas", desc: "Conversión entre diferentes sistemas de coordenadas.", icon: "compass", hash: "#/varios/conversion-coordenadas" },
     { title: "Conversión de unidades", desc: "Conversión entre unidades de longitud, área, fuerza, velocidad y más.", icon: "ruler", hash: "#/varios/conversion-unidades" },
   ],

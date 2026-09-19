@@ -94,6 +94,9 @@ const shapes = {
   // Ocupacion de ductos: el ducto (circulo grande) con una terna de conductores (3 circulos macizos) en el fondo. Esquema del usuario.
   ductoTerna:
     '<g stroke-width="2"><circle cx="12" cy="12" r="9.5"/><g fill="currentColor" stroke="none"><circle cx="9" cy="17" r="2.4"/><circle cx="15" cy="17" r="2.4"/><circle cx="12" cy="11.6" r="2.4"/></g></g>',
+  // Letras «ID» (icono de Codificacion de entregables): una I con palitos arriba y abajo y una D, con el trazo de Tabler.
+  idLetras:
+    '<g stroke-width="2"><path d="M3.5 6h5M3.5 18h5M6 6v12"/><path d="M12 6h3.5a6 6 0 0 1 0 12H12z"/></g>',
 };
 
 export function icon(name, cls = "") {
