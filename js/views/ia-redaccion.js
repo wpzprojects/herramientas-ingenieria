@@ -114,7 +114,6 @@ export async function render(container) {
       <button type="button" class="ia-accion" id="btn-nueva" title="Empezar una conversación nueva">${icon("plus")}<span>Nueva conversación</span></button>
       <button type="button" class="ia-accion ia-accion--enviar" id="btn-enviar" title="Enviar (Ctrl + Enter)">${icon("send")}<span>Enviar</span></button>
     </div>
-    <p class="ia-cuenta hint" id="cuenta-caracteres"></p>
   `
   );
 
@@ -262,13 +261,11 @@ export async function render(container) {
         // se devuelve lo escrito a la caja para poder reintentar sin volver a pegarlo
         fTexto.value = textoVisible || textoUsuario;
         ajustarAlto();
-        contarCaracteres();
       }
       if (!conv.contenidos.length) {
         // fallo el primer envio: se vuelve al modo "texto"
         conv = null;
         fTexto.placeholder = PH_TEXTO;
-        contarCaracteres();
       }
     } finally {
       bloquear(false);
@@ -286,16 +283,10 @@ export async function render(container) {
         return;
       }
       chat.innerHTML = ""; // por si quedo el error de un intento anterior
-      mensaje = `Corrige el siguiente texto siguiendo tus instrucciones.
-
-TEXTO:
-<<<
-${texto}
->>>`;
+      mensaje = `Corrige el siguiente texto siguiendo tus instrucciones.\n\nTEXTO:\n<<<\n${texto}\n>>>`;
     }
     fTexto.value = "";
     ajustarAlto();
-    contarCaracteres();
     enviar(mensaje, texto);
   });
   fTexto.addEventListener("keydown", (e) => {
@@ -306,18 +297,10 @@ ${texto}
     reiniciarConversacion();
     fTexto.value = "";
     ajustarAlto();
-    contarCaracteres();
     fTexto.focus();
   });
 
-  function contarCaracteres() {
-    const n = conv ? 0 : fTexto.value.length; // el limite solo aplica al texto a corregir
-    $("#cuenta-caracteres").textContent = n ? `${n.toLocaleString("es-CO")} caracteres` : "";
-  }
-  fTexto.addEventListener("input", () => {
-    contarCaracteres();
-    ajustarAlto();
-  });
+  fTexto.addEventListener("input", ajustarAlto);
 
   // ---------- historial ----------
   const panelHistorial = $("#panel-historial");
@@ -348,7 +331,6 @@ ${texto}
                 }
                 pintarConversacion();
                 panelHistorial.hidden = true;
-                contarCaracteres();
                 alFinal();
               },
             },
@@ -580,5 +562,4 @@ ${texto}
   }
 
   pintarAgentes();
-  contarCaracteres();
 }

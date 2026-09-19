@@ -75,7 +75,7 @@ export function agregarMicrofono(objetivo, anterior, { clase = "btn" } = {}) {
     const { texto, cursor } = componer(dictado);
     campo.value = texto;
     campo.setSelectionRange(cursor, cursor);
-    campo.dispatchEvent(new Event("input", { bubbles: true })); // p.ej. el contador de caracteres
+    campo.dispatchEvent(new Event("input", { bubbles: true })); // p.ej. el autoajuste de alto del cuadro
   };
 
   // Toma el punto de insercion actual: el cursor, o el final si el campo no tiene foco/seleccion.
