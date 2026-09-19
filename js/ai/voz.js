@@ -12,6 +12,11 @@ export const vozDisponible = () => !!Reconocimiento;
 
 const IDIOMA = "es-CO";
 
+// Chrome en Android no se porta como en escritorio: en modo continuo entrega cada resultado acumulado
+// (cada uno repite todo lo dicho antes) y el texto se duplica ("elel dictadoel dictado por..."). Alli se
+// usan sesiones cortas (sin modo continuo, se reanudan solas tras cada pausa) y se toma solo el ultimo resultado.
+const ES_ANDROID = /Android/i.test(navigator.userAgent);
+
 const ERRORES = {
   "not-allowed": "El navegador no tiene permiso para usar el micrófono. Habilítalo en el candado de la barra de direcciones.",
   "service-not-allowed": "El navegador no tiene permiso para usar el micrófono. Habilítalo en el candado de la barra de direcciones.",
@@ -105,24 +110,19 @@ export function agregarMicrofono(objetivo, anterior, { clase = "btn" } = {}) {
     const esta = new Reconocimiento();
     rec = esta;
     esta.lang = IDIOMA;
-    esta.continuous = true;
+    esta.continuous = !ES_ANDROID;
     esta.interimResults = true;
     ultimoInicio = Date.now();
 
-    let confirmado = "";
+    let mostrado = ""; // lo que esta sesion lleva escrito en el campo
     // Los eventos tardios de una sesion ya cerrada (rec cambio o es null) se ignoran.
     esta.onresult = (e) => {
       if (rec !== esta) return;
       if (!campo.isConnected) return detener();
-      let fijo = "";
-      let provisional = "";
-      for (let i = 0; i < e.results.length; i++) {
-        const t = e.results[i][0].transcript;
-        if (e.results[i].isFinal) fijo += t;
-        else provisional += t;
-      }
-      confirmado = fijo;
-      escribir((fijo + provisional).trim());
+      const resultados = [...e.results];
+      const usados = ES_ANDROID ? resultados.slice(-1) : resultados;
+      mostrado = usados.map((r) => r[0].transcript).join("").trim();
+      escribir(mostrado);
     };
 
     esta.onerror = (e) => {
@@ -134,21 +134,26 @@ export function agregarMicrofono(objetivo, anterior, { clase = "btn" } = {}) {
     esta.onend = () => {
       if (rec !== esta) return;
       if (!campo.isConnected) return limpiar();
-      // El navegador corta la sesion cada cierto tiempo: si el usuario sigue dictando, se reanuda
-      // desde donde quedo el texto (salvo que la sesion haya durado <1 s, para no entrar en bucle).
+      // El navegador corta la sesion cada cierto tiempo (en Android, tras cada pausa): si el usuario sigue
+      // dictando, se reanuda desde donde quedo el texto (salvo que la sesion haya durado <1 s, para no entrar en bucle).
       if (activo && Date.now() - ultimoInicio > 1000) {
-        const dictado = confirmado.trim();
-        if (dictado) {
-          const { texto, cursor } = componer(dictado);
+        if (mostrado) {
+          const { texto, cursor } = componer(mostrado);
           antes = texto.slice(0, cursor);
           despues = texto.slice(cursor);
         }
-        try {
-          iniciar();
-          return;
-        } catch {
-          /* cae a limpiar() */
-        }
+        const seguir = () => {
+          if (rec !== esta || !activo) return; // el usuario detuvo el dictado mientras tanto
+          try {
+            iniciar();
+          } catch {
+            limpiar();
+            decir("");
+          }
+        };
+        if (ES_ANDROID) setTimeout(seguir, 250); // reiniciar de inmediato puede fallar en Android
+        else seguir();
+        return;
       }
       const huboError = estado.classList.contains("ia-voz-estado--error");
       limpiar();

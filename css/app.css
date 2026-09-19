@@ -459,8 +459,11 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
   background: transparent; padding: 10px 0; line-height: 1.4;
 }
 /* misma anchura que la tarjeta; el padding de cada boton (12px) coincide con el de la tarjeta, asi el icono queda alineado con el borde de la caja */
-.ia-acciones { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; margin: var(--space-1) 0 var(--space-3); }
-.ia-acciones .hint { flex: 1 1 auto; margin: 0; text-align: right; }
+.ia-acciones { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; margin: var(--space-1) 0 0; }
+.ia-acciones > :first-child { margin-right: auto; } /* Nueva conversacion a la izquierda; Dictar y Enviar a la derecha */
+/* segunda linea: contador de caracteres (y, justo encima, el aviso "Escuchando…"), asi los botones no se mueven */
+.ia-cuenta { margin: var(--space-1) var(--space-2) 0; text-align: right; }
+.ia-cuenta:empty { display: none; }
 /* Botones de accion sin recuadro: icono + palabra, se resaltan solo al pasar el cursor */
 .ia-accion {
   display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border: none; border-radius: 999px;
@@ -470,8 +473,12 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .ia-accion:hover, .ia-accion:focus-visible { background: var(--accent-soft); color: var(--accent-strong); }
 .ia-accion--enviar { color: var(--accent); }
 .ia-accion[disabled] { opacity: 0.5; cursor: not-allowed; background: transparent; }
-.ia-accion.ia-mic { min-width: 0; }
+.ia-accion.ia-mic { min-width: 7.4em; justify-content: center; } /* mismo ancho en "Dictar" y "Detener": no se corre nada */
 .ia-accion.ia-mic[aria-pressed="true"] { background: var(--danger-soft); border: none; color: var(--danger); }
+@media (max-width: 480px) { /* celular: que Nueva conversacion, Dictar y Enviar quepan en una sola linea */
+  .ia-accion { padding: 8px 8px; gap: 4px; font-size: 0.8rem; }
+  .ia-accion .icon { width: 16px; height: 16px; }
+}
 .ia-msg-acciones { display: flex; gap: var(--space-2); margin-top: var(--space-2); }
 .ia-tools { display: flex; flex-wrap: wrap; gap: 6px; align-self: flex-start; }
 .ia-toolchip {

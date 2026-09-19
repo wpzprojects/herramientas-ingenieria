@@ -112,9 +112,9 @@ export async function render(container) {
     </div>
     <div class="ia-acciones">
       <button type="button" class="ia-accion" id="btn-nueva" title="Empezar una conversación nueva">${icon("plus")}<span>Nueva conversación</span></button>
-      <span class="hint" id="cuenta-caracteres"></span>
       <button type="button" class="ia-accion ia-accion--enviar" id="btn-enviar" title="Enviar (Ctrl + Enter)">${icon("send")}<span>Enviar</span></button>
     </div>
+    <p class="ia-cuenta hint" id="cuenta-caracteres"></p>
   `
   );
 
