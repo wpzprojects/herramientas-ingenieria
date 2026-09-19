@@ -45,6 +45,7 @@ const routeTable = [
   ["/varios/conversion-coordenadas", () => import("./views/conversion-coordenadas.js")],
   ["/varios/conversion-unidades", () => import("./views/conversion-unidades.js")],
   ["/ia", () => import("./views/ia.js")],
+  ["/ia/analisis", () => import("./views/ia-analisis.js")],
   ["/ia/redaccion", () => import("./views/ia-redaccion.js")],
   ["/ia/configuracion", () => import("./views/ia-configuracion.js")],
   ["/ayuda", () => import("./views/ayuda.js")],

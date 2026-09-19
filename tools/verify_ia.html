@@ -115,7 +115,220 @@ await seccion("config", async () => {
   config.borrarAjustes();
 });
 
-// (las secciones de herramientas y vistas se agregan mas abajo)
+const tools = await import("../js/ai/tools.js");
+const analisis = await import("../js/ai/analisis.js");
+const reporte = await import("../js/ai/reporte.js");
+const engPerdidas = await import("../js/calc/perdidas.js");
+const engRegulacion = await import("../js/calc/regulacion.js");
+const engAmpAerea = await import("../js/calc/ampacidad-aerea.js");
+const engAmpSubt = await import("../js/calc/ampacidad-subterranea.js");
+const cargar = async (n) => (await fetch(`../data/${n}.json`)).json();
+const desnudos = await cargar("conductores-desnudos");
+const cables = await cargar("construccion-cable-subterraneo");
+
+const ctxNuevo = (max = 60) => tools.crearContexto(max);
+const salida = (ctx, clave, i = -1) => ctx.log.at(i).resultados.find((r) => r.clave === clave).valor;
+const LINEA = { tension_kv: 34.5, potencia_mw: 9.9, factor_potencia: 0.95, longitud_km: 5.2 };
+const ACSR_4_0 = desnudos.find((c) => c.tipo === "ACSR" && c.calibre_awg_kcmil === "4/0");
+
+await seccion("tools: esquema para Gemini", async () => {
+  const decl = tools.declaraciones();
+  ok(decl.length === 9, `9 herramientas declaradas (${decl.length})`);
+  ok(decl.every((d) => d.name && d.description && d.parameters.type === "object" && Object.keys(d.parameters.properties).length > 0), "todas con descripcion y propiedades no vacias");
+  ok(decl.every((d) => (d.parameters.required || []).every((r) => r in d.parameters.properties)), "required subconjunto de properties");
+  const barrido = decl.find((d) => d.name === "barrer_parametro").parameters.properties;
+  ok(barrido.valores.type === "array" && barrido.valores.items.type === "number" && barrido.valores_texto.items.type === "string", "arrays con items");
+  ok(barrido.herramienta.enum.length === 6, "barrido: enum de 6 calculadoras");
+});
+
+await seccion("tools: pérdidas", async () => {
+  const ctx = ctxNuevo();
+  const r = await tools.ejecutarLlamada("calcular_perdidas", { ...LINEA, factor_carga: 0.564, red: "Aerea", material: "ACSR", calibre: "4/0" }, ctx);
+  ok(r.ok === true, "ejecuta sin error");
+  // formula independiente (factor de perdidas lineal 0.7*Fc+0.3, igual que la app original)
+  const I = (9.9 * 1000) / (34.5 * 0.95 * Math.sqrt(3));
+  const esperado = (Math.sqrt(3) * I * ACSR_4_0.r_ac_75c_ohm_km * 5.2 * (0.7 * 0.564 + 0.3) * 100) / (34.5 * 1000 * 0.95);
+  cerca(salida(ctx, "perdidas_pct"), esperado, 1e-9, "pérdidas % coincide con fórmula independiente");
+  cerca(salida(ctx, "corriente_a"), I, 1e-9, "corriente coincide");
+  const ctx2 = ctxNuevo();
+  await tools.ejecutarLlamada("calcular_perdidas", { ...LINEA, factor_carga: 0.564, resistencia_ohm_km: ACSR_4_0.r_ac_75c_ohm_km }, ctx2);
+  cerca(salida(ctx2, "perdidas_pct"), esperado, 1e-9, "resistencia manual = catálogo");
+  ok(ctx.log[0].entradas.some((e) => e.clave === "conductor") && ctx.log[0].supuestos.length === 0, "log: entradas con conductor y sin supuestos");
+});
+
+await seccion("tools: regulación", async () => {
+  const ctx = ctxNuevo();
+  const r = await tools.ejecutarLlamada("calcular_regulacion", { ...LINEA, red: "aérea", material: "acsr", calibre: "4/0" }, ctx);
+  ok(r.ok === true, "acepta 'aérea'/'acsr' (normaliza mayúsculas y tildes)");
+  const directo = engRegulacion.calcularRegulacion({
+    tensionLineaKv: 34.5, potenciaActivaMw: 9.9, factorPotencia: 0.95, longitudKm: 5.2,
+    resistenciaOhmKm: ACSR_4_0.r_ac_75c_ohm_km, rmgM: ACSR_4_0.radio_medio_geometrico_mm / 1000, dabM: 2, dacM: 2.84, dbcM: 0.84,
+  });
+  cerca(salida(ctx, "caida_tension_pct"), directo.caidaTensionPct, 1e-9, "caída de tensión = motor con valores por defecto de la vista");
+  ok(ctx.log[0].supuestos.length === 3, "declara las 3 distancias por defecto como supuestos");
+});
+
+await seccion("tools: cortocircuito", async () => {
+  const ctx = ctxNuevo();
+  await tools.ejecutarLlamada("calcular_cortocircuito", { red: "Aerea", material: "ACSR", calibre: "4/0" }, ctx);
+  const A = ACSR_4_0.area_seccion_aluminio_mm2;
+  const esperado = (A * 224 * Math.sqrt(Math.log10((250 + 228) / (75 + 228)) / 0.3)) / 1000;
+  cerca(salida(ctx, "capacidad_cc_ka"), esperado, 1e-9, "I_CC aérea (Aluminio, 75→250 °C, 0.3 s)");
+  const ctx2 = ctxNuevo();
+  const r = await tools.ejecutarLlamada("calcular_cortocircuito", { area_mm2: 100, material_electrico: "Cobre", temp_operacion_c: 90, temp_falla_c: 250, tiempo_s: 1 }, ctx2);
+  cerca(salida(ctx2, "capacidad_cc_ka"), (100 * 341 * Math.sqrt(Math.log10((250 + 234) / (90 + 234)) / 1)) / 1000, 1e-9, "I_CC manual cobre");
+  const r2 = await tools.ejecutarLlamada("calcular_cortocircuito", { area_mm2: 100, material_electrico: "Cobre", temp_operacion_c: 300, temp_falla_c: 250 }, ctxNuevo());
+  ok(r2.ok === false, "temp de falla <= operación se rechaza");
+});
+
+await seccion("tools: ampacidad aérea", async () => {
+  const ctx = ctxNuevo();
+  await tools.ejecutarLlamada("calcular_ampacidad_aerea", { tipo: "ACSR", calibre: "4/0" }, ctx);
+  const directo = engAmpAerea.calcularAmpacidadAerea({
+    diametroMm: ACSR_4_0.diametro_cable_mm, rBajoOhmKm: ACSR_4_0.r_ac_25c_ohm_km, rAltoOhmKm: ACSR_4_0.r_ac_75c_ohm_km,
+    epsilon: 0.5, alfa: 0.5, taC: 25, tcC: 75, vwMs: 0.61, anguloVientoDeg: 90, elevacionM: 0, qseWm2: 1000, thetaDeg: 90,
+  });
+  cerca(salida(ctx, "ampacidad_a"), directo.ampacidad, 1e-9, "ampacidad = motor con defectos de la vista");
+  ok(directo.ampacidad > 100 && directo.ampacidad < 1000, `valor plausible (${directo.ampacidad.toFixed(1)} A)`);
+  const calor = ctxNuevo();
+  await tools.ejecutarLlamada("calcular_ampacidad_aerea", { tipo: "ACSR", calibre: "4/0", ta_c: 45 }, calor);
+  ok(salida(calor, "ampacidad_a") < directo.ampacidad, "más temperatura ambiente -> menor ampacidad");
+});
+
+await seccion("tools: ampacidad subterránea", async () => {
+  const ctx = ctxNuevo();
+  const r = await tools.ejecutarLlamada("calcular_ampacidad_subterranea", { material: "Cobre", calibre: "1/0", tipo_pantalla: "Hilos", nivel_aislamiento_kv: 15 }, ctx);
+  ok(r.ok === true, `ejecuta (${r.error || "ok"})`);
+  const cable = cables.find((c) => c.material === "Cobre" && c.calibre_awg_kcmil === "1/0 AWG" && c.tipo_pantalla === "Hilos" && c.nivel_aislamiento_kv === 15 && c.nivel_aislamiento_pct === 100);
+  const directo = engAmpSubt.calcularAmpacidadSubterranea({
+    tipoCable: "Monopolar", cable, tipoPantalla: "Hilos", nivelAislamientoKv: 15, puestaTierra: "Unipuntual", tensionSistemaKv: 34.5, frecuenciaHz: 60,
+    tempMaxC: 90, tempTerrenoC: 25, rhoSueloKmW: 1, uDuctoKmW: 0.3, separacionFasesM: 0.04, numCircuitos: 1, profundidadBancoM: 1, separacionDuctosM: 0.2,
+  });
+  cerca(salida(ctx, "ampacidad_a"), directo.ampacidad, 1e-9, "ampacidad = motor con defectos de la vista");
+  const mal = await tools.ejecutarLlamada("calcular_ampacidad_subterranea", { material: "Cobre", calibre: "1/0", tipo_pantalla: "Hilos", nivel_aislamiento_kv: 46, nivel_aislamiento_pct: 133 }, ctxNuevo());
+  ok(mal.ok === false && /46/.test(mal.error), "46 kV/133% no existe -> error orientador");
+});
+
+await seccion("tools: ocupación de ductos", async () => {
+  const ctx = ctxNuevo();
+  await tools.ejecutarLlamada("calcular_ocupacion_ductos", { numero_conductores: 3, diametro_conductor_mm: 30, diametro_tubo_mm: 100 }, ctx);
+  cerca(salida(ctx, "ocupacion_pct"), 27, 1e-9, "3 conductores de 30 mm en ducto de 100 mm = 27 %");
+  ok(salida(ctx, "limite_pct") === 40 && salida(ctx, "cumple") === true, "límite NTC 40 % y cumple");
+  const ctx2 = ctxNuevo();
+  const r = await tools.ejecutarLlamada("calcular_ocupacion_ductos", { numero_conductores: 3, diametro_conductor_mm: 30, tipo_tuberia: "PVC rígido sch.40", diametro_nominal: '4"' }, ctx2);
+  ok(r.ok === true && ctx2.log[0].entradas.some((e) => e.clave === "diametro_tubo_mm" && e.valor > 90), `tubería 4" de catálogo (${r.error || "ok"})`);
+});
+
+await seccion("tools: validación y errores orientadores", async () => {
+  const a = await tools.ejecutarLlamada("calcular_perdidas", { ...LINEA, factor_potencia: 1.5, factor_carga: 0.5, resistencia_ohm_km: 0.3 }, ctxNuevo());
+  ok(a.ok === false && a.error.includes("factor_potencia"), "factor de potencia fuera de rango");
+  const b = await tools.ejecutarLlamada("calcular_perdidas", { tension_kv: 34.5 }, ctxNuevo());
+  ok(b.ok === false && b.error.includes("potencia_mw") && b.error.includes("longitud_km"), "lista los parámetros obligatorios faltantes");
+  const c = await tools.ejecutarLlamada("calcular_perdidas", { ...LINEA, factor_carga: 0.5, red: "Aerea", material: "ACSR", calibre: "999" }, ctxNuevo());
+  ok(c.ok === false && c.error.includes("Calibres disponibles"), "calibre inexistente lista los disponibles");
+  const d = await tools.ejecutarLlamada("calcular_perdidas", { ...LINEA, factor_carga: 0.5 }, ctxNuevo());
+  ok(d.ok === false && /red|material|calibre/.test(d.error), "sin conductor ni resistencia -> pide conductor");
+  const e = await tools.ejecutarLlamada("no_existe", {}, ctxNuevo());
+  ok(e.ok === false && e.error.includes("desconocida"), "herramienta desconocida");
+  const f = await tools.ejecutarLlamada("calcular_perdidas", { ...LINEA, factor_carga: "0,5", resistencia_ohm_km: "0,3", basura: 1 }, ctxNuevo());
+  ok(f.ok === true && f.notas.some((n) => n.includes("basura")), "acepta coma decimal e ignora parámetros desconocidos (con nota)");
+});
+
+await seccion("tools: barrido, presupuesto y consultas", async () => {
+  const ctx = ctxNuevo();
+  const base = { ...LINEA, red: "Aerea", material: "ACSR", calibre: "4/0" };
+  delete base.longitud_km;
+  const r = await tools.ejecutarLlamada("barrer_parametro", { herramienta: "calcular_regulacion", parametros_json: JSON.stringify({ ...base }), parametro: "longitud_km", desde: 2, hasta: 10, pasos: 5 }, ctx);
+  ok(r.ok === true && r.puntos.length === 5, `barrido de 5 puntos (${r.error || "ok"})`);
+  const caidas = ctx.log.map((x) => x.resultados.find((q) => q.clave === "caida_tension_pct").valor);
+  ok(caidas.every((v, i) => i === 0 || v > caidas[i - 1]), "la caída crece con la longitud");
+  cerca(caidas[4] / caidas[0], 5, 1e-9, "caída proporcional a la longitud (10 km / 2 km = 5)");
+  ok(ctx.presupuesto.usado === 5 && ctx.log.every((x) => x.barrido), "presupuesto consumido y corridas marcadas como barrido");
+
+  const rt = await tools.ejecutarLlamada("barrer_parametro", { herramienta: "calcular_perdidas", parametros_json: JSON.stringify({ ...LINEA, factor_carga: 0.56, red: "Aerea", material: "ACSR" }), parametro: "calibre", valores_texto: ["1/0", "4/0", "336.4"] }, ctxNuevo());
+  ok(rt.ok && rt.puntos.length === 3 && rt.puntos[0].resultados.perdidas_pct > rt.puntos[2].resultados.perdidas_pct, "barrido de calibres: más calibre, menos pérdidas");
+
+  const chico = ctxNuevo(3);
+  const rl = await tools.ejecutarLlamada("barrer_parametro", { herramienta: "calcular_regulacion", parametros_json: JSON.stringify(base), parametro: "longitud_km", desde: 1, hasta: 5, pasos: 5 }, chico);
+  ok(rl.ok === false && rl.error.includes("límite"), "excede el presupuesto de cálculos");
+  const rp = await tools.ejecutarLlamada("barrer_parametro", { herramienta: "calcular_regulacion", parametros_json: "{no json", parametro: "longitud_km", desde: 1, hasta: 2 }, ctxNuevo());
+  ok(rp.ok === false && rp.error.includes("JSON"), "parametros_json inválido");
+  const rn = await tools.ejecutarLlamada("barrer_parametro", { herramienta: "calcular_regulacion", parametros_json: "{}", parametro: "inventado", desde: 1, hasta: 2 }, ctxNuevo());
+  ok(rn.ok === false && rn.error.includes("no es un parámetro"), "parámetro a variar inexistente");
+
+  const q1 = await tools.ejecutarLlamada("buscar_conductor", { familia: "desnudos" }, ctxNuevo());
+  ok(q1.ok && q1.grupos.ACSR && q1.total === 342, "buscar_conductor sin filtros lista familias");
+  const q2 = await tools.ejecutarLlamada("buscar_conductor", { familia: "desnudos", tipo_o_material: "ACSR", calibre: "4/0" }, ctxNuevo());
+  ok(q2.ok && q2.filas.length > 0 && q2.filas[0].r_ac_75c_ohm_km === ACSR_4_0.r_ac_75c_ohm_km, "buscar_conductor con filtros devuelve resistencia de catálogo");
+  const q3 = await tools.ejecutarLlamada("buscar_tuberia", {}, ctxNuevo());
+  ok(q3.ok && q3.tipos.length === 6, "buscar_tuberia lista los 6 tipos");
+});
+
+await seccion("reporte: tablas de escenarios", async () => {
+  const ctx = ctxNuevo();
+  await tools.ejecutarLlamada("barrer_parametro", { herramienta: "calcular_regulacion", parametros_json: JSON.stringify({ ...LINEA, longitud_km: undefined, red: "Aerea", material: "ACSR", calibre: "4/0" }), parametro: "longitud_km", desde: 2, hasta: 6, pasos: 3 }, ctx);
+  await tools.ejecutarLlamada("calcular_perdidas", { ...LINEA, factor_carga: 0.5, resistencia_ohm_km: 0.3 }, ctx);
+  await tools.ejecutarLlamada("calcular_perdidas", { ...LINEA, factor_potencia: 5, factor_carga: 0.5, resistencia_ohm_km: 0.3 }, ctx); // error
+  await tools.ejecutarLlamada("buscar_tuberia", {}, ctx); // consulta: no aparece
+  const { tablas, errores } = reporte.armarTablas(ctx.log);
+  ok(tablas.length === 2 && errores.length === 1, "2 tablas (regulación y pérdidas) y 1 error");
+  const reg = tablas.find((t) => t.titulo === "Regulación");
+  ok(reg.total === 3 && reg.colsVar.length === 1 && reg.colsVar[0].clave === "longitud_km", "regulación: solo la longitud varía");
+  ok(reg.comunes.some((e) => e.clave === "tension_kv"), "regulación: la tensión es dato común");
+  const md = reporte.escenariosMd(ctx.log);
+  ok(md.includes("### Regulación — 3 escenarios") && md.includes("| 1 | 2 |"), "Markdown con tabla y fila inicial");
+  const html = reporte.escenariosHtml(ctx.log);
+  ok(html.includes("<table>") && html.includes("Cálculos con error (1)"), "HTML con tablas y sección de errores");
+  ok(!/<script/i.test(reporte.escenariosHtml([{ id: 1, herramienta: "x", titulo: "<script>x<\/script>", entradas: [], resultados: [], supuestos: [], notas: [] }])), "escapa HTML en títulos");
+  const full = reporte.reporteMd({ narrativa: "# Mi reporte\n\nTexto", log: ctx.log, fecha: "hoy", modelo: "m" });
+  ok(full.startsWith("# Mi reporte") && full.includes("Reporte generado con asistencia de IA"), "reporte completo incluye narrativa y aviso");
+});
+
+await seccion("analisis: bucle con herramientas (Gemini simulado)", async () => {
+  const ajustes = { modelo: "m", temperatura: 0.3, maxRondas: 4, maxCalculos: 60 };
+  const conv = { contenidos: [] };
+  const ctx = ctxNuevo();
+  const eventos = [];
+  let n = 0;
+  gemini.usarMock(async ({ cuerpo }) => {
+    n++;
+    if (n === 1) {
+      ok(cuerpo.tools[0].functionDeclarations.length === 9 && cuerpo.toolConfig.functionCallingConfig.mode === "AUTO" && !!cuerpo.systemInstruction, "1ª llamada: envía herramientas, modo AUTO e instrucciones de sistema");
+      return { candidates: [{ content: { role: "model", parts: [
+        { functionCall: { name: "calcular_perdidas", args: { ...LINEA, factor_carga: 0.5, resistencia_ohm_km: 0.3 } } },
+        { functionCall: { name: "calcular_perdidas", args: { ...LINEA, factor_carga: 0.9, resistencia_ohm_km: 0.3 } } },
+      ] } }] };
+    }
+    const partes = cuerpo.contents.at(-1).parts;
+    ok(partes.length === 2 && partes.every((p) => p.functionResponse.response.ok === true), "2ª llamada: recibe 2 functionResponse (llamadas paralelas)");
+    return { candidates: [{ content: { role: "model", parts: [{ text: "Resultado interpretado." }] } }] };
+  });
+  const r = await analisis.ejecutarTurno({ conv, texto: "compara", clave: "k", ajustes, ctx, onEvento: (e) => eventos.push(e.tipo) });
+  ok(r.texto === "Resultado interpretado." && r.herramientas.length === 2 && !r.truncado, "devuelve texto final y herramientas usadas");
+  ok(conv.contenidos.length === 4 && conv.contenidos.map((c) => c.role).join() === "user,model,user,model", "historial: user, model, user(functionResponse), model");
+  ok(ctx.log.length === 2 && eventos.filter((t) => t === "herramienta-fin").length === 2, "log con 2 corridas y eventos de progreso");
+
+  // rondas agotadas -> cierre forzado sin herramientas
+  const conv2 = { contenidos: [] };
+  const modos = [];
+  gemini.usarMock(async ({ cuerpo }) => {
+    modos.push(cuerpo.toolConfig?.functionCallingConfig?.mode);
+    if (cuerpo.toolConfig.functionCallingConfig.mode === "NONE") return { candidates: [{ content: { role: "model", parts: [{ text: "Cierre." }] } }] };
+    return { candidates: [{ content: { role: "model", parts: [{ functionCall: { name: "buscar_tuberia", args: {} } }] } }] };
+  });
+  const r2 = await analisis.ejecutarTurno({ conv: conv2, texto: "x", clave: "k", ajustes: { ...ajustes, maxRondas: 2 }, ctx: ctxNuevo() });
+  ok(r2.truncado && r2.texto === "Cierre." && modos.at(-1) === "NONE" && modos.length === 3, `agota rondas y fuerza cierre (${modos.join(",")})`);
+
+  // error de red -> se revierte el turno
+  const conv3 = { contenidos: [{ role: "user", parts: [{ text: "previo" }] }, { role: "model", parts: [{ text: "ok" }] }] };
+  const ctx3 = ctxNuevo();
+  gemini.usarMock(async () => { throw new gemini.ErrorGemini("caída", { tipo: "red" }); });
+  let err = null;
+  try { await analisis.ejecutarTurno({ conv: conv3, texto: "nuevo", clave: "k", ajustes, ctx: ctx3 }); } catch (e) { err = e; }
+  ok(err && err.tipo === "red" && conv3.contenidos.length === 2, "ante un error se revierte el historial del turno");
+  gemini.usarMock(null);
+});
+
 /*__SECCIONES_EXTRA__*/
 
 out.textContent += `\nRESULT: ${fallos ? "FAIL" : "OK"} (${total - fallos}/${total})\n`;

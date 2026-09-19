@@ -1,0 +1,89 @@
+// Motor del "Analisis con calculadoras": bucle de conversacion con Gemini en el
+// que el modelo pide ejecutar herramientas (js/ai/tools.js), la app las corre
+// con los motores reales y le devuelve los resultados para que los interprete.
+
+import { generar } from "./gemini.js";
+import { declaraciones, ejecutarLlamada, tituloDe } from "./tools.js";
+
+export const SISTEMA_ANALISIS = `Eres el asistente de análisis de la aplicación "Herramientas de Ingeniería", para líneas y redes de distribución eléctrica en Colombia (referencias: RETIE, NTC 2050, IEEE Std 738, IEC 60287, CREG). Respondes siempre en español.
+
+REGLAS DE TRABAJO
+1. NUNCA calcules ni estimes valores numéricos por tu cuenta ni de memoria. Todo número de un resultado debe provenir de una herramienta. Si no hay herramienta para algo, dilo con claridad en lugar de inventar.
+2. Para comparar escenarios usa barrer_parametro (variar un parámetro en una sola llamada) o varias llamadas a calcular_*. Si dudas de un calibre, material o referencia, consulta antes con buscar_conductor o buscar_tuberia.
+3. Si falta un dato imprescindible (tensión, potencia, longitud, calibre…), pregúntalo antes de calcular. Si un dato secundario tiene valor por defecto en la calculadora, puedes usarlo, pero decláralo como supuesto.
+4. Las fórmulas replican una aplicación original y algunas decisiones son intencionales: por ejemplo, las pérdidas usan un factor de pérdidas lineal (0.7·Fc + 0.3). No las cuestiones ni las "corrijas".
+5. Si una herramienta devuelve un error, corrige los parámetros y reintenta; si no es posible, explica el motivo al usuario.
+6. Indica siempre unidades. Distingue entre lo que calcularon las herramientas y tus recomendaciones. No inventes límites normativos: usa solo los que devuelvan las herramientas (por ejemplo el límite de ocupación NTC 2050); cualquier otro umbral menciónalo como referencia general que el ingeniero debe verificar.
+7. La aplicación ya muestra al usuario la tabla completa de cálculos ejecutados, así que no la repitas entera: resume, compara, señala tendencias, puntos críticos y recomendaciones, citando las cifras clave.
+8. Da respuestas claras y bien estructuradas en Markdown (títulos cortos, listas y tablas pequeñas cuando ayuden).`;
+
+export const PROMPT_REPORTE = `Genera ahora un REPORTE DE ESCENARIOS formal en Markdown, basado únicamente en los cálculos ejecutados con herramientas en esta conversación. Usa exactamente esta estructura:
+
+# (título descriptivo del análisis)
+## Objetivo
+## Datos y supuestos
+## Escenarios evaluados
+(descríbelos brevemente; NO repitas las tablas completas, la aplicación las adjunta al reporte)
+## Resultados y hallazgos
+## Recomendaciones
+## Advertencias y limitaciones
+
+No ejecutes cálculos nuevos salvo que sea indispensable. No inventes datos ni límites normativos.`;
+
+/**
+ * Ejecuta un turno completo (posiblemente varias idas y vueltas con herramientas).
+ * Muta `conv.contenidos` y `ctx.log`; si falla, revierte el historial de este turno.
+ *
+ * @param {object} o
+ * @param {{contenidos:object[]}} o.conv
+ * @param {string} o.texto - mensaje del usuario
+ * @param {string} o.clave
+ * @param {{modelo:string, temperatura:number, maxRondas:number, maxCalculos:number}} o.ajustes
+ * @param {object} o.ctx - contexto de herramientas (crearContexto)
+ * @param {(e:object)=>void} [o.onEvento] - { tipo:"herramienta", nombre, titulo } | { tipo:"herramienta-fin", nombre, titulo, ok }
+ * @returns {Promise<{texto:string, herramientas:{titulo:string, ok:boolean}[], truncado:boolean}>}
+ */
+export async function ejecutarTurno({ conv, texto, clave, ajustes, ctx, onEvento }) {
+  const marcador = conv.contenidos.length;
+  const marcadorLog = ctx.log.length;
+  const herramientas = [];
+  ctx.presupuesto = { max: ajustes.maxCalculos, usado: 0 };
+  conv.contenidos.push({ role: "user", parts: [{ text: texto }] });
+
+  const base = { clave, modelo: ajustes.modelo, sistema: SISTEMA_ANALISIS, temperatura: ajustes.temperatura, herramientas: declaraciones() };
+
+  try {
+    for (let ronda = 0; ronda < ajustes.maxRondas; ronda++) {
+      const r = await generar({ ...base, contenidos: conv.contenidos, modoHerramientas: "AUTO" });
+      conv.contenidos.push(r.content);
+
+      if (!r.llamadas.length) {
+        return { texto: r.texto.trim() || "(La IA no devolvió texto.)", herramientas, truncado: false };
+      }
+
+      const respuestas = [];
+      for (const ll of r.llamadas) {
+        const titulo = tituloDe(ll.name);
+        onEvento?.({ tipo: "herramienta", nombre: ll.name, titulo });
+        const salida = await ejecutarLlamada(ll.name, ll.args, ctx);
+        herramientas.push({ titulo, ok: !!salida.ok });
+        onEvento?.({ tipo: "herramienta-fin", nombre: ll.name, titulo, ok: !!salida.ok });
+        respuestas.push({ functionResponse: { name: ll.name, response: salida } });
+      }
+      conv.contenidos.push({ role: "user", parts: respuestas });
+    }
+
+    // Se agotaron las rondas: se pide un cierre sin mas herramientas.
+    conv.contenidos.push({
+      role: "user",
+      parts: [{ text: "Se alcanzó el límite de rondas de cálculo. Sin usar más herramientas, resume con los resultados ya obtenidos e indica qué faltó por evaluar." }],
+    });
+    const cierre = await generar({ ...base, contenidos: conv.contenidos, modoHerramientas: "NONE" });
+    conv.contenidos.push(cierre.content);
+    return { texto: cierre.texto.trim() || "(La IA no devolvió texto.)", herramientas, truncado: true };
+  } catch (err) {
+    conv.contenidos.length = marcador;
+    ctx.log.length = marcadorLog;
+    throw err;
+  }
+}
