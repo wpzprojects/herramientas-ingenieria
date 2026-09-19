@@ -93,17 +93,21 @@ export async function render(container) {
 
   // Caja de texto como la del corrector de redaccion: una linea que crece al escribir (hasta el 40 % de la pantalla).
   function ajustarAlto() {
-    if (!fPregunta.value) { // vacia: una sola linea (el texto de ejemplo no debe agrandar la caja)
-      fPregunta.style.height = "";
-      fPregunta.style.overflowY = "";
-      return;
-    }
     const max = window.innerHeight * 0.4;
     fPregunta.style.height = "auto";
     fPregunta.style.height = `${Math.min(fPregunta.scrollHeight, max)}px`;
     fPregunta.style.overflowY = fPregunta.scrollHeight > max ? "auto" : "hidden"; // sin flechas mientras quepa
   }
   fPregunta.addEventListener("input", ajustarAlto);
+  // La caja vacia debe mostrar completo el texto de ejemplo (en el celular ocupa varias lineas): se reajusta al
+  // cambiar el ancho (giro de pantalla, menu lateral). Observar solo el ancho evita un bucle con el cambio de alto.
+  let anchoPrevio = 0;
+  new ResizeObserver(() => {
+    if (fPregunta.clientWidth !== anchoPrevio) {
+      anchoPrevio = fPregunta.clientWidth;
+      ajustarAlto();
+    }
+  }).observe(fPregunta);
   // El chat crece con la conversacion (sin barra propia) y el desplazamiento lo hace la pagina.
   const alFinal = () => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
 

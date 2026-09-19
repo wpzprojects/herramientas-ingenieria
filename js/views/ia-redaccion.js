@@ -127,18 +127,23 @@ export async function render(container) {
     mic?.detener();
     chat.hidden = !v;
     fTexto.placeholder = v ? PH_AJUSTE : PH_TEXTO;
+    ajustarAlto(); // el texto de ejemplo cambia y puede ocupar mas o menos lineas
   }
   function ajustarAlto() {
-    if (!fTexto.value) { // vacia: una sola linea (el texto de ejemplo no debe agrandar la caja)
-      fTexto.style.height = "";
-      fTexto.style.overflowY = "";
-      return;
-    }
     const max = window.innerHeight * 0.4;
     fTexto.style.height = "auto";
     fTexto.style.height = `${Math.min(fTexto.scrollHeight, max)}px`;
     fTexto.style.overflowY = fTexto.scrollHeight > max ? "auto" : "hidden"; // sin flechas mientras quepa
   }
+  // La caja vacia debe mostrar completo el texto de ejemplo (en el celular ocupa varias lineas): se reajusta al
+  // cambiar el ancho (giro de pantalla, menu lateral). Observar solo el ancho evita un bucle con el cambio de alto.
+  let anchoPrevio = 0;
+  new ResizeObserver(() => {
+    if (fTexto.clientWidth !== anchoPrevio) {
+      anchoPrevio = fTexto.clientWidth;
+      ajustarAlto();
+    }
+  }).observe(fTexto);
   // La tarjeta crece con la conversacion y el desplazamiento lo hace la pagina.
   const alFinal = () => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
 
