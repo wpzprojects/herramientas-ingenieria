@@ -264,9 +264,9 @@ await seccion("pantalla: un solo formulario (sin botón ni tarjeta aparte)", asy
   const chk = $("#chk-todos");
   ok(!!chk && !chk.checked && texto(chk.closest("label")) === "Habilitar todos los sistemas de coordenadas", "casilla «Habilitar todos los sistemas de coordenadas», apagada por defecto");
   ok(visible("#campos-lista") && !visible("#campos-epsg") && visible("#campos-punto") && !visible("#campo-lote"), "por defecto: las dos listas de siempre y longitud / latitud");
-  const conv = $$(".btn-row .btn")[0].getBoundingClientRect();
+  const conv = $$(".btn-row .btn")[1].getBoundingClientRect();
   const lote = $("#btn-lotes").getBoundingClientRect();
-  ok(texto($$(".btn-row .btn")[0]) === "Convertir" && texto($("#btn-lotes .activo")) === "Convertir por lotes" && Math.abs(conv.top - lote.top) < 2 && lote.left > conv.right, "junto al botón «Convertir» está «Convertir por lotes», a su derecha");
+  ok(texto($$(".btn-row .btn")[1]) === "Convertir" && texto($("#btn-lotes .activo")) === "Convertir por lotes" && Math.abs(conv.top - lote.top) < 2 && conv.left > lote.right, "«Convertir por lotes» va primero y «Convertir» a su derecha");
   ok($("#btn-lotes").dataset.lotes === "false" && $("#btn-lotes").type === "button", "«Convertir por lotes» empieza apagado y no envía el formulario");
 });
 
@@ -345,7 +345,9 @@ await seccion("pantalla: convertir por lotes", async () => {
   const ta = $("#f-lote").getBoundingClientRect();
   ok(ta.height > 120 && ta.width > $("#f-sistema-origen").getBoundingClientRect().width * 1.5, `el cuadro es de lado a lado y más alto que un campo (${Math.round(ta.width)} × ${Math.round(ta.height)} px)`);
   const nota = $("#campo-lote .hint");
-  ok(texto(nota) === "Ingresar datos por lotes. Cada línea debe ser una pareja de coordenadas separadas por un espacio." && nota.getBoundingClientRect().top >= ta.bottom - 0.5, "la nota va debajo del cuadro con el texto pedido");
+  ok(texto(nota) === "Ingresar datos por lotes. Cada línea debe ser una pareja de coordenadas separadas." && nota.getBoundingClientRect().top >= ta.bottom - 0.5, "la nota va debajo del cuadro con el texto pedido");
+  const ejemplos = $("#f-lote").placeholder.split(String.fromCharCode(10));
+  ok(ejemplos[0] === "Ejemplos válidos:" && ejemplos.length === 6 && ejemplos.slice(1).every((l) => { const r = epsg.parsearPareja(l); return r.x === (l.includes(",0817") || l.includes("-74.0817") ? -74.0817 : NaN) && r.y === 4.6097; }), "el cuadro muestra 5 ejemplos válidos (punto y coma, coma, espacio, comillas) y todos se leen como -74.0817 y 4.6097");
   ok(texto($("#label-lote")) === "Longitud y latitud (grados)" && !$("#f-x").required && $("#f-lote").required, "etiqueta «Longitud y latitud» y solo el cuadro es obligatorio");
 
   // 4326 -> 3116, con una linea vacia, una mala y un punto fuera del area

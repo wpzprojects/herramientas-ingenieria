@@ -67,13 +67,13 @@ export function render(container) {
 
       <div class="field" id="campo-lote" hidden>
         <label for="f-lote" id="label-lote">Longitud y latitud</label>
-        <textarea id="f-lote" rows="8" spellcheck="false" autocomplete="off" placeholder="-74.0817 4.6097"></textarea>
-        <span class="hint">Ingresar datos por lotes. Cada línea debe ser una pareja de coordenadas separadas por un espacio.</span>
+        <textarea id="f-lote" rows="8" spellcheck="false" autocomplete="off" placeholder="Ejemplos válidos:&#10;-74.0817 4.6097&#10;-74,0817;4,6097&#10;-74.0817,4.6097&#10;-74,0817 4,6097&#10;&quot;-74,0817&quot;;&quot;4,6097&quot;;"></textarea>
+        <span class="hint">Ingresar datos por lotes. Cada línea debe ser una pareja de coordenadas separadas.</span>
       </div>
 
       <div class="btn-row">
-        <button type="submit" class="btn btn-primary">Convertir</button>
         <button type="button" class="btn btn-toggle btn-dos-textos" id="btn-lotes" data-lotes="false"><span class="activo">Convertir por lotes</span><span>Convertir un solo punto</span></button>
+        <button type="submit" class="btn btn-primary">Convertir</button>
       </div>
     </form>
 
