@@ -43,7 +43,7 @@ export async function render(container) {
         <button type="button" class="btn btn-primary" id="btn-guardar">Guardar clave</button>
         <button type="button" class="btn" id="btn-probar">Probar conexión</button>
         <button type="button" class="btn" id="btn-instructivo">¿Cómo obtener mi clave?</button>
-        <button type="button" class="btn btn-ghost" id="btn-borrar-clave">Borrar clave</button>
+        <button type="button" class="btn" id="btn-borrar-clave">Borrar clave</button>
       </div>
       <div id="msg-conexion" style="margin-top: var(--space-4);"></div>
     </div>
