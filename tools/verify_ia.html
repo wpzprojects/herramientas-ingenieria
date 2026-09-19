@@ -183,7 +183,7 @@ await seccion("tools: Varios (conversión de unidades y de coordenadas)", async 
 
   // --- coordenadas
   const dCoor = decl.find((d) => d.name === "convertir_coordenadas");
-  ok(dCoor.parameters.properties.sistema_origen.enum.join() === SISTEMAS.map((s) => String(s.epsg)).join() && SISTEMAS.every((s) => dCoor.description.includes(s.label)), "los 7 sistemas EPSG salen del motor (enum y descripción)");
+  ok(dCoor.parameters.properties.sistema_origen.enum === undefined && SISTEMAS.every((s) => dCoor.description.includes(s.label)), "la descripción lista los 7 sistemas principales del motor y el código EPSG ya no es un enum (acepta ~500 códigos)");
   const sys = (epsg) => SISTEMAS.find((s) => s.epsg === epsg);
   const c2 = ctxNuevo();
   const k1 = await coor({ sistema_origen: "4326", sistema_destino: "9377", este_o_longitud: -74.0721, norte_o_latitud: 4.7110 }, c2);
@@ -254,6 +254,64 @@ await seccion("tools: conversión de unidades con el catálogo completo", async 
   ok(c4.ok === false && c4.error.includes("Calibres:"), "calibre inexistente: lista los válidos");
   const c5 = await unid({ categoria: "Calibre", unidad_origen: "mm2", unidad_destino: "d_mm", valor: 50 });
   ok(c5.ok === false && c5.error.includes("se puede convertir a"), "combinación no admitida en Calibre: el error dice a qué se puede");
+});
+
+await seccion("tools: conversión de coordenadas con códigos EPSG, varios puntos y avisos", async () => {
+  const eps = await import("../js/calc/coordenadas-epsg.js");
+  const { cargarProj4 } = await import("../js/util/proj4.js");
+  const proj4 = await cargarProj4();
+  const catalogo = await (await fetch("../data/sistemas-epsg.json")).json();
+  const coor = (o, ctx = ctxNuevo()) => tools.ejecutarLlamada("convertir_coordenadas", o, ctx);
+  const dato = (r, nombre) => r.resultados.find((x) => x.nombre === nombre)?.valor;
+
+  // sistema fuera de los 7: UTM 17N (EPSG 32617) -> MAGNA Bogotá (3116), igual que el motor EPSG de la pantalla
+  const esp = eps.convertirEntreSistemas(proj4, catalogo, "4326", "32617", -79.5, 8.9);
+  const a = await coor({ sistema_origen: "4326", sistema_destino: "32617", este_o_longitud: -79.5, norte_o_latitud: 8.9 });
+  ok(a.ok === true, `WGS84 → UTM 17N (fuera de los 7): ${a.error || "ok"}`);
+  cerca(dato(a, "Este"), esp.x, 1e-6, "UTM 17N: Este = motor EPSG de la pantalla");
+  cerca(dato(a, "Norte"), esp.y, 1e-6, "UTM 17N: Norte = motor EPSG de la pantalla");
+  const vuelta = await coor({ sistema_origen: "32617", sistema_destino: "4326", este_o_longitud: esp.x, norte_o_latitud: esp.y });
+  cerca(dato(vuelta, "Longitud"), -79.5, 1e-7, "ida y vuelta por EPSG: longitud recuperada");
+  cerca(dato(vuelta, "Latitud"), 8.9, 1e-7, "ida y vuelta por EPSG: latitud recuperada");
+
+  // formatos del código y nombres en las entradas
+  const ctx = ctxNuevo();
+  const b = await coor({ sistema_origen: "EPSG:4326", sistema_destino: 32617, este_o_longitud: -79.5, norte_o_latitud: 8.9 }, ctx);
+  ok(b.ok === true && ctx.log.at(-1).entradas.some((e) => e.etiqueta === "Sistema de salida" && String(e.valor).startsWith("32617 - ")), "acepta «EPSG:4326» y un número; la entrada muestra «código - nombre»");
+
+  // 7 sistemas: siguen dando lo del motor original, y con aviso de area de uso
+  const sys = (epsg) => SISTEMAS.find((s) => s.epsg === epsg);
+  const { convertirCoordenadas: conv, SISTEMAS } = await import("../js/calc/coordenadas.js");
+  const orig = conv(sys(4326), sys(3116), -74.07, 4.71);
+  const c = await coor({ sistema_origen: "4326", sistema_destino: "3116", este_o_longitud: -74.07, norte_o_latitud: 4.71 });
+  cerca(dato(c, "Este"), orig.xOut, 1e-6, "entre los 7 sistemas se usa el motor original (Este)");
+  ok(!(c.notas || []).some((n) => n.includes("área de uso")), "un punto de Bogotá en 3116: sin aviso de área de uso");
+  const fuera = await coor({ sistema_origen: "4326", sistema_destino: "3116", este_o_longitud: 2.35, norte_o_latitud: 48.85 });
+  ok(fuera.ok === true && (fuera.notas || []).some((n) => n.includes("área de uso")), "un punto de París en un sistema de Colombia: aviso de área de uso");
+  const fuera2 = await coor({ sistema_origen: "4326", sistema_destino: "32617", este_o_longitud: 2.35, norte_o_latitud: 48.85 });
+  ok((fuera2.notas || []).some((n) => n.includes("área de uso")), "también con un sistema EPSG fuera de los 7");
+
+  // varios puntos
+  const ctxP = ctxNuevo();
+  const p = await coor({ sistema_origen: "4326", sistema_destino: "9377", puntos: [{ este_o_longitud: -74.07, norte_o_latitud: 4.71 }, { este_o_longitud: -75.57, norte_o_latitud: 6.25 }] }, ctxP);
+  const o1 = conv(sys(4326), sys(9377), -74.07, 4.71);
+  const o2 = conv(sys(4326), sys(9377), -75.57, 6.25);
+  ok(p.ok === true && p.resultados.length === 4, "dos puntos: cuatro resultados");
+  cerca(dato(p, "Punto 1 — Este"), o1.xOut, 1e-4, "punto 1: Este");
+  cerca(dato(p, "Punto 2 — Norte"), o2.yOut, 1e-4, "punto 2: Norte");
+  ok(ctxP.log.at(-1).resultados.map((r) => r.clave).join() === "punto1_este,punto1_norte,punto2_este,punto2_norte", "claves punto1_*, punto2_*");
+  const p3 = await coor({ sistema_origen: "4326", sistema_destino: "9377", puntos: [{ este_o_longitud: -74, norte_o_latitud: 4 }, { este_o_longitud: -74 }] });
+  ok(p3.ok === false && p3.error.includes("punto 2"), "a un punto le falta una coordenada: el error dice cuál");
+  const many = Array.from({ length: 51 }, () => ({ este_o_longitud: -74, norte_o_latitud: 4 }));
+  ok((await coor({ sistema_origen: "4326", sistema_destino: "9377", puntos: many })).ok === false, "más de 50 puntos: error");
+  const sinNada = await coor({ sistema_origen: "4326", sistema_destino: "9377" });
+  ok(sinNada.ok === false && sinNada.error.includes("puntos"), "sin coordenadas: el error pide el punto o la lista");
+
+  // errores
+  const e1 = await coor({ sistema_origen: "99999", sistema_destino: "3116", este_o_longitud: 1, norte_o_latitud: 1 });
+  ok(e1.ok === false && e1.error.includes("99999") && e1.error.includes("3116"), "código EPSG que no está: el error lo dice y lista los principales");
+  const e2 = await coor({ sistema_origen: "hola", sistema_destino: "3116", este_o_longitud: 1, norte_o_latitud: 1 });
+  ok(e2.ok === false, "código con formato inválido: error");
 });
 
 await seccion("tools: herramientas permitidas por agente", async () => {

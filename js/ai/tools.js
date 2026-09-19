@@ -22,6 +22,8 @@ import { calcularPantalla } from "../calc/ampacidad-subterranea-pantalla.js";
 import { calcularOcupacionGrupos } from "../calc/ocupacion-grupos.js";
 import { convertirBase, datosCalibre, calibrePorArea, CALIBRES } from "../calc/unidades-extendido.js";
 import { SISTEMAS, convertirCoordenadas } from "../calc/coordenadas.js";
+import { parseCodigoEpsg, infoSistema, convertirEntreSistemas, avisosArea } from "../calc/coordenadas-epsg.js";
+import { cargarProj4 } from "../util/proj4.js";
 
 export class ErrorHerramienta extends Error {}
 
@@ -973,8 +975,12 @@ const T_CONVERTIR_UNIDADES = {
   },
 };
 
-const EPSG = SISTEMAS.map((s) => String(s.epsg));
 const sistemaDe = (epsg) => SISTEMAS.find((s) => String(s.epsg) === epsg);
+const MAX_PUNTOS_COORD = 50;
+const CAMPOS_PUNTO = [
+  N("este_o_longitud", "Este en metros si el sistema de origen es proyectado; longitud en grados (negativa al oeste) si es geográfico"),
+  N("norte_o_latitud", "Norte en metros si el sistema de origen es proyectado; latitud en grados si es geográfico"),
+];
 
 const T_CONVERTIR_COORDENADAS = {
   nombre: "convertir_coordenadas",
@@ -983,37 +989,100 @@ const T_CONVERTIR_COORDENADAS = {
   opcional: true,
   titulo: "Conversión de coordenadas",
   descripcion:
-    `Convierte una coordenada entre sistemas de referencia (código EPSG): ${SISTEMAS.map((s) => s.label).join("; ")}. ` +
-    "En un sistema geográfico (4326) se da longitud (negativa al oeste) y latitud, en grados decimales; en uno proyectado, Este y Norte en metros. " +
-    "Siempre va primero el valor horizontal (este o longitud) y después el vertical (norte o latitud).",
+    "Convierte una o varias coordenadas entre sistemas de referencia con su código EPSG (~500 códigos: los de Colombia y los más usados del mundo). " +
+    `Los principales: ${SISTEMAS.map((s) => s.label).join("; ")}; también las cuadrículas urbanas de Colombia, MAGNA-SIRGAS (4686), Bogotá 1975 (4218/21897), SIRGAS (4674), NAD83, ETRS89 y las zonas UTM (326xx norte, 327xx sur). ` +
+    "En un sistema geográfico (p. ej. 4326) se da longitud (negativa al oeste) y latitud, en grados decimales; en uno proyectado, Este y Norte en la unidad del sistema (casi siempre metros). " +
+    "Siempre va primero el valor horizontal (este o longitud) y después el vertical (norte o latitud). " +
+    "Un punto: este_o_longitud y norte_o_latitud. Varios puntos (hasta " + MAX_PUNTOS_COORD + "): la lista puntos. La herramienta avisa si el punto queda fuera del área de uso de un sistema o si el cambio de datum es aproximado.",
   campos: [
-    S("sistema_origen", "Código EPSG del sistema en el que está la coordenada dada", { req: true, enum: EPSG, oculto: true }),
-    S("sistema_destino", "Código EPSG del sistema al que se quiere convertir", { req: true, enum: EPSG, oculto: true }),
-    N("este_o_longitud", "Este en metros si el sistema de origen es proyectado; longitud en grados (negativa al oeste) si es geográfico (4326)", { req: true, oculto: true }),
-    N("norte_o_latitud", "Norte en metros si el sistema de origen es proyectado; latitud en grados si es geográfico (4326)", { req: true, oculto: true }),
+    S("sistema_origen", "Código EPSG del sistema en el que está la coordenada dada, por ejemplo 4326, 3116, 9377 o 'EPSG:32618'", { req: true, oculto: true }),
+    S("sistema_destino", "Código EPSG del sistema al que se quiere convertir", { req: true, oculto: true }),
+    { ...CAMPOS_PUNTO[0], oculto: true },
+    { ...CAMPOS_PUNTO[1], oculto: true },
+    { n: "puntos", t: "array", d: `Varios puntos a convertir (hasta ${MAX_PUNTOS_COORD}), cada uno con este_o_longitud y norte_o_latitud; en lugar de los dos campos de un solo punto`, itemCampos: CAMPOS_PUNTO },
   ],
-  calcular(v, extra) {
-    const o = sistemaDe(v.sistema_origen);
-    const d = sistemaDe(v.sistema_destino);
-    const x = v.este_o_longitud;
-    const y = v.norte_o_latitud;
-    if (o.esGeo) {
-      if (Math.abs(x) > 180) throw new ErrorHerramienta(`La longitud debe estar entre -180 y 180 grados (recibido: ${x}). Con ${o.label}, "este_o_longitud" es la longitud y "norte_o_latitud" la latitud.`);
-      if (Math.abs(y) > 90) throw new ErrorHerramienta(`La latitud debe estar entre -90 y 90 grados (recibido: ${y}). Con ${o.label}, "este_o_longitud" es la longitud y "norte_o_latitud" la latitud.`);
-    } else if (Math.abs(x) <= 180 && Math.abs(y) <= 90) {
-      extra.notas.push(`Los valores (${x}, ${y}) parecen grados, pero el sistema de entrada (${o.label}) es proyectado y trabaja en metros: verifica que sea el sistema de origen correcto.`);
+  async calcular(v, extra) {
+    const catalogo = await loadData("sistemas-epsg");
+    const resolver = (dado, lado) => {
+      const codigo = parseCodigoEpsg(String(dado));
+      const info = codigo && infoSistema(codigo, catalogo);
+      if (!info) {
+        throw new ErrorHerramienta(
+          `El código EPSG "${dado}" (${lado}) no está entre los ~${Object.keys(catalogo).length} sistemas incluidos: debe ser uno de los códigos del catálogo de la aplicación (Colombia y los más usados del mundo). Los principales: ${SISTEMAS.map((s) => s.epsg).join(", ")}.`
+        );
+      }
+      const s7 = sistemaDe(info.codigo);
+      return { ...info, s7, etiqueta: s7 ? s7.label : `${info.codigo} - ${info.nombre}` };
+    };
+    const o = resolver(v.sistema_origen, "origen");
+    const d = resolver(v.sistema_destino, "destino");
+
+    const lista = v.puntos?.length ? v.puntos : [{ este_o_longitud: v.este_o_longitud, norte_o_latitud: v.norte_o_latitud }];
+    if (lista.length > MAX_PUNTOS_COORD) throw new ErrorHerramienta(`Máximo ${MAX_PUNTOS_COORD} puntos por llamada (recibí ${lista.length}).`);
+    if (v.puntos?.length && v.este_o_longitud !== undefined) extra.notas.push('Con "puntos" se ignoran este_o_longitud y norte_o_latitud.');
+    const n = lista.length;
+    lista.forEach((p, i) => {
+      if (p.este_o_longitud === undefined || p.norte_o_latitud === undefined) {
+        throw new ErrorHerramienta(n > 1 || v.puntos?.length ? `Al punto ${i + 1} le falta este_o_longitud o norte_o_latitud.` : 'Indica "este_o_longitud" y "norte_o_latitud" (o una lista "puntos").');
+      }
+    });
+
+    let proj4 = null;
+    const la7 = o.s7 && d.s7;
+    if (!la7) {
+      try {
+        proj4 = await cargarProj4();
+      } catch {
+        throw new ErrorHerramienta("No se pudo cargar la librería de proyecciones necesaria para estos sistemas.");
+      }
     }
-    extra.entradas.push(
-      ent("sistema_origen", "Sistema de entrada", o.label),
-      ent("sistema_destino", "Sistema de salida", d.label),
-      { ...ent("este_o_longitud", o.esGeo ? "Longitud" : "Este", x, o.esGeo ? "°" : "m"), cifras: CIFRAS_VARIOS },
-      { ...ent("norte_o_latitud", o.esGeo ? "Latitud" : "Norte", y, o.esGeo ? "°" : "m"), cifras: CIFRAS_VARIOS }
-    );
-    const r = convertirCoordenadas(o, d, x, y);
-    const salida = r.esGeoDestino
-      ? [res("longitud", "Longitud", r.xOut, "°", 6), res("latitud", "Latitud", r.yOut, "°", 6)]
-      : [res("este", "Este", r.xOut, "m", 4), res("norte", "Norte", r.yOut, "m", 4)];
-    return salida.map((s) => ({ ...s, cifras: CIFRAS_VARIOS }));
+    extra.entradas.push(ent("sistema_origen", "Sistema de entrada", o.etiqueta), ent("sistema_destino", "Sistema de salida", d.etiqueta));
+    const salida = [];
+    const wgs84 = SISTEMAS[0];
+    for (const [i, p] of lista.entries()) {
+      const x = p.este_o_longitud;
+      const y = p.norte_o_latitud;
+      const pre = n > 1 ? `Punto ${i + 1} — ` : "";
+      const cl = n > 1 ? `punto${i + 1}_` : "";
+      if (o.esGeo) {
+        if (Math.abs(x) > 180) throw new ErrorHerramienta(`La longitud debe estar entre -180 y 180 grados (recibido: ${x}${n > 1 ? `, punto ${i + 1}` : ""}). Con ${o.etiqueta}, "este_o_longitud" es la longitud y "norte_o_latitud" la latitud.`);
+        if (Math.abs(y) > 90) throw new ErrorHerramienta(`La latitud debe estar entre -90 y 90 grados (recibido: ${y}${n > 1 ? `, punto ${i + 1}` : ""}). Con ${o.etiqueta}, "este_o_longitud" es la longitud y "norte_o_latitud" la latitud.`);
+      } else if (Math.abs(x) <= 180 && Math.abs(y) <= 90) {
+        extra.notas.push(`${pre}Los valores (${x}, ${y}) parecen grados, pero el sistema de entrada (${o.etiqueta}) es proyectado (${o.unidad}): verifica que sea el sistema de origen correcto.`);
+      }
+      extra.entradas.push(
+        { ...ent(`${cl}este_o_longitud`, `${pre}${o.esGeo ? "Longitud" : "Este"}`, x, o.esGeo ? "°" : ""), cifras: CIFRAS_VARIOS },
+        { ...ent(`${cl}norte_o_latitud`, `${pre}${o.esGeo ? "Latitud" : "Norte"}`, y, o.esGeo ? "°" : ""), cifras: CIFRAS_VARIOS }
+      );
+      let xOut;
+      let yOut;
+      let avisos;
+      if (la7) {
+        // Los 7 sistemas de siempre: motor original; el area de uso sale del catalogo (como en la pantalla).
+        ({ xOut, yOut } = convertirCoordenadas(o.s7, d.s7, x, y));
+        const ll = o.esGeo ? { xOut: x, yOut: y } : convertirCoordenadas(o.s7, wgs84, x, y);
+        avisos = avisosArea({ nombre: o.etiqueta, bbox: o.bbox }, { nombre: d.etiqueta, bbox: d.bbox }, ll.xOut, ll.yOut);
+      } else {
+        try {
+          const r = convertirEntreSistemas(proj4, catalogo, o.codigo, d.codigo, x, y);
+          xOut = r.x;
+          yOut = r.y;
+          avisos = r.avisos;
+        } catch (e) {
+          throw new ErrorHerramienta(`${e.message}${n > 1 ? ` (punto ${i + 1})` : ""}`);
+        }
+      }
+      extra.notas.push(...avisos.map((a) => pre + a.texto));
+      const unidad = d.esGeo ? "°" : d.unidad === "metros" ? "m" : d.unidad;
+      const etiquetas = d.esGeo ? ["Longitud", "Latitud"] : ["Este", "Norte"];
+      const claves = d.esGeo ? ["longitud", "latitud"] : ["este", "norte"];
+      const dec = d.esGeo ? 6 : 4;
+      salida.push(
+        { ...res(cl + claves[0], pre + etiquetas[0], xOut, unidad, dec), cifras: CIFRAS_VARIOS },
+        { ...res(cl + claves[1], pre + etiquetas[1], yOut, unidad, dec), cifras: CIFRAS_VARIOS }
+      );
+    }
+    return salida;
   },
 };
 
