@@ -59,6 +59,11 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   cajón emergente. Medir posiciones/espaciados con un iframe temporal, no a ojo. El orden
   del menú (`sidebarLinks` en `js/nav.js`) es Cálculos, Catálogos, Normatividad, Funciones de IA,
   Varios, Ayuda; el Home y Ayuda siguen el mismo orden.
+- PRUEBA (2026-09-18): las descripciones `.page-subtitle` bajo el título de cada pantalla están
+  ocultas por CSS (regla en `css/app.css`), pendientes de decidir si se eliminan del todo; el HTML
+  sigue en las vistas. `.page-subtitle--dato` (p. ej. el "objeto" en `detalle-resolucion.js`) es un
+  dato real y sigue visible. Si se decide borrarlas, quitar los `<p class="page-subtitle">` de las
+  vistas y `sectionMeta.*.subtitle` de `nav.js` (Ayuda lo usa) y limpiar la regla.
 - Modo oscuro: `--bg` es `#0f0f0f` (antes `#1e1e1e`, se oscureció ~50% el 2026-09-17).
 
 ## Verificación visual de cambios de UI
