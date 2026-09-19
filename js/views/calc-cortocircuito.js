@@ -1,11 +1,13 @@
 // Calculadora de capacidad de corriente de cortocircuito admisible (limite termico del conductor).
 // La pantalla se divide en tarjetas: "Conductor" (red, material, calibre y area) y "Condiciones de la falla" (temperaturas y
-// tiempo de despeje). Misma estructura que Perdidas, Regulacion y Ocupacion de ductos. El motor (../calc/cortocircuito.js) no
+// tiempo de despeje y, opcional, la corriente de falla a soportar: con ella se indica si el calibre cumple y se sugiere el mas
+// pequeño que la soporta, ../calc/cortocircuito-calibre.js). Misma estructura que Perdidas, Regulacion y Ocupacion de ductos. El motor (../calc/cortocircuito.js) no
 // se toca.
 
 import { fmt, loadData, distinct, escapeHtml } from "../util/format.js";
 import { icon } from "../icons.js";
 import { calcularCortocircuito } from "../calc/cortocircuito.js";
+import { compararCalibres } from "../calc/cortocircuito-calibre.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 import { activarInfos } from "../util/info-campo.js";
 
@@ -14,6 +16,10 @@ const FORMULAS_TEX = [
   {
     titulo: "Capacidad de cortocircuito",
     ecuaciones: [String.raw`I_{CC} = \dfrac{A \cdot k_1}{1000}\,\sqrt{\dfrac{\log_{10}\!\left(\dfrac{T_2 + \lambda}{T_1 + \lambda}\right)}{t}} \quad [\mathrm{kA}]`],
+  },
+  {
+    titulo: "Área mínima para una corriente a soportar",
+    ecuaciones: [String.raw`A_{min} = \dfrac{I_{req} \cdot 1000}{k_1\,\sqrt{\dfrac{\log_{10}\!\left(\dfrac{T_2 + \lambda}{T_1 + \lambda}\right)}{t}}} \quad [\mathrm{mm^2}]`],
   },
   {
     titulo: "Constantes del material",
@@ -27,6 +33,8 @@ const FORMULAS_TEX = [
 const FORMULAS_ETIQUETAS = [
   { tex: String.raw`I_{CC}`, texto: "Capacidad de corriente de cortocircuito [kA]" },
   { tex: "A", texto: "Área del conductor [mm²]" },
+  { tex: String.raw`I_{req}`, texto: "Corriente de falla a soportar [kA]" },
+  { tex: String.raw`A_{min}`, texto: "Área mínima del conductor para soportar esa corriente [mm²]" },
   { tex: "T_1", texto: "Temperatura de operación [°C]" },
   { tex: "T_2", texto: "Temperatura máxima admisible en falla [°C]" },
   { tex: "t", texto: "Tiempo de despeje de la falla [s]" },
@@ -37,6 +45,8 @@ const FORMULAS_ETIQUETAS = [
 const FORMULAS_NOTA = `El logaritmo es en base 10.
 
 En red aérea todos los tipos del catálogo (ACSR, AAAC, ACAR, AAC, ACSS) se calculan con las constantes del aluminio y con el área de aluminio del conductor.
+
+Si se indica la corriente de falla a soportar, el calibre sugerido es el de menor área, del mismo tipo y material elegidos, cuya capacidad de cortocircuito iguala o supera esa corriente (equivale a tener un área mayor o igual a A_min).
 
 Valores por defecto: temperatura de operación de 75 °C en red aérea y 90 °C en subterránea, y temperatura máxima en falla de 250 °C. Con «Manual» se pueden modificar.`;
 
@@ -49,6 +59,9 @@ const FORMULAS_TEXTO = `I_CC = A · k1 · √( log10((T2+λ)/(T1+λ)) / t ) / 10
   t  = tiempo de despeje de la falla (s)
   λ  = 234 (Cobre) / 228 (Aluminio)
   k1 = 341 (Cobre) / 224 (Aluminio)
+
+Área mínima para una corriente a soportar I_req (kA):
+  A_min = I_req · 1000 / ( k1 · √( log10((T2+λ)/(T1+λ)) / t ) )     [mm²]
 
 ${FORMULAS_NOTA}`;
 
@@ -119,6 +132,10 @@ export async function render(container) {
             <label for="f-tiempo">Tiempo de despeje de la falla (s)</label>
             <input type="number" id="f-tiempo" min="0" max="60" step="0.1" value="0.3" required>
           </div>
+          <div class="field">
+            <label for="f-objetivo" data-info="Opcional. Con este dato se indica si el calibre cumple y se sugiere el más pequeño que la soporta.">Corriente de falla a soportar (kA)</label>
+            <input type="number" id="f-objetivo" min="0" step="any" placeholder="Opcional">
+          </div>
         </div>
       </div>
 
@@ -139,6 +156,7 @@ export async function render(container) {
   const fTop = container.querySelector("#f-top");
   const fTfalla = container.querySelector("#f-tfalla");
   const fTiempo = container.querySelector("#f-tiempo");
+  const fObjetivo = container.querySelector("#f-objetivo");
   const chkArea = container.querySelector("#chk-area");
   const chkTop = container.querySelector("#chk-top");
   const chkTfalla = container.querySelector("#chk-tfalla");
@@ -244,8 +262,26 @@ export async function render(container) {
     };
 
     const data = calcularCortocircuito(p);
-    renderResultado(data, p, { red, tipoMaterial: selMaterial.value, calibre: selCalibre.value, materialElectrico: material });
+    const objetivoKa = fObjetivo.value.trim() === "" ? null : parseFloat(fObjetivo.value);
+    const ctx = { red, tipoMaterial: selMaterial.value, calibre: selCalibre.value, materialElectrico: material, objetivoKa };
+    ctx.comparacion = objetivoKa === null ? null : compararCalibres(candidatosCalibre(red), { material, tempOperacionC: p.tempOperacionC, tempFallaC: p.tempFallaC, tiempoS: p.tiempoS }, objetivoKa, ctx.calibre);
+    renderResultado(data, p, ctx);
   });
+
+  /** Calibres del mismo tipo y material que el elegido, con su area (un calibre = su primera referencia). */
+  function candidatosCalibre(red) {
+    const aereo = red === "Aereo";
+    const campoMaterial = aereo ? "tipo" : "material_conductor";
+    const campoArea = aereo ? "area_seccion_aluminio_mm2" : "area_conductor_mm2";
+    const vistos = new Set();
+    return (aereo ? desnudos : xlpe)
+      .filter((f) => {
+        if (f[campoMaterial] !== selMaterial.value || !f.calibre_awg_kcmil || f[campoArea] == null || vistos.has(f.calibre_awg_kcmil)) return false;
+        vistos.add(f.calibre_awg_kcmil);
+        return true;
+      })
+      .map((f) => ({ calibre: f.calibre_awg_kcmil, area: f[campoArea] }));
+  }
 
   function reporteTexto(data, p, ctx) {
     // El reporte se copia y se pega: tres etiquetas (el calculo, los parametros de entrada y los resultados).
@@ -262,6 +298,7 @@ export async function render(container) {
       `Temperatura de operación: ${fmt(p.tempOperacionC)} °C`,
       `Temperatura máxima admisible en falla: ${fmt(p.tempFallaC)} °C`,
       `Tiempo de despeje de la falla: ${fmt(p.tiempoS, 1)} s`,
+      ...(ctx.objetivoKa === null ? [] : [`Corriente de falla a soportar: ${fmt(ctx.objetivoKa)} kA`]),
       ``,
       `RESULTADOS:`,
       LINEA_REPORTE,
@@ -271,18 +308,71 @@ export async function render(container) {
       `log10((T2+λ)/(T1+λ)): ${fmt(data.intermedios.logaritmo, 5)}`,
       ``,
       `Capacidad de cortocircuito: ${fmt(data.capacidadCcKa)} kA`,
+      ...(ctx.comparacion === null ? [] : reporteObjetivo(data, ctx)),
     ].join("\n");
+  }
+
+  /** Lineas del reporte cuando se indico la corriente a soportar. */
+  function reporteObjetivo(data, ctx) {
+    const c = ctx.comparacion;
+    const ok = Number.isFinite(c.areaMinimaMm2);
+    return [
+      ``,
+      `Cumple la corriente a soportar: ${data.capacidadCcKa >= ctx.objetivoKa ? "Sí" : "No"}`,
+      `Área mínima requerida: ${ok ? `${fmt(c.areaMinimaMm2)} mm²` : "no se puede calcular con estas temperaturas y tiempo"}`,
+      ...(ok ? [c.sugerido ? `Calibre sugerido: ${c.sugerido.calibre} (${fmt(c.sugerido.area)} mm²)` : `Calibre sugerido: ninguno del catálogo alcanza (el de mayor capacidad es ${c.mayor.calibre}, ${fmt(c.mayor.capacidadCcKa)} kA)`] : []),
+    ];
+  }
+
+  function comparacionHtml(ctx) {
+    const c = ctx.comparacion;
+    if (!Number.isFinite(c.areaMinimaMm2) || c.areaMinimaMm2 <= 0) {
+      return `<div class="callout callout-warning" style="margin-top: var(--space-4);">No se pudo calcular el área requerida con las temperaturas y el tiempo de falla indicados.</div>`;
+    }
+    if (!c.ventana.length) return "";
+    const mensaje = c.sugerido
+      ? `Calibre más pequeño que soporta ${fmt(ctx.objetivoKa)} kA: <strong>${escapeHtml(c.sugerido.calibre)}</strong> (${fmt(c.sugerido.area)} mm²).`
+      : `Ningún calibre del catálogo soporta ${fmt(ctx.objetivoKa)} kA con estas condiciones; el de mayor capacidad es <strong>${escapeHtml(c.mayor.calibre)}</strong> (${fmt(c.mayor.capacidadCcKa)} kA).`;
+    const filas = c.ventana
+      .map((f) => {
+        const clases = [f.calibre === c.sugerido?.calibre ? "match-row" : "", f.calibre === ctx.calibre ? "current-row" : ""].filter(Boolean).join(" ");
+        const actual = f.calibre === ctx.calibre ? ' <span class="badge">Actual</span>' : "";
+        return `<tr class="${clases}"><td>${escapeHtml(f.calibre)}${actual}</td><td class="num">${fmt(f.area)}</td><td class="num">${fmt(f.capacidadCcKa)}</td></tr>`;
+      })
+      .join("");
+    return `
+            <div class="result-subhead">Comparación con otros calibres</div>
+            <p class="text-muted text-sm" style="margin: 0 0 var(--space-3);">${mensaje}</p>
+            <div class="table-wrap tabla-resultado"><table>
+              <thead><tr><th>Calibre</th><th class="num">Área (mm²)</th><th class="num">Capacidad (kA)</th></tr></thead>
+              <tbody>${filas}</tbody>
+            </table></div>`;
   }
 
   function renderResultado(data, p, ctx) {
     const wrap = container.querySelector("#resultado-wrap");
 
+    const conObjetivo = ctx.comparacion !== null;
+    const cumple = conObjetivo && data.capacidadCcKa >= ctx.objetivoKa;
+    const areaOk = conObjetivo && Number.isFinite(ctx.comparacion.areaMinimaMm2) && ctx.comparacion.areaMinimaMm2 > 0;
+    const veredicto = conObjetivo && Number.isFinite(data.capacidadCcKa) ? ` <span class="badge ${cumple ? "badge-success" : "badge-danger"}">${cumple ? "Cumple" : "No cumple"}</span>` : "";
     const resultado = `
           <div class="result-panel">
-            <div class="result-metric">
-              <div class="value">${fmt(data.capacidadCcKa)}<span class="unit">kA</span></div>
-              <div class="label">Capacidad de corriente de cortocircuito</div>
+            <div class="${conObjetivo ? "grid-2" : ""}">
+              <div class="result-metric">
+                <div class="value">${fmt(data.capacidadCcKa)}<span class="unit">kA</span>${veredicto}</div>
+                <div class="label">Capacidad de corriente de cortocircuito${conObjetivo ? ` (a soportar: ${fmt(ctx.objetivoKa)} kA)` : ""}</div>
+              </div>
+              ${
+                areaOk
+                  ? `<div class="result-metric">
+                <div class="value">${fmt(ctx.comparacion.areaMinimaMm2)}<span class="unit">mm²</span></div>
+                <div class="label">Área mínima requerida</div>
+              </div>`
+                  : ""
+              }
             </div>
+            ${conObjetivo ? comparacionHtml(ctx) : ""}
           </div>`;
 
     wrap.innerHTML = tarjetaResultadosHtml({

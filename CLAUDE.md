@@ -63,9 +63,14 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Cortocircuito (2026-09-19) sigue el mismo patrón. Dos tarjetas: «Conductor» (icono `plugConnected`; red | material, calibre | área con
   «Manual») y «Condiciones de la falla» (icono `temperature`, Tabler; temperatura de operación y de falla, cada una con «Manual», y
   tiempo de despeje). Botones «i» solo donde aportan: material (red aérea se calcula como aluminio), área (en aéreos es el área de
-  aluminio) y temperatura de operación (75 °C aérea / 90 °C subterránea). Sin funciones nuevas: mismo resultado (una métrica en kA);
-  las constantes intermedias (λ, k1, logaritmo) van en el reporte, en RESULTADOS. El motor `js/calc/cortocircuito.js` y la
-  herramienta de la IA NO se tocan. Pruebas: `tools/verify_cortocircuito.html`.
+  aluminio) y temperatura de operación (75 °C aérea / 90 °C subterránea). Las constantes intermedias (λ, k1, logaritmo) van en el
+  reporte, en RESULTADOS. Campo OPCIONAL «Corriente de falla a soportar (kA)» (idea tomada de la «Calculadora Normativa»; vacío = la
+  pantalla se comporta como antes): con él el resultado agrega el veredicto Cumple / No cumple del calibre elegido, el «Área mínima
+  requerida» (fórmula despejada), y la comparación de calibres del MISMO tipo y material (sugerido = el de menor área que soporta la
+  corriente; reutiliza `sugerirCalibre` con `campo: "faltaKa"` y objetivo 0). El reporte suma la corriente a soportar en PARÁMETROS y
+  cumplimiento, área mínima y calibre sugerido en RESULTADOS. Esa lógica vive en `js/calc/cortocircuito-calibre.js`; el motor
+  `js/calc/cortocircuito.js` y la herramienta de la IA NO se tocan. De la Calculadora Normativa NO se copió (a propósito): λ y k1
+  editables, la forma simplificada I = A·k/√t con la Tabla B1.4 ni el gráfico del margen térmico. Pruebas: `tools/verify_cortocircuito.html`.
 - Rediseño acordado con el usuario (2026-09-19) tomando de referencia el módulo de pérdidas de otro proyecto («Calculadora
   Normativa»): tarjeta «Datos de la línea» (con *dato de partida*: MW, MVA o A) + una tarjeta «Conductor — Tramo N» por tramo
   (agregar/quitar, conductores por fase). Los COLORES no cambian (solo tokens existentes) y los resultados van en los formatos
@@ -152,7 +157,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v86); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v87); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (Ayuda → "Configuración avanzada", `js/auth/*`, `firebase/firestore.rules`)

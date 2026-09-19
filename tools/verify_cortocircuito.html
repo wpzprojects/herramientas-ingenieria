@@ -48,6 +48,8 @@ async function seccion(nombre, fn) {
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const motor = await import("../js/calc/cortocircuito.js");
+const cal = await import("../js/calc/cortocircuito-calibre.js");
+const ci = await import("../js/calc/circuito.js");
 const desnudos = await (await fetch("../data/conductores-desnudos.json")).json();
 const xlpe = await (await fetch("../data/conductores-xlpe.json")).json();
 
@@ -75,6 +77,41 @@ await seccion("cortocircuito: motor", async () => {
   cerca(a.capacidadCcKa / b.capacidadCcKa, 2, 1e-9, "al cuadruplicar el tiempo la capacidad baja a la mitad (√t)");
 });
 
+await seccion("cortocircuito-calibre: área mínima y sugerencia", async () => {
+  const cond = { material: "Aluminio", tempOperacionC: 75, tempFallaC: 250, tiempoS: 0.3 };
+  const acsr = desnudos.filter((c) => c.tipo === "ACSR").map((c) => ({ calibre: c.calibre_awg_kcmil, area: c.area_seccion_aluminio_mm2 })).filter((c, i, a) => c.area != null && a.findIndex((x) => x.calibre === c.calibre) === i);
+
+  // area minima: formula despejada, escrita aqui de forma independiente
+  const { lam, k1 } = CONST.Aluminio;
+  const lg = Math.log((250 + lam) / (75 + lam)) / Math.LN10;
+  const aMin = (10 * 1000) / (k1 * Math.sqrt(lg / 0.3));
+  cerca(cal.areaMinimaMm2(10, cond), aMin, 1e-9, `área mínima para 10 kA (0.3 s, 75→250 °C, aluminio): ${aMin.toFixed(3)} mm²`);
+  cerca(motor.calcularCortocircuito({ ...cond, areaMm2: cal.areaMinimaMm2(10, cond) }).capacidadCcKa, 10, 1e-9, "ida y vuelta: con el área mínima la capacidad es justo 10 kA");
+  cerca(cal.areaMinimaMm2(20, cond) / cal.areaMinimaMm2(10, cond), 2, 1e-9, "el área mínima es proporcional a la corriente");
+
+  // sugerencia: el calibre de menor area cuya capacidad iguala o supera la corriente
+  const ordenados = [...acsr].sort((a, b) => a.area - b.area);
+  const cap = (a) => esperado({ material: "Aluminio", A: a, T1: 75, T2: 250, t: 0.3 }).kA;
+  const primero = ordenados.find((c) => cap(c.area) >= 10);
+  const r = cal.compararCalibres(acsr, cond, 10, "4/0");
+  ok(r.sugerido && r.sugerido.calibre === primero.calibre && r.sugerido.area >= aMin, `sugiere ${primero.calibre} (${primero.area} mm²): el de menor área que soporta 10 kA`);
+  const anterior = ordenados[ordenados.indexOf(primero) - 1];
+  ok(!anterior || cap(anterior.area) < 10, "el calibre anterior (de menor área) no soporta 10 kA");
+  ok(r.ventana.every((c, i, a) => i === 0 || c.area >= a[i - 1].area) && r.ventana.some((c) => c.calibre === "4/0"), "la ventana está ordenada por área e incluye el calibre actual");
+  ok(r.ventana.every((c) => Math.abs(c.capacidadCcKa - cap(c.area)) < 1e-9), "la capacidad de cada calibre coincide con la fórmula independiente");
+  ok(r.ventana.some((c) => c.calibre === r.sugerido.calibre), "el sugerido está en la ventana");
+
+  // ninguno alcanza
+  const gr = cal.compararCalibres(acsr, cond, 500, null);
+  const mayorArea = ordenados.at(-1);
+  ok(gr.sugerido === null && gr.mayor.calibre === mayorArea.calibre, `500 kA: ningún calibre alcanza; el de mayor capacidad es ${mayorArea.calibre}`);
+  // corriente muy baja: el mas pequeno
+  ok(cal.compararCalibres(acsr, cond, 0.5, null).sugerido.calibre === ordenados[0].calibre, "con una corriente muy baja se sugiere el calibre más pequeño");
+  // temperaturas invalidas (T2 <= T1): no hay area
+  ok(!Number.isFinite(cal.areaMinimaMm2(10, { ...cond, tempFallaC: 60 })), "con T2 menor que T1 el área mínima no es un número (la pantalla lo avisa)");
+  ok(cal.compararCalibres === cal.compararCalibres && typeof ci.sugerirCalibre === "function", "se reutiliza sugerirCalibre del código común");
+});
+
 const stage = document.getElementById("stage");
 const $ = (s, r = stage) => r.querySelector(s);
 const $$ = (s, r = stage) => [...r.querySelectorAll(s)];
@@ -83,6 +120,7 @@ const elegir = (sel, v) => poner(sel, v, "change");
 const marcar = (sel, v) => { const e = $(sel); e.checked = v; e.dispatchEvent(new Event("change", { bubbles: true })); };
 const texto = (e) => (e ? e.textContent.replace(/\s+/g, " ").trim() : "");
 const calcular = () => $("#form-calc").requestSubmit();
+const fmtNum = (n) => n.toFixed(2);
 const resultadoKa = () => parseFloat(texto($(".result-metric .value")));
 
 const { render } = await import("../js/views/calc-cortocircuito.js");
@@ -105,7 +143,7 @@ await seccion("vista: tarjetas y campos", async () => {
   };
   const [c1, c2] = $$(".form-section");
   ok(filas(c1) === "Tipo de red | Material / Tipo de conductor // Calibre | Área del conductor (mm²)", `tarjeta Conductor: ${filas(c1)}`);
-  ok(filas(c2) === "Temperatura de operación (°C) | Temperatura máxima admisible en falla (°C) // Tiempo de despeje de la falla (s)", `tarjeta Condiciones: ${filas(c2)}`);
+  ok(filas(c2) === "Temperatura de operación (°C) | Temperatura máxima admisible en falla (°C) // Tiempo de despeje de la falla (s) | Corriente de falla a soportar (kA)", `tarjeta Condiciones: ${filas(c2)}`);
   ok($$(".input-with-toggle").length === 3 && $$(".input-with-toggle").every((w) => texto($("label.checkbox-row", w)) === "Manual"), "área y las dos temperaturas llevan la casilla «Manual» a su derecha");
 });
 
@@ -180,6 +218,98 @@ await seccion("vista: cálculo y resultados", async () => {
   ok($("#form-calc").checkValidity(), "con calibre elegido el formulario es válido");
 });
 
+await seccion("vista: corriente de falla a soportar", async () => {
+  const campo = $("#f-objetivo");
+  ok(!campo.required && campo.value === "" && campo.placeholder === "Opcional" && $("#form-calc").checkValidity(), "el campo es opcional: vacío no bloquea el formulario");
+  ok(!$$(".result-subhead").some((t) => texto(t).includes("Comparación")) && !$$(".badge").length, "sin corriente a soportar no hay veredicto ni comparación (como antes)");
+
+  elegir("#f-red", "Aereo");
+  elegir("#f-material", "ACSR");
+  elegir("#f-calibre", "4/0");
+  poner("#f-tiempo", "0.3");
+  const acsr = desnudos.filter((c) => c.tipo === "ACSR").map((c) => ({ calibre: c.calibre_awg_kcmil, area: c.area_seccion_aluminio_mm2 })).filter((c, i, a) => c.area != null && a.findIndex((x) => x.calibre === c.calibre) === i).sort((a, b) => a.area - b.area);
+  const cap = (a) => esperado({ material: "Aluminio", A: a, T1: 75, T2: 250, t: 0.3 }).kA;
+  const capActual = cap(ACSR.area_seccion_aluminio_mm2);
+  const aMin = (10 * 1000) / (224 * Math.sqrt(esperado({ material: "Aluminio", A: 1, T1: 75, T2: 250, t: 0.3 }).lg / 0.3));
+
+  // 1) 4/0 con 10 kA: cumple (19.5 kA)
+  poner("#f-objetivo", "10");
+  calcular();
+  const met = $$(".result-metric");
+  const badge = $(".badge", met[0]);
+  ok(met.length === 2 && texto(met[1].querySelector(".label")) === "Área mínima requerida", "aparece la métrica «Área mínima requerida» junto a la capacidad");
+  cerca(parseFloat(texto($(".value", met[1]))), aMin, 0.006, `área mínima requerida: ${aMin.toFixed(2)} mm²`);
+  ok(texto(met[0].querySelector(".label")).includes("a soportar: 10.00 kA"), "la etiqueta de la capacidad indica la corriente a soportar");
+  ok(capActual >= 10 && badge && texto(badge) === "Cumple" && badge.classList.contains("badge-success"), `4/0 (${capActual.toFixed(2)} kA) soporta 10 kA: «Cumple»`);
+  const primero = acsr.find((c) => cap(c.area) >= 10);
+  const filas = $$(".tabla-resultado tbody tr");
+  ok(texto($(".result-subhead")).includes("Comparación con otros calibres") && filas.length >= 3, `comparación de calibres (${filas.length} filas)`);
+  const marcada = filas.find((f) => f.classList.contains("match-row"));
+  ok(marcada && texto(marcada.querySelector("td")).startsWith(primero.calibre), `la fila sugerida (${primero.calibre}) está marcada`);
+  ok(filas.some((f) => f.classList.contains("current-row") && texto(f).includes("4/0") && texto(f).includes("Actual")), "la fila del calibre elegido está marcada como «Actual»");
+  const areas = filas.map((f) => parseFloat(texto(f.querySelectorAll("td")[1])));
+  const kas = filas.map((f) => parseFloat(texto(f.querySelectorAll("td")[2])));
+  ok(areas.every((a, i) => i === 0 || a >= areas[i - 1]) && kas.every((k, i) => i === 0 || k >= kas[i - 1] - 1e-9), "calibres ordenados por área y con capacidad creciente");
+  ok(filas.every((f, i) => Math.abs(kas[i] - cap(areas[i])) < 0.01), "la capacidad de cada fila coincide con la fórmula independiente");
+  ok(texto($(".result-panel .text-muted")).includes(`Calibre más pequeño que soporta 10.00 kA: ${primero.calibre}`), "el mensaje indica el calibre sugerido");
+
+  // 2) un calibre chico no cumple
+  const chico = acsr[1];
+  elegir("#f-calibre", chico.calibre);
+  poner("#f-objetivo", "20");
+  calcular();
+  const b2 = $(".badge", $$(".result-metric")[0]);
+  ok(cap(chico.area) < 20 && texto(b2) === "No cumple" && b2.classList.contains("badge-danger"), `${chico.calibre} (${cap(chico.area).toFixed(2)} kA) no soporta 20 kA: «No cumple»`);
+  ok($$(".tabla-resultado tbody tr").some((f) => texto(f).includes(chico.calibre) && texto(f).includes("Actual")), "el calibre elegido aparece en la tabla aunque no cumpla");
+
+  // 3) ningun calibre alcanza
+  poner("#f-objetivo", "500");
+  calcular();
+  ok(texto($(".result-panel .text-muted")).includes("Ningún calibre del catálogo soporta 500.00 kA") && !$$(".tabla-resultado tr.match-row").length, "500 kA: se avisa que ningún calibre alcanza y no se marca ninguno");
+
+  // 4) temperaturas que impiden el calculo
+  marcar("#chk-tfalla", true);
+  poner("#f-tfalla", "60");
+  poner("#f-objetivo", "10");
+  calcular();
+  ok(!!$("#resultado-wrap .callout-warning") && texto($("#resultado-wrap .callout-warning")).includes("No se pudo calcular el área requerida") && $$(".result-metric").length === 1, "con T2 menor que T1 se avisa que no se puede calcular el área requerida");
+  marcar("#chk-tfalla", false);
+
+  // reporte con corriente a soportar
+  elegir("#f-calibre", "4/0");
+  poner("#f-objetivo", "10");
+  calcular();
+  const rep = $('[data-panel="reporte"] .report-block').textContent.split("\n");
+  const iRes = rep.indexOf("RESULTADOS:");
+  ok(rep.slice(4, iRes - 1).includes("Corriente de falla a soportar: 10.00 kA"), "reporte: la corriente a soportar va en PARÁMETROS DE ENTRADA");
+  const res = rep.slice(iRes + 2);
+  ok(res.includes("Cumple la corriente a soportar: Sí") && res.some((l) => l.startsWith("Área mínima requerida: ") && l.includes(aMin.toFixed(2))) && res.some((l) => l === `Calibre sugerido: ${primero.calibre} (${fmtNum(primero.area)} mm²)`), "reporte: en RESULTADOS van el cumplimiento, el área mínima y el calibre sugerido");
+  ok(!rep.slice(4, iRes - 1).some((l) => l.startsWith("Cumple") || l.startsWith("Área mínima") || l.startsWith("Calibre sugerido")), "esos tres datos NO están en los parámetros");
+  ok(rep.filter((x) => /^-{30}$/.test(x)).length === 2 && rep.at(-1).startsWith("Calibre sugerido:"), "siguen siendo dos líneas divisorias y el reporte termina con el calibre sugerido");
+  poner("#f-objetivo", "500");
+  calcular();
+  ok($('[data-panel="reporte"] .report-block').textContent.includes("Calibre sugerido: ninguno del catálogo alcanza"), "reporte: si ninguno alcanza lo dice");
+
+  // subterraneo cobre
+  elegir("#f-red", "Subterraneo");
+  elegir("#f-material", "Cobre");
+  elegir("#f-calibre", "4/0");
+  poner("#f-objetivo", "20");
+  calcular();
+  const cobre = xlpe.filter((c) => c.material_conductor === "Cobre").map((c) => ({ calibre: c.calibre_awg_kcmil, area: c.area_conductor_mm2 })).filter((c, i, a) => c.area != null && a.findIndex((x) => x.calibre === c.calibre) === i).sort((a, b) => a.area - b.area);
+  const capCu = (a) => esperado({ material: "Cobre", A: a, T1: 90, T2: 250, t: 0.3 }).kA;
+  const primeroCu = cobre.find((c) => capCu(c.area) >= 20);
+  ok(texto($(".result-panel .text-muted")).includes(`Calibre más pequeño que soporta 20.00 kA: ${primeroCu.calibre}`), `subterráneo cobre: sugiere ${primeroCu.calibre}`);
+
+  // vuelve al estado inicial
+  poner("#f-objetivo", "");
+  elegir("#f-red", "Aereo");
+  elegir("#f-material", "ACSR");
+  elegir("#f-calibre", "4/0");
+  calcular();
+  ok($$(".result-metric").length === 1 && !$$(".badge").length && !$$(".result-subhead").length, "al vaciar el campo el resultado vuelve a ser solo la capacidad");
+});
+
 await seccion("vista: estructura del reporte (se copia y se pega)", async () => {
   const leer = () => { calcular(); return $('[data-panel="reporte"] .report-block').textContent.split("\n"); };
   const LINEA = /^-{30}$/;
@@ -218,11 +348,11 @@ await seccion("vista: fórmulas con KaTeX", async () => {
   const subtitulos = $$("#formulas-katex > .result-subhead").map(texto);
   const items = $$("#formulas-katex ul.formula-etiquetas > li");
   const izq = items.map((li) => li.lastElementChild.getBoundingClientRect().left);
-  ok(window.katex && $$("#formulas-katex .formula-katex").length === 3 && $$("#formulas-katex .katex-display").length === 3, "KaTeX cargado y 3 ecuaciones dibujadas");
+  ok(window.katex && $$("#formulas-katex .formula-katex").length === 4 && $$("#formulas-katex .katex-display").length === 4, "KaTeX cargado y 4 ecuaciones dibujadas");
   ok($$("#formulas-katex .katex-error").length === 0, "ninguna ecuación con error de sintaxis");
   ok($("#formulas-plano").hidden && !caja.hidden, "al dibujarse las fórmulas se oculta el texto plano y aparece la subtarjeta");
-  ok(subtitulos.join("|") === "Capacidad de cortocircuito|Constantes del material|Descripción de las etiquetas|Notas", `subtítulos: ${subtitulos.join(" | ")}`);
-  ok(items.length === 7 && items.every((li) => li.querySelector(".formula-simbolo .katex")), `la descripción de las etiquetas es una lista de ${items.length} viñetas con el símbolo dibujado`);
+  ok(subtitulos.join("|") === "Capacidad de cortocircuito|Área mínima para una corriente a soportar|Constantes del material|Descripción de las etiquetas|Notas", `subtítulos: ${subtitulos.join(" | ")}`);
+  ok(items.length === 9 && items.every((li) => li.querySelector(".formula-simbolo .katex")), `la descripción de las etiquetas es una lista de ${items.length} viñetas con el símbolo dibujado`);
   ok(Math.max(...izq) - Math.min(...izq) < 1, "los textos de las viñetas quedan alineados");
   const ks = $$("#formulas-katex .katex").map((k) => k.textContent);
   ok(ks.some((t) => t.includes("234") && t.includes("228")) && ks.some((t) => t.includes("341") && t.includes("224")), "las constantes λ y k1 de cobre y aluminio se dibujan por casos");
@@ -308,12 +438,12 @@ await seccion("vista: ayuda de los campos con botón de información", async () 
     const control = f.querySelector("input, select");
     return { conInfo: !!label.querySelector(".info-btn"), alto: Math.round(label.getBoundingClientRect().height * 10) / 10, desfase: Math.round((control.getBoundingClientRect().top - f.getBoundingClientRect().top) * 10) / 10 };
   });
-  ok(medidas.filter((m) => m.conInfo).length === 3 && medidas.filter((m) => !m.conInfo).length >= 3, "se comparan campos con y sin botón de información");
+  ok(medidas.filter((m) => m.conInfo).length === 4 && medidas.filter((m) => !m.conInfo).length >= 3, "se comparan campos con y sin botón de información");
   ok(new Set(medidas.map((m) => m.alto)).size === 1 && new Set(medidas.map((m) => m.desfase)).size === 1, `el botón no cambia la altura de las etiquetas ni la posición de las casillas (${[...new Set(medidas.map((m) => m.alto))].join(", ")} px)`);
 
   const botones = $$(".info-btn");
   const nombres = botones.map((b) => b.getAttribute("aria-label").replace("Más información sobre ", ""));
-  ok(nombres.join("|") === "Material / Tipo de conductor|Área del conductor (mm²)|Temperatura de operación (°C)", `botones de información junto al nombre de: ${nombres.join(" | ")}`);
+  ok(nombres.join("|") === "Material / Tipo de conductor|Área del conductor (mm²)|Temperatura de operación (°C)|Corriente de falla a soportar (kA)", `botones de información junto al nombre de: ${nombres.join(" | ")}`);
   ok(botones.every((b) => b.tagName === "BUTTON" && b.type === "button" && b.getAttribute("aria-expanded") === "false" && document.getElementById(b.getAttribute("aria-controls"))), "son botones reales, con aria-expanded y aria-controls");
   const b0 = botones[2];
   const campo = b0.closest(".field");
@@ -331,7 +461,7 @@ await seccion("vista: ayuda de los campos con botón de información", async () 
 await seccion("service worker y otros archivos", async () => {
   const sw = await (await fetch("../sw.js")).text();
   const lista = [...sw.matchAll(/^\s*"([^"]+)",\s*$/gm)].map((m) => m[1]);
-  ok(["js/calc/cortocircuito.js", "js/views/calc-cortocircuito.js", "js/util/info-campo.js", "js/util/resultados-ui.js"].every((f) => lista.includes(f)), "el service worker precachea los módulos que usa la pantalla");
+  ok(["js/calc/cortocircuito.js", "js/calc/cortocircuito-calibre.js", "js/views/calc-cortocircuito.js", "js/util/info-campo.js", "js/util/resultados-ui.js"].every((f) => lista.includes(f)), "el service worker precachea los módulos que usa la pantalla");
   const existen = await Promise.all(lista.filter((f) => f !== "./").map((f) => fetch(`../${f}`, { method: "HEAD" }).then((r) => [f, r.ok])));
   const faltan = existen.filter(([, okk]) => !okk).map(([f]) => f);
   ok(faltan.length === 0, `todos los archivos del APP_SHELL existen${faltan.length ? ": " + faltan.join(", ") : ""}`);
