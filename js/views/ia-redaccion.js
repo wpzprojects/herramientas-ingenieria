@@ -106,12 +106,8 @@ export async function render(container) {
         <textarea id="f-texto" rows="9" placeholder="Pega aquí el texto (correo, descripción, acta…)"></textarea>
         <span class="hint" id="cuenta-caracteres"></span>
       </div>
-      <div class="field">
-        <label for="f-extra">Indicación adicional (opcional)</label>
-        <input type="text" id="f-extra" placeholder="Ej.: dirigido al gerente, máximo 120 palabras, en tono más firme…">
-      </div>
       <div class="btn-row" style="margin-top:0">
-        <button type="button" class="btn btn-primary" id="btn-corregir">Corregir</button>
+        <button type="button" class="btn btn-primary" id="btn-corregir">Enviar</button>
         <button type="button" class="btn" id="btn-nueva">Nueva conversación</button>
       </div>
       ${htmlAvisoPrivacidad().replace('class="callout', 'style="margin:var(--space-4) 0 0" class="callout')}
@@ -268,12 +264,8 @@ export async function render(container) {
       alert(`El texto es demasiado largo (${texto.length} caracteres). El máximo es ${MAX_CARACTERES}.`);
       return;
     }
-    if (conv) reiniciarConversacion(); // "Corregir" siempre parte de una conversacion nueva
-    const extra = $("#f-extra").value.trim();
-    const mensaje =
-      "Corrige el siguiente texto siguiendo tus instrucciones." +
-      (extra ? `\nIndicación adicional: ${extra}` : "") +
-      `\n\nTEXTO:\n<<<\n${texto}\n>>>`;
+    if (conv) reiniciarConversacion(); // "Enviar" del texto siempre parte de una conversacion nueva
+    const mensaje = `Corrige el siguiente texto siguiendo tus instrucciones.\n\nTEXTO:\n<<<\n${texto}\n>>>`;
     enviar(mensaje, texto);
   });
 
@@ -291,7 +283,6 @@ export async function render(container) {
   $("#btn-nueva").addEventListener("click", () => {
     reiniciarConversacion();
     fTexto.value = "";
-    $("#f-extra").value = "";
     contarCaracteres();
     fTexto.focus();
   });
