@@ -170,6 +170,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   `convertir_coordenadas`, grupo «Varios»). Para exponer otro módulo a la IA: ficha nueva en `tools.js` (campos, `calcular`,
   resultados con `res`), marcarla `opcional` con su `grupo` y agregar sus pruebas. Cubierto por
   `tools/verify_ia.html` (secciones «agentes de análisis» y «herramientas permitidas por agente»).
+- Herramientas alineadas con las pantallas (2026-09-19; plan y registro de avance en `docs/plan-ajustes-ia.md`, TERMINADO salvo el reporte de la IA, `js/ai/reporte.js`, que el usuario decidió rediseñar él con otras ideas: no tocarlo sin que lo pida). Pérdidas y regulación aceptan `tramos`, dato de partida (MW/MVA/A) y conductores por fase y devuelven la clasificación Óptimo/Aceptable/Elevado; cortocircuito acepta `corriente_falla_ka`; ocupación acepta `grupos` y da el radio 12D; ampacidad subterránea da la corriente circulante/tensión inducida en la pantalla; unidades usa `data/unidades.json`; coordenadas acepta ~500 códigos EPSG y `puntos`. Los campos de nivel superior siguen valiendo para un solo tramo/tipo/punto. Los motores de `js/calc/` no se tocaron. Detalle en `docs/ia-herramientas.md` (sección 4).
 - Explicación completa de cómo la IA usa las herramientas y de cómo agregar una nueva: `docs/ia-herramientas.md` (léelo antes de
   tocar `tools.js` o los agentes; si cambia ese comportamiento, actualízalo).
 - La IA nunca calcula: las calculadoras se exponen como herramientas (`js/ai/tools.js`) que
@@ -198,7 +199,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v130); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v131); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (Ayuda → "Configuración avanzada", `js/auth/*`, `firebase/firestore.rules`)

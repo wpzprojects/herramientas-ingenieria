@@ -85,6 +85,8 @@ const T_OCUPACION = {
 
 **Precisión hacia la IA.** Los números que recibe Gemini se redondean a **6 cifras significativas** (`redondear`). Para coordenadas y conversiones se usan 12 (`cifras`), porque con 6 un Este de 4 881 143 m quedaría con metros de error. La tabla que ve el usuario usa el valor completo.
 
+**Campos con lista de objetos (2026-09-19).** Un campo puede ser una lista de objetos declarando `itemCampos` (los campos de cada elemento; `esquemaDe` lo convierte en un esquema anidado para Gemini y `normalizar` valida cada elemento, con errores del tipo `tramos[2]: "longitud_km" debe ser…`). Lo usan `tramos` (pérdidas y regulación), `grupos` (ocupación) y `puntos` (coordenadas). Regla común: lo que un tramo no indica se toma del nivel superior (así una línea de 3 tramos con el mismo conductor solo repite las longitudes). Helpers en `tools.js`: `campoTramos`, `listaTramos`, `volcarTramo` (antepone «Tramo N —» a entradas y notas), `datoPartida`. Los campos de nivel superior se conservan para el caso de un solo tramo/tipo/punto, de modo que las llamadas antiguas y `barrer_parametro` siguen funcionando.
+
 ## 4. Herramientas actuales (11)
 
 | Herramienta | Tipo | Grupo en Agentes | Agente estándar |
@@ -95,6 +97,20 @@ const T_OCUPACION = {
 | `convertir_unidades`, `convertir_coordenadas` | calculo | Varios | **No** (opcionales) |
 
 Las de Varios no entran en el barrido de parámetros.
+
+**Qué acepta y qué devuelve cada una (además de lo básico).** Todas quedaron alineadas con las pantallas rediseñadas; los motores de `js/calc/` no cambiaron, se reutilizan los módulos de lógica de las pantallas:
+
+| Herramienta | Entradas nuevas | Resultados nuevos |
+|---|---|---|
+| `calcular_perdidas` | dato de partida `potencia_mw` / `potencia_mva` / `corriente_a` (exactamente uno), `conductores_por_fase`, `tramos` | `perdidas_mw`, `potencia_activa_mw` (si el dato no es MW), `tramoN_*`, `clasificacion` (Óptimo / Aceptable / Elevado) y nota con las referencias 1 % / 3 % |
+| `calcular_regulacion` | lo mismo, más `separacion_haz_m`, `rmg_m` y distancias por tramo | `tramoN_*`, `resistencia_efectiva_ohm_km` y `rmg_efectivo_mm` (haz), `clasificacion` (referencias 5 % / 10 %) |
+| `calcular_cortocircuito` | `corriente_falla_ka` (opcional) | `cumple_corriente`, `margen_ka`, `area_minima_mm2`, `calibre_sugerido` (+ área y capacidad) |
+| `calcular_ampacidad_subterranea` | — | monopolar: `reactancia_mutua_ohm_m`, `resistencia_pantalla_ohm_m` y `corriente_circulante_pantalla_a` (Ambos Extremos) o `tension_inducida_pantalla_v_km` (Unipuntual / Cross-bonding) |
+| `calcular_ocupacion_ductos` | `grupos` (varios tipos; diámetro manual o catálogo XLPE con `material` + `calibre` y filtros opcionales) | `radio_curvatura_mm` (12D), `total_conductores`, `area_total_mm2`, `grupoN_*` |
+| `convertir_unidades` | catálogo `data/unidades.json` (19 categorías, cualquier unidad a cualquier otra; se reconoce símbolo, código o nombre); categoría `Calibre` (AWG/kcmil ↔ mm²) con el parámetro `calibre` | — |
+| `convertir_coordenadas` | cualquiera de los ~509 códigos EPSG (ya no es un enum de 7), `puntos` (hasta 50) | `puntoN_*`; notas de área de uso y de datum |
+
+**Referencias de diseño.** Óptimo / Aceptable / Elevado NO son límites normativos (el prompt estándar lo dice y la nota de cada resultado lo repite): nunca «fuera de norma».
 
 ## 5. Agentes y filtro de herramientas (`js/ai/agentes-analisis.js`)
 
@@ -143,6 +159,7 @@ Secciones relacionadas con este tema: *tools: esquema para Gemini*, *tools: Vari
 ## 8. Límites y cosas a recordar
 
 - **Prompt ≠ garantía.** Las reglas del prompt orientan a la IA, pero no impiden que escriba números sin herramienta. Por eso el filtro y el reporte no dependen de lo que la IA diga: los valores de las tablas salen de las corridas.
+- **Coordenadas por EPSG:** entre los 7 sistemas de siempre se usa el motor original; con cualquier otro código se usa proj4 (carga perezosa) y entre datums distintos la exactitud es del orden de metros (la herramienta lo avisa en las notas).
 - **Longitud/latitud intercambiadas** dentro de rango (p. ej. 4.7 y −74.07) no se detectan; los nombres de los parámetros (`este_o_longitud`, `norte_o_latitud`) y la descripción reducen el riesgo.
 - **Formato numérico en las respuestas de la IA:** no está normalizado; la IA puede escribir miles con coma o con punto. La app muestra los números con punto decimal y sin separador de miles.
 - **No fijar nombres de modelo en el código:** se listan desde la API en Configuración.

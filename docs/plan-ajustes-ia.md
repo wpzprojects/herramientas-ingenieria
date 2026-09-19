@@ -15,7 +15,7 @@ Regla de trabajo: un punto por commit (`git add` con rutas explícitas, push inm
 - [x] 5. (HECHO) Umbrales de diseño: las herramientas devuelven las referencias (1 %/3 % pérdidas, 5 %/10 % regulación) y el prompt (`SISTEMA_ANALISIS` en `js/ai/analisis.js`) dice que son referencias de diseño, nunca «límite normativo» / «fuera de norma».
 - [x] 6a. (HECHO) `convertir_unidades`: pasar al catálogo `data/unidades.json` con `unidades-extendido.js` (todas las categorías, cualquier unidad a cualquier otra, calibre AWG/kcmil). Ojo: `verify_ia.html` vigila que la descripción liste las categorías.
 - [x] 6b. (HECHO) `convertir_coordenadas`: códigos EPSG (`coordenadas-epsg.js` + `data/sistemas-epsg.json`, proj4 de `js/util/proj4.js`), avisos de área de uso y varios puntos.
-- [ ] 8. Actualizar `docs/ia-herramientas.md`, `README.md` y `CLAUDE.md`; ampliar `tools/verify_ia.html`; comprobar que `barrer_parametro` funciona con los campos nuevos.
+- [x] 8. (HECHO) Actualizar `docs/ia-herramientas.md`, `README.md` y `CLAUDE.md`; ampliar `tools/verify_ia.html`; comprobar que `barrer_parametro` funciona con los campos nuevos.
 
 ## Notas de avance
 

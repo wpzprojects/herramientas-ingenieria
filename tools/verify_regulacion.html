@@ -575,7 +575,7 @@ await seccion("service worker y otros archivos", async () => {
   const faltan = existen.filter(([, okk]) => !okk).map(([f]) => f);
   ok(faltan.length === 0, `todos los archivos del APP_SHELL existen${faltan.length ? ": " + faltan.join(", ") : ""}`);
   const tool = await (await fetch("../js/ai/tools.js")).text();
-  ok(tool.includes('nombre: "calcular_regulacion"') && tool.includes('from "../calc/regulacion.js"'), "la herramienta de la IA sigue usando el motor original de regulación (sin cambios)");
+  ok(tool.includes('nombre: "calcular_regulacion"') && tool.includes('from "../calc/regulacion-tramos.js"') && !tool.includes('from "../calc/regulacion.js"'), "la herramienta de la IA usa la lógica de tramos (regulacion-tramos.js), que a su vez llama al motor original de regulación sin cambios");
 });
 
 out.textContent += `\nRESULT: ${fallos ? "FAIL" : "OK"} (${total - fallos}/${total})\n`;

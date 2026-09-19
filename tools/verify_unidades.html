@@ -254,7 +254,7 @@ await seccion("herramienta de la IA y service worker", async () => {
   const existen = await Promise.all(listaSw.filter((f) => f !== "./").map((f) => fetch(`../${f}`, { method: "HEAD" }).then((r) => [f, r.ok])));
   ok(existen.every(([, okk]) => okk), "todos los archivos del APP_SHELL existen");
   const tools = await (await fetch("../js/ai/tools.js")).text();
-  ok(tools.includes('loadData("factores-conversion")') && !tools.includes("unidades-extendido"), "la herramienta de la IA sigue con la tabla de pares y el motor de siempre");
+  ok(tools.includes('loadData("unidades")') && tools.includes("unidades-extendido"), "la herramienta de la IA usa el mismo catálogo completo y el mismo motor que la pantalla con «Habilitar todas las conversiones»");
 });
 
 out.textContent += `\nRESULT: ${fallos ? "FAIL" : "OK"} (${total - fallos}/${total})\n`;
