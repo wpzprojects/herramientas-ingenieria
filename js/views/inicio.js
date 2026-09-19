@@ -25,7 +25,7 @@ const TILES = [
   },
   {
     title: "Funciones de IA",
-    desc: "Análisis de escenarios con las calculadoras y corrección de redacción (Gemini).",
+    desc: "Análisis de escenarios con las calculadoras locales y herramientas de redacción.",
     icon: "sparkles",
     hash: "#/ia",
   },
