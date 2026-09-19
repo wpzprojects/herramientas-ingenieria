@@ -103,9 +103,8 @@ export async function render(container) {
     <div id="panel-historial" class="card" hidden></div>
     <div id="panel-gestor" class="card" hidden></div>
 
-    <div class="ia-chat ia-chat--hilo" id="chat" aria-live="polite" hidden></div>
-
-    <div class="ia-caja-fija">
+    <div class="card ia-conv" id="conv">
+      <div class="ia-chat ia-chat--hilo" id="chat" aria-live="polite" hidden></div>
       <div class="ia-caja">
         <textarea id="f-texto" rows="3" placeholder="${PH_TEXTO}"></textarea>
         <div class="ia-caja-barra">
@@ -133,7 +132,11 @@ export async function render(container) {
     fTexto.style.height = "auto";
     fTexto.style.height = `${Math.min(fTexto.scrollHeight, window.innerHeight * 0.4)}px`;
   }
-  const alFinal = () => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
+  // El hilo se desplaza dentro del contenedor; la caja no se mueve. Si el contenedor no cabe en pantalla, se trae a la vista.
+  const alFinal = () => {
+    $("#conv").scrollIntoView({ block: "nearest" });
+    chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
+  };
 
   const agenteActivo = () => agentes.find((a) => a.id === activoId) || agentes[0];
 
@@ -246,7 +249,7 @@ export async function render(container) {
       conv.contenidos.push({ role: "model", parts: [{ text: r.texto || texto }] });
       conv.mensajes.push({ rol: "model", texto });
       espera.remove();
-      burbuja("model", texto).scrollIntoView({ behavior: "smooth", block: "start" }); // se lee desde el inicio de la respuesta
+      chat.scrollTo({ top: Math.max(0, burbuja("model", texto).offsetTop - 8), behavior: "smooth" }); // se lee desde el inicio de la respuesta
       historial.guardar(conv); // en segundo plano: un guardado lento no debe bloquear la interfaz
     } catch (err) {
       // se revierte el turno del usuario para no dejar el historial desbalanceado
