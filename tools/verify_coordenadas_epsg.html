@@ -231,100 +231,148 @@ const $ = (s, r = stage) => r.querySelector(s);
 const $$ = (s, r = stage) => [...r.querySelectorAll(s)];
 const texto = (e) => (e ? e.textContent.replace(/\s+/g, " ").trim() : "");
 const poner = (sel, v) => { const e = $(sel); e.value = v; e.dispatchEvent(new Event("input", { bubbles: true })); };
+const elegir = (sel, v) => { const e = $(sel); e.value = v; e.dispatchEvent(new Event("change", { bubbles: true })); };
+const marcar = (sel, v) => { const e = $(sel); e.checked = v; e.dispatchEvent(new Event("change", { bubbles: true })); };
+const enviar = async () => { $("#form-coordenadas").requestSubmit(); await espera(120); };
+const visible = (sel) => !$(sel).hidden && $(sel).getClientRects().length > 0;
+const S = (c) => viejo.SISTEMAS.find((x) => x.epsg === c);
 const { render } = await import("../js/views/conversion-coordenadas.js");
 render(stage);
+await espera(150); // el catalogo de areas de uso se pide al abrir la pantalla
 
-await seccion("pantalla: el bloque de Colab se reemplazó por el botón", async () => {
+await seccion("pantalla: un solo formulario (sin botón ni tarjeta aparte)", async () => {
   const html = stage.innerHTML.toLowerCase();
-  ok(!html.includes("colab") && !$('a[href*="google.com"]') && !html.includes("requiere conexión"), "ya no hay enlace a Google Colab ni el aviso de conexión");
-  const btn = $("#btn-otros-sistemas");
-  ok(!!btn && texto(btn) === "Otros sistemas de coordenadas" && btn.tagName === "BUTTON" && btn.getAttribute("aria-expanded") === "false" && !!btn.querySelector("svg"), "hay un botón «Otros sistemas de coordenadas» (con icono) cerrado");
-  ok($("#panel-epsg").hidden, "el panel está oculto hasta pulsar el botón");
-  ok(!!$("#form-coordenadas") && $("#form-coordenadas").compareDocumentPosition(btn) & Node.DOCUMENT_POSITION_FOLLOWING, "el conversor de siempre sigue arriba y el botón debajo");
-  // el conversor original sigue funcionando
-  poner("#f-x", "-74.0817");
-  poner("#f-y", "4.6097");
-  $("#f-sistema-origen").value = "4326";
-  $("#f-sistema-destino").value = "3116";
-  $("#form-coordenadas").requestSubmit();
-  const esp = viejo.convertirCoordenadas(viejo.SISTEMAS[0], viejo.SISTEMAS.find((s) => s.epsg === 3116), -74.0817, 4.6097);
-  ok(texto($("#resultado-wrap .value")) === `Este: ${esp.xOut.toFixed(4)} Norte: ${esp.yOut.toFixed(4)}`, "el conversor de los 7 sistemas sigue dando su resultado");
-  ok($("#resultado-wrap .result-panel").getBoundingClientRect().top - $("#form-coordenadas").getBoundingClientRect().bottom >= 15.5, "y su resultado tampoco queda pegado a su tarjeta (16 px de espacio)");
-  ok($("#resultado-wrap .result-panel").getBoundingClientRect().top - $("#form-coordenadas").getBoundingClientRect().bottom >= 15.5, "y su resultado tampoco queda pegado a su tarjeta (16 px de espacio)");
+  ok(!html.includes("colab") && !$("#btn-otros-sistemas") && !$("#panel-epsg") && !$("#form-epsg") && $$("form").length === 1, "ya no hay enlace a Colab, botón «Otros sistemas», tarjeta de abajo ni segundo formulario");
+  ok(!texto(stage).includes("Escriba el código EPSG de cada sistema"), "no está la nota «Escriba el código EPSG de cada sistema…» (es evidente por los campos)");
+  const chk = $("#chk-todos");
+  ok(!!chk && !chk.checked && texto(chk.closest("label")) === "Habilitar todos los sistemas de coordenadas disponibles", "casilla «Habilitar todos los sistemas de coordenadas disponibles», apagada por defecto");
+  ok(visible("#campos-lista") && !visible("#campos-epsg") && visible("#campos-punto") && !visible("#campo-lote"), "por defecto: las dos listas de siempre y longitud / latitud");
+  const conv = $$(".btn-row .btn")[0].getBoundingClientRect();
+  const lote = $("#btn-lotes").getBoundingClientRect();
+  ok(texto($$(".btn-row .btn")[0]) === "Convertir" && texto($("#btn-lotes")) === "Convertir por lotes" && Math.abs(conv.top - lote.top) < 2 && lote.left > conv.right, "junto al botón «Convertir» está «Convertir por lotes», a su derecha");
+  ok($("#btn-lotes").getAttribute("aria-pressed") === "false" && $("#btn-lotes").type === "button", "«Convertir por lotes» empieza apagado y no envía el formulario");
 });
 
-await seccion("pantalla: panel de otros sistemas", async () => {
-  const btn = $("#btn-otros-sistemas");
-  btn.click();
-  for (let i = 0; i < 60 && $$("#lista-epsg option").length === 0; i++) await espera(50);
-  ok(!$("#panel-epsg").hidden && btn.getAttribute("aria-expanded") === "true", "al pulsar el botón se despliega el panel");
-  ok($$("#lista-epsg option").length === codigos.length && $("#lista-epsg option[value='3116']").getAttribute("label") === "MAGNA-SIRGAS / Colombia Bogota zone", `la lista de sugerencias trae los ${codigos.length} códigos con su nombre`);
-  ok(!!$("#f-epsg-origen").getAttribute("list") && $("#f-epsg-origen").value === "4326" && $("#f-epsg-destino").value === "3116", "campos de EPSG de entrada y de salida (por defecto 4326 → 3116)");
-  ok(texto($("#nombre-epsg-origen")) === "WGS 84 · grados" && texto($("#nombre-epsg-destino")) === "MAGNA-SIRGAS / Colombia Bogota zone · metros", "bajo cada código se ve el nombre del sistema y su unidad");
-  ok(texto($("#label-epsg-x")).startsWith("Longitud") && texto($("#label-epsg-y")).startsWith("Latitud"), "con entrada geográfica las etiquetas son Longitud / Latitud");
+await seccion("pantalla: los 7 sistemas (motor original) con avisos de área de uso", async () => {
+  elegir("#f-sistema-origen", "4326");
+  elegir("#f-sistema-destino", "3116");
+  poner("#f-x", "-74.0817");
+  poner("#f-y", "4.6097");
+  await enviar();
+  const esp = viejo.convertirCoordenadas(S(4326), S(3116), -74.0817, 4.6097);
+  ok(texto($("#resultado-wrap .value")) === `Este: ${esp.xOut.toFixed(4)} Norte: ${esp.yOut.toFixed(4)}`, "el resultado sigue siendo el del motor original");
+  ok(!$("#resultado-wrap .callout"), "un punto de Bogotá en MAGNA-SIRGAS Bogotá: sin avisos");
+  ok($("#resultado-wrap .result-panel").getBoundingClientRect().top - $("#form-coordenadas").getBoundingClientRect().bottom >= 15.5, "el resultado no queda pegado a la tarjeta (16 px)");
+  // fuera de la zona UTM 18N
+  elegir("#f-sistema-destino", "32618");
+  poner("#f-x", "-70.5");
+  poner("#f-y", "5");
+  await enviar();
+  ok(texto($("#resultado-wrap .callout-warning")).includes("fuera del área de uso del sistema de salida") && texto($("#resultado-wrap .callout-warning")).includes("32618"), "un punto de Venezuela pasado a UTM 18N avisa que está fuera del área de uso del sistema de salida");
+  // entrada proyectada fuera de su area (UTM 18N -> Madrid no existe: se usa un Este/Norte de otra zona)
+  elegir("#f-sistema-origen", "32618");
+  elegir("#f-sistema-destino", "4326");
+  const fuera = viejo.convertirCoordenadas(S(4326), S(32618), -70.5, 5);
+  poner("#f-x", String(fuera.xOut));
+  poner("#f-y", String(fuera.yOut));
+  await enviar();
+  ok(texto($("#resultado-wrap .callout-warning")).includes("fuera del área de uso del sistema de entrada"), "coordenadas UTM 18N que corresponden a otra zona: avisa fuera del área de uso del sistema de entrada");
+  // dentro: sin aviso
+  const dentro = viejo.convertirCoordenadas(S(4326), S(32618), -74.0817, 4.6097);
+  poner("#f-x", String(dentro.xOut));
+  poner("#f-y", String(dentro.yOut));
+  await enviar();
+  ok(!$("#resultado-wrap .callout") && texto($("#resultado-wrap .value")) === "Longitud: -74.081700 Latitud: 4.609700", "y dentro de su zona no avisa y da el punto de vuelta");
+  ok(["3115", "3116", "3117", "9377", "32618", "32619", "4326"].every((c) => catalogo[c]?.[2]?.length === 4), "las áreas de uso de los 7 sistemas ya están en el catálogo (no hay datos aparte)");
+  elegir("#f-sistema-origen", "4326");
+  elegir("#f-sistema-destino", "3115");
+});
 
-  // convertir
-  poner("#f-epsg-x", "-74.0817");
-  poner("#f-epsg-y", "4.6097");
-  $("#form-epsg").requestSubmit();
-  await espera(60);
-  const esp = epsg.convertirEntreSistemas(proj4, catalogo, "4326", "3116", -74.0817, 4.6097);
-  ok(texto($("#resultado-epsg .value")) === `Este: ${esp.x.toFixed(4)} Norte: ${esp.y.toFixed(4)}`, `WGS84 → 3116: ${texto($("#resultado-epsg .value"))}`);
-  ok($("#resultado-epsg .result-panel").getBoundingClientRect().top - $("#form-epsg").getBoundingClientRect().bottom >= 15.5, "el resultado no queda pegado a la tarjeta del formulario (16 px de espacio)");
-  ok(texto($("#resultado-epsg .label")).includes("4326 · WGS 84") && texto($("#resultado-epsg .label")).includes("3116 · MAGNA-SIRGAS / Colombia Bogota zone") && !$("#resultado-epsg .callout"), "el resultado dice de qué sistema a cuál y no trae avisos");
-  const viej = viejo.convertirCoordenadas(viejo.SISTEMAS[0], viejo.SISTEMAS.find((s) => s.epsg === 3116), -74.0817, 4.6097);
-  ok(Math.hypot(esp.x - viej.xOut, esp.y - viej.yOut) < 1e-5, "coincide con el conversor original");
+await seccion("pantalla: habilitar todos los sistemas (códigos EPSG)", async () => {
+  marcar("#chk-todos", true);
+  for (let i = 0; i < 80 && $$("#lista-epsg option").length === 0; i++) await espera(50);
+  ok(!visible("#campos-lista") && visible("#campos-epsg") && $$("#lista-epsg option").length === codigos.length, "las dos listas se reemplazan por «EPSG de entrada» y «EPSG de salida» (con sugerencias de los códigos)");
+  ok(texto($("#campos-epsg label")) === "EPSG de entrada" && texto($$("#campos-epsg label")[1]) === "EPSG de salida", "campos «EPSG de entrada» y «EPSG de salida»");
+  ok($("#f-epsg-origen").value === "4326" && $("#f-epsg-destino").value === "3115", "parten de lo que ya estaba elegido en las listas");
+  ok(texto($("#nombre-epsg-origen")) === "WGS 84 · grados" && texto($("#nombre-epsg-destino")).startsWith("MAGNA-SIRGAS / Colombia West zone"), "bajo cada código aparece el nombre y la unidad");
+  ok(visible("#campos-punto") && visible("#f-x") && texto($("#label-x")).startsWith("Longitud"), "longitud y latitud son los mismos campos de arriba (no hay otra ventana)");
 
-  // proyectado de entrada: etiquetas con la unidad
-  poner("#f-epsg-origen", "EPSG:3116");
-  poner("#f-epsg-destino", "4686");
-  ok(texto($("#label-epsg-x")) === "Este / X (metros)" && texto($("#label-epsg-y")) === "Norte / Y (metros)", "con entrada proyectada las etiquetas pasan a Este / Norte (con la unidad)");
-  poner("#f-epsg-x", String(esp.x));
-  poner("#f-epsg-y", String(esp.y));
-  $("#form-epsg").requestSubmit();
-  await espera(60);
-  const t = texto($("#resultado-epsg .value"));
-  ok(t === "Longitud: -74.081700 Latitud: 4.609700", `3116 → 4686 (geográfico): ${t}`);
-
-  // cambio de datum: aviso
-  poner("#f-epsg-origen", "4326");
   poner("#f-epsg-destino", "21897");
-  poner("#f-epsg-x", "-74.0817");
-  poner("#f-epsg-y", "4.6097");
-  $("#form-epsg").requestSubmit();
-  await espera(60);
-  ok(!!$("#resultado-epsg .callout-warning") && texto($("#resultado-epsg .callout-warning")).includes("Bogotá 1975"), "hacia Bogotá 1975 aparece el aviso de cambio de datum");
-  // fuera de area
+  poner("#f-x", "-74.0817");
+  poner("#f-y", "4.6097");
+  await enviar();
+  const esp = epsg.convertirEntreSistemas(proj4, catalogo, "4326", "21897", -74.0817, 4.6097);
+  ok(texto($("#resultado-wrap .value")) === `Este: ${esp.x.toFixed(4)} Norte: ${esp.y.toFixed(4)}` && texto($("#resultado-wrap .label")).includes("4326 · WGS 84 → 21897 · Bogota 1975"), "convierte con proj4 y dice de qué sistema a cuál");
+  ok(texto($("#resultado-wrap .callout-warning")).includes("Bogotá 1975"), "aviso de cambio de datum hacia Bogotá 1975");
   poner("#f-epsg-destino", "3116");
-  poner("#f-epsg-x", "-3.7");
-  poner("#f-epsg-y", "40.4");
-  $("#form-epsg").requestSubmit();
-  await espera(60);
-  ok(texto($("#resultado-epsg .callout-warning")).includes("fuera del área de uso"), "un punto fuera del área de uso del sistema de salida lo avisa");
-
-  // codigos que no existen
+  poner("#f-x", "-3.7");
+  poner("#f-y", "40.4");
+  await enviar();
+  ok(texto($("#resultado-wrap .callout-warning")).includes("fuera del área de uso"), "un punto de Madrid en un sistema de Colombia avisa fuera del área de uso");
+  poner("#f-epsg-origen", "3116");
+  ok(texto($("#label-x")) === "Este / X (metros)" && texto($("#label-y")) === "Norte / Y (metros)", "con entrada proyectada las etiquetas pasan a Este / Norte (metros)");
+  poner("#f-epsg-origen", "4326");
   poner("#f-epsg-destino", "99999");
   ok(texto($("#nombre-epsg-destino")).includes("99999 no está entre los sistemas incluidos") && $("#nombre-epsg-destino").classList.contains("hint-error"), "un código que no está se marca en rojo bajo el campo");
-  $("#form-epsg").requestSubmit();
-  await espera(60);
-  ok(!!$("#resultado-epsg .callout-danger") && texto($("#resultado-epsg .callout-danger")).includes("99999"), "y al convertir se explica el error (sin romper la pantalla)");
-  poner("#f-epsg-destino", "abc");
-  ok(texto($("#nombre-epsg-destino")).includes("solo el número"), "un texto que no es un número pide escribir solo el número");
-  $("#form-epsg").requestSubmit();
-  await espera(60);
-  ok(texto($("#resultado-epsg .callout-danger")).includes("solo el número"), "y al convertir tampoco lo intenta");
+  await enviar();
+  ok(!!$("#resultado-wrap .callout-danger") && texto($("#resultado-wrap .callout-danger")).includes("código EPSG"), "y al convertir se explica el error (sin romper la pantalla)");
   poner("#f-epsg-destino", "3116");
-  ok(!$("#nombre-epsg-destino").classList.contains("hint-error"), "al corregir el código el error desaparece");
+  marcar("#chk-todos", false);
+  ok(visible("#campos-lista") && !visible("#campos-epsg") && $("#f-sistema-destino").value === "3116", "al apagar la casilla vuelven las listas (con el código que sea de los 7)");
+});
 
-  // cerrar
-  btn.click();
-  ok($("#panel-epsg").hidden && btn.getAttribute("aria-expanded") === "false", "un segundo clic en el botón cierra el panel");
+await seccion("pantalla: convertir por lotes", async () => {
+  $("#btn-lotes").click();
+  ok($("#btn-lotes").getAttribute("aria-pressed") === "true" && !visible("#campos-punto") && visible("#campo-lote"), "«Convertir por lotes» reemplaza longitud y latitud por un cuadro de texto");
+  const ta = $("#f-lote").getBoundingClientRect();
+  ok(ta.height > 120 && ta.width > $("#f-sistema-origen").getBoundingClientRect().width * 1.5, `el cuadro es de lado a lado y más alto que un campo (${Math.round(ta.width)} × ${Math.round(ta.height)} px)`);
+  const nota = $("#campo-lote .hint");
+  ok(texto(nota) === "Ingresar datos por lotes. Cada línea debe ser una pareja de coordenadas separadas por un espacio." && nota.getBoundingClientRect().top >= ta.bottom - 0.5, "la nota va debajo del cuadro con el texto pedido");
+  ok(texto($("#label-lote")) === "Longitud y latitud (grados)" && !$("#f-x").required && $("#f-lote").required, "etiqueta «Longitud y latitud» y solo el cuadro es obligatorio");
+
+  // 4326 -> 3116, con una linea vacia, una mala y un punto fuera del area
+  elegir("#f-sistema-origen", "4326");
+  elegir("#f-sistema-destino", "3116");
+  $("#f-lote").value = "-74.0817 4.6097\n\n-75.2322   4.4389\nhola mundo\n-3.7 40.4\n-73.1198;7.1193";
+  await enviar();
+  const conv = (lon, lat) => { const r = viejo.convertirCoordenadas(S(4326), S(3116), lon, lat); return `${r.xOut.toFixed(4)} ${r.yOut.toFixed(4)}`; };
+  const lineas = $("#resultado-wrap .report-block").textContent.split("\n");
+  ok(lineas.length === 5 && lineas[0] === conv(-74.0817, 4.6097) && lineas[1] === conv(-75.2322, 4.4389) && lineas[3] === conv(-3.7, 40.4) && lineas[4] === conv(-73.1198, 7.1193), "una salida por línea, en el mismo orden y con el mismo formato (este y norte separados por un espacio)");
+  ok(lineas[2].startsWith("Línea 4: no es una pareja de coordenadas") && lineas[2].includes("hola mundo"), "una línea mala se marca con su número de línea sin frenar las demás");
+  ok(texto($("#resultado-wrap .label")).startsWith("4 de 5 puntos convertidos: 4326 - WGS84") , `resumen: ${texto($("#resultado-wrap .label"))}`);
+  const av = $$("#resultado-wrap .callout-warning").map(texto);
+  ok(av.length === 1 && av[0].includes("fuera del área de uso del sistema de salida") && av[0].includes("Líneas: 5"), "los avisos se juntan y dicen en qué línea ocurren");
+  ok($("#resultado-wrap .result-panel").getBoundingClientRect().top - $("#form-coordenadas").getBoundingClientRect().bottom >= 15.5, "el resultado por lotes no queda pegado a la tarjeta");
+
+  // vacio: el navegador pide llenar el campo; solo con espacios, la pantalla pide al menos una pareja
+  $("#f-lote").value = "";
+  ok($("#f-lote").validity.valueMissing, "con el cuadro vacío el formulario no se envía (el navegador pide llenar el campo)");
+  $("#f-lote").value = "   \n  ";
+  await enviar();
+  ok(!!$("#resultado-wrap .callout-danger") && texto($("#resultado-wrap .callout-danger")).includes("al menos una pareja"), "con solo espacios pide al menos una pareja");
+
+  // lotes con todos los sistemas (EPSG) y entrada proyectada
+  marcar("#chk-todos", true);
+  for (let i = 0; i < 80 && $$("#lista-epsg option").length === 0; i++) await espera(50);
+  poner("#f-epsg-origen", "3116");
+  poner("#f-epsg-destino", "4686");
+  ok(texto($("#label-lote")) === "Este y Norte (metros)", "con entrada proyectada la etiqueta pasa a «Este y Norte (metros)»");
+  const a = epsg.convertirEntreSistemas(proj4, catalogo, "4326", "3116", -74.0817, 4.6097);
+  $("#f-lote").value = `${a.x} ${a.y}\n1000000 1000000`;
+  await enviar();
+  const l2 = $("#resultado-wrap .report-block").textContent.split("\n");
+  ok(l2[0] === "-74.081700 4.609700" && l2[1] === "-74.077508 4.596200", `por lotes con códigos EPSG (3116 → 4686): ${l2.join(" | ")}`);
+  marcar("#chk-todos", false);
+
+  // apagar el lote devuelve los campos
+  $("#btn-lotes").click();
+  ok($("#btn-lotes").getAttribute("aria-pressed") === "false" && visible("#campos-punto") && !visible("#campo-lote") && $("#f-x").required, "al apagar «Convertir por lotes» vuelven longitud y latitud");
 });
 
 await seccion("archivos, service worker y otros", async () => {
   const sw = await (await fetch("../sw.js")).text();
   const lista = [...sw.matchAll(/^\s*"([^"]+)",\s*$/gm)].map((m) => m[1]);
-  ok(["vendor/proj4/proj4.js", "js/util/proj4.js", "js/calc/coordenadas-epsg.js", "data/sistemas-epsg.json", "js/views/conversion-coordenadas.js", "js/calc/coordenadas.js"].every((f) => lista.includes(f)), "el service worker precachea la librería, el catálogo y los módulos nuevos (funciona sin internet)");
+  ok(["vendor/proj4/proj4.js", "js/util/proj4.js", "js/util/proj4-col-urban.js", "js/calc/coordenadas-epsg.js", "data/sistemas-epsg.json", "js/views/conversion-coordenadas.js", "js/calc/coordenadas.js"].every((f) => lista.includes(f)), "el service worker precachea la librería, el catálogo y los módulos nuevos (funciona sin internet)");
   const existen = await Promise.all(lista.filter((f) => f !== "./").map((f) => fetch(`../${f}`, { method: "HEAD" }).then((r) => [f, r.ok])));
   const faltan = existen.filter(([, okk]) => !okk).map(([f]) => f);
   ok(faltan.length === 0, `todos los archivos del APP_SHELL existen${faltan.length ? ": " + faltan.join(", ") : ""}`);

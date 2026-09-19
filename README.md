@@ -61,7 +61,7 @@ Los `data/*.json` son la **fuente de verdad** de los catálogos y se editan dire
 
 `tools/verify_normatividad.html` prueba el visor de imágenes normativas (nota al pie de «Enterramiento de ductos», que las demás imágenes existan y estén en el service worker).
 
-`tools/verify_coordenadas_epsg.html` prueba el panel «Otros sistemas de coordenadas» del conversor: que los ~500 códigos EPSG del catálogo convierten y regresan, que da lo mismo que el conversor original en los 7 sistemas, puntos conocidos por definición, las 32 cuadrículas urbanas de Colombia, los avisos y el panel.
+`tools/verify_coordenadas_epsg.html` prueba el conversor de coordenadas (casilla de todos los sistemas EPSG, conversión por lotes y avisos de área de uso): que los ~500 códigos EPSG del catálogo convierten y regresan, que da lo mismo que el conversor original en los 7 sistemas, puntos conocidos por definición, las 32 cuadrículas urbanas de Colombia, los avisos y el panel.
 
 `tools/verify_perdidas.html` (arnés en el navegador, sin internet) prueba la pantalla de Pérdidas: la lógica de varios tramos (`js/calc/perdidas-tramos.js`) contra fórmulas escritas de forma independiente, y la vista real manejada como lo haría una persona (dato de partida, agregar/quitar tramos, resultados, fórmulas con KaTeX, archivos del service worker). Se ejecuta igual que `verify_ia.html` (ver su encabezado).
 

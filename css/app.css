@@ -346,6 +346,7 @@ input:disabled, select:disabled { opacity: 0.55; }
 .btn-ghost { background: transparent; border-color: transparent; }
 .btn-ghost:hover { background: var(--bg-sunken); }
 .btn-row { display: flex; gap: var(--space-3); flex-wrap: wrap; margin-top: var(--space-4); }
+.btn.btn-toggle[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); } /* boton que se enciende y se apaga (p. ej. Convertir por lotes) */
 .btn[disabled] { opacity: 0.5; cursor: not-allowed; }
 
 /* ---------- tabs ---------- */

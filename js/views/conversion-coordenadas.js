@@ -1,15 +1,19 @@
-// Conversion de coordenadas geograficas/proyectadas entre los 7 sistemas de
-// SISTEMAS (WGS84, MAGNA-SIRGAS Bogota Oeste/Bogota/Este, Origen Unico
-// Nacional, UTM 18N/19N), usando el motor convertirCoordenadas de
-// ../calc/coordenadas.js. Debajo, el boton «Otros sistemas de coordenadas» despliega un panel para convertir entre cualquier par de
-// unos 500 codigos EPSG (los de Colombia y los mas usados en el mundo) con proj4js (../calc/coordenadas-epsg.js); reemplaza al
-// enlace al cuaderno de Google Colab que habia antes.
+// Conversion de coordenadas geograficas/proyectadas. Un solo formulario:
+//  - Por defecto, los 7 sistemas de SISTEMAS (WGS84, MAGNA-SIRGAS Bogota Oeste/Bogota/Este, Origen Unico Nacional, UTM 18N/19N) con el
+//    motor original convertirCoordenadas (../calc/coordenadas.js).
+//  - Con la casilla «Habilitar todos los sistemas de coordenadas disponibles», las dos listas se reemplazan por dos campos de codigo
+//    EPSG (unos 500 sistemas: los de Colombia y los mas usados del mundo) que usan proj4js (../calc/coordenadas-epsg.js).
+//  - El boton «Convertir por lotes» cambia longitud/latitud por un cuadro donde cada linea es una pareja de coordenadas.
+// En los dos casos se avisa cuando el punto queda fuera del area de uso de algun sistema (areas de data/sistemas-epsg.json, que ya
+// incluye los 7 sistemas).
 
-import { icon } from "../icons.js";
 import { fmt, loadData, escapeHtml } from "../util/format.js";
 import { SISTEMAS, convertirCoordenadas } from "../calc/coordenadas.js";
 import { cargarProj4 } from "../util/proj4.js";
-import { parseCodigoEpsg, infoSistema, convertirEntreSistemas } from "../calc/coordenadas-epsg.js";
+import { parseCodigoEpsg, infoSistema, convertirEntreSistemas, avisosArea } from "../calc/coordenadas-epsg.js";
+
+const WGS84 = SISTEMAS[0];
+const MARGEN = 'style="margin-top: var(--space-4);"';
 
 function opcionesSistemas() {
   return SISTEMAS.map((s) => `<option value="${s.epsg}">${s.label}</option>`).join("");
@@ -21,7 +25,7 @@ export function render(container) {
     <h1 class="page-title">Conversión de coordenadas</h1>
 
     <form class="card" id="form-coordenadas" novalidate>
-      <div class="grid-2">
+      <div class="grid-2" id="campos-lista">
         <div class="field">
           <label for="f-sistema-origen">Sistema de entrada</label>
           <select id="f-sistema-origen" required>${opcionesSistemas()}</select>
@@ -32,7 +36,25 @@ export function render(container) {
         </div>
       </div>
 
-      <div class="grid-2">
+      <div class="grid-2" id="campos-epsg" hidden>
+        <div class="field">
+          <label for="f-epsg-origen">EPSG de entrada</label>
+          <input type="text" id="f-epsg-origen" inputmode="numeric" autocomplete="off" list="lista-epsg">
+          <span class="hint" id="nombre-epsg-origen"></span>
+        </div>
+        <div class="field">
+          <label for="f-epsg-destino">EPSG de salida</label>
+          <input type="text" id="f-epsg-destino" inputmode="numeric" autocomplete="off" list="lista-epsg">
+          <span class="hint" id="nombre-epsg-destino"></span>
+        </div>
+        <datalist id="lista-epsg"></datalist>
+      </div>
+
+      <label class="checkbox-row" style="margin-bottom: var(--space-4);">
+        <input type="checkbox" id="chk-todos"> Habilitar todos los sistemas de coordenadas disponibles
+      </label>
+
+      <div class="grid-2" id="campos-punto">
         <div class="field">
           <label for="f-x" id="label-x">Longitud (grados, negativo = oeste)</label>
           <input type="number" id="f-x" step="any" required>
@@ -43,226 +65,228 @@ export function render(container) {
         </div>
       </div>
 
+      <div class="field" id="campo-lote" hidden>
+        <label for="f-lote" id="label-lote">Longitud y latitud</label>
+        <textarea id="f-lote" rows="8" spellcheck="false" autocomplete="off" placeholder="-74.0817 4.6097"></textarea>
+        <span class="hint">Ingresar datos por lotes. Cada línea debe ser una pareja de coordenadas separadas por un espacio.</span>
+      </div>
+
       <div class="btn-row">
         <button type="submit" class="btn btn-primary">Convertir</button>
+        <button type="button" class="btn btn-toggle" id="btn-lotes" aria-pressed="false">Convertir por lotes</button>
       </div>
     </form>
 
     <div id="resultado-wrap"></div>
-
-    <div class="btn-row">
-      <button type="button" class="btn btn-ghost" id="btn-otros-sistemas" aria-expanded="false" aria-controls="panel-epsg">
-        ${icon("map")} Otros sistemas de coordenadas
-      </button>
-    </div>
-
-    <div id="panel-epsg" hidden>
-      <form class="card" id="form-epsg" novalidate>
-        <p class="text-sm text-muted" style="margin-top: 0;">
-          Escriba el código EPSG de cada sistema (por ejemplo 4326 = WGS84, 3116 = MAGNA-SIRGAS Bogotá, 9377 = Origen Nacional).
-          Hay unos 500 sistemas incluidos —los de Colombia y los más usados en el mundo— y funciona sin conexión a internet.
-        </p>
-        <div class="grid-2">
-          <div class="field">
-            <label for="f-epsg-origen">EPSG de entrada</label>
-            <input type="text" id="f-epsg-origen" inputmode="numeric" autocomplete="off" list="lista-epsg" value="4326" required>
-            <span class="hint" id="nombre-epsg-origen"></span>
-          </div>
-          <div class="field">
-            <label for="f-epsg-destino">EPSG de salida</label>
-            <input type="text" id="f-epsg-destino" inputmode="numeric" autocomplete="off" list="lista-epsg" value="3116" required>
-            <span class="hint" id="nombre-epsg-destino"></span>
-          </div>
-        </div>
-        <datalist id="lista-epsg"></datalist>
-
-        <div class="grid-2">
-          <div class="field">
-            <label for="f-epsg-x" id="label-epsg-x">Longitud (grados, negativo = oeste)</label>
-            <input type="number" id="f-epsg-x" step="any" required>
-          </div>
-          <div class="field">
-            <label for="f-epsg-y" id="label-epsg-y">Latitud (grados)</label>
-            <input type="number" id="f-epsg-y" step="any" required>
-          </div>
-        </div>
-
-        <div class="btn-row">
-          <button type="submit" class="btn btn-primary">Convertir</button>
-        </div>
-      </form>
-      <div id="resultado-epsg"></div>
-    </div>
   `;
 
-  const form = container.querySelector("#form-coordenadas");
-  const selOrigen = container.querySelector("#f-sistema-origen");
-  const selDestino = container.querySelector("#f-sistema-destino");
-  const labelX = container.querySelector("#label-x");
-  const labelY = container.querySelector("#label-y");
-  const fX = container.querySelector("#f-x");
-  const fY = container.querySelector("#f-y");
-  const wrap = container.querySelector("#resultado-wrap");
+  const $ = (s) => container.querySelector(s);
+  const form = $("#form-coordenadas");
+  const selOrigen = $("#f-sistema-origen");
+  const selDestino = $("#f-sistema-destino");
+  const chkTodos = $("#chk-todos");
+  const camposLista = $("#campos-lista");
+  const camposEpsg = $("#campos-epsg");
+  const fEpsgOrigen = $("#f-epsg-origen");
+  const fEpsgDestino = $("#f-epsg-destino");
+  const nombreOrigen = $("#nombre-epsg-origen");
+  const nombreDestino = $("#nombre-epsg-destino");
+  const camposPunto = $("#campos-punto");
+  const campoLote = $("#campo-lote");
+  const btnLotes = $("#btn-lotes");
+  const fX = $("#f-x");
+  const fY = $("#f-y");
+  const fLote = $("#f-lote");
+  const labelX = $("#label-x");
+  const labelY = $("#label-y");
+  const labelLote = $("#label-lote");
+  const wrap = $("#resultado-wrap");
 
-  // Sistema de salida por defecto distinto del de entrada, para que el
-  // primer envio del formulario muestre algo mas util que "identidad".
+  // Sistema de salida por defecto distinto del de entrada, para que el primer envio muestre algo mas util que "identidad".
   selDestino.selectedIndex = 1;
 
-  function actualizarEtiquetas() {
-    const sistema = SISTEMAS.find((s) => String(s.epsg) === selOrigen.value);
-    if (sistema?.esGeo) {
-      labelX.textContent = "Longitud (grados, negativo = oeste)";
-      labelY.textContent = "Latitud (grados)";
-    } else {
-      labelX.textContent = "Este / X (m)";
-      labelY.textContent = "Norte / Y (m)";
-    }
-  }
-
-  selOrigen.addEventListener("change", actualizarEtiquetas);
-  actualizarEtiquetas();
-
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
-    if (!form.reportValidity()) return;
-
-    const sistemaOrigen = SISTEMAS.find((s) => String(s.epsg) === selOrigen.value);
-    const sistemaDestino = SISTEMAS.find((s) => String(s.epsg) === selDestino.value);
-    const xIn = Number(fX.value);
-    const yIn = Number(fY.value);
-
-    const { xOut, yOut, esGeoDestino } = convertirCoordenadas(sistemaOrigen, sistemaDestino, xIn, yIn);
-
-    const texto = esGeoDestino
-      ? `Longitud: ${fmt(xOut, 6)}   Latitud: ${fmt(yOut, 6)}`
-      : `Este: ${fmt(xOut, 4)}   Norte: ${fmt(yOut, 4)}`;
-
-    wrap.innerHTML = `
-      <div class="result-panel" style="margin-top: var(--space-4);">
-        <div class="result-metric">
-          <div class="value" style="font-size: 1.4rem;">${texto}</div>
-          <div class="label">${sistemaOrigen.label} → ${sistemaDestino.label}</div>
-        </div>
-      </div>
-    `;
-  });
-
-  // ---------- Otros sistemas de coordenadas (EPSG) ----------
-  const btnOtros = container.querySelector("#btn-otros-sistemas");
-  const panelEpsg = container.querySelector("#panel-epsg");
-  const formEpsg = container.querySelector("#form-epsg");
-  const fEpsgOrigen = container.querySelector("#f-epsg-origen");
-  const fEpsgDestino = container.querySelector("#f-epsg-destino");
-  const nombreOrigen = container.querySelector("#nombre-epsg-origen");
-  const nombreDestino = container.querySelector("#nombre-epsg-destino");
-  const fEpsgX = container.querySelector("#f-epsg-x");
-  const fEpsgY = container.querySelector("#f-epsg-y");
-  const labelEpsgX = container.querySelector("#label-epsg-x");
-  const labelEpsgY = container.querySelector("#label-epsg-y");
-  const wrapEpsg = container.querySelector("#resultado-epsg");
-
-  let proj4 = null;
+  // El catalogo (areas de uso, ~70 KB) se pide de una vez; proj4 solo al habilitar todos los sistemas.
+  const catalogoPromesa = loadData("sistemas-epsg").catch(() => null);
   let catalogo = null;
-  let cargaEnCurso = null;
+  catalogoPromesa.then((c) => {
+    catalogo = c;
+  });
+  let proj4 = null;
 
-  /** Descarga (una sola vez) la libreria y el catalogo de codigos; despues funciona sin internet (service worker). */
-  function cargarHerramientas() {
-    if (proj4 && catalogo) return Promise.resolve();
-    cargaEnCurso ??= Promise.all([cargarProj4(), loadData("sistemas-epsg")])
-      .then(([p, c]) => {
-        proj4 = p;
-        catalogo = c;
-        container.querySelector("#lista-epsg").innerHTML = Object.entries(c)
-          .map(([codigo, e]) => `<option value="${codigo}" label="${escapeHtml(e[0])}"></option>`)
-          .join("");
-      })
-      .catch((err) => {
-        cargaEnCurso = null;
-        throw err;
-      });
-    return cargaEnCurso;
+  const modoEpsg = () => chkTodos.checked;
+  const modoLote = () => btnLotes.getAttribute("aria-pressed") === "true";
+
+  /** Sistema elegido (entrada o salida) en el modo actual: {etiqueta, esGeo, unidad, epsg, bbox} o null si no es valido. */
+  function sistema(lado) {
+    if (!modoEpsg()) {
+      const s = SISTEMAS.find((x) => String(x.epsg) === (lado === "origen" ? selOrigen : selDestino).value);
+      return s ? { etiqueta: s.label, esGeo: !!s.esGeo, unidad: s.esGeo ? "grados" : "metros", epsg: String(s.epsg), bbox: infoSistema(String(s.epsg), catalogo)?.bbox ?? null, s } : null;
+    }
+    const codigo = parseCodigoEpsg((lado === "origen" ? fEpsgOrigen : fEpsgDestino).value);
+    const i = codigo ? infoSistema(codigo, catalogo) : null;
+    return i ? { etiqueta: `${i.codigo} · ${i.nombre}`, esGeo: i.esGeo, unidad: i.unidad, epsg: i.codigo, bbox: i.bbox, nombre: i.nombre } : null;
   }
 
-  /** Nombre del sistema bajo el campo (o el error si el codigo no esta) y etiquetas de las coordenadas segun el de entrada. */
-  function actualizarSistemas() {
-    if (!catalogo) return;
+  /** Nombre y unidad bajo cada campo de codigo (o el error si el codigo no esta) y etiquetas de las coordenadas segun la entrada. */
+  function actualizar() {
     const describir = (campo, hint) => {
       const texto = campo.value.trim();
       hint.classList.remove("hint-error");
-      if (!texto) {
+      if (!texto || !catalogo) {
         hint.textContent = "";
-        return null;
+        return;
       }
       const codigo = parseCodigoEpsg(texto);
       const s = codigo ? infoSistema(codigo, catalogo) : null;
       if (!s) {
         hint.textContent = codigo ? `El código ${codigo} no está entre los sistemas incluidos.` : "Escriba solo el número del código EPSG (por ejemplo 3116).";
         hint.classList.add("hint-error");
-        return null;
+      } else {
+        hint.textContent = `${s.nombre} · ${s.unidad}`;
       }
-      hint.textContent = `${s.nombre} · ${s.unidad}`;
-      return s;
     };
-    const origen = describir(fEpsgOrigen, nombreOrigen);
-    describir(fEpsgDestino, nombreDestino);
-    if (origen && !origen.esGeo) {
-      labelEpsgX.textContent = `Este / X (${origen.unidad})`;
-      labelEpsgY.textContent = `Norte / Y (${origen.unidad})`;
-    } else {
-      labelEpsgX.textContent = "Longitud (grados, negativo = oeste)";
-      labelEpsgY.textContent = "Latitud (grados)";
+    if (modoEpsg()) {
+      describir(fEpsgOrigen, nombreOrigen);
+      describir(fEpsgDestino, nombreDestino);
     }
+    const o = sistema("origen");
+    const proyectado = o && !o.esGeo;
+    labelX.textContent = proyectado ? `Este / X (${o.unidad})` : "Longitud (grados, negativo = oeste)";
+    labelY.textContent = proyectado ? `Norte / Y (${o.unidad})` : "Latitud (grados)";
+    labelLote.textContent = proyectado ? `Este y Norte (${o.unidad})` : "Longitud y latitud (grados)";
   }
 
-  btnOtros.addEventListener("click", async () => {
-    const abrir = panelEpsg.hidden;
-    panelEpsg.hidden = !abrir;
-    btnOtros.setAttribute("aria-expanded", String(abrir));
-    if (!abrir) return;
-    try {
-      await cargarHerramientas();
-      actualizarSistemas();
-    } catch {
-      wrapEpsg.innerHTML = `<div class="callout callout-danger">No se pudo cargar la herramienta de conversión. Cierre y abra la aplicación e intente de nuevo.</div>`;
+  /** Muestra u oculta cada bloque segun los dos modos; los campos ocultos dejan de ser obligatorios. */
+  function aplicarModos() {
+    camposLista.hidden = modoEpsg();
+    camposEpsg.hidden = !modoEpsg();
+    camposPunto.hidden = modoLote();
+    campoLote.hidden = !modoLote();
+    fX.required = fY.required = !modoLote();
+    fLote.required = modoLote();
+    btnLotes.setAttribute("aria-pressed", String(modoLote()));
+    actualizar();
+  }
+
+  chkTodos.addEventListener("change", async () => {
+    if (modoEpsg()) {
+      fEpsgOrigen.value = selOrigen.value; // se parte de lo que ya estaba elegido
+      fEpsgDestino.value = selDestino.value;
+      try {
+        [proj4, catalogo] = await Promise.all([cargarProj4(), catalogoPromesa.then((c) => c ?? loadData("sistemas-epsg"))]);
+        $("#lista-epsg").innerHTML = Object.entries(catalogo)
+          .map(([codigo, e]) => `<option value="${codigo}" label="${escapeHtml(e[0])}"></option>`)
+          .join("");
+      } catch {
+        chkTodos.checked = false;
+        wrap.innerHTML = `<div class="callout callout-danger" ${MARGEN}>No se pudo cargar la herramienta de conversión. Cierre y abra la aplicación e intente de nuevo.</div>`;
+      }
+    } else {
+      // al volver a la lista, si los codigos escritos son de los 7 sistemas se conservan
+      for (const [campo, sel] of [[fEpsgOrigen, selOrigen], [fEpsgDestino, selDestino]]) {
+        const c = parseCodigoEpsg(campo.value);
+        if (c && SISTEMAS.some((s) => String(s.epsg) === c)) sel.value = c;
+      }
     }
+    aplicarModos();
   });
+  btnLotes.addEventListener("click", () => {
+    btnLotes.setAttribute("aria-pressed", String(!modoLote()));
+    aplicarModos();
+  });
+  selOrigen.addEventListener("change", actualizar);
+  fEpsgOrigen.addEventListener("input", actualizar);
+  fEpsgDestino.addEventListener("input", actualizar);
+  aplicarModos();
 
-  fEpsgOrigen.addEventListener("input", actualizarSistemas);
-  fEpsgDestino.addEventListener("input", actualizarSistemas);
+  /**
+   * Convierte un punto en el modo actual. Devuelve {x, y, esGeoDestino, avisos} o lanza Error con un mensaje en español.
+   * (En el modo de la lista el calculo es el del motor original; los avisos salen de las areas de uso del catalogo.)
+   */
+  function convertirPunto(xIn, yIn, o, d) {
+    if (modoEpsg()) {
+      const r = convertirEntreSistemas(proj4, catalogo, o.epsg, d.epsg, xIn, yIn);
+      return { x: r.x, y: r.y, esGeoDestino: r.esGeoDestino, avisos: r.avisos };
+    }
+    if (!Number.isFinite(xIn) || !Number.isFinite(yIn)) throw new Error("Escriba las dos coordenadas del punto.");
+    const { xOut, yOut, esGeoDestino } = convertirCoordenadas(o.s, d.s, xIn, yIn);
+    let avisos = [];
+    if (catalogo) {
+      const ll = o.esGeo ? { xOut: xIn, yOut: yIn } : convertirCoordenadas(o.s, WGS84, xIn, yIn);
+      if (Number.isFinite(ll.xOut) && Number.isFinite(ll.yOut)) {
+        avisos = avisosArea({ nombre: o.etiqueta, bbox: o.bbox }, { nombre: d.etiqueta, bbox: d.bbox }, ll.xOut, ll.yOut);
+      }
+    }
+    return { x: xOut, y: yOut, esGeoDestino, avisos };
+  }
 
-  formEpsg.addEventListener("submit", async (e) => {
+  const formato = (r) => (r.esGeoDestino ? `${fmt(r.x, 6)} ${fmt(r.y, 6)}` : `${fmt(r.x, 4)} ${fmt(r.y, 4)}`);
+  const avisosHtml = (avisos) => avisos.map((a) => `<div class="callout callout-warning" style="margin-top: var(--space-3);">${escapeHtml(a.texto)}</div>`).join("");
+  const error = (msg) => {
+    wrap.innerHTML = `<div class="callout callout-danger" ${MARGEN}>${escapeHtml(msg)}</div>`;
+  };
+
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    try {
-      await cargarHerramientas();
-    } catch {
-      wrapEpsg.innerHTML = `<div class="callout callout-danger">No se pudo cargar la herramienta de conversión.</div>`;
-      return;
-    }
-    actualizarSistemas();
-    const codOrigen = parseCodigoEpsg(fEpsgOrigen.value);
-    const codDestino = parseCodigoEpsg(fEpsgDestino.value);
-    if (!codOrigen || !codDestino) {
-      wrapEpsg.innerHTML = `<div class="callout callout-danger" style="margin-top: var(--space-4);">Escriba el código EPSG de entrada y el de salida (solo el número, por ejemplo 3116).</div>`;
-      return;
-    }
-    if (!formEpsg.reportValidity()) return;
-    try {
-      const r = convertirEntreSistemas(proj4, catalogo, codOrigen, codDestino, Number(fEpsgX.value), Number(fEpsgY.value));
-      const texto = r.esGeoDestino
-        ? `Longitud: ${fmt(r.x, 6)}   Latitud: ${fmt(r.y, 6)}`
-        : `Este: ${fmt(r.x, 4)}   Norte: ${fmt(r.y, 4)}`;
-      const unidad = r.esGeoDestino ? "" : ` (${r.destino.unidad})`;
-      wrapEpsg.innerHTML = `
-        <div class="result-panel" style="margin-top: var(--space-4);">
-          <div class="result-metric">
-            <div class="value" style="font-size: 1.4rem;">${texto}</div>
-            <div class="label">${escapeHtml(`${r.origen.codigo} · ${r.origen.nombre}`)} → ${escapeHtml(`${r.destino.codigo} · ${r.destino.nombre}`)}${unidad}</div>
+    await catalogoPromesa; // los avisos necesitan las areas de uso
+    actualizar();
+    const o = sistema("origen");
+    const d = sistema("destino");
+    if (!o || !d) return error("Escriba el código EPSG de entrada y el de salida, que estén entre los sistemas incluidos (solo el número, por ejemplo 3116).");
+    if (!form.reportValidity()) return;
+    const cabecera = `${escapeHtml(o.etiqueta)} → ${escapeHtml(d.etiqueta)}${d.esGeo ? "" : ` (${d.unidad})`}`;
+
+    if (!modoLote()) {
+      try {
+        const r = convertirPunto(Number(fX.value), Number(fY.value), o, d);
+        const texto = r.esGeoDestino ? `Longitud: ${fmt(r.x, 6)}   Latitud: ${fmt(r.y, 6)}` : `Este: ${fmt(r.x, 4)}   Norte: ${fmt(r.y, 4)}`;
+        wrap.innerHTML = `
+          <div class="result-panel" ${MARGEN}>
+            <div class="result-metric">
+              <div class="value" style="font-size: 1.4rem;">${texto}</div>
+              <div class="label">${cabecera}</div>
+            </div>
           </div>
-        </div>
-        ${r.avisos.map((a) => `<div class="callout callout-warning" style="margin-top: var(--space-3);">${escapeHtml(a.texto)}</div>`).join("")}
-      `;
-    } catch (err) {
-      wrapEpsg.innerHTML = `<div class="callout callout-danger" style="margin-top: var(--space-4);">${escapeHtml(err.message)}</div>`;
+          ${avisosHtml(r.avisos)}`;
+      } catch (err) {
+        error(err.message);
+      }
+      return;
     }
+
+    // Por lotes: una pareja por linea (separada por espacios, tabulaciones o «;»). Las lineas vacias se saltan.
+    const salida = [];
+    const avisos = new Map(); // texto -> numeros de linea
+    let validas = 0;
+    fLote.value.split(/\r?\n/).forEach((linea, i) => {
+      if (!linea.trim()) return;
+      const partes = linea.trim().split(/[\s;]+/);
+      const xIn = Number(partes[0]);
+      const yIn = Number(partes[1]);
+      if (partes.length !== 2 || !Number.isFinite(xIn) || !Number.isFinite(yIn)) {
+        salida.push(`Línea ${i + 1}: no es una pareja de coordenadas («${linea.trim()}»)`);
+        return;
+      }
+      try {
+        const r = convertirPunto(xIn, yIn, o, d);
+        salida.push(formato(r));
+        validas++;
+        r.avisos.forEach((a) => avisos.set(a.texto, [...(avisos.get(a.texto) ?? []), i + 1]));
+      } catch (err) {
+        salida.push(`Línea ${i + 1}: ${err.message}`);
+      }
+    });
+    if (!salida.length) return error("Escriba al menos una pareja de coordenadas, una por línea.");
+    const resumen = [...avisos].map(([texto, lineas]) => ({
+      texto: lineas.length === validas ? texto : `${texto} Líneas: ${lineas.slice(0, 12).join(", ")}${lineas.length > 12 ? "…" : ""}.`,
+    }));
+    wrap.innerHTML = `
+      <div class="result-panel" ${MARGEN}>
+        <div class="result-metric">
+          <div class="label" style="margin-bottom: var(--space-3);">${validas} de ${salida.length} puntos convertidos: ${cabecera}</div>
+          <div class="report-block">${salida.map(escapeHtml).join("\n")}</div>
+        </div>
+      </div>
+      ${avisosHtml(resumen)}`;
   });
 }

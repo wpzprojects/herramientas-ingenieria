@@ -87,6 +87,17 @@ export function dentroDelAreaDeUso(sistema, lon, lat) {
   return w <= e ? lon >= w && lon <= e : lon >= w || lon <= e;
 }
 
+/**
+ * Avisos de area de uso para un punto (grados): fuera del area del sistema de entrada y/o del de salida. `origen` y `destino` solo
+ * necesitan `nombre` y `bbox` ([N, O, S, E] o null), asi sirve tambien para los 7 sistemas de la pantalla principal.
+ */
+export function avisosArea(origen, destino, lon, lat) {
+  const avisos = [];
+  if (!dentroDelAreaDeUso(origen, lon, lat)) avisos.push({ tipo: "area", texto: `El punto está fuera del área de uso del sistema de entrada («${origen.nombre}»).` });
+  if (!dentroDelAreaDeUso(destino, lon, lat)) avisos.push({ tipo: "area", texto: `El punto está fuera del área de uso del sistema de salida («${destino.nombre}»): el resultado puede ser poco confiable.` });
+  return avisos;
+}
+
 const definir = (proj4, s) => {
   const nombre = `EPSG:${s.codigo}`;
   if (!proj4.defs(nombre)) proj4.defs(nombre, s.proj4);
@@ -128,10 +139,6 @@ export function convertirEntreSistemas(proj4, catalogo, codOrigen, codDestino, x
   if (!salida.every(Number.isFinite)) throw new Error("La conversión no da un resultado válido: el punto está fuera de lo que admite alguno de los sistemas.");
 
   const avisos = avisosDatum(origen, destino);
-  if (lonLat.every(Number.isFinite)) {
-    const [lon, lat] = lonLat;
-    if (!dentroDelAreaDeUso(origen, lon, lat)) avisos.push({ tipo: "area", texto: `El punto está fuera del área de uso del sistema de entrada («${origen.nombre}»).` });
-    if (!dentroDelAreaDeUso(destino, lon, lat)) avisos.push({ tipo: "area", texto: `El punto está fuera del área de uso del sistema de salida («${destino.nombre}»): el resultado puede ser poco confiable.` });
-  }
+  if (lonLat.every(Number.isFinite)) avisos.push(...avisosArea(origen, destino, lonLat[0], lonLat[1]));
   return { x: salida[0], y: salida[1], origen, destino, esGeoDestino: destino.esGeo, avisos };
 }
