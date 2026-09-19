@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>verify_ocupacion</title>
+<!--
+  Pruebas de la pantalla de Ocupacion de ductos (js/views/calc-ocupacion-ductos.js) y de su logica de varios tipos de
+  conductor (js/calc/ocupacion-grupos.js). Se ejecuta en el navegador, sin internet: la vista real se renderiza en un
+  contenedor oculto y se maneja como lo haria una persona; los numeros se comparan con formulas escritas aqui de forma
+  independiente (areas con π ≈ 3.1416, como el original, y limites NTC-2050 Cap. 9 Tabla 1).
+
+  Uso (desde la raiz del proyecto):
+    python -m http.server 8000
+    abrir http://localhost:8000/tools/verify_ocupacion.html   -> lista PASS/FAIL
+  o en modo consola:
+    msedge --headless --dump-dom --virtual-time-budget=35000 http://localhost:8000/tools/verify_ocupacion.html
+-->
+<style>body{font-family:ui-monospace,Consolas,monospace;font-size:13px;padding:12px}#stage{position:absolute;left:-9999px;width:1000px}</style>
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+<pre id="out"></pre>
+<div id="stage"></div>
+<script type="module">
+window.__BASE_PATH__ = "../";
+const out = document.getElementById("out");
+let fallos = 0;
+let total = 0;
+function ok(cond, msg) {
+  total++;
+  if (!cond) fallos++;
+  out.textContent += `${cond ? "PASS" : "FAIL"} ${msg}\n`;
+}
+function cerca(a, b, tol, msg) {
+  ok(Math.abs(a - b) <= tol, `${msg} (obtenido ${a}, esperado ${b})`);
+}
+async function seccion(nombre, fn) {
+  out.textContent += `\n== ${nombre}\n`;
+  try {
+    await fn();
+  } catch (err) {
+    fallos++;
+    total++;
+    out.textContent += `FAIL excepcion en "${nombre}": ${err && err.stack ? err.stack : err}\n`;
+  }
+}
+const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const motor = await import("../js/calc/ocupacion-ductos.js");
+const og = await import("../js/calc/ocupacion-grupos.js");
+const tuberias = await (await fetch("../data/tuberias.json")).json();
+const xlpe = await (await fetch("../data/conductores-xlpe.json")).json();
+
+// Formulas independientes (π = 3.1416 como el original).
+const PI = 3.1416;
+const area = (d) => PI * (d / 2) ** 2;
+const limite = (n) => (n === 1 ? 53 : n === 2 ? 31 : 40);
+function esperado(tuboMm, lista) {
+  const n = lista.reduce((s, g) => s + g.cantidad, 0);
+  const areaC = lista.reduce((s, g) => s + g.cantidad * area(g.diametroMm), 0);
+  return { n, areaC, areaT: area(tuboMm), pct: (areaC * 100) / area(tuboMm), limite: limite(n) };
+}
+
+await seccion("ocupacion-grupos: logica", async () => {
+  const uno = og.calcularOcupacionGrupos(100, [{ cantidad: 3, diametroMm: 30 }]);
+  const directo = motor.calcularOcupacionDuctos({ numeroConductores: 3, diametroConductorMm: 30, diametroTuboMm: 100 });
+  ok(uno.ocupacionPct === directo.ocupacionPct && uno.areaCables === directo.areaCables && uno.areaTubo === directo.areaTubo && uno.limitePct === directo.limitePct && uno.cumple === directo.cumple, "un solo tipo: idéntico al motor original");
+  ok(uno.jammingRatio === directo.jammingRatio && uno.riesgoAtascamiento === directo.riesgoAtascamiento, "un solo tipo: mismo jamming ratio que el motor");
+  cerca(uno.ocupacionPct, 27, 1e-9, "3 conductores de 30 mm en un ducto de 100 mm: 27 %");
+
+  const lista = [{ cantidad: 3, diametroMm: 22.3 }, { cantidad: 3, diametroMm: 30.5 }];
+  const e = esperado(100, lista);
+  const dos = og.calcularOcupacionGrupos(100, lista);
+  cerca(dos.ocupacionPct, e.pct, 1e-9, `dos ternas de distinto calibre: ocupación ${e.pct.toFixed(3)} %`);
+  cerca(dos.areaCables, e.areaC, 1e-9, "el área total es la suma de las áreas de todos los conductores");
+  ok(dos.totalConductores === 6 && dos.limitePct === 40, "el límite depende del número TOTAL de conductores (6 → 40 %)");
+  cerca(dos.grupos[0].ocupacionPct + dos.grupos[1].ocupacionPct, dos.ocupacionPct, 1e-9, "la ocupación de cada tipo suma la total");
+  cerca(dos.grupos[1].areaTotal, 3 * area(30.5), 1e-9, "área total del segundo tipo = 3·área de un conductor");
+  cerca(dos.disponiblePct, 100 - e.pct, 1e-9, "disponible = 100 − ocupación");
+
+  // limites segun el total (1 → 53, 2 → 31, 3 o mas → 40), aunque vengan de tipos distintos
+  const lim = (l) => og.calcularOcupacionGrupos(100, l).limitePct;
+  ok(lim([{ cantidad: 1, diametroMm: 10 }]) === 53 && lim([{ cantidad: 1, diametroMm: 10 }, { cantidad: 1, diametroMm: 12 }]) === 31 && lim([{ cantidad: 1, diametroMm: 10 }, { cantidad: 2, diametroMm: 12 }]) === 40, "límites: 1 → 53 %, 2 (1+1) → 31 %, 3 (1+2) → 40 %");
+  ok(og.getLimiteOcupacion === motor.getLimiteOcupacion, "el límite es el del motor original");
+
+  // cumple / no cumple
+  ok(og.calcularOcupacionGrupos(100, [{ cantidad: 3, diametroMm: 30 }]).cumple && !og.calcularOcupacionGrupos(100, [{ cantidad: 3, diametroMm: 40 }]).cumple, "27 % cumple (límite 40 %); 48 % no cumple");
+  ok(og.calcularOcupacionGrupos(100, [{ cantidad: 1, diametroMm: 70 }]).cumple === true && og.calcularOcupacionGrupos(100, [{ cantidad: 1, diametroMm: 80 }]).cumple === false, "un conductor: 49 % cumple y 64 % no cumple (límite 53 %)");
+
+  // atascamiento: solo con exactamente 3 conductores del mismo diametro
+  const j = og.calcularOcupacionGrupos(93, [{ cantidad: 3, diametroMm: 30 }]);
+  ok(Math.abs(j.jammingRatio - 3.1) < 1e-12 && j.riesgoAtascamiento, "3 iguales con razón 3.1: hay riesgo de atascamiento");
+  const j2 = og.calcularOcupacionGrupos(93, [{ cantidad: 2, diametroMm: 30 }, { cantidad: 1, diametroMm: 30 }]);
+  ok(Math.abs(j2.jammingRatio - 3.1) < 1e-12 && j2.riesgoAtascamiento, "3 en total del mismo diámetro (2+1): también se evalúa");
+  const j3 = og.calcularOcupacionGrupos(93, [{ cantidad: 2, diametroMm: 30 }, { cantidad: 1, diametroMm: 25 }]);
+  ok(j3.jammingRatio === null && !j3.riesgoAtascamiento, "3 en total pero de distinto diámetro: no se evalúa el atascamiento");
+  ok(og.calcularOcupacionGrupos(93, [{ cantidad: 6, diametroMm: 30 }]).jammingRatio === null, "con 6 conductores no se evalúa el atascamiento");
+  ok(og.calcularOcupacionGrupos(100, [{ cantidad: 3, diametroMm: 30 }]).riesgoAtascamiento === false, "razón 3.33: sin riesgo");
+});
+
+const stage = document.getElementById("stage");
+const $ = (s, r = stage) => r.querySelector(s);
+const $$ = (s, r = stage) => [...r.querySelectorAll(s)];
+const poner = (sel, v, ev = "input") => { const e = $(sel); e.value = v; e.dispatchEvent(new Event(ev, { bubbles: true })); };
+const elegir = (sel, v) => poner(sel, v, "change");
+const marcar = (sel, v) => { const e = $(sel); e.checked = v; e.dispatchEvent(new Event("change", { bubbles: true })); };
+const texto = (e) => (e ? e.textContent.replace(/\s+/g, " ").trim() : "");
+const metrica = (etiqueta) => $$(".result-metric").find((m) => texto($(".label", m)).startsWith(etiqueta));
+const valorDe = (etiqueta) => parseFloat(texto($(".value", metrica(etiqueta))));
+const calcular = () => $("#form-calc").requestSubmit();
+
+// tuberia del catalogo usada en las pruebas: la primera de su tipo con diametro interno cercano a 100 mm
+const TIPO = tuberias[0].tipo;
+const TUBO = tuberias.filter((t) => t.tipo === TIPO).sort((a, b) => Math.abs(a.diametro_interno_min_mm - 100) - Math.abs(b.diametro_interno_min_mm - 100))[0];
+const D_TUBO = TUBO.diametro_interno_min_mm;
+
+const { render } = await import("../js/views/calc-ocupacion-ductos.js");
+await render(stage, {});
+
+await seccion("vista: tarjetas de tubería y conductores", async () => {
+  const titulos = $$(".form-section-title").map(texto);
+  ok($$(".card.form-section").length === 2 && titulos[0].includes("Tubería") && titulos[1].includes("Conductores — Tipo 1"), `dos tarjetas: «${titulos.join("» y «")}»`);
+  ok($$(".form-section-title").every((t) => t.querySelector("svg.icon") && t.parentElement.classList.contains("card")), "cada título lleva su icono y va dentro de su tarjeta");
+  ok($$(".card").every((c) => c.classList.contains("tarjeta-borde")), "las tarjetas llevan el borde marcado");
+  ok($(".btn-tramo-quitar").hidden, "con un solo tipo de conductor no aparece «Quitar»");
+  ok($$(".grupo-block .btn").some((b) => texto(b) === "Agregar tipo de conductor"), "«Agregar tipo de conductor» está dentro de la última tarjeta");
+  ok(texto($("#resumen-total")) === "Total de conductores: 3 · Límite NTC-2050 aplicable: 40%", `resumen del límite: «${texto($("#resumen-total"))}»`);
+  ok($$(".hint").length === 0, "no quedan textos de ayuda fijos (.hint) debajo de los campos");
+  const tarjetas = $$(".form-section").map((c) => c.getBoundingClientRect());
+  ok(Math.abs(tarjetas[1].top - tarjetas[0].bottom - 16) < 0.6, `las tarjetas Tubería y Conductores están separadas 16 px (${(tarjetas[1].top - tarjetas[0].bottom).toFixed(1)} px)`);
+
+  // campos de cada tarjeta
+  const tub = $$(".field > label:first-child", $$(".form-section")[0]).map(texto);
+  ok(tub.join("|") === "Tipo de tubería|Diámetro nominal|Diámetro interno de la tubería (mm)", `campos de la tubería: ${tub.join(" | ")}`);
+  const con = $$(".grupo-block .field > label:first-child").filter((l) => l.getClientRects().length).map(texto);
+  ok(con.join("|") === "Número de conductores|Diámetro del conductor (mm)", `campos visibles de conductores: ${con.join(" | ")}`);
+  ok(texto($("#f-diametro-0").closest(".input-with-toggle")).includes("Catálogo") && $("#f-diametro-0").closest(".input-with-toggle").querySelector('input[type="checkbox"]'), "a la derecha del diámetro hay una casilla «Catálogo»");
+  const rd = $("#f-diametro-0").getBoundingClientRect();
+  const rc = $("#chk-catalogo-0").getBoundingClientRect();
+  ok(rc.left > rd.right && Math.abs(rc.top + rc.height / 2 - (rd.top + rd.height / 2)) < 6, "la casilla queda a la derecha del campo y a su misma altura");
+  ok($(".catalogo-campos").hidden && $("#f-diametro-0").value === "30" && !$("#f-diametro-0").disabled, "por defecto: campos del catálogo ocultos y diámetro editable (30 mm)");
+  ok($("#f-n-0").value === "3", "por defecto: 3 conductores");
+});
+
+await seccion("vista: tubería (catálogo y manual)", async () => {
+  ok($("#f-interno").disabled && $("#f-interno").value === "", "el diámetro interno está bloqueado y vacío mientras no se elija tubería");
+  elegir("#f-tipo", TIPO);
+  ok(!$("#f-nominal").disabled, "al elegir el tipo se habilita el diámetro nominal");
+  elegir("#f-nominal", TUBO.diametro_nominal);
+  cerca(parseFloat($("#f-interno").value), D_TUBO, 1e-12, `el diámetro interno sale del catálogo (${TIPO} ${TUBO.diametro_nominal}: ${D_TUBO} mm)`);
+  ok($("#f-interno").disabled, "bloqueado mientras no esté «Manual»");
+  marcar("#chk-manual", true);
+  ok(!$("#f-interno").disabled && !$("#f-tipo").required && !$("#f-nominal").required, "«Manual» habilita el diámetro interno y ya no exige tipo ni diámetro nominal");
+  poner("#f-interno", "104.5");
+  ok($("#f-interno").validity.valid, "el diámetro interno manual acepta decimales");
+  marcar("#chk-manual", false);
+  cerca(parseFloat($("#f-interno").value), D_TUBO, 1e-12, "al quitar «Manual» vuelve el valor del catálogo");
+  ok($("#f-tipo").required && $("#f-nominal").required, "sin «Manual» tipo y diámetro nominal vuelven a ser obligatorios");
+  elegir("#f-tipo", "");
+  ok($("#f-interno").value === "" && $("#f-nominal").disabled, "al borrar el tipo se limpia el diámetro interno");
+  elegir("#f-tipo", TIPO);
+  elegir("#f-nominal", TUBO.diametro_nominal);
+});
+
+await seccion("vista: un tipo de conductor, cálculo y resultados", async () => {
+  poner("#f-diametro-0", "30");
+  calcular();
+  const e = esperado(D_TUBO, [{ cantidad: 3, diametroMm: 30 }]);
+  cerca(valorDe("Porcentaje de ocupación"), e.pct, 0.006, `resultado: ocupación ${e.pct.toFixed(3)} %`);
+  cerca(valorDe("Porcentaje disponible"), 100 - e.pct, 0.006, "resultado: porcentaje disponible");
+  const badge = $(".badge", metrica("Porcentaje de ocupación"));
+  ok(badge && texto(badge) === (e.pct <= 40 ? "Cumple" : "No cumple"), `veredicto: «${texto(badge)}» (límite 40 %)`);
+  ok(texto(metrica("Porcentaje de ocupación")).includes("límite 40.00%") || texto(metrica("Porcentaje de ocupación")).includes("límite 40"), "la etiqueta indica el límite aplicable");
+  ok($(".result-panel > div > div[style*='conic-gradient']"), "se conserva la dona de ocupación");
+  ok(!$$(".tabla-resultado").length, "con un solo tipo no hay tabla por tipo");
+
+  // no cumple
+  poner("#f-diametro-0", "60");
+  calcular();
+  const b2 = $(".badge", metrica("Porcentaje de ocupación"));
+  ok(texto(b2) === "No cumple" && b2.classList.contains("badge-danger"), "diámetro muy grande: «No cumple»");
+  poner("#f-diametro-0", "30");
+
+  // atascamiento
+  poner("#f-diametro-0", String(D_TUBO / 3.1));
+  calcular();
+  ok(!!$("#resultado-wrap .callout-warning") && texto($("#resultado-wrap .callout-warning")).includes("atascamiento"), "razón ≈ 3.1 con 3 conductores: aviso de atascamiento");
+  poner("#f-diametro-0", "30");
+
+  // 1 conductor cambia el limite mostrado en el resumen
+  elegir("#f-n-0", "1");
+  ok(texto($("#resumen-total")).includes("Límite NTC-2050 aplicable: 53%"), "con 1 conductor el resumen muestra el límite 53 %");
+  elegir("#f-n-0", "3");
+});
+
+await seccion("vista: conductor del catálogo", async () => {
+  marcar("#chk-catalogo-0", true);
+  const vis = () => $$(".catalogo-campos .field > label:first-child").filter((l) => l.getClientRects().length).map(texto);
+  ok(vis().join("|") === "Nivel de tensión|Nivel de aislamiento|Material del conductor|Pantalla|Calibre", `al marcar «Catálogo» aparecen: ${vis().join(" | ")}`);
+  ok($("#f-diametro-0").disabled && $("#f-diametro-0").value === "", "el diámetro se bloquea y queda vacío hasta elegir calibre");
+  ok($("#f-calibre-0").required && $("#f-calibre-0").value === "" && !$("#form-calc").checkValidity(), "sin elegir calibre el formulario no es válido");
+
+  // filas y opciones esperadas segun el catalogo
+  const opcionesDe = (id) => $$(`#${id} option`).map((o) => o.value).filter((v) => v !== "");
+  const tensiones = [...new Set(xlpe.map((c) => c.nivel_tension_kv))].sort((a, b) => parseFloat(a) - parseFloat(b));
+  ok(opcionesDe("f-tension-0").join("|") === tensiones.join("|") && $("#f-tension-0").value === tensiones[0], `tensiones: ${tensiones.join(", ")} (por defecto la primera)`);
+  ok(opcionesDe("f-aislamiento-0").join("|") === "100|133", "15 kV: niveles de aislamiento 100 % y 133 %");
+  ok(opcionesDe("f-material-0").join("|") === "Cobre|Aluminio", "materiales: Cobre y Aluminio");
+  const pant = [...new Set(xlpe.filter((c) => c.nivel_tension_kv === tensiones[0] && c.porcentaje_aislamiento_pct === 100 && c.material_conductor === "Cobre").map((c) => c.pantalla))];
+  ok(opcionesDe("f-pantalla-0").join("|") === pant.join("|") && !$("#f-pantalla-0").disabled, `15 kV 100 % Cobre: pantalla ${pant.join(" / ")} (se puede elegir)`);
+  const calibres = [...new Set(xlpe.filter((c) => c.nivel_tension_kv === tensiones[0] && c.porcentaje_aislamiento_pct === 100 && c.material_conductor === "Cobre" && c.pantalla === pant[0]).map((c) => c.calibre_awg_kcmil))];
+  ok(opcionesDe("f-calibre-0").join("|") === calibres.join("|"), `calibres de esa combinación: ${calibres.length}`);
+
+  // diametro = diametro total del cable de la fila elegida
+  const fila = (kv, ais, mat, pan, cal) => xlpe.find((c) => c.nivel_tension_kv === kv && c.porcentaje_aislamiento_pct === ais && c.material_conductor === mat && c.pantalla === pan && c.calibre_awg_kcmil === cal);
+  elegir("#f-calibre-0", "4/0");
+  cerca(parseFloat($("#f-diametro-0").value), fila("15 kV", 100, "Cobre", pant[0], "4/0").diametro_total_conductor_mm, 1e-12, `calibre 4/0: el diámetro es el total del cable (${$("#f-diametro-0").value} mm)`);
+  ok($("#form-calc").checkValidity(), "con calibre elegido el formulario es válido");
+  elegir("#f-pantalla-0", pant[1]);
+  cerca(parseFloat($("#f-diametro-0").value), fila("15 kV", 100, "Cobre", pant[1], "4/0").diametro_total_conductor_mm, 1e-12, `pantalla «${pant[1]}»: cambia al diámetro de esa variante (${$("#f-diametro-0").value} mm)`);
+  elegir("#f-aislamiento-0", "133");
+  ok(opcionesDe("f-pantalla-0").join("|") === "Cinta de cobre" && $("#f-pantalla-0").disabled, "133 %: solo cinta de cobre (la lista queda bloqueada con esa opción)");
+  cerca(parseFloat($("#f-diametro-0").value), fila("15 kV", 133, "Cobre", "Cinta de cobre", "4/0").diametro_total_conductor_mm, 1e-12, "133 %: se conserva el calibre 4/0 y el diámetro se actualiza");
+  elegir("#f-material-0", "Aluminio");
+  cerca(parseFloat($("#f-diametro-0").value), fila("15 kV", 133, "Aluminio", "Cinta de cobre", "4/0").diametro_total_conductor_mm, 1e-12, "aluminio: se conserva el calibre y cambia el diámetro");
+
+  // series sin nivel de aislamiento (17.5 y 36 kV)
+  elegir("#f-tension-0", "17.5 kV");
+  ok($("#f-aislamiento-0").disabled && texto($("#f-aislamiento-0")) === "No aplica", "17.5 kV: el nivel de aislamiento no aplica (bloqueado)");
+  const c175 = xlpe.filter((c) => c.nivel_tension_kv === "17.5 kV" && c.material_conductor === "Cobre");
+  elegir("#f-material-0", "Cobre");
+  ok(opcionesDe("f-calibre-0").join("|") === [...new Set(c175.map((c) => c.calibre_awg_kcmil))].join("|"), "17.5 kV: los calibres son los de esa serie");
+  elegir("#f-calibre-0", c175[0].calibre_awg_kcmil);
+  cerca(parseFloat($("#f-diametro-0").value), c175[0].diametro_total_conductor_mm, 1e-12, `17.5 kV calibre ${c175[0].calibre_awg_kcmil}: diámetro ${c175[0].diametro_total_conductor_mm} mm`);
+  ok($("#form-calc").checkValidity(), "formulario válido con la serie sin aislamiento");
+
+  // calculo con el diametro del catalogo
+  const dCat = c175[0].diametro_total_conductor_mm;
+  calcular();
+  const e = esperado(D_TUBO, [{ cantidad: 3, diametroMm: dCat }]);
+  cerca(valorDe("Porcentaje de ocupación"), e.pct, 0.006, `cálculo con el diámetro del catálogo (${dCat} mm): ${e.pct.toFixed(3)} %`);
+  const rep = $('[data-panel="reporte"] .report-block').textContent;
+  ok(rep.includes(`Origen del diámetro: Catálogo XLPE: 17.5 kV, Cobre, Cinta de cobre, calibre ${c175[0].calibre_awg_kcmil}`), "el reporte indica que el diámetro salió del catálogo, con la combinación elegida");
+
+  // apagar el catalogo devuelve el campo editable
+  marcar("#chk-catalogo-0", false);
+  ok($(".catalogo-campos").hidden && !$("#f-diametro-0").disabled, "al quitar «Catálogo» se ocultan los campos y el diámetro vuelve a ser editable");
+  ok($("#f-calibre-0").required === false && $("#form-calc").checkValidity(), "sin «Catálogo» los campos ocultos no bloquean el formulario");
+  poner("#f-diametro-0", "30");
+});
+
+await seccion("vista: varios tipos de conductor", async () => {
+  const agregar = $$(".grupo-block .btn").find((b) => texto(b) === "Agregar tipo de conductor");
+  agregar.click();
+  const bloques = () => $$(".grupo-block");
+  ok(bloques().length === 2 && texto($$(".grupo-titulo")[1]) === "Conductores — Tipo 2", "agregar crea la tarjeta «Conductores — Tipo 2»");
+  ok($$(".btn-tramo-quitar").every((b) => !b.hidden), "con dos tipos ambos muestran «Quitar»");
+  ok(bloques()[1].contains(agregar) && !bloques()[0].contains(agregar), "«Agregar tipo de conductor» pasa a la última tarjeta");
+  ok($("#f-diametro-0").value === "30" && $("#f-n-0").value === "3", "el primer tipo conserva lo elegido");
+  ok(new Set($$(".form-section-title").map((t) => Math.round(t.getBoundingClientRect().height))).size === 1, "las barras de título no cambian de altura al aparecer «Quitar»");
+  ok($("#f-n-1").value === "3" && $("#f-diametro-1").value === "30" && !$("#chk-catalogo-1").checked, "el tipo nuevo empieza con los valores por defecto y sin catálogo");
+  ok(texto($("#resumen-total")) === "Total de conductores: 6 · Límite NTC-2050 aplicable: 40%", `el resumen suma todos los tipos: «${texto($("#resumen-total"))}»`);
+
+  // el segundo tipo usa el catalogo, independiente del primero
+  marcar("#chk-catalogo-1", true);
+  elegir("#f-calibre-1", "250");
+  const f250 = xlpe.find((c) => c.nivel_tension_kv === "15 kV" && c.porcentaje_aislamiento_pct === 100 && c.material_conductor === "Cobre" && c.pantalla === "Cinta de cobre" && c.calibre_awg_kcmil === "250");
+  cerca(parseFloat($("#f-diametro-1").value), f250.diametro_total_conductor_mm, 1e-12, `el segundo tipo toma del catálogo el calibre 250 (${f250.diametro_total_conductor_mm} mm)`);
+  ok($("#f-diametro-0").value === "30" && !$("#f-diametro-0").disabled && $("#f-calibre-0").required === false, "el primer tipo no se ve afectado por el catálogo del segundo");
+  elegir("#f-n-1", "2");
+  ok(texto($("#resumen-total")) === "Total de conductores: 5 · Límite NTC-2050 aplicable: 40%", "el resumen se actualiza al cambiar la cantidad");
+  elegir("#f-n-1", "3");
+
+  calcular();
+  const lista = [{ cantidad: 3, diametroMm: 30 }, { cantidad: 3, diametroMm: f250.diametro_total_conductor_mm }];
+  const e = esperado(D_TUBO, lista);
+  cerca(valorDe("Porcentaje de ocupación"), e.pct, 0.006, `dos ternas de distinto diámetro: ocupación ${e.pct.toFixed(3)} %`);
+  const filas = $$(".tabla-resultado tbody tr");
+  ok(filas.length === 3 && filas[2].classList.contains("total-row"), "tabla por tipo: dos filas y una de total");
+  cerca(parseFloat(texto(filas[0].querySelectorAll("td")[5])), (3 * area(30) * 100) / area(D_TUBO), 0.006, "tabla: % del ducto del tipo 1");
+  cerca(parseFloat(texto(filas[1].querySelectorAll("td")[5])), (3 * area(f250.diametro_total_conductor_mm) * 100) / area(D_TUBO), 0.006, "tabla: % del ducto del tipo 2");
+  cerca(parseFloat(texto(filas[2].querySelectorAll("td")[3])), e.areaC, 0.006, "tabla: área total");
+  ok(texto(filas[1]).includes("Catálogo XLPE") && texto(filas[0]).includes("Ingresado manualmente"), "la tabla indica el origen de cada diámetro");
+  ok(texto(metrica("Porcentaje de ocupación")).includes("límite 40"), "el límite usa el total de conductores");
+  ok(!$("#resultado-wrap .callout-warning"), "con 6 conductores no se avisa atascamiento");
+
+  // quitar el primer tipo
+  $$(".btn-tramo-quitar")[0].click();
+  ok(bloques().length === 1 && texto($(".grupo-titulo")) === "Conductores — Tipo 1" && $(".btn-tramo-quitar").hidden, "quitar elimina la tarjeta, renumera y oculta «Quitar»");
+  ok($("#chk-catalogo-1").checked && $("#f-calibre-1").value === "250", "el tipo que queda conserva su catálogo y calibre");
+  ok(texto($("#resumen-total")) === "Total de conductores: 3 · Límite NTC-2050 aplicable: 40%", "el resumen vuelve a contar solo lo que queda");
+  marcar("#chk-catalogo-1", false);
+  poner("#f-diametro-1", "30");
+  $$(".grupo-block .btn").find((b) => texto(b) === "Agregar tipo de conductor").click(); // dos tipos otra vez para el reporte
+});
+
+await seccion("vista: estructura del reporte (se copia y se pega)", async () => {
+  const leer = () => { calcular(); return $('[data-panel="reporte"] .report-block').textContent.split("\n"); };
+  const LINEA = /^-{30}$/;
+  const etiquetasEn = (l) => l.filter((x) => /^[A-ZÁÉÍÓÚÑ ]{4,}:?$/.test(x));
+  const secciones = (l) => { const iRes = l.indexOf("RESULTADOS:"); return { iRes, params: l.slice(4, iRes - 1), res: l.slice(iRes + 2) }; };
+  const tiene = (l, inicio) => l.some((x) => x.trim().startsWith(inicio));
+
+  // un solo tipo
+  $$(".btn-tramo-quitar").at(-1).click();
+  const a = leer();
+  const sa = secciones(a);
+  ok(a[0] === "CÁLCULO DE OCUPACIÓN DE DUCTOS" && a[1] === "" && a[2] === "PARÁMETROS DE ENTRADA:" && LINEA.test(a[3]), "«CÁLCULO DE OCUPACIÓN DE DUCTOS», línea en blanco, «PARÁMETROS DE ENTRADA:» y su línea divisoria DEBAJO");
+  ok(sa.iRes > 4 && a[sa.iRes - 1] === "" && LINEA.test(a[sa.iRes + 1]), "«RESULTADOS:» con una línea en blanco antes y su línea divisoria DEBAJO");
+  ok(!LINEA.test(a[2]) && !LINEA.test(a[sa.iRes - 1]) && !LINEA.test(a[4]) && !LINEA.test(a[sa.iRes + 2]), "encima de las etiquetas no hay línea y debajo de la línea sigue directamente el contenido");
+  ok(etiquetasEn(a).join("|") === "CÁLCULO DE OCUPACIÓN DE DUCTOS|PARÁMETROS DE ENTRADA:|RESULTADOS:" && a.filter((x) => LINEA.test(x)).length === 2, "tres etiquetas y dos líneas divisorias");
+  for (const inicio of ["Tipo de tubería:", "Diámetro nominal:", "Diámetro interno de la tubería:", "Conductores — Tipo 1:", "Número de conductores: 3", "Diámetro del conductor: 30.00 mm", "Origen del diámetro: Ingresado manualmente"]) {
+    ok(tiene(sa.params, inicio), `parámetros de entrada incluye «${inicio}»`);
+  }
+  for (const inicio of ["Área", "Porcentaje", "Límite", "Cumple", "Número total"]) {
+    ok(!tiene(sa.params, inicio), `«${inicio}…» NO está en los parámetros (es un resultado)`);
+  }
+  for (const inicio of ["Número total de conductores: 3", "Tipo 1:", "Área de un conductor", "Área total del tipo", "Área total de conductores", "Área interna del ducto", "Porcentaje de ocupación", "Porcentaje disponible", "Límite aplicable (NTC-2050)", "Cumple:"]) {
+    ok(tiene(sa.res, inicio), `resultados incluye «${inicio}»`);
+  }
+  ok(!tiene(sa.res, "Diámetro del conductor") && !tiene(sa.res, "Tipo de tubería") && !tiene(sa.res, "Diámetro interno"), "los datos de entrada no se repiten en los resultados");
+  const negritas = $$('[data-panel="reporte"] .report-block strong');
+  const pesos = negritas.map((e) => parseInt(getComputedStyle(e).fontWeight, 10));
+  ok(negritas.map((e) => e.textContent).join("|") === "CÁLCULO DE OCUPACIÓN DE DUCTOS|PARÁMETROS DE ENTRADA:|RESULTADOS:" && pesos.every((w) => w >= 700), `las tres etiquetas están en negrita (${pesos.join(", ")}) y solo ellas`);
+
+  // tuberia manual
+  marcar("#chk-manual", true);
+  poner("#f-interno", "104.5");
+  const m = leer();
+  const sm = secciones(m);
+  ok(tiene(sm.params, "Tubería: ingresada manualmente") && tiene(sm.params, "Diámetro interno de la tubería: 104.50 mm") && !tiene(sm.params, "Tipo de tubería"), "tubería manual: el reporte lo indica y no lista tipo ni nominal");
+  marcar("#chk-manual", false);
+
+  // dos tipos, el segundo del catalogo
+  $$(".grupo-block .btn").find((b) => texto(b) === "Agregar tipo de conductor").click();
+  const id = $$(".grupo-block").at(-1).querySelector('select[id^="f-n-"]').id.replace("f-n-", "");
+  marcar(`#chk-catalogo-${id}`, true);
+  elegir(`#f-calibre-${id}`, "2");
+  const d = leer();
+  const sd = secciones(d);
+  ok(etiquetasEn(d).length === 3 && d.filter((x) => LINEA.test(x)).length === 2, "con dos tipos siguen siendo tres etiquetas y dos líneas");
+  ok(sd.params.filter((x) => /^Conductores — Tipo \d:$/.test(x)).join() === "Conductores — Tipo 1:,Conductores — Tipo 2:" && sd.res.filter((x) => /^Tipo \d:$/.test(x)).join() === "Tipo 1:,Tipo 2:", "los dos tipos aparecen en los parámetros y en los resultados");
+  ok(tiene(sd.params, "Origen del diámetro: Catálogo XLPE: 15 kV (100 %), Cobre, Cinta de cobre, calibre 2"), "el tipo del catálogo indica de dónde salió el diámetro");
+  ok(tiene(sd.res, "Número total de conductores: 6") && d.at(-1).startsWith("Cumple:"), "el total de conductores va en los resultados y el reporte termina con «Cumple»");
+  $$(".btn-tramo-quitar").at(-1).click();
+});
+
+await seccion("vista: fórmulas con KaTeX", async () => {
+  ok(!window.katex, "KaTeX no se carga hasta abrir la pestaña Fórmulas");
+  $$(".tab-btn").find((b) => b.dataset.tab === "formulas").click();
+  for (let i = 0; i < 40 && !$$("#formulas-katex .katex").length; i++) await espera(100);
+  await document.fonts.ready;
+  await espera(150);
+  const caja = $("#formulas-katex");
+  const subtitulos = $$("#formulas-katex > .result-subhead").map(texto);
+  const items = $$("#formulas-katex ul.formula-etiquetas > li");
+  const izq = items.map((li) => li.lastElementChild.getBoundingClientRect().left);
+  const n = $$("#formulas-katex .formula-katex").length;
+  ok(window.katex && n === 8 && $$("#formulas-katex .katex-display").length === 8, `KaTeX cargado y ${n} ecuaciones dibujadas`);
+  ok($$("#formulas-katex .katex-error").length === 0, "ninguna ecuación con error de sintaxis");
+  ok($("#formulas-plano").hidden && !caja.hidden, "al dibujarse las fórmulas se oculta el texto plano y aparece la subtarjeta");
+  ok(subtitulos.join("|") === "Áreas|Ocupación|Límite de ocupación (NTC-2050, Cap. 9, Tabla 1)|Riesgo de atascamiento (jamming ratio)|Descripción de las etiquetas|Notas", `subtítulos: ${subtitulos.join(" | ")}`);
+  ok(items.length === 11 && items.every((li) => li.querySelector(".formula-simbolo .katex")), `la descripción de las etiquetas es una lista de ${items.length} viñetas con el símbolo dibujado`);
+  ok(Math.max(...izq) - Math.min(...izq) < 1, "los textos de las viñetas quedan alineados");
+  ok($$("#formulas-katex .katex").some((k) => k.textContent.includes("53") && k.textContent.includes("31") && k.textContent.includes("40")), "el límite (53 %, 31 %, 40 %) se dibuja como ecuación por casos");
+  const textoCaja = texto(caja);
+  ok(textoCaja.includes("varios tipos de conductor") && textoCaja.includes("3.1416"), "las notas explican los varios tipos y el valor de π");
+  const rc = caja.getBoundingClientRect();
+  ok($$("#formulas-katex .formula-katex").every((e) => { const r = e.getBoundingClientRect(); return r.left >= rc.left && r.right <= rc.right + 0.5; }), "las ecuaciones quedan dentro de la subtarjeta");
+});
+
+// La pantalla se prueba tambien dentro de un iframe de ancho fijo: las media queries dependen del ancho de la ventana.
+const cargarMarco = (ancho) => new Promise((resolve) => {
+  const marco = document.createElement("iframe");
+  marco.style.cssText = `position:fixed;left:-99999px;top:0;width:${ancho}px;height:3000px;border:0`;
+  const alRecibir = (e) => {
+    if (e.source !== marco.contentWindow || e.data !== "listo") return;
+    window.removeEventListener("message", alRecibir);
+    resolve(marco);
+  };
+  window.addEventListener("message", alRecibir);
+  marco.srcdoc = `<!doctype html><html><head><link rel="stylesheet" href="../css/tokens.css"><link rel="stylesheet" href="../css/app.css"></head><body><div id="c" class="content"></div><script type="module">window.__BASE_PATH__ = "../"; const { render } = await import("../js/views/calc-ocupacion-ductos.js"); const c = document.getElementById("c"); await render(c, {}); const ev = (s, v) => { const e = c.querySelector(s); e.value = v; e.dispatchEvent(new Event("change", { bubbles: true })); }; ev("#f-tipo", ${JSON.stringify(TIPO)}); ev("#f-nominal", ${JSON.stringify(TUBO.diametro_nominal)}); c.querySelector("#form-calc").requestSubmit(); parent.postMessage("listo", "*");<\/script></body></html>`;
+  document.body.append(marco);
+});
+
+await seccion("vista: aspecto (barra de título, 16 px laterales y espaciado uniforme)", async () => {
+  const medir = (marco) => {
+    const d = marco.contentDocument;
+    const izq = (e) => e.getBoundingClientRect().left;
+    const sonda = d.createElement("div");
+    d.body.append(sonda);
+    const token = (v) => { sonda.style.backgroundColor = `var(${v})`; return d.defaultView.getComputedStyle(sonda).backgroundColor; };
+    sonda.style.borderBottomColor = "color-mix(in srgb, var(--accent) 65%, var(--accent-soft))";
+    const mezcla = d.defaultView.getComputedStyle(sonda).borderBottomColor;
+    const suave = token("--accent-soft");
+    const acento = token("--accent");
+    sonda.remove();
+    const cs = (e) => d.defaultView.getComputedStyle(e);
+    const tarjetas = [...d.querySelectorAll(".form-section")];
+    const res = d.querySelector("#resultado-wrap > .card");
+    const panel = res.querySelector(".result-panel");
+    const barras = tarjetas.map((card) => {
+      const t = card.querySelector(".form-section-title");
+      const rc = card.getBoundingClientRect();
+      const rt = t.getBoundingClientRect();
+      const svg = t.querySelector("svg");
+      const ri = svg.getBoundingClientRect();
+      return { llegaBordes: Math.abs(rt.left - (rc.left + 1)) <= 0.6 && Math.abs(rt.right - (rc.right - 1)) <= 0.6, arriba: rt.top - rc.top <= 1.6, fondo: cs(t).backgroundColor === suave, linea: cs(t).borderBottomColor === mezcla && cs(t).borderBottomWidth === "1px", icono: cs(svg).color === acento, centrado: Math.abs(ri.top + ri.height / 2 - (rt.top + (rt.height - 1) / 2)) <= 1, altura: Math.round(rt.height) };
+    });
+    const separaciones = tarjetas.map((card) => {
+      const rects = [...card.querySelectorAll(".field")].filter((f) => f.getClientRects().length).map((f) => f.getBoundingClientRect());
+      return rects.slice(1).map((r, i) => r.top - rects[i].bottom);
+    });
+    return {
+      barras,
+      separaciones,
+      lateral: { tuberia: izq(tarjetas[0].querySelector("select, input")) - izq(tarjetas[0]), conductores: izq(tarjetas[1].querySelector("select, input")) - izq(tarjetas[1]), icono: izq(tarjetas[1].querySelector(".form-section-title svg")) - izq(tarjetas[1]), tabs: izq(res.querySelector(".tabs")) - izq(res), panel: izq(panel) - izq(res) },
+    };
+  };
+  const angosto = await cargarMarco(600);
+  const mAng = medir(angosto);
+  angosto.remove();
+  const ancho = await cargarMarco(1000);
+  const mAnc = medir(ancho);
+  ancho.remove();
+
+  for (const [nombre, m] of [["600 px", mAng], ["1000 px", mAnc]]) {
+    m.barras.forEach((b, i) => {
+      const t = ["Tubería", "Conductores"][i];
+      ok(b.llegaBordes && b.arriba && b.fondo && b.linea && b.icono && b.centrado, `ancho ${nombre}, «${t}»: barra de borde a borde con el color atenuado, línea 35 % menos intensa, icono en color pleno y centrado`);
+    });
+    ok(new Set(m.barras.map((b) => b.altura)).size === 1, `ancho ${nombre}: las barras tienen la misma altura`);
+    const l = m.lateral;
+    ok(Object.values(l).every((v) => v === 17), `ancho ${nombre}: 17 px del borde al contenido (1 + 16) en tarjetas, resultados y panel (${Object.values(l).join(", ")})`);
+  }
+  mAng.separaciones.forEach((s, i) => {
+    ok(s.length >= 1 && s.every((v) => Math.abs(v - 16) <= 0.6), `ancho 600 px, tarjeta ${i + 1}: todos los campos a 16 px unos de otros (${s.map((v) => v.toFixed(0)).join(", ")})`);
+  });
+});
+
+await seccion("vista: ayuda de los campos con botón de información", async () => {
+  // etiquetas: con o sin boton deben medir lo mismo (todas las medidas juntas, antes de ok())
+  const campos = $$("#form-calc .field").filter((f) => f.getClientRects().length && f.querySelector(":scope > label"));
+  const medidas = campos.map((f) => {
+    const label = f.querySelector(":scope > label");
+    const control = f.querySelector("input, select");
+    return { conInfo: !!label.querySelector(".info-btn"), alto: Math.round(label.getBoundingClientRect().height * 10) / 10, desfase: Math.round((control.getBoundingClientRect().top - f.getBoundingClientRect().top) * 10) / 10 };
+  });
+  ok(medidas.filter((m) => m.conInfo).length >= 3 && medidas.filter((m) => !m.conInfo).length >= 2, "se comparan campos con y sin botón de información");
+  ok(new Set(medidas.map((m) => m.alto)).size === 1 && new Set(medidas.map((m) => m.desfase)).size === 1, `el botón no cambia la altura de las etiquetas ni la posición de las casillas (${[...new Set(medidas.map((m) => m.alto))].join(", ")} px)`);
+
+  const botones = $$(".info-btn");
+  const nombres = botones.map((b) => b.getAttribute("aria-label").replace("Más información sobre ", ""));
+  ok(nombres.join("|") === "Diámetro interno de la tubería (mm)|Número de conductores|Diámetro del conductor (mm)|Nivel de aislamiento", `botones de información junto al nombre de: ${nombres.join(" | ")}`);
+  ok(botones.every((b) => b.tagName === "BUTTON" && b.type === "button" && b.getAttribute("aria-expanded") === "false" && document.getElementById(b.getAttribute("aria-controls"))), "son botones reales, con aria-expanded y aria-controls");
+  const b0 = botones[1];
+  const campo = b0.closest(".field");
+  const card = b0.closest(".card");
+  const pop = document.getElementById(b0.getAttribute("aria-controls"));
+  const antes = card.getBoundingClientRect().height;
+  b0.click();
+  const abierto = { oculto: pop.hidden, texto: texto(pop), abajo: pop.classList.contains("info-popover--abajo"), rp: pop.getBoundingClientRect(), rl: campo.querySelector("label").getBoundingClientRect(), card: card.getBoundingClientRect().height };
+  b0.click();
+  ok(!abierto.oculto && abierto.texto === "Cuántos conductores de este tipo van dentro del ducto (una terna son 3).", `al pulsar el botón se abre el cuadro: «${abierto.texto}»`);
+  ok(!abierto.abajo && abierto.rp.bottom <= abierto.rl.top + 0.5, "el cuadro se abre arriba de la etiqueta");
+  ok(Math.abs(abierto.card - antes) < 0.5 && pop.hidden, "abrir el cuadro no mueve el formulario y un segundo clic lo cierra");
+});
+
+await seccion("service worker y otros archivos", async () => {
+  const sw = await (await fetch("../sw.js")).text();
+  const lista = [...sw.matchAll(/^\s*"([^"]+)",\s*$/gm)].map((m) => m[1]);
+  ok(["js/calc/ocupacion-grupos.js", "js/calc/ocupacion-ductos.js", "js/views/calc-ocupacion-ductos.js", "js/util/info-campo.js", "js/util/resultados-ui.js"].every((f) => lista.includes(f)), "el service worker precachea los módulos que usa la pantalla");
+  const existen = await Promise.all(lista.filter((f) => f !== "./").map((f) => fetch(`../${f}`, { method: "HEAD" }).then((r) => [f, r.ok])));
+  const faltan = existen.filter(([, okk]) => !okk).map(([f]) => f);
+  ok(faltan.length === 0, `todos los archivos del APP_SHELL existen${faltan.length ? ": " + faltan.join(", ") : ""}`);
+  const tool = await (await fetch("../js/ai/tools.js")).text();
+  ok(tool.includes('nombre: "calcular_ocupacion_ductos"') && tool.includes('from "../calc/ocupacion-ductos.js"'), "la herramienta de la IA sigue usando el motor original de ocupación (sin cambios)");
+});
+
+out.textContent += `\nRESULT: ${fallos ? "FAIL" : "OK"} (${total - fallos}/${total})\n`;
+</script>
+</body>
+</html>

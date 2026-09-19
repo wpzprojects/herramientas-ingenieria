@@ -49,6 +49,8 @@ Los `data/*.json` son la **fuente de verdad** de los catálogos y se editan dire
 
 `tools/verify_regulacion.html` hace lo mismo con la pantalla de Regulación (varios tramos, haz de conductores, RMG en mm, reporte y fórmulas).
 
+`tools/verify_ocupacion.html` hace lo mismo con la pantalla de Ocupación de ductos (varios tipos de conductor, diámetro del catálogo XLPE, tubería manual o del catálogo, reporte y fórmulas).
+
 `tools/verify_perdidas.html` (arnés en el navegador, sin internet) prueba la pantalla de Pérdidas: la lógica de varios tramos (`js/calc/perdidas-tramos.js`) contra fórmulas escritas de forma independiente, y la vista real manejada como lo haría una persona (dato de partida, agregar/quitar tramos, resultados, fórmulas con KaTeX, archivos del service worker). Se ejecuta igual que `verify_ia.html` (ver su encabezado).
 
 ## Funciones de IA (Gemini)

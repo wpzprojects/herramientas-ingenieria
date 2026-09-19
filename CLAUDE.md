@@ -49,6 +49,17 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Campos numéricos que vienen del catálogo (resistencia, RMG) llevan `step="any"`: con `step="0.01"` el modo «Manual» fallaba la
   validación con valores de 3 decimales (p. ej. 0.396).
 
+- Ocupación de ductos (2026-09-19) sigue el mismo patrón (tarjetas, iconos, relleno, info «i», reporte y fórmulas KaTeX). Dos tarjetas:
+  «Tubería» (icono `cylinder`; tipo, diámetro nominal y diámetro interno del catálogo con «Manual») y una tarjeta «Conductores — Tipo N»
+  por cada TIPO de conductor (icono `plugConnected`; «Agregar tipo de conductor» / «Quitar»: p. ej. una terna de un calibre y otra de
+  otro). Cada tipo tiene número de conductores (1–9) y diámetro con casilla «Catálogo» a su derecha: al marcarla salen Nivel de
+  tensión → Nivel de aislamiento (solo 15/35 kV; en 17.5/36 kV queda «No aplica») → Material → Pantalla → Calibre del catálogo
+  `conductores-xlpe.json`, y el diámetro es `diametro_total_conductor_mm` (cable completo con chaqueta), bloqueado. Las listas se
+  encadenan y conservan la selección si sigue disponible. El límite NTC-2050 (53/31/40 %) usa el número TOTAL de conductores (línea
+  «Total de conductores…» bajo las tarjetas) y el atascamiento (jamming) solo se evalúa con 3 en total y del mismo diámetro. El motor
+  `js/calc/ocupacion-ductos.js` y la herramienta de la IA NO se tocan; la suma de tipos vive en `js/calc/ocupacion-grupos.js`. Se
+  conserva la dona del resultado (ya existía; los «sin gráficos» eran de Pérdidas/Regulación). Pruebas: `tools/verify_ocupacion.html`.
+  `#tramos-container, #grupos-container` llevan el margen superior que separa las tarjetas de la primera.
 - Rediseño acordado con el usuario (2026-09-19) tomando de referencia el módulo de pérdidas de otro proyecto («Calculadora
   Normativa»): tarjeta «Datos de la línea» (con *dato de partida*: MW, MVA o A) + una tarjeta «Conductor — Tramo N» por tramo
   (agregar/quitar, conductores por fase). Los COLORES no cambian (solo tokens existentes) y los resultados van en los formatos
@@ -135,7 +146,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v82); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v83); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (Ayuda → "Configuración avanzada", `js/auth/*`, `firebase/firestore.rules`)

@@ -274,7 +274,7 @@ input:disabled, select:disabled { opacity: 0.55; }
 .input-with-toggle { display: flex; align-items: center; gap: var(--space-3); }
 .input-with-toggle input[type="number"] { flex: 1 1 auto; min-width: 0; }
 .input-with-toggle .checkbox-row { white-space: nowrap; }
-#tramos-container { margin-top: var(--space-4); }
+#tramos-container, #grupos-container { margin-top: var(--space-4); }
 .result-subhead {
   font-size: 0.75rem; font-weight: 700; color: var(--text-muted);
   text-transform: uppercase; letter-spacing: 0.04em;
