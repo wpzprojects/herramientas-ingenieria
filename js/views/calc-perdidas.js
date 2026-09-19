@@ -81,7 +81,7 @@ export async function render(container) {
     <h1 class="page-title">Pérdidas de potencia</h1>
 
     <form id="form-calc" novalidate>
-      <div class="card form-section">
+      <div class="card tarjeta-borde form-section">
         <div class="form-section-title">${icon("circuitVoltmeter")} Datos de la línea</div>
         <div class="grid-2">
           <div class="field">
@@ -167,7 +167,7 @@ export async function render(container) {
   function crearTramo(id) {
     const cont = document.createElement("div");
     cont.innerHTML = `
-      <div class="card form-section tramo-block">
+      <div class="card tarjeta-borde form-section tramo-block">
         <div class="form-section-title">
           ${icon("plugConnected")} <span class="tramo-titulo">Conductor — Tramo 1</span>
           <button type="button" class="btn btn-ghost btn-tramo-quitar" hidden>${icon("close")} Quitar</button>
@@ -438,7 +438,7 @@ export async function render(container) {
     const varios = r.tramos.length > 1;
 
     wrap.innerHTML = `
-      <div class="card">
+      <div class="card tarjeta-borde">
         <div class="tabs">
           <button type="button" class="tab-btn active" data-tab="resultado">Resultado</button>
           <button type="button" class="tab-btn" data-tab="reporte">Reporte</button>
@@ -480,7 +480,7 @@ export async function render(container) {
           <div class="report-block">${escapeHtml(reporteTexto(r, base, estados, dato))}</div>
         </div>
         <div class="tab-panel" data-panel="formulas" hidden>
-          <div id="formulas-katex"></div>
+          <div id="formulas-katex" class="formula-caja" hidden></div>
           <div class="formula-block" id="formulas-plano">${escapeHtml(FORMULAS_TEXTO)}</div>
         </div>
       </div>
@@ -492,11 +492,13 @@ export async function render(container) {
       formulasListas = true;
       try {
         const katex = await cargarKatex();
-        wrap.querySelector("#formulas-katex").innerHTML =
+        const caja = wrap.querySelector("#formulas-katex");
+        caja.innerHTML =
           FORMULAS_TEX.map(
-            (g) => `<div class="result-subhead" style="margin-top:var(--space-4)">${escapeHtml(g.titulo)}</div>` + g.ecuaciones.map((tex) => `<div class="formula-katex">${ecuacionHtml(katex, tex)}</div>`).join("")
+            (g) => `<div class="result-subhead">${escapeHtml(g.titulo)}</div>` + g.ecuaciones.map((tex) => `<div class="formula-katex">${ecuacionHtml(katex, tex)}</div>`).join("")
           ).join("") +
           `<p class="text-muted text-sm formula-vars">${escapeHtml(FORMULAS_VARIABLES)}</p><p class="text-muted text-sm formula-vars">${escapeHtml(FORMULAS_NOTA)}</p>`;
+        caja.hidden = false; // la caja (subtarjeta) solo aparece cuando ya hay fórmulas dibujadas; mientras tanto se ve el texto plano
         wrap.querySelector("#formulas-plano").hidden = true;
       } catch {
         formulasListas = false; // sin KaTeX se queda el texto plano; se reintenta la proxima vez que se abra la pestaña

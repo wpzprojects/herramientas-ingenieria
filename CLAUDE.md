@@ -47,7 +47,11 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   así que a las rejillas de campos se les quita el `row-gap` (`:has(> .field)`); si no, los campos del mismo par quedaban a 32px y
   los de pares distintos a 16px. No quitar el gap a las rejillas de métricas de resultado (no llevan `.field`).
 - KaTeX: copia local en `vendor/katex` (MIT, sin npm), carga perezosa (`js/util/katex.js`) al abrir «Fórmulas» y precacheada en
-  `sw.js`. El usuario quiere extenderlo a las pestañas «Fórmulas» de las demás calculadoras, una por una.
+  `sw.js`. El usuario quiere extenderlo a las pestañas «Fórmulas» de las demás calculadoras, una por una. Las ecuaciones van
+  DENTRO de una subtarjeta (`.formula-caja`: mismo fondo hundido, borde y esquinas que la caja de «Reporte», sin letra mono); mientras
+  KaTeX carga (o si falla) se ve el texto plano `.formula-block`.
+- Las tarjetas de Pérdidas llevan `.tarjeta-borde` (borde `--table-border`: en claro más marcado que `--border`, que casi se perdía
+  contra el fondo; en oscuro no cambia). Se dejó en 1px; si aún se ve tenue, probar 1.5px antes que un color nuevo.
 - Siguen pendientes por decisión del usuario: gráficos de resultado y aplicar este mismo patrón (tarjetas, etc.) a otras
   calculadoras; los refinamientos visuales de esta pantalla (iconos, títulos) los irá indicando él.
 - `assets/ejemplos/` (o `assets/Ejemplos/`) es una carpeta TEMPORAL de referencia del usuario, con un repo git anidado: NO subirla.
@@ -94,7 +98,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v72); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v73); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (Ayuda → "Configuración avanzada", `js/auth/*`, `firebase/firestore.rules`)

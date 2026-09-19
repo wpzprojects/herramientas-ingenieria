@@ -284,6 +284,19 @@ input:disabled, select:disabled { opacity: 0.55; }
 .tabla-perdidas th.num, .tabla-perdidas td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .tabla-perdidas tr.match-row { background: var(--fila-sugerida); } /* verde suave en el tema claro; azul del tema (mas claro que el panel) en el oscuro */
 .tabla-perdidas tr.current-row td, .tabla-perdidas tr.total-row td { font-weight: 700; }
+/* Borde de las tarjetas de esta pantalla: el color del borde de las tablas (--table-border): en el tema claro es mas marcado que --border
+   (que casi se pierde contra el fondo) y en el oscuro es el mismo --border de siempre. Se mantiene en 1px: mas grueso se veria pesado. */
+.card.tarjeta-borde { border-color: var(--table-border); }
+/* Subtarjeta de las formulas (KaTeX): mismo aspecto que la caja de «Reporte» (fondo hundido, borde y esquinas), sin su letra monoespaciada */
+.formula-caja {
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+.formula-caja .result-subhead { margin-top: var(--space-4); }
+.formula-caja > .result-subhead:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.formula-caja > :last-child { margin-bottom: 0; }
 .formula-katex { overflow-x: auto; overflow-y: hidden; text-align: center; margin: 0 0 var(--space-3); padding: var(--space-1) 0; }
 .formula-katex .katex-display { margin: 0; }
 .formula-vars { white-space: pre-line; margin: var(--space-4) 0 0; }

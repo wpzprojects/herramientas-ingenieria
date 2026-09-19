@@ -306,6 +306,9 @@ await seccion("vista: color de la fila sugerida en cada tema", async () => {
       tabla: getComputedStyle($(".tabla-perdidas")).backgroundColor,
       exito: token("--success-soft"),
       acentoSuave: token("--accent-soft"),
+      bordeTarjeta: getComputedStyle($(".card.tarjeta-borde")).borderTopColor,
+      bordeTablas: token("--table-border"),
+      bordeNormal: token("--border"),
     };
     sonda.remove();
     return r;
@@ -315,6 +318,9 @@ await seccion("vista: color de la fila sugerida en cada tema", async () => {
   if (previo === null) html.removeAttribute("data-theme");
   else html.setAttribute("data-theme", previo);
 
+  ok($$(".card").length >= 3 && $$(".card").every((c) => c.classList.contains("tarjeta-borde")), "todas las tarjetas de la pantalla (datos, tramos y resultados) llevan el borde marcado");
+  ok(claro.bordeTarjeta === claro.bordeTablas && claro.bordeTarjeta !== claro.bordeNormal, `tema claro: las tarjetas usan el borde marcado de las tablas, no el tenue de antes (${claro.bordeTarjeta} en vez de ${claro.bordeNormal})`);
+  ok(oscuro.bordeTarjeta === oscuro.bordeNormal, `tema oscuro: el borde de las tarjetas no cambia (${oscuro.bordeTarjeta})`);
   ok(claro.fila === claro.exito, `tema claro: la fila sugerida conserva el verde suave (${claro.fila})`);
   const [r, g, b] = rgb(oscuro.fila);
   ok(oscuro.fila !== oscuro.exito && b > g && g > r, `tema oscuro: la fila sugerida ya no es verde, es azul (${oscuro.fila})`);
@@ -397,6 +403,20 @@ await seccion("vista: fórmulas con KaTeX", async () => {
   ok(window.katex && ecuaciones.length === 10, `KaTeX cargado y 10 ecuaciones dibujadas (${ecuaciones.length})`);
   ok($$("#formulas-katex .katex-error").length === 0, "ninguna ecuación con error de sintaxis");
   ok($("#formulas-plano").hidden, "al dibujarse las fórmulas se oculta el texto plano");
+  // Subtarjeta: mismo aspecto que la caja de «Reporte» (medidas juntas, antes de ok()).
+  const caja = $("#formulas-katex");
+  const reporteCaja = $(".report-block");
+  const cc = getComputedStyle(caja);
+  const cr = getComputedStyle(reporteCaja);
+  const primerTitulo = getComputedStyle($("#formulas-katex > .result-subhead:first-child"));
+  const dentro = $$("#formulas-katex .katex-display").every((e) => caja.contains(e));
+  const rc = caja.getBoundingClientRect();
+  const ecuacionesEnCaja = $$("#formulas-katex .formula-katex").every((e) => { const r = e.getBoundingClientRect(); return r.left >= rc.left && r.right <= rc.right + 0.5; });
+  ok(!caja.hidden && cc.display !== "none", "las fórmulas se muestran dentro de una subtarjeta");
+  ok(cc.backgroundColor === cr.backgroundColor && cc.borderTopColor === cr.borderTopColor && cc.borderTopWidth === cr.borderTopWidth && cc.borderTopLeftRadius === cr.borderTopLeftRadius, `la subtarjeta tiene el fondo, borde y esquinas de la caja de Reporte (${cc.backgroundColor}, ${cc.borderTopLeftRadius})`);
+  ok(cc.fontFamily !== cr.fontFamily && !cc.fontFamily.toLowerCase().includes("mono"), "la subtarjeta usa la letra normal (no la monoespaciada del reporte) para que KaTeX se vea bien");
+  ok(dentro && ecuacionesEnCaja, "las 10 ecuaciones, los títulos y las notas quedan dentro de la subtarjeta");
+  ok(primerTitulo.borderTopWidth === "0px", "el primer título no repite una línea sobre el borde de la subtarjeta");
   ok($$("#formulas-katex .katex-display").length === 10, "las ecuaciones se muestran en modo display");
   ok(texto($("#formulas-katex")).includes("Dato de partida") && texto($("#formulas-katex")).includes("Buller-Woodrow"), "incluye los títulos y la nota de fidelidad");
   ok(!!document.querySelector('link[href$="vendor/katex/katex.min.css"]'), "se cargó la hoja de estilos local de KaTeX");
