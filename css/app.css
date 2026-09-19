@@ -193,12 +193,14 @@ button { font-family: inherit; }
 }
 
 /* ---------- listas de la pantalla Ayuda ---------- */
-/* Descripcion con el mismo color y tamano que .tile-desc de las tarjetas de menu; titulo un poco mas pequeno que el texto
-   base. line-height y margen mantienen (y afloja un poco) el espaciado entre viñetas. */
+/* Todo el texto de las tarjetas de Ayuda (subtitulo, acceso directo y descripcion) usa el mismo tamano que .tile-desc de las
+   tarjetas de menu (0.85rem); el acceso directo se distingue por la negrita y el color. La descripcion lleva el gris de
+   .tile-desc. line-height y margen dan un poco mas de aire entre viñetas. */
+.ayuda-intro { font-size: 0.85rem; }
 .ayuda-lista { padding-left: 1.2rem; }
-.ayuda-lista li { font-size: 0.92rem; line-height: 1.45; margin-bottom: 4px; }
+.ayuda-lista li { font-size: 0.85rem; line-height: 1.5; margin-bottom: 4px; }
 .ayuda-lista li:last-child { margin-bottom: 0; }
-.ayuda-lista .ayuda-desc { color: var(--text-muted); font-size: 0.85rem; }
+.ayuda-lista .ayuda-desc { color: var(--text-muted); }
 
 /* ---------- tarjeta de desarrollador (Ayuda) ---------- */
 .dev-card { display: flex; flex-direction: column; gap: var(--space-4); }

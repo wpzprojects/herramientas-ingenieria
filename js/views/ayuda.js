@@ -18,7 +18,7 @@ export function render(container) {
       return `
         <div class="card">
           <h2 class="section-title" style="margin-top:0">${meta.title}</h2>
-          <p class="text-muted">${meta.subtitle}</p>
+          <p class="text-muted ayuda-intro">${meta.subtitle}</p>
           <ul class="ayuda-lista">
             ${items
               .map(
