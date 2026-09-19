@@ -141,7 +141,7 @@ export async function render(container) {
   new ResizeObserver(() => {
     if (fTexto.clientWidth !== anchoPrevio) {
       anchoPrevio = fTexto.clientWidth;
-      ajustarAlto();
+      requestAnimationFrame(ajustarAlto); // fuera del callback: cambiar el alto aqui provoca "ResizeObserver loop"
     }
   }).observe(fTexto);
   // La tarjeta crece con la conversacion y el desplazamiento lo hace la pagina.

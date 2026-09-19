@@ -105,7 +105,7 @@ export async function render(container) {
   new ResizeObserver(() => {
     if (fPregunta.clientWidth !== anchoPrevio) {
       anchoPrevio = fPregunta.clientWidth;
-      ajustarAlto();
+      requestAnimationFrame(ajustarAlto); // fuera del callback: cambiar el alto aqui provoca "ResizeObserver loop"
     }
   }).observe(fPregunta);
   // El chat crece con la conversacion (sin barra propia) y el desplazamiento lo hace la pagina.
