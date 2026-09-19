@@ -2,7 +2,7 @@
 
 PWA (Progressive Web App) instalable con calculadoras y catálogos de ingeniería para líneas y redes de distribución eléctrica: ampacidad (IEEE Std 738 / IEC 60287-1-1), cortocircuito, pérdidas, regulación, ocupación de ductos, catálogos de conductores, normatividad RETIE/NTC-2050/CREG, conversión de unidades y de coordenadas.
 
-Migración a HTML/CSS/JS (vanilla, sin build step) de la app original de Power Apps "Herramientas (offline)" (`APP_PowerApps/Herramientas (offline).msapp`). 100% estática y offline: no requiere backend ni conexión a internet salvo un enlace externo opcional en Conversión de coordenadas.
+Migración a HTML/CSS/JS (vanilla, sin build step) de la app original de Power Apps "Herramientas (offline)" (`APP_PowerApps/Herramientas (offline).msapp`). 100% estática y offline: no requiere backend ni conexión a internet salvo un enlace externo opcional en Conversión de coordenadas y la sección **Inteligencia artificial** (ver más abajo), que se conecta a Google Gemini con la clave de API del propio usuario.
 
 ## Ejecutar localmente
 
@@ -24,6 +24,7 @@ css/                                       # tokens.css (paleta clara/oscura) + 
 js/app.js, router.js, nav.js, icons.js     # bootstrap, router SPA por hash, navegacion, iconos SVG inline
 js/util/format.js                          # formato de numeros, fetch de datos con cache, helpers DOM
 js/calc/*.js                               # motores de calculo PUROS (sin DOM), 1:1 con las formulas originales
+js/ai/*.js                                 # capa de IA (Gemini): cliente, herramientas, agentes, reporte (ver "Inteligencia artificial")
 js/views/*.js                              # 1 modulo por pantalla: export async function render(container, params)
 data/*.json                                # catalogos (conductores, tuberias, resoluciones, codificacion, factores de conversion)
 assets/normativa/*.jpg                     # tablas/figuras normativas escaneadas (RETIE / NTC 2050)
@@ -45,6 +46,19 @@ APP_PowerApps/                             # app original de Power Apps (fuente 
 ## Verificación de los motores de cálculo
 
 `tools/verify_calc.py` y `tools/verify_coordenadas.py` son scripts Python independientes (reimplementan las mismas fórmulas en otro lenguaje) usados para validar numéricamente los módulos de `js/calc/` durante la migración — no son parte de la app, pero conviene conservarlos como referencia/regresión si se vuelve a tocar esa lógica.
+
+## Inteligencia artificial (Gemini)
+
+Sección nueva (no existía en la app original) con tres pantallas: **Análisis con calculadoras**, **Corrector de redacción** y **Configuración de IA**. Es la única parte de la app que necesita internet; sin conexión se muestra un aviso y el resto sigue funcionando.
+
+- **Clave de API**: cada usuario pega la suya (gratuita, de Google AI Studio) en *Configuración*. Se guarda solo en su navegador (`localStorage`, o `sessionStorage` si no elige recordarla) y solo se envía a Google. No hay backend. El modelo no está fijo en el código: se lista con la clave y se elige en Configuración.
+- **`js/ai/gemini.js`**: cliente REST por `fetch` (`generateContent`, `models`). El service worker ignora orígenes externos, así que no cachea estas llamadas.
+- **`js/ai/tools.js` + `analisis.js`**: la IA **no calcula**. Se declaran 9 herramientas (6 calculadoras + `barrer_parametro`, `buscar_conductor`, `buscar_tuberia`); Gemini decide cuál usar (function calling) y la app las ejecuta con los motores de `js/calc/`. Cada herramienta replica lo que hace la vista antes de llamar al motor (búsqueda del conductor en el catálogo, valores por defecto, primera coincidencia del catálogo) y valida rangos; lo que no viene del usuario se registra como *supuesto*. Hay un tope de rondas y de cálculos por pregunta (Configuración).
+- **`js/ai/reporte.js`**: las tablas del reporte se dibujan con las corridas reales de las calculadoras, nunca con texto de la IA; la narrativa sí es de la IA. Exportable a portapapeles (HTML+texto), `.md` e impresión/PDF.
+- **Agentes de redacción** (`js/ai/agentes.js`): prompt de sistema + tono + temperatura + ejemplos; 4 predeterminados, editables, exportables/importables en JSON. Se guardan en `localStorage`. El historial de conversaciones vive en IndexedDB (`js/ai/historial.js`) y se puede borrar desde Configuración.
+- **Privacidad**: con el plan gratuito Google puede usar lo enviado para mejorar sus productos; la app lo advierte en varias pantallas.
+- **Verificación**: `tools/verify_ia.html` (arnés en el navegador, sin clave ni internet, Gemini simulado: contrasta cada adaptador contra fórmulas independientes y los motores) y `tools/preview_ia.html` (vista previa de las pantallas con Gemini simulado). Ver instrucciones en el encabezado de cada archivo.
+- Si se cambia la firma de un motor de `js/calc/*.js`, hay que actualizar también su adaptador en `js/ai/tools.js` y correr `verify_ia.html`.
 
 ## Decisiones de migración que vale la pena recordar
 

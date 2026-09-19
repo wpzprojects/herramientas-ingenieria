@@ -20,6 +20,20 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   antes de "corregir" comportamientos que parezcan bugs (algunos son intencionales,
   replicando el comportamiento original).
 
+## Sección de Inteligencia artificial (`js/ai/*`, `js/views/ia*.js`)
+
+- Es la ÚNICA excepción a "100% offline": se conecta a Google Gemini con la clave del propio
+  usuario (BYOK, guardada en el navegador; no hay backend). Detalle en el README.
+- La IA nunca calcula: las calculadoras se exponen como herramientas (`js/ai/tools.js`) que
+  llaman a los motores de `js/calc/*.js`. Si cambia la firma de un motor, actualizar su adaptador
+  en `tools.js` y correr `tools/verify_ia.html` (arnés en el navegador, ver su encabezado).
+- No fijar nombres de modelo en el código (cambian): se listan desde la API en Configuración.
+- En `sw.js`, `cache.addAll` falla completo si un archivo de `APP_SHELL` no existe: al agregar
+  o borrar archivos, actualizar la lista y subir `CACHE_VERSION`.
+- Si `bash` de Git no encuentra `ls/sed/python`, usar PowerShell (`python` sí está en el PATH ahí).
+  Para leer resultados de `verify_ia.html` con Edge headless hace falta `Start-Process
+  -RedirectStandardOutput` (la salida de `--dump-dom` no se captura con `&`).
+
 ## Convenciones de UI/CSS
 
 - Iconos (`js/icons.js`): SVG inline propios, sin CDN (requisito de offline). El estilo
