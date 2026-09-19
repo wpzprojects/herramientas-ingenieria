@@ -181,7 +181,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v109); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v111); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (Ayuda → "Configuración avanzada", `js/auth/*`, `firebase/firestore.rules`)
@@ -254,14 +254,20 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   RECHAZÓ (2026-09-19); no volver a ponerlo (el desplegable abierto sí muestra el título completo).
   Al agregar/quitar imágenes de `assets/normativa/` recordar el `APP_SHELL`. Pruebas: `tools/verify_normatividad.html`.
 - Conversión de coordenadas (2026-09-19): además del conversor de los 7 sistemas (`js/calc/coordenadas.js`, motor original propio: NO
-  tocarlo, lo usa también la IA), la casilla «Habilitar todos los sistemas de coordenadas disponibles» reemplaza, EN EL MISMO formulario,
+  tocarlo, lo usa también la IA), la casilla «Habilitar todos los sistemas de coordenadas» reemplaza, EN EL MISMO formulario,
   las dos listas por dos campos de código EPSG (entrada y salida) para convertir entre cualquier par de ~509 códigos EPSG (los de Colombia —MAGNA-SIRGAS, Bogotá 1975, Origen Nacional, las 32 cuadrículas urbanas de las ciudades— y los
   más usados del mundo: WGS84, las 120 zonas UTM, NAD83, ETRS89, SIRGAS, etc.). Reemplazó al enlace a un cuaderno de Google Colab
   (que el usuario consideró demasiado complejo; tampoco quiso una tarjeta/nota aparte: los campos se explican solos).
   Las listas y los campos EPSG ocupan el MISMO lugar (`.campos-sistemas`: la pareja inactiva solo se oculta con
   `visibility`), y bajo cada campo hay una línea de nombre reservada (`.hint-linea`, una sola línea con «…»): así habilitar todos los
   sistemas NO corre nada hacia abajo (pedido del usuario; probado en las pruebas). El botón «Convertir por lotes» (junto a Convertir) cambia su texto a «Convertir un solo punto» al encenderse (ambos textos ocupan el mismo lugar: `.btn-dos-textos`,
-  el botón mide siempre lo mismo; estado en `data-lotes`) y cambia longitud/latitud por un cuadro donde cada línea es una pareja separada por
+  el botón mide siempre lo mismo; estado en `data-lotes`) y cambia longitud/latitud por un cuadro (la casilla de todos los
+  sistemas va DEBAJO de la tarjeta, abajo a la izquierda, con el cuadro a la izquierda del texto: ubicación elegida por el usuario).
+  Lectura de datos pegados de Excel/CSV (`parsearPareja` y `numeroFlexible` en `coordenadas-epsg.js`, con pruebas): separadores tabulación,
+  «;», espacios o UNA coma (con punto decimal); con tab/«;»/espacio la coma es DECIMAL; se ignoran comillas, BOM, separador final y una
+  primera línea sin dígitos (encabezado); se rechazan con mensaje el separador de miles, más de 2 columnas y varias comas. Los campos de
+  un solo punto son de texto (`inputmode=decimal`) y aceptan punto o coma en cualquier navegador. Aviso «latitud y longitud invertidas»
+  (solo reconoce el caso de Colombia). Para el cuadro por lotes donde cada línea es una pareja separada por
   espacio; la salida es una línea por punto (mismo orden y formato) y los avisos se agrupan con los números de línea. Los AVISOS DE ÁREA
   DE USO (punto fuera del área del sistema de entrada o de salida) también salen con los 7 sistemas de la lista: se calculan con las áreas
   de `data/sistemas-epsg.json` (los 7 ya están ahí) y el cálculo numérico sigue siendo el del motor original. Usa proj4js (`vendor/proj4`, MIT, carga perezosa con `js/util/proj4.js`) y el

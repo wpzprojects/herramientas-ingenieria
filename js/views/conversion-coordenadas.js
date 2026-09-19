@@ -1,7 +1,7 @@
 // Conversion de coordenadas geograficas/proyectadas. Un solo formulario:
 //  - Por defecto, los 7 sistemas de SISTEMAS (WGS84, MAGNA-SIRGAS Bogota Oeste/Bogota/Este, Origen Unico Nacional, UTM 18N/19N) con el
 //    motor original convertirCoordenadas (../calc/coordenadas.js).
-//  - Con la casilla «Habilitar todos los sistemas de coordenadas disponibles», las dos listas se reemplazan por dos campos de codigo
+//  - Con la casilla «Habilitar todos los sistemas de coordenadas», las dos listas se reemplazan por dos campos de codigo
 //    EPSG (unos 500 sistemas: los de Colombia y los mas usados del mundo) que usan proj4js (../calc/coordenadas-epsg.js).
 //  - El boton «Convertir por lotes» cambia longitud/latitud por un cuadro donde cada linea es una pareja de coordenadas.
 // En los dos casos se avisa cuando el punto queda fuera del area de uso de algun sistema (areas de data/sistemas-epsg.json, que ya
@@ -10,7 +10,7 @@
 import { fmt, loadData, escapeHtml } from "../util/format.js";
 import { SISTEMAS, convertirCoordenadas } from "../calc/coordenadas.js";
 import { cargarProj4 } from "../util/proj4.js";
-import { parseCodigoEpsg, infoSistema, convertirEntreSistemas, avisosArea } from "../calc/coordenadas-epsg.js";
+import { parseCodigoEpsg, infoSistema, convertirEntreSistemas, avisosArea, numeroFlexible, parsearPareja, avisoOrdenInvertido } from "../calc/coordenadas-epsg.js";
 
 const WGS84 = SISTEMAS[0];
 const MARGEN = 'style="margin-top: var(--space-4);"';
@@ -54,18 +54,14 @@ export function render(container) {
       </div>
       </div>
 
-      <label class="checkbox-row" style="margin-bottom: var(--space-4);">
-        <input type="checkbox" id="chk-todos"> Habilitar todos los sistemas de coordenadas disponibles
-      </label>
-
       <div class="grid-2" id="campos-punto">
         <div class="field">
           <label for="f-x" id="label-x">Longitud (grados, negativo = oeste)</label>
-          <input type="number" id="f-x" step="any" required>
+          <input type="text" id="f-x" inputmode="decimal" autocomplete="off" required>
         </div>
         <div class="field">
           <label for="f-y" id="label-y">Latitud (grados)</label>
-          <input type="number" id="f-y" step="any" required>
+          <input type="text" id="f-y" inputmode="decimal" autocomplete="off" required>
         </div>
       </div>
 
@@ -80,6 +76,10 @@ export function render(container) {
         <button type="button" class="btn btn-toggle btn-dos-textos" id="btn-lotes" data-lotes="false"><span class="activo">Convertir por lotes</span><span>Convertir un solo punto</span></button>
       </div>
     </form>
+
+    <label class="checkbox-row" style="margin-top: var(--space-3);">
+      <input type="checkbox" id="chk-todos"> Habilitar todos los sistemas de coordenadas
+    </label>
 
     <div id="resultado-wrap"></div>
   `;
@@ -213,11 +213,12 @@ export function render(container) {
    * (En el modo de la lista el calculo es el del motor original; los avisos salen de las areas de uso del catalogo.)
    */
   function convertirPunto(xIn, yIn, o, d) {
+    if (!Number.isFinite(xIn) || !Number.isFinite(yIn)) throw new Error("Escriba las dos coordenadas del punto (números, con punto o coma decimal).");
+    const invertido = o.esGeo ? avisoOrdenInvertido(xIn, yIn) : null;
     if (modoEpsg()) {
       const r = convertirEntreSistemas(proj4, catalogo, o.epsg, d.epsg, xIn, yIn);
-      return { x: r.x, y: r.y, esGeoDestino: r.esGeoDestino, avisos: r.avisos };
+      return { x: r.x, y: r.y, esGeoDestino: r.esGeoDestino, avisos: invertido ? [invertido, ...r.avisos] : r.avisos };
     }
-    if (!Number.isFinite(xIn) || !Number.isFinite(yIn)) throw new Error("Escriba las dos coordenadas del punto.");
     const { xOut, yOut, esGeoDestino } = convertirCoordenadas(o.s, d.s, xIn, yIn);
     let avisos = [];
     if (catalogo) {
@@ -226,7 +227,7 @@ export function render(container) {
         avisos = avisosArea({ nombre: o.etiqueta, bbox: o.bbox }, { nombre: d.etiqueta, bbox: d.bbox }, ll.xOut, ll.yOut);
       }
     }
-    return { x: xOut, y: yOut, esGeoDestino, avisos };
+    return { x: xOut, y: yOut, esGeoDestino, avisos: invertido ? [invertido, ...avisos] : avisos };
   }
 
   const formato = (r) => (r.esGeoDestino ? `${fmt(r.x, 6)} ${fmt(r.y, 6)}` : `${fmt(r.x, 4)} ${fmt(r.y, 4)}`);
@@ -247,7 +248,7 @@ export function render(container) {
 
     if (!modoLote()) {
       try {
-        const r = convertirPunto(Number(fX.value), Number(fY.value), o, d);
+        const r = convertirPunto(numeroFlexible(fX.value), numeroFlexible(fY.value), o, d);
         const texto = r.esGeoDestino ? `Longitud: ${fmt(r.x, 6)}   Latitud: ${fmt(r.y, 6)}` : `Este: ${fmt(r.x, 4)}   Norte: ${fmt(r.y, 4)}`;
         wrap.innerHTML = `
           <div class="result-panel" ${MARGEN}>
@@ -263,21 +264,28 @@ export function render(container) {
       return;
     }
 
-    // Por lotes: una pareja por linea (separada por espacios, tabulaciones o «;»). Las lineas vacias se saltan.
+    // Por lotes: una pareja por linea, pegada de Excel o de un CSV (ver parsearPareja: tabulacion, «;», espacios o una coma; punto o coma
+    // decimal). Las lineas en blanco se saltan y una primera linea sin numeros («Longitud;Latitud») se toma como encabezado.
     const salida = [];
     const avisos = new Map(); // texto -> numeros de linea
     let validas = 0;
+    let encabezado = false;
+    let primera = true;
     fLote.value.split(/\r?\n/).forEach((linea, i) => {
-      if (!linea.trim()) return;
-      const partes = linea.trim().split(/[\s;]+/);
-      const xIn = Number(partes[0]);
-      const yIn = Number(partes[1]);
-      if (partes.length !== 2 || !Number.isFinite(xIn) || !Number.isFinite(yIn)) {
-        salida.push(`Línea ${i + 1}: no es una pareja de coordenadas («${linea.trim()}»)`);
+      const p = parsearPareja(linea);
+      if (p.vacia) return;
+      const esPrimera = primera;
+      primera = false;
+      if (p.encabezado && esPrimera) {
+        encabezado = true;
+        return;
+      }
+      if (p.encabezado || p.error) {
+        salida.push(`Línea ${i + 1}: ${p.error ?? "no es una pareja de coordenadas"} («${linea.trim()}»)`);
         return;
       }
       try {
-        const r = convertirPunto(xIn, yIn, o, d);
+        const r = convertirPunto(p.x, p.y, o, d);
         salida.push(formato(r));
         validas++;
         r.avisos.forEach((a) => avisos.set(a.texto, [...(avisos.get(a.texto) ?? []), i + 1]));
@@ -292,7 +300,7 @@ export function render(container) {
     wrap.innerHTML = `
       <div class="result-panel" ${MARGEN}>
         <div class="result-metric">
-          <div class="label" style="margin-bottom: var(--space-3);">${validas} de ${salida.length} puntos convertidos: ${cabecera}</div>
+          <div class="label" style="margin-bottom: var(--space-3);">${validas} de ${salida.length} puntos convertidos: ${cabecera}${encabezado ? " (se omitió la fila de encabezado)" : ""}</div>
           <div class="report-block">${salida.map(escapeHtml).join("\n")}</div>
         </div>
       </div>

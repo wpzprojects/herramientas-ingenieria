@@ -10,6 +10,53 @@
 // Cambios de datum: proj4 usa los parametros de 3 o 7 elementos (+towgs84) del propio sistema. No admite archivos de rejilla, asi que
 // el catalogo no incluye los sistemas que los necesitan (NAD27, etc.).
 
+/**
+ * Numero escrito con punto O coma decimal («4.6097», «4,6097», «-74,0817», «−74.0817»). NaN si no es un numero simple: se rechaza
+ * lo que trae separador de miles («1.234.567,89», «1,234.56»), porque no se puede saber con certeza que decimal es.
+ */
+export function numeroFlexible(texto) {
+  const t = String(texto ?? "").trim().replace(/−/g, "-");
+  if (!/^[+-]?(\d+([.,]\d*)?|[.,]\d+)$/.test(t)) return NaN;
+  return Number(t.replace(",", "."));
+}
+
+/**
+ * Una linea de un lote (pegada de Excel o de un CSV) -> {x, y}. Separadores admitidos entre las dos coordenadas: tabulacion,
+ * punto y coma, espacios o UNA coma (con punto decimal); con tabulacion, punto y coma o espacios la coma es decimal. Se ignoran comillas,
+ * la marca invisible del inicio de un CSV (BOM) y separadores sobrantes al final.
+ * Devuelve tambien: {vacia: true} (linea en blanco), {encabezado: true} (linea sin ningun digito: «Longitud;Latitud») o {error: texto}.
+ */
+export function parsearPareja(linea) {
+  const t = String(linea ?? "").replace(/^﻿/, "").replace(/["'“”]/g, "").replace(/[,;\s]+$/, "").trim(); // un separador al final de la linea no es parte de ningun numero
+  if (!t) return { vacia: true };
+  if (!/\d/.test(t)) return { encabezado: true };
+  let partes;
+  if (t.includes("\t")) partes = t.split("\t");
+  else if (t.includes(";")) partes = t.split(";");
+  else if (/\s/.test(t)) partes = t.split(/\s+/);
+  else {
+    const comas = (t.match(/,/g) || []).length;
+    if (comas !== 1) return { error: comas === 0 ? "no es una pareja de coordenadas" : "tiene varias comas y no se sabe cuál separa las coordenadas (use punto y coma o tabulación)" };
+    partes = t.split(",");
+  }
+  partes = partes.map((p) => p.trim().replace(/^,+|,+$/g, "")).filter((p) => p !== "");
+  if (partes.length < 2) return { error: "falta una coordenada" };
+  if (partes.length > 2) return { error: `tiene ${partes.length} columnas (solo se admiten dos: longitud y latitud, o este y norte)` };
+  const [x, y] = partes.map(numeroFlexible);
+  const malo = !Number.isFinite(x) ? partes[0] : !Number.isFinite(y) ? partes[1] : null;
+  if (malo !== null) return { error: `«${malo}» no es un número válido (use punto o coma decimal, sin separador de miles)` };
+  return { x, y };
+}
+
+/** Aviso si un punto geografico parece tener la latitud y la longitud invertidas (solo se reconoce el caso de Colombia). */
+export function avisoOrdenInvertido(x, y) {
+  const enColombia = (lon, lat) => lat >= -5 && lat <= 14 && lon >= -82 && lon <= -66;
+  if (!enColombia(x, y) && enColombia(y, x)) {
+    return { tipo: "orden", texto: "Parece que la latitud y la longitud están invertidas: escriba primero la longitud y después la latitud." };
+  }
+  return null;
+}
+
 /** Codigo EPSG a partir de lo que escribe el usuario: «3116», «EPSG:3116», « epsg : 3116 ». null si no tiene esa forma. */
 export function parseCodigoEpsg(texto) {
   const m = /^\s*(?:epsg\s*:\s*)?(\d{3,6})\s*$/i.exec(String(texto ?? ""));

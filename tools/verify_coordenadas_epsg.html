@@ -188,6 +188,23 @@ await seccion("cuadrículas urbanas de las ciudades (proyección Colombia Urban)
   ok(pto.avisos.length === 0 && Math.abs(pto.x - 92334.879) < 10000 && Math.abs(pto.y - 109320.965) < 10000, `la Plaza de Bolívar en la cuadrícula urbana de Bogotá: (${pto.x.toFixed(1)}, ${pto.y.toFixed(1)}), cerca del origen (92 334.9, 109 321.0)`);
 });
 
+await seccion("lectura de coordenadas pegadas de Excel o de un CSV", async () => {
+  const n = epsg.numeroFlexible;
+  ok(n("4.6097") === 4.6097 && n("4,6097") === 4.6097 && n("-74,0817") === -74.0817 && n(" -74.0817 ") === -74.0817 && n("−74.0817") === -74.0817 && n("+5") === 5 && n(",5") === 0.5 && n("1000000") === 1000000, "números con punto o coma decimal (también signo menos «−» y espacios)");
+  ok(["", "abc", "1.234.567,89", "1,234.56", "1e5", "4.6.9", "4,6,9", "--4", "4 6", null].every((t) => Number.isNaN(n(t))), "se rechaza lo dudoso: separador de miles, exponentes, varios decimales, texto");
+  const p = epsg.parsearPareja;
+  const esperar = (linea, x, y) => { const r = p(linea); return r.x === x && r.y === y; };
+  ok(esperar("-74.0817 4.6097", -74.0817, 4.6097) && esperar("-74.0817\t4.6097", -74.0817, 4.6097) && esperar("  -74.0817    4.6097  ", -74.0817, 4.6097), "espacios, varios espacios y tabulación (columnas pegadas desde Excel)");
+  ok(esperar("-74.0817;4.6097", -74.0817, 4.6097) && esperar("-74.0817; 4.6097", -74.0817, 4.6097) && esperar("-74.0817 ; 4.6097", -74.0817, 4.6097), "punto y coma, con o sin espacios");
+  ok(esperar("-74,0817;4,6097", -74.0817, 4.6097) && esperar("-74,0817; 4,6097", -74.0817, 4.6097) && esperar("-74,0817\t4,6097", -74.0817, 4.6097) && esperar("-74,0817 4,6097", -74.0817, 4.6097), "CSV en español: coma decimal con punto y coma, tabulación o espacio");
+  ok(esperar("-74.0817,4.6097", -74.0817, 4.6097) && esperar("-74.0817, 4.6097", -74.0817, 4.6097) && esperar("-74.0817 , 4.6097", -74.0817, 4.6097), "CSV en inglés o de GIS: una coma como separador con punto decimal");
+  ok(esperar("-74.0817;4.6097;", -74.0817, 4.6097) && esperar("-74,0817;4,6097;", -74.0817, 4.6097) && esperar("-74.0817,4.6097,", -74.0817, 4.6097) && esperar("-74.0817; 4.6097; ", -74.0817, 4.6097), "separador sobrante al final de la línea");
+  ok(esperar('"-74,0817";"4,6097"', -74.0817, 4.6097) && esperar("﻿-74.0817;4.6097", -74.0817, 4.6097) && esperar("1332570,8683;1002192,0449", 1332570.8683, 1002192.0449), "comillas, marca BOM del CSV y números grandes de coordenadas proyectadas con coma decimal");
+  ok(p("").vacia && p("   ").vacia && p("Longitud;Latitud").encabezado && p("X,Y").encabezado && p("Este Norte").encabezado && !p("-74;4").encabezado, "línea en blanco y línea de encabezado (sin ningún dígito) se reconocen");
+  ok(p("1;2;3").error.includes("3 columnas") && p("-74.0817").error.includes("no es una pareja") && p("-74,0817,4,6097").error.includes("varias comas") && p("1.234.567,89;1.000.000,50").error.includes("no es un número válido") && p("4.6097;").error.includes("no es una pareja") && p("abc;4").error.includes("«abc»"), "lo que no se puede leer da un error que explica por qué");
+  ok(epsg.avisoOrdenInvertido(4.6097, -74.0817)?.tipo === "orden" && epsg.avisoOrdenInvertido(-74.0817, 4.6097) === null && epsg.avisoOrdenInvertido(-3.7, 40.4) === null && epsg.avisoOrdenInvertido(1000000, 1000000) === null, "avisa cuando latitud y longitud de Colombia parecen invertidas, y solo entonces");
+});
+
 await seccion("código EPSG escrito por el usuario", async () => {
   const p = epsg.parseCodigoEpsg;
   ok(p("3116") === "3116" && p(" 3116 ") === "3116" && p("EPSG:3116") === "3116" && p("epsg:3116") === "3116" && p(" EPSG : 9377 ") === "9377" && p("04326") === "4326", "acepta «3116», «EPSG:3116», con espacios y en minúsculas");
@@ -245,7 +262,7 @@ await seccion("pantalla: un solo formulario (sin botón ni tarjeta aparte)", asy
   ok(!html.includes("colab") && !$("#btn-otros-sistemas") && !$("#panel-epsg") && !$("#form-epsg") && $$("form").length === 1, "ya no hay enlace a Colab, botón «Otros sistemas», tarjeta de abajo ni segundo formulario");
   ok(!texto(stage).includes("Escriba el código EPSG de cada sistema"), "no está la nota «Escriba el código EPSG de cada sistema…» (es evidente por los campos)");
   const chk = $("#chk-todos");
-  ok(!!chk && !chk.checked && texto(chk.closest("label")) === "Habilitar todos los sistemas de coordenadas disponibles", "casilla «Habilitar todos los sistemas de coordenadas disponibles», apagada por defecto");
+  ok(!!chk && !chk.checked && texto(chk.closest("label")) === "Habilitar todos los sistemas de coordenadas", "casilla «Habilitar todos los sistemas de coordenadas», apagada por defecto");
   ok(visible("#campos-lista") && !visible("#campos-epsg") && visible("#campos-punto") && !visible("#campo-lote"), "por defecto: las dos listas de siempre y longitud / latitud");
   const conv = $$(".btn-row .btn")[0].getBoundingClientRect();
   const lote = $("#btn-lotes").getBoundingClientRect();
@@ -368,6 +385,49 @@ await seccion("pantalla: convertir por lotes", async () => {
   // apagar el lote devuelve los campos
   $("#btn-lotes").click();
   ok($("#btn-lotes").dataset.lotes === "false" && visible("#campos-punto") && !visible("#campo-lote") && $("#f-x").required && texto($("#btn-lotes .activo")) === "Convertir por lotes", "al volver a pulsarlo regresan longitud y latitud y el botón dice otra vez «Convertir por lotes»");
+});
+
+await seccion("pantalla: datos de Excel / CSV en un punto y por lotes", async () => {
+  elegir("#f-sistema-origen", "4326");
+  elegir("#f-sistema-destino", "3116");
+  const conv = (lon, lat) => { const r = viejo.convertirCoordenadas(S(4326), S(3116), lon, lat); return `${r.xOut.toFixed(4)} ${r.yOut.toFixed(4)}`; };
+  // un solo punto: los campos aceptan punto o coma decimal
+  ok($("#f-x").type === "text" && $("#f-x").inputMode === "decimal", "los campos de un punto aceptan texto con punto o coma (teclado numérico en el celular)");
+  for (const [x, y] of [["-74.0817", "4.6097"], ["-74,0817", "4,6097"], [" -74,0817 ", "4.6097"]]) {
+    poner("#f-x", x);
+    poner("#f-y", y);
+    await enviar();
+    const esp = viejo.convertirCoordenadas(S(4326), S(3116), -74.0817, 4.6097);
+    ok(texto($("#resultado-wrap .value")) === `Este: ${esp.xOut.toFixed(4)} Norte: ${esp.yOut.toFixed(4)}`, `un punto escrito «${x}» / «${y}» da el mismo resultado`);
+  }
+  poner("#f-x", "abc");
+  poner("#f-y", "4,6097");
+  await enviar();
+  ok(texto($("#resultado-wrap .callout-danger")).includes("punto o coma decimal"), "un texto que no es número explica que se usa punto o coma decimal");
+  poner("#f-x", "4.6097");
+  poner("#f-y", "-74.0817");
+  await enviar();
+  ok(texto($("#resultado-wrap .callout-warning")).includes("invertidas"), "latitud y longitud de Colombia al revés: avisa que parecen invertidas");
+  poner("#f-x", "");
+  poner("#f-y", "");
+
+  // por lotes
+  $("#btn-lotes").click();
+  $("#f-lote").value = ["Longitud;Latitud", "-74,0817;4,6097", "-75.2322,4.4389", "-75,5812\t6,2442", "\"-76,532\";\"3,4516\";", "1;2;3", "-74,0817,4,6097", "1.234.567,89;2", "", "4.6097;-74.0817"].join("\n");
+  await enviar();
+  const lineas = $("#resultado-wrap .report-block").textContent.split("\n");
+  ok(lineas[0] === conv(-74.0817, 4.6097) && lineas[1] === conv(-75.2322, 4.4389) && lineas[2] === conv(-75.5812, 6.2442) && lineas[3] === conv(-76.532, 3.4516), "el lote mezcla formatos (punto y coma con coma decimal, coma con punto decimal, tabulación, comillas y separador final)");
+  ok(lineas.length === 8 && lineas[4].startsWith("Línea 6: tiene 3 columnas") && lineas[5].startsWith("Línea 7: tiene varias comas") && lineas[6].startsWith("Línea 8: «1.234.567,89» no es un número válido") && lineas[7] === conv(4.6097, -74.0817), "las líneas que no se pueden leer se marcan con su número real (contando el encabezado) y la causa, sin frenar las demás");
+  ok(texto($("#resultado-wrap .label")).includes("5 de 8 puntos convertidos") && texto($("#resultado-wrap .label")).includes("se omitió la fila de encabezado"), `el encabezado no cuenta como línea con error: «${texto($("#resultado-wrap .label"))}»`);
+  const av = $$("#resultado-wrap .callout-warning").map(texto);
+  ok(av.some((t) => t.includes("invertidas") && t.includes("Líneas: 10")), "el aviso de orden invertido dice en qué línea ocurre (la 10; además, ese punto cae fuera del área del sistema de salida)");
+  $("#f-lote").value = "﻿X;Y\r\n-74,0817;4,6097\r\n\r\n-75,2322;4,4389\r\n";
+  await enviar();
+  ok($("#resultado-wrap .report-block").textContent === `${conv(-74.0817, 4.6097)}\n${conv(-75.2322, 4.4389)}`, "líneas con fin de línea de Windows, con BOM, encabezado y una línea en blanco");
+  $("#f-lote").value = "Longitud;Latitud";
+  await enviar();
+  ok(texto($("#resultado-wrap .callout-danger")).includes("al menos una pareja"), "un lote con solo el encabezado pide al menos una pareja");
+  $("#btn-lotes").click();
 });
 
 await seccion("pantalla: nada se corre al habilitar todos los sistemas ni al cambiar el botón de lotes", async () => {
