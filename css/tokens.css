@@ -55,6 +55,10 @@
   --topbar-badge-fg: #ffffff;
 
   --donut-track: #ffffff;
+
+  /* encabezados de tabla: en el tema claro llevan el verde (teal) de la app */
+  --thead-bg: #d6ecea;
+  --thead-fg: #0a5f5e;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -92,6 +96,9 @@
     --topbar-badge-fg: var(--accent-contrast);
 
     --donut-track: var(--bg-sunken);
+
+  --thead-bg: var(--bg-sunken);
+  --thead-fg: var(--text-muted);
   }
 }
 
@@ -129,4 +136,7 @@
   --topbar-badge-fg: var(--accent-contrast);
 
   --donut-track: var(--bg-sunken);
+
+  --thead-bg: var(--bg-sunken);
+  --thead-fg: var(--text-muted);
 }

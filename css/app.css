@@ -322,8 +322,8 @@ input:disabled, select:disabled { opacity: 0.55; }
 .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-elevated); }
 table { border-collapse: collapse; width: 100%; font-size: 0.86rem; }
 thead th {
-  text-align: left; padding: var(--space-3); background: var(--bg-sunken);
-  color: var(--text-muted); font-weight: 700; font-size: 0.76rem; text-transform: uppercase; letter-spacing: .03em;
+  text-align: left; padding: var(--space-3); background: var(--thead-bg);
+  color: var(--thead-fg); font-weight: 700; font-size: 0.76rem; text-transform: uppercase; letter-spacing: .03em;
   position: sticky; top: 0;
   white-space: nowrap;
 }
