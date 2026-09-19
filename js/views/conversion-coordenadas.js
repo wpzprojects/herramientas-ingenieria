@@ -67,7 +67,7 @@ export function render(container) {
 
       <div class="field" id="campo-lote" hidden>
         <label for="f-lote" id="label-lote">Longitud y latitud</label>
-        <textarea id="f-lote" rows="8" spellcheck="false" autocomplete="off" placeholder="Ejemplos válidos:&#10;-74.0817 4.6097&#10;-74,0817;4,6097&#10;-74.0817,4.6097&#10;-74,0817 4,6097&#10;&quot;-74,0817&quot;;&quot;4,6097&quot;;"></textarea>
+        <textarea id="f-lote" rows="8" spellcheck="false" autocomplete="off" placeholder="Ejemplos válidos:&#10;-74.0817 4.6097&#10;-74,0817;4,6097&#10;-74.0817,4.6097&#10;-74,0817 4,6097"></textarea>
         <span class="hint">Ingresar datos por lotes. Cada línea debe ser una pareja de coordenadas separadas.</span>
       </div>
 
