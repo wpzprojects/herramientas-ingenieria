@@ -1,5 +1,5 @@
-// Menu de la seccion "Catalogos": 3 tiles que llevan a cada familia de
-// conductores (desnudos / semiaislados / XLPE), igual patron que las demas
+// Menu de la seccion "Catalogos": 4 tiles que llevan a cada familia de
+// conductores (desnudos / semiaislados / XLPE) y al catalogo de tuberias, igual patron que las demas
 // pantallas de menu principal (ver sectionMenus/sectionMeta en nav.js).
 
 import { icon } from "../icons.js";

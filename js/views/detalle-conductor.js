@@ -1,10 +1,10 @@
-// Ficha de detalle GENERICA de un conductor, reutilizada por las 3 familias
-// del catalogo, parametrizada por :familia/:id (#/catalogos/:familia/:id).
+// Ficha de detalle GENERICA de un conductor (o de una tuberia), reutilizada por las 3 familias de conductores
+// y por el catalogo de tuberias, parametrizada por :familia/:id (#/catalogos/:familia/:id).
 // "id" llega como string desde la URL; en conductores-semiaislados.json el
 // campo id es numerico, en los otros dos es string tipo "001" - por eso la
 // busqueda siempre compara con String(row.id) === id.
 
-import { el, fmt, loadData } from "../util/format.js";
+import { el, fmt, loadData, conIdPorPosicion } from "../util/format.js";
 
 const CONFIG = {
   desnudos: {
@@ -80,9 +80,28 @@ const CONFIG = {
       { key: "radio_medio_geometrico_mm", label: "Radio medio geométrico (mm)" },
     ],
   },
+  // Tuberias: sin `id` en el archivo (se usa la posicion). `dec` = decimales de cada valor (el valor del catalogo tiene 3).
+  tuberias: {
+    dataFile: "tuberias",
+    tituloFamilia: "Tuberías",
+    nombreSingular: "Tubería",
+    prepararFilas: conIdPorPosicion,
+    titulo: (row) => `${row.tipo} — ${row.diametro_nominal}`,
+    campos: [
+      { key: "tipo", label: "Tipo" },
+      { key: "diametro_nominal", label: "Diámetro nominal" },
+      { key: "diametro_exterior_min_pulg", label: "Diámetro exterior mínimo (pulg)", dec: 3 },
+      { key: "diametro_interno_min_pulg", label: "Diámetro interno mínimo (pulg)", dec: 3 },
+      { key: "diametro_interno_min_mm", label: "Diámetro interno mínimo (mm)", dec: 3 },
+      { key: "espesor_pared_max_pulg", label: "Espesor de pared máximo (pulg)", dec: 3 },
+      { key: "espesor_pared_min_pulg", label: "Espesor de pared mínimo (pulg)", dec: 3 },
+      { key: "peso_min_kg", label: "Peso mínimo (kg)", dec: 3 },
+    ],
+  },
 };
 
 function tituloDeFila(cfg, row) {
+  if (cfg.titulo) return cfg.titulo(row);
   if (cfg.titleField && row[cfg.titleField] !== null && row[cfg.titleField] !== undefined && row[cfg.titleField] !== "") {
     return String(row[cfg.titleField]);
   }
@@ -103,7 +122,7 @@ export async function render(container, params) {
     return;
   }
 
-  const rows = await loadData(cfg.dataFile);
+  const rows = (cfg.prepararFilas ?? ((r) => r))(await loadData(cfg.dataFile));
   const row = rows.find((r) => String(r.id) === params.id);
 
   if (!row) {
@@ -116,8 +135,8 @@ export async function render(container, params) {
         el("a", { href: `#/catalogos/${params.familia}` }, cfg.tituloFamilia),
       ]),
       el("div", { class: "empty-state" }, [
-        el("h2", {}, "Conductor no encontrado"),
-        el("p", { class: "text-muted" }, `No existe un conductor con id "${params.id}" en ${cfg.tituloFamilia}.`),
+        el("h2", {}, cfg.nombreSingular ? "Tubería no encontrada" : "Conductor no encontrado"),
+        el("p", { class: "text-muted" }, `No existe ${cfg.nombreSingular ? "una tubería" : "un conductor"} con id "${params.id}" en ${cfg.tituloFamilia}.`),
         el("p", {}, el("a", { class: "btn btn-ghost", href: `#/catalogos/${params.familia}` }, "← Volver al catálogo")),
       ])
     );
@@ -144,7 +163,7 @@ export async function render(container, params) {
   cfg.campos.forEach((f) => {
     const value = row[f.key];
     if (value === null || value === undefined || value === "") return;
-    const display = typeof value === "number" ? fmt(value, 2) : String(value);
+    const display = typeof value === "number" ? fmt(value, f.dec ?? 2) : String(value);
     lista.append(el("div", { class: "detail-row" }, [el("span", { class: "k" }, f.label), el("span", { class: "v" }, display)]));
   });
 

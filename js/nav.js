@@ -12,7 +12,7 @@ export const sidebarLinks = [
 
 export const sectionMeta = {
   calculos: { title: "Cálculos", subtitle: "Calculadoras de ingeniería para líneas y redes de distribución." },
-  catalogos: { title: "Catálogos", subtitle: "Consulta técnica de conductores por familia, con filtros y ficha de detalle." },
+  catalogos: { title: "Catálogos", subtitle: "Consulta técnica de conductores por familia y de tuberías, con filtros y ficha de detalle." },
   normatividad: { title: "Normatividad", subtitle: "Referencia normativa RETIE / NTC 2050 y resoluciones del sector eléctrico." },
   varios: { title: "Varios", subtitle: "Herramientas de apoyo: conversión de unidades, coordenadas y codificación." },
   ia: { title: "Funciones de IA", subtitle: "Análisis de escenarios con calculadoras locales y herramientas de redacción." },
@@ -31,6 +31,7 @@ export const sectionMenus = {
     { title: "Conductores desnudos", desc: "ACSR, AAAC, ACAR, AAC, ACSS — 342 referencias.", icon: "conductorBare", hash: "#/catalogos/desnudos" },
     { title: "Conductores semiaislados", desc: "Bicapa / Tricapa AAAC-ACSR — 70 referencias.", icon: "conductorSemi", hash: "#/catalogos/semiaislados" },
     { title: "Conductores XLPE (MT)", desc: "Cables aislados de media tensión — 195 referencias.", icon: "conductorXlpe", hash: "#/catalogos/xlpe" },
+    { title: "Tuberías", desc: "PVC y metálicas (EMT, IMC, RIGID) — 43 referencias.", icon: "underground", hash: "#/catalogos/tuberias" },
   ],
   normatividad: [
     { title: "Distancias de seguridad", desc: "Tablas RETIE 3.10.x de distancias mínimas de seguridad.", icon: "ruler", hash: "#/normatividad/distancias-seguridad" },

@@ -67,6 +67,14 @@ export async function loadData(name) {
   return json;
 }
 
+/**
+ * Copia de las filas de un catalogo que no trae `id` (p. ej. tuberias.json), con un `id` = posicion (1, 2, 3...). Sirve para
+ * abrir la ficha de detalle (#/catalogos/:familia/:id). No modifica los datos cacheados que usan las calculadoras.
+ */
+export function conIdPorPosicion(rows) {
+  return rows.map((r, i) => ({ ...r, id: String(i + 1) }));
+}
+
 export function distinct(rows, key) {
   return [...new Set(rows.map((r) => r[key]).filter((v) => v !== null && v !== undefined && v !== ""))].sort(
     (a, b) => String(a).localeCompare(String(b), "es", { numeric: true })

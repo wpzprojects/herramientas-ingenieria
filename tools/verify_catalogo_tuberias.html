@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>verify_catalogo_tuberias</title>
+<!--
+  Pruebas del catalogo de Tuberias (js/views/catalogo-conductores.js y js/views/detalle-conductor.js con :familia = tuberias, la
+  tarjeta en js/nav.js) y de que los tres catalogos de conductores siguen igual. Se ejecuta en el navegador, sin internet: las
+  vistas reales se renderizan en un contenedor oculto y se manejan como lo haria una persona; los datos se comparan con
+  data/tuberias.json.
+
+  Uso (desde la raiz del proyecto):
+    python -m http.server 8000
+    abrir http://localhost:8000/tools/verify_catalogo_tuberias.html   -> lista PASS/FAIL
+  o en modo consola:
+    msedge --headless --dump-dom --virtual-time-budget=35000 http://localhost:8000/tools/verify_catalogo_tuberias.html
+-->
+<style>body{font-family:ui-monospace,Consolas,monospace;font-size:13px;padding:12px}#stage{position:absolute;left:-9999px;width:1000px}</style>
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+<pre id="out"></pre>
+<div id="stage"></div>
+<script type="module">
+window.__BASE_PATH__ = "../";
+const out = document.getElementById("out");
+let fallos = 0;
+let total = 0;
+function ok(cond, msg) {
+  total++;
+  if (!cond) fallos++;
+  out.textContent += `${cond ? "PASS" : "FAIL"} ${msg}\n`;
+}
+async function seccion(nombre, fn) {
+  out.textContent += `\n== ${nombre}\n`;
+  try {
+    await fn();
+  } catch (err) {
+    fallos++;
+    total++;
+    out.textContent += `FAIL excepcion en "${nombre}": ${err && err.stack ? err.stack : err}\n`;
+  }
+}
+const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const tuberias = await (await fetch("../data/tuberias.json")).json();
+const stage = document.getElementById("stage");
+const $ = (s, r = stage) => r.querySelector(s);
+const $$ = (s, r = stage) => [...r.querySelectorAll(s)];
+const texto = (e) => (e ? e.textContent.replace(/\s+/g, " ").trim() : "");
+const limpiar = () => { stage.innerHTML = ""; };
+const filas = () => $$("tbody tr");
+const nav = await import("../js/nav.js");
+const lista = await import("../js/views/catalogo-conductores.js");
+const detalle = await import("../js/views/detalle-conductor.js");
+
+await seccion("menú de Catálogos: la tarjeta de Tuberías", async () => {
+  const items = nav.sectionMenus.catalogos;
+  ok(items.length === 4 && items.map((i) => i.title).join("|") === "Conductores desnudos|Conductores semiaislados|Conductores XLPE (MT)|Tuberías", `el menú tiene 4 tarjetas: ${items.map((i) => i.title).join(", ")}`);
+  const t = items[3];
+  ok(t.hash === "#/catalogos/tuberias" && t.icon === "underground", "la tarjeta de Tuberías lleva al catálogo y usa el mismo icono que Ampacidad subterránea");
+  const sub = nav.sectionMenus.calculos.find((i) => i.title === "Ampacidad subterránea");
+  ok(sub.icon === t.icon, "el icono de la tarjeta es el de «Ampacidad subterránea»");
+  ok(t.desc.includes(String(tuberias.length)), `la descripción indica la cantidad real de referencias (${tuberias.length})`);
+  ok(nav.sectionMeta.catalogos.subtitle.toLowerCase().includes("tuberías"), "el subtítulo de la sección Catálogos ya menciona las tuberías");
+  const menu = await import("../js/views/catalogos.js");
+  await menu.render(stage, {});
+  const tiles = $$(".menu-tile");
+  ok(tiles.length === 4 && tiles.every((x) => x.classList.contains("menu-tile--row")) && texto(tiles[3]).startsWith("Tuberías") && tiles[3].getAttribute("href") === "#/catalogos/tuberias" && !!tiles[3].querySelector("svg"), "la pantalla Catálogos pinta 4 tarjetas con el mismo formato y la de Tuberías con su icono y enlace");
+  limpiar();
+});
+
+await seccion("listado de tuberías", async () => {
+  await lista.render(stage, { familia: "tuberias" });
+  const miga = $$(".breadcrumb a, .breadcrumb span").map(texto).join(" ");
+  ok(texto($(".page-title")) === "Tuberías" && miga.includes("Inicio") && miga.includes("Catálogos") && miga.endsWith("Tuberías"), "título «Tuberías» y migas Inicio / Catálogos / Tuberías");
+  ok($$(".toolbar .field").length === 2 && texto($(".toolbar .field label")) === "Tipo de tubería" && !!$('.toolbar input[type="search"]'), "barra con el filtro «Tipo de tubería» y el buscador");
+  ok(texto($(".row-count")) === `Filas: ${tuberias.length}` && filas().length === tuberias.length, `muestra las ${tuberias.length} tuberías del catálogo`);
+  const encabezados = $$("thead th").map(texto);
+  ok(encabezados.join("|") === "Tipo|Nominal|Interno mín. (mm)|Exterior mín. (pulg)|Peso mín. (kg)", `columnas: ${encabezados.join(" | ")}`);
+  ok($$("thead th.hide-narrow").length === 2 && $$("thead th.hide-narrow").map(texto).join("|") === "Exterior mín. (pulg)|Peso mín. (kg)", "en pantalla angosta se ocultan el diámetro exterior y el peso");
+  const tipos = [...new Set(tuberias.map((t) => t.tipo))];
+  const opciones = $$(".toolbar select option").map((o) => o.value).filter((v) => v);
+  ok(opciones.length === tipos.length && tipos.every((t) => opciones.includes(t)), `el filtro ofrece los ${tipos.length} tipos del catálogo`);
+
+  // primera fila contra los datos
+  const f0 = tuberias[0];
+  const c0 = $$("td", filas()[0]).map(texto);
+  ok(c0[0] === f0.tipo && c0[1] === f0.diametro_nominal && c0[2] === f0.diametro_interno_min_mm.toFixed(2) && c0[3] === f0.diametro_exterior_min_pulg.toFixed(3) && c0[4] === f0.peso_min_kg.toFixed(3), `primera fila coincide con los datos (${c0.join(" · ")})`);
+  const sinPeso = tuberias.findIndex((t) => t.peso_min_kg === null);
+  ok($$("td", filas()[sinPeso]).map(texto)[4] === "—", "un valor que falta en el catálogo se muestra como «—»");
+
+  // filtro por tipo
+  const sel = $(".toolbar select");
+  for (const t of tipos) {
+    sel.value = t;
+    sel.dispatchEvent(new Event("change", { bubbles: true }));
+    const esperadas = tuberias.filter((x) => x.tipo === t);
+    if (!(filas().length === esperadas.length && filas().every((f) => texto($("td", f)) === t) && texto($(".row-count")) === `Filas: ${esperadas.length}`)) {
+      ok(false, `filtro «${t}»: ${filas().length} filas, esperadas ${esperadas.length}`);
+      break;
+    }
+  }
+  ok(true, "cada tipo del filtro deja solo sus tuberías y el contador coincide");
+  sel.value = tipos[0];
+  sel.dispatchEvent(new Event("change", { bubbles: true }));
+
+  // buscador por diametro nominal (junto con el filtro)
+  const buscar = $('.toolbar input[type="search"]');
+  buscar.value = '1 1/2';
+  buscar.dispatchEvent(new Event("input", { bubbles: true }));
+  await espera(350);
+  const esp = tuberias.filter((x) => x.tipo === tipos[0] && x.diametro_nominal.toLowerCase().includes("1 1/2"));
+  ok(esp.length > 0 && filas().length === esp.length && filas().every((f) => texto($$("td", f)[1]).includes("1 1/2")), `buscar «1 1/2» dentro de «${tipos[0]}»: ${esp.length} tuberías`);
+  sel.value = "";
+  sel.dispatchEvent(new Event("change", { bubbles: true }));
+  buscar.value = "zzz";
+  buscar.dispatchEvent(new Event("input", { bubbles: true }));
+  await espera(350);
+  ok(filas().length === 0 && texto($(".empty-state")).includes("No se encontraron tuberías"), "sin coincidencias: «No se encontraron tuberías con los filtros seleccionados.»");
+
+  // clic en una fila abre la ficha (id = posicion)
+  buscar.value = "";
+  buscar.dispatchEvent(new Event("input", { bubbles: true }));
+  await espera(350);
+  const antes = location.hash;
+  filas()[2].click();
+  ok(location.hash === "#/catalogos/tuberias/3", `al tocar la tercera fila se va a la ficha (${location.hash})`);
+  history.replaceState(null, "", antes || "#");
+  limpiar();
+});
+
+await seccion("ficha de una tubería", async () => {
+  await detalle.render(stage, { familia: "tuberias", id: "1" });
+  const f = tuberias[0];
+  ok(texto($(".page-title")) === `${f.tipo} — ${f.diametro_nominal}`, `título: «${texto($(".page-title"))}»`);
+  const miga = $$(".breadcrumb a, .breadcrumb span").map(texto).join(" ");
+  ok(miga.includes("Catálogos") && miga.includes("Tuberías") && $$(".breadcrumb a").some((a) => a.getAttribute("href") === "#/catalogos/tuberias"), "migas con enlace de vuelta al catálogo de Tuberías");
+  const filasFicha = $$(".detail-row").map((r) => [texto($(".k", r)), texto($(".v", r))]);
+  const mapa = Object.fromEntries(filasFicha);
+  ok(mapa["Diámetro nominal"] === f.diametro_nominal && mapa["Diámetro interno mínimo (mm)"] === f.diametro_interno_min_mm.toFixed(3) && mapa["Diámetro exterior mínimo (pulg)"] === f.diametro_exterior_min_pulg.toFixed(3) && mapa["Peso mínimo (kg)"] === f.peso_min_kg.toFixed(3), "los valores de la ficha coinciden con el catálogo (3 decimales, como en los datos)");
+  ok(!("Espesor de pared máximo (pulg)" in mapa), "un campo vacío no se muestra (como en los conductores)");
+  ok($(".card.detail-list-card") && $$(".detail-row .k").length === filasFicha.length, "usa la misma tarjeta de lista que los conductores");
+  limpiar();
+
+  // ultima tubería y una con todos los campos
+  await detalle.render(stage, { familia: "tuberias", id: String(tuberias.length) });
+  const u = tuberias.at(-1);
+  ok(texto($(".page-title")) === `${u.tipo} — ${u.diametro_nominal}`, "la última tubería (id = posición) también abre");
+  limpiar();
+  const iCompleta = tuberias.findIndex((t) => Object.values(t).every((v) => v !== null));
+  if (iCompleta >= 0) {
+    await detalle.render(stage, { familia: "tuberias", id: String(iCompleta + 1) });
+    ok($$(".detail-row").length === 8, "una tubería con todos los datos muestra los 8 campos");
+    limpiar();
+  }
+
+  // no existe
+  await detalle.render(stage, { familia: "tuberias", id: "999" });
+  ok(texto($(".empty-state h2")) === "Tubería no encontrada" && texto($(".empty-state")).includes("una tubería") && $$('a[href="#/catalogos/tuberias"]').length >= 1, "un id inexistente muestra «Tubería no encontrada» con enlace de vuelta");
+  limpiar();
+});
+
+await seccion("los catálogos de conductores siguen igual", async () => {
+  const cuentas = { desnudos: ["conductores-desnudos", 342], semiaislados: ["conductores-semiaislados", 70], xlpe: ["conductores-xlpe", 195] };
+  for (const [fam, [archivo, n]] of Object.entries(cuentas)) {
+    await lista.render(stage, { familia: fam });
+    ok(filas().length === n && texto($(".row-count")) === `Filas: ${n}`, `${fam}: ${n} filas`);
+    const primera = filas()[0];
+    const antes = location.hash;
+    primera.click();
+    const partes = location.hash.split("/");
+    ok(partes[2] === fam && partes[3] !== undefined && partes[3] !== "", `${fam}: la fila abre su ficha (${location.hash})`);
+    history.replaceState(null, "", antes || "#");
+    const id = partes[3];
+    limpiar();
+    await detalle.render(stage, { familia: fam, id });
+    ok($$(".detail-row").length > 3 && !texto($(".page-title")).includes("undefined"), `${fam}: la ficha muestra sus datos`);
+    limpiar();
+  }
+  await detalle.render(stage, { familia: "desnudos", id: "no-existe" });
+  ok(texto($(".empty-state h2")) === "Conductor no encontrado" && texto($(".empty-state")).includes("un conductor"), "un conductor inexistente sigue diciendo «Conductor no encontrado»");
+  limpiar();
+  await lista.render(stage, { familia: "no-existe" });
+  ok(texto($(".empty-state h2")) === "Catálogo no reconocido", "una familia desconocida sigue mostrando «Catálogo no reconocido»");
+  limpiar();
+  // la calculadora de ocupacion usa el mismo archivo: los datos cacheados no llevan `id`
+  const fmt = await import("../js/util/format.js");
+  const datos = await fmt.loadData("tuberias");
+  ok(!("id" in datos[0]), "los datos que usa la calculadora de Ocupación de ductos no se modifican (no reciben `id`)");
+});
+
+await seccion("service worker y otros archivos", async () => {
+  const sw = await (await fetch("../sw.js")).text();
+  const listaSw = [...sw.matchAll(/^\s*"([^"]+)",\s*$/gm)].map((m) => m[1]);
+  ok(["js/views/catalogo-conductores.js", "js/views/detalle-conductor.js", "js/views/catalogos.js", "data/tuberias.json"].every((f) => listaSw.includes(f)), "el service worker precachea las vistas y los datos de tuberías");
+  const existen = await Promise.all(listaSw.filter((f) => f !== "./").map((f) => fetch(`../${f}`, { method: "HEAD" }).then((r) => [f, r.ok])));
+  const faltan = existen.filter(([, okk]) => !okk).map(([f]) => f);
+  ok(faltan.length === 0, `todos los archivos del APP_SHELL existen${faltan.length ? ": " + faltan.join(", ") : ""}`);
+  const router = await (await fetch("../js/router.js")).text();
+  ok(router.includes('"/catalogos/:familia"') && router.includes('"/catalogos/:familia/:id"'), "el router ya cubre /catalogos/tuberias y su ficha (rutas genéricas por familia)");
+});
+
+out.textContent += `\nRESULT: ${fallos ? "FAIL" : "OK"} (${total - fallos}/${total})\n`;
+</script>
+</body>
+</html>

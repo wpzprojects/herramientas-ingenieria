@@ -1,10 +1,10 @@
-// Vista GENERICA de listado/filtro de conductores, reutilizada por las 3
-// familias del catalogo original (desnudos, semiaislados, XLPE), parametrizada
+// Vista GENERICA de listado/filtro del catalogo, reutilizada por las 3 familias de conductores del catalogo original
+// (desnudos, semiaislados, XLPE) y por el catalogo de tuberias, parametrizada
 // por :familia en la URL (#/catalogos/:familia). Cada familia solo difiere en
 // el archivo de datos, los filtros disponibles y las columnas de la tabla -
 // toda esa diferencia vive en CONFIG, la logica de filtrado/render es unica.
 
-import { el, loadData, distinct, debounce } from "../util/format.js";
+import { el, loadData, distinct, debounce, conIdPorPosicion } from "../util/format.js";
 
 const CONFIG = {
   desnudos: {
@@ -57,6 +57,23 @@ const CONFIG = {
       { key: "diametro_total_conductor_mm", label: "Diámetro (mm)", render: (r) => fmtOrDash(r.diametro_total_conductor_mm, 1) },
     ],
   },
+  // Tuberias (data/tuberias.json, el mismo catalogo de la calculadora de Ocupacion de ductos). El archivo no trae `id`:
+  // se usa la posicion (prepararFilas) para poder abrir la ficha.
+  tuberias: {
+    dataFile: "tuberias",
+    titulo: "Tuberías",
+    textoVacio: "No se encontraron tuberías con los filtros seleccionados.",
+    prepararFilas: conIdPorPosicion,
+    filtros: [{ key: "tipo", label: "Tipo de tubería" }],
+    busqueda: ["diametro_nominal"],
+    columnas: [
+      { key: "tipo", label: "Tipo" },
+      { key: "diametro_nominal", label: "Nominal" },
+      { key: "diametro_interno_min_mm", label: "Interno mín. (mm)", render: (r) => fmtOrDash(r.diametro_interno_min_mm, 2) },
+      { key: "diametro_exterior_min_pulg", label: "Exterior mín. (pulg)", hideNarrow: true, render: (r) => fmtOrDash(r.diametro_exterior_min_pulg, 3) },
+      { key: "peso_min_kg", label: "Peso mín. (kg)", hideNarrow: true, render: (r) => fmtOrDash(r.peso_min_kg, 3) },
+    ],
+  },
 };
 
 function fmtOrDash(value, decimals) {
@@ -97,7 +114,7 @@ export async function render(container, params) {
 
   ensureHideNarrowStyle();
 
-  const rows = await loadData(cfg.dataFile);
+  const rows = (cfg.prepararFilas ?? ((r) => r))(await loadData(cfg.dataFile));
 
   container.append(
     el("nav", { class: "breadcrumb" }, [
@@ -142,7 +159,7 @@ export async function render(container, params) {
 
     if (filtered.length === 0) {
       resultsWrap.append(
-        el("div", { class: "empty-state" }, [el("p", {}, "No se encontraron conductores con los filtros seleccionados.")])
+        el("div", { class: "empty-state" }, [el("p", {}, cfg.textoVacio ?? "No se encontraron conductores con los filtros seleccionados.")])
       );
       return;
     }
