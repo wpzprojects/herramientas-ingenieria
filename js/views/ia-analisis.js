@@ -59,7 +59,7 @@ export async function render(container) {
         </div>
       </div>
       <div id="panel-historial" hidden style="margin-bottom:var(--space-4)"></div>
-      <div class="ia-chat" id="chat" aria-live="polite"></div>
+      <div class="ia-chat ia-chat--hilo" id="chat" aria-live="polite"></div>
       <div class="ia-chips" id="ejemplos" aria-label="Ejemplos de preguntas"></div>
       <div class="ia-caja ia-caja--al-borde" style="margin-top:var(--space-4)">
         <textarea id="f-pregunta" rows="1" placeholder="Ej.: analiza pérdidas y regulación de una línea de 34.5 kV, 9.9 MW, fp 0.95, 5.2 km con ACSR 4/0 y compara con 336.4…"></textarea>
@@ -104,6 +104,8 @@ export async function render(container) {
     fPregunta.style.overflowY = fPregunta.scrollHeight > max ? "auto" : "hidden"; // sin flechas mientras quepa
   }
   fPregunta.addEventListener("input", ajustarAlto);
+  // El chat crece con la conversacion (sin barra propia) y el desplazamiento lo hace la pagina.
+  const alFinal = () => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
 
   // ---------- chat ----------
   function chipsHerramientas(lista) {
@@ -131,7 +133,7 @@ export async function render(container) {
       if (chips) chat.append(chips);
       chat.append(el("div", { class: "ia-msg ia-msg--model md", html: markdownAHtml(m.texto) }));
     }
-    chat.scrollTop = chat.scrollHeight;
+    return chat.lastElementChild;
   }
 
   function pintarChat() {
@@ -195,7 +197,7 @@ export async function render(container) {
       chipsVivos,
     ]);
     chat.append(espera);
-    chat.scrollTop = chat.scrollHeight;
+    alFinal();
     bloquear(true);
 
     const activos = new Map();
@@ -221,7 +223,7 @@ export async function render(container) {
               }
             }
           }
-          chat.scrollTop = chat.scrollHeight;
+          alFinal();
         },
       });
       espera.remove();
@@ -234,13 +236,14 @@ export async function render(container) {
       }
       const msg = { rol: "model", texto: textoVisible, herramientas: r.herramientas };
       conv.mensajes.push(msg);
-      pintarMensaje(msg);
+      pintarMensaje(msg).scrollIntoView({ behavior: "smooth", block: "start" }); // se lee desde el inicio de la respuesta
       historial.guardar(conv); // en segundo plano
     } catch (err) {
       espera.remove();
       conv.mensajes.pop(); // el turno del usuario se revirtio en el motor
       const texto = err instanceof ErrorGemini ? err.message : `Error inesperado: ${err?.message || err}`;
       pintarMensaje({ rol: "error", texto });
+      alFinal();
     } finally {
       bloquear(false);
       pintarReporte();
@@ -349,6 +352,7 @@ export async function render(container) {
                 pintarChat();
                 pintarReporte();
                 panelHistorial.hidden = true;
+                chat.scrollIntoView({ behavior: "smooth", block: "start" });
               },
             },
             "Abrir"
