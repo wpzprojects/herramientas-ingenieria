@@ -24,6 +24,10 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 
 - Es la ÚNICA excepción a "100% offline": se conecta a Google Gemini con la clave del propio
   usuario (BYOK, guardada en el navegador; no hay backend). Detalle en el README.
+- Análisis con calculadoras tiene agentes (`js/ai/agentes-analisis.js`, botón «Configuración»): el predeterminado sale del
+  código (`SISTEMA_ANALISIS`/`PROMPT_REPORTE` en `analisis.js`), es de solo lectura y nunca se escribe en `localStorage`; los
+  propios se guardan ahí y siempre llevan `REGLA_FIJA` al final. Si cambia el prompt estándar, el predeterminado se actualiza
+  solo. Cubierto por `tools/verify_ia.html` (sección «agentes de análisis»).
 - La IA nunca calcula: las calculadoras se exponen como herramientas (`js/ai/tools.js`) que
   llaman a los motores de `js/calc/*.js`. Si cambia la firma de un motor, actualizar su adaptador
   en `tools.js` y correr `tools/verify_ia.html` (arnés en el navegador, ver su encabezado).

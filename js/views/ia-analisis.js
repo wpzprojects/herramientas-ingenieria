@@ -10,7 +10,20 @@ import { ErrorGemini } from "../ai/gemini.js";
 import { verificarAcceso } from "../ai/ui-clave.js";
 import { markdownAHtml } from "../ai/markdown.js";
 import { crearContexto } from "../ai/tools.js";
-import { ejecutarTurno, PROMPT_REPORTE } from "../ai/analisis.js";
+import { ejecutarTurno } from "../ai/analisis.js";
+import {
+  ID_PREDETERMINADO,
+  REGLA_FIJA,
+  cargarAgentes,
+  guardarPropios,
+  leerActivo,
+  guardarActivo,
+  nuevoAgente,
+  duplicarAgente,
+  construirSistema,
+  promptReporte,
+  temperaturaDe,
+} from "../ai/agentes-analisis.js";
 import { escenariosHtml, reporteMd, reporteHtmlExportable, armarTablas, AVISO_REPORTE } from "../ai/reporte.js";
 import * as historial from "../ai/historial.js";
 import { agregarMicrofono } from "../ai/voz.js";
@@ -46,6 +59,9 @@ export async function render(container) {
   let conv = null;
   let ctx = crearContexto(ajustes0.maxCalculos);
   let ocupado = false;
+  let agentes = cargarAgentes();
+  let activoId = agentes.some((a) => a.id === leerActivo()) ? leerActivo() : ID_PREDETERMINADO;
+  const agenteActivo = () => agentes.find((a) => a.id === activoId) || agentes[0];
 
   container.insertAdjacentHTML(
     "beforeend",
@@ -55,9 +71,12 @@ export async function render(container) {
         <h2 class="section-title" style="margin:0">Consulta</h2>
         <div class="grupo">
           <span class="badge" title="Modelo activo (cámbialo en Configuración)">${escapeHtml(ajustes0.modelo)}</span>
+          <span class="badge" id="badge-agente" title="Agente activo (cámbialo en Configuración)"></span>
           <button type="button" class="btn btn-sm" id="btn-historial">Historial</button>
+          <button type="button" class="btn btn-sm" id="btn-config">Configuración</button>
         </div>
       </div>
+      <div id="panel-config" hidden style="margin-top:var(--space-4)"></div>
       <div id="panel-historial" hidden style="margin-bottom:var(--space-4)"></div>
       <div class="ia-chat ia-chat--hilo" id="chat" aria-live="polite"></div>
       <div class="ia-chips" id="ejemplos" aria-label="Ejemplos de preguntas"></div>
@@ -180,6 +199,8 @@ export async function render(container) {
       id: historial.nuevoId(),
       tipo: "analisis",
       titulo: texto.replace(/\s+/g, " ").slice(0, 70),
+      agenteId: agenteActivo().id,
+      agenteNombre: agenteActivo().nombre,
       creado: Date.now(),
       contenidos: [],
       mensajes: [],
@@ -206,11 +227,14 @@ export async function render(container) {
 
     const activos = new Map();
     try {
+      const agente = agenteActivo();
+      const ajustes = obtenerAjustes();
       const r = await ejecutarTurno({
         conv,
         texto,
         clave: claveEnUso(),
-        ajustes: obtenerAjustes(),
+        ajustes: { ...ajustes, temperatura: temperaturaDe(agente, ajustes.temperatura) },
+        sistema: construirSistema(agente),
         ctx,
         onEvento: (e) => {
           if (e.tipo === "herramienta") {
@@ -294,7 +318,7 @@ export async function render(container) {
 
   $("#btn-reporte").addEventListener("click", () => {
     if (!conv || !armarTablas(ctx.log).tablas.length) return alert("Primero haz una consulta que ejecute cálculos.");
-    enviar(PROMPT_REPORTE, { visible: "Generar el reporte de escenarios.", esReporte: true });
+    enviar(promptReporte(agenteActivo()), { visible: "Generar el reporte de escenarios.", esReporte: true });
   });
 
   $("#btn-copiar").addEventListener("click", async (e) => {
@@ -342,7 +366,7 @@ export async function render(container) {
     for (const c of lista) {
       cont.append(
         el("div", { class: "ia-historial-item" }, [
-          el("span", { class: "titulo", title: c.titulo }, c.titulo),
+          el("span", { class: "titulo", title: c.titulo }, `${c.agenteId && c.agenteId !== ID_PREDETERMINADO ? `[${c.agenteNombre}] ` : ""}${c.titulo}`),
           el("span", { class: "fecha" }, fechaCorta(c.actualizado)),
           el(
             "button",
@@ -351,6 +375,11 @@ export async function render(container) {
               class: "btn btn-sm",
               onclick: () => {
                 conv = c;
+                if (c.agenteId && agentes.some((a) => a.id === c.agenteId)) {
+                  activoId = c.agenteId; // la conversacion se sigue con el agente que se uso al empezarla
+                  guardarActivo(activoId);
+                  pintarBadge();
+                }
                 ctx = crearContexto(obtenerAjustes().maxCalculos, c.log || []);
                 conv.log = ctx.log;
                 pintarChat();
@@ -384,6 +413,166 @@ export async function render(container) {
     if (!panelHistorial.hidden) await pintarHistorial();
   });
 
+  // ---------- configuracion: agentes ----------
+  const panelConfig = $("#panel-config");
+  const pintarBadge = () => ($("#badge-agente").textContent = agenteActivo().nombre);
+
+  function persistir() {
+    if (!guardarPropios(agentes)) alert("No se pudieron guardar los agentes en este navegador (¿almacenamiento bloqueado?).");
+    if (!agentes.some((a) => a.id === activoId)) activoId = ID_PREDETERMINADO;
+    guardarActivo(activoId);
+    pintarBadge();
+  }
+
+  function usarAgente(id) {
+    if (id === activoId) return;
+    if (conv && !confirm("Cambiar de agente inicia una conversación nueva. ¿Continuar?")) return;
+    activoId = id;
+    guardarActivo(id);
+    pintarBadge();
+    if (conv) $("#btn-nueva").click();
+    pintarConfig();
+  }
+
+  const botonFila = (texto, onclick, { disabled = false, ghost = false } = {}) =>
+    el("button", { type: "button", class: `btn btn-sm${ghost ? " btn-ghost" : ""}`, onclick, disabled }, texto);
+
+  function pintarConfig(mensaje = "") {
+    panelConfig.innerHTML = `
+      <div class="ia-toolbar" style="margin-bottom:var(--space-2)">
+        <h3 style="margin:0">Agentes de análisis</h3>
+        <div class="grupo"><button type="button" class="btn btn-sm btn-primary" data-a="nuevo">Nuevo agente</button></div>
+      </div>
+      <p class="text-muted text-sm" style="margin-top:0">Un agente son las instrucciones con las que la IA analiza y redacta el reporte. El predeterminado no se puede modificar: puedes verlo y duplicarlo para editar la copia, o crear uno nuevo.</p>
+      <div class="ia-historial" id="config-lista" style="margin-top:0"></div>
+      <div id="config-msg"></div>
+      <div id="config-form"></div>`;
+    if (mensaje) {
+      panelConfig.querySelector("#config-msg").innerHTML = `<div class="callout callout-success" style="margin:var(--space-3) 0 0"><span>${escapeHtml(mensaje)}</span></div>`;
+    }
+    const lista = panelConfig.querySelector("#config-lista");
+    for (const a of agentes) {
+      const enUso = a.id === activoId;
+      lista.append(
+        el("div", { class: "ia-historial-item" }, [
+          el("span", { class: "titulo", title: a.descripcion }, [
+            a.nombre,
+            a.predefinido ? el("span", { class: "badge", style: "margin-left:8px" }, "predeterminado") : null,
+            enUso ? el("span", { class: "badge", style: "margin-left:8px" }, "en uso") : null,
+          ]),
+          botonFila("Usar", () => usarAgente(a.id), { disabled: enUso }),
+          botonFila("Ver", () => pintarFormulario(a, "ver")),
+          botonFila("Editar", () => pintarFormulario(structuredClone(a), "editar"), { disabled: a.predefinido }),
+          botonFila("Duplicar", () => duplicar(a)),
+          botonFila(
+            "Eliminar",
+            () => {
+              const eraActivo = a.id === activoId;
+              const aviso = eraActivo ? " Es el agente en uso: se volverá al predeterminado y se iniciará una conversación nueva." : "";
+              if (!confirm(`¿Eliminar el agente "${a.nombre}"?${aviso}`)) return;
+              agentes = agentes.filter((x) => x.id !== a.id);
+              persistir();
+              if (eraActivo && conv) $("#btn-nueva").click();
+              pintarConfig();
+            },
+            { disabled: a.predefinido, ghost: true }
+          ),
+        ])
+      );
+    }
+    panelConfig.querySelector('[data-a="nuevo"]').addEventListener("click", () => pintarFormulario(nuevoAgente(), "nuevo"));
+  }
+
+  function duplicar(a) {
+    const copia = duplicarAgente(a);
+    agentes.push(copia);
+    persistir();
+    pintarConfig();
+    pintarFormulario(copia, "editar");
+  }
+
+  /** modo: "ver" (solo lectura, p. ej. el predeterminado) | "editar" | "nuevo" */
+  function pintarFormulario(a, modo) {
+    const ver = modo === "ver";
+    const cont = panelConfig.querySelector("#config-form");
+    const titulo = modo === "nuevo" ? "Nuevo agente" : `${ver ? "Ver" : "Editar"}: ${escapeHtml(a.nombre)}`;
+    cont.innerHTML = `
+      <div class="card" style="margin-top:var(--space-4); background:var(--bg-sunken); box-shadow:none">
+        <h3 style="margin-top:0">${titulo}</h3>
+        ${a.predefinido ? `<div class="callout callout-info" style="margin:0 0 var(--space-4)"><span>Agente predeterminado: solo lectura. Usa <strong>Duplicar y editar</strong> para crear una copia que sí puedas modificar.</span></div>` : ""}
+        <div class="grid-2">
+          <div class="field"><label for="g-nombre">Nombre</label><input type="text" id="g-nombre" maxlength="80"></div>
+          <div class="field"><label for="g-desc">Descripción corta</label><input type="text" id="g-desc" maxlength="300"></div>
+        </div>
+        <div class="field">
+          <label for="g-temp">Temperatura (0–1.5, opcional)</label>
+          <input type="number" id="g-temp" min="0" max="1.5" step="0.1" placeholder="Vacío = la de Configuración de IA">
+          <span class="hint">Menor = más estable y repetible. Mayor = más libre.</span>
+        </div>
+        <div class="field">
+          <label for="g-instr">Instrucciones del agente</label>
+          <textarea id="g-instr" rows="14" placeholder="Describe cómo debe analizar: rol, reglas de trabajo, formato de las respuestas…"></textarea>
+          ${a.predefinido ? "" : `<span class="hint">La aplicación agrega siempre al final esta regla, que no se puede quitar: «${escapeHtml(REGLA_FIJA)}»</span>`}
+        </div>
+        <div class="field">
+          <label for="g-rep">Instrucciones del reporte</label>
+          <textarea id="g-rep" rows="9" placeholder="Vacío = se usa el reporte estándar"></textarea>
+          <span class="hint">Se envían al pulsar «Generar reporte con IA».</span>
+        </div>
+        <div class="btn-row">
+          ${
+            ver
+              ? `<button type="button" class="btn btn-primary" id="g-duplicar">Duplicar y editar</button><button type="button" class="btn" id="g-cerrar">Cerrar</button>`
+              : `<button type="button" class="btn btn-primary" id="g-guardar">Guardar agente</button><button type="button" class="btn" id="g-cerrar">Cancelar</button>`
+          }
+        </div>
+      </div>`;
+    const g = (s) => cont.querySelector(s);
+    g("#g-nombre").value = a.nombre;
+    g("#g-desc").value = a.descripcion || "";
+    g("#g-temp").value = Number.isFinite(a.temperatura) ? a.temperatura : "";
+    g("#g-instr").value = a.instrucciones || "";
+    g("#g-rep").value = a.reporte || "";
+    if (ver) for (const c of cont.querySelectorAll("input, textarea")) c.readOnly = true;
+
+    g("#g-cerrar").addEventListener("click", () => (cont.innerHTML = ""));
+    if (ver) g("#g-duplicar").addEventListener("click", () => duplicar(a));
+    else {
+      g("#g-guardar").addEventListener("click", () => {
+        const nombre = g("#g-nombre").value.trim();
+        if (!nombre) return g("#g-nombre").focus();
+        const instrucciones = g("#g-instr").value.trim();
+        if (!instrucciones) {
+          alert("Escribe las instrucciones del agente.");
+          return g("#g-instr").focus();
+        }
+        const t = parseFloat(String(g("#g-temp").value).replace(",", "."));
+        const nuevo = {
+          ...a,
+          nombre,
+          descripcion: g("#g-desc").value.trim(),
+          temperatura: Number.isFinite(t) ? Math.min(Math.max(t, 0), 1.5) : null,
+          instrucciones,
+          reporte: g("#g-rep").value.trim(),
+          predefinido: false,
+        };
+        const i = agentes.findIndex((x) => x.id === nuevo.id);
+        if (i >= 0) agentes[i] = nuevo;
+        else agentes.push(nuevo);
+        persistir();
+        pintarConfig(modo === "nuevo" ? "Agente guardado. Pulsa «Usar» para trabajar con él." : "Cambios guardados.");
+      });
+    }
+    cont.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  $("#btn-config").addEventListener("click", () => {
+    panelConfig.hidden = !panelConfig.hidden;
+    if (!panelConfig.hidden) pintarConfig();
+  });
+
+  pintarBadge();
   pintarEjemplos();
   pintarChat();
 }
+

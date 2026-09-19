@@ -40,17 +40,18 @@ No ejecutes cálculos nuevos salvo que sea indispensable. No inventes datos ni l
  * @param {string} o.clave
  * @param {{modelo:string, temperatura:number, maxRondas:number, maxCalculos:number}} o.ajustes
  * @param {object} o.ctx - contexto de herramientas (crearContexto)
+ * @param {string} [o.sistema] - prompt de sistema del agente activo (por defecto SISTEMA_ANALISIS)
  * @param {(e:object)=>void} [o.onEvento] - { tipo:"herramienta", nombre, titulo } | { tipo:"herramienta-fin", nombre, titulo, ok }
  * @returns {Promise<{texto:string, herramientas:{titulo:string, ok:boolean}[], truncado:boolean}>}
  */
-export async function ejecutarTurno({ conv, texto, clave, ajustes, ctx, onEvento }) {
+export async function ejecutarTurno({ conv, texto, clave, ajustes, ctx, onEvento, sistema = SISTEMA_ANALISIS }) {
   const marcador = conv.contenidos.length;
   const marcadorLog = ctx.log.length;
   const herramientas = [];
   ctx.presupuesto = { max: ajustes.maxCalculos, usado: 0 };
   conv.contenidos.push({ role: "user", parts: [{ text: texto }] });
 
-  const base = { clave, modelo: ajustes.modelo, sistema: SISTEMA_ANALISIS, temperatura: ajustes.temperatura, herramientas: declaraciones() };
+  const base = { clave, modelo: ajustes.modelo, sistema, temperatura: ajustes.temperatura, herramientas: declaraciones() };
 
   try {
     for (let ronda = 0; ronda < ajustes.maxRondas; ronda++) {

@@ -46,6 +46,7 @@ const { markdownAHtml } = await import("../js/ai/markdown.js");
 const gemini = await import("../js/ai/gemini.js");
 const agentes = await import("../js/ai/agentes.js");
 const config = await import("../js/ai/config.js");
+const agAn = await import("../js/ai/agentes-analisis.js");
 
 await seccion("markdown", async () => {
   const h = markdownAHtml("# Titulo\n\nTexto con **negrita** y *cursiva* y `codigo`.\n\n- a\n- b\n  - b1\n\n1. uno\n2. dos\n\n| A | B |\n|---|---|\n| 1 | 2 |\n");
@@ -326,7 +327,54 @@ await seccion("analisis: bucle con herramientas (Gemini simulado)", async () => 
   let err = null;
   try { await analisis.ejecutarTurno({ conv: conv3, texto: "nuevo", clave: "k", ajustes, ctx: ctx3 }); } catch (e) { err = e; }
   ok(err && err.tipo === "red" && conv3.contenidos.length === 2, "ante un error se revierte el historial del turno");
+
+  // prompt de sistema: el del agente si se pasa; si no, el estandar
+  const sistemas = [];
+  gemini.usarMock(async ({ cuerpo }) => {
+    sistemas.push(cuerpo.systemInstruction.parts[0].text);
+    return { candidates: [{ content: { role: "model", parts: [{ text: "ok" }] } }] };
+  });
+  await analisis.ejecutarTurno({ conv: { contenidos: [] }, texto: "a", clave: "k", ajustes, ctx: ctxNuevo() });
+  await analisis.ejecutarTurno({ conv: { contenidos: [] }, texto: "b", clave: "k", ajustes, ctx: ctxNuevo(), sistema: "PROMPT PROPIO" });
+  ok(sistemas[0] === analisis.SISTEMA_ANALISIS && sistemas[1] === "PROMPT PROPIO", "usa el prompt del agente si se pasa y el estándar por defecto");
   gemini.usarMock(null);
+});
+
+await seccion("agentes de análisis", async () => {
+  const claves = ["ia.agentesAnalisis", "ia.agenteAnalisisActivo"];
+  const limpiar = () => claves.forEach((k) => window.localStorage.removeItem(k));
+  limpiar();
+  const def = agAn.AGENTE_PREDETERMINADO;
+  let lista = agAn.cargarAgentes();
+  ok(lista.length === 1 && lista[0] === def && def.predefinido && def.id === agAn.ID_PREDETERMINADO, "sin agentes propios: solo el predeterminado");
+  ok(def.instrucciones === analisis.SISTEMA_ANALISIS && def.reporte === analisis.PROMPT_REPORTE, "el predeterminado usa el prompt y el reporte estándar del código");
+  ok(Object.isFrozen(def), "el predeterminado está congelado (no se puede mutar)");
+  ok(agAn.construirSistema(def) === analisis.SISTEMA_ANALISIS, "el sistema del predeterminado se envía tal cual");
+
+  // propio: duplicar, guardar, cargar
+  const copia = agAn.duplicarAgente(def);
+  ok(copia.id !== def.id && !copia.predefinido && copia.instrucciones === def.instrucciones && copia.nombre.endsWith("(copia)"), "duplicar crea una copia editable con otro id");
+  copia.instrucciones = "Responde en inglés y muy breve.";
+  const nuevo = { ...agAn.nuevoAgente(), nombre: "Mío", instrucciones: "Solo tablas.", temperatura: 0.9, reporte: "" };
+  ok(agAn.guardarPropios([def, copia, nuevo]) === true, "guardarPropios responde true");
+  const crudo = window.localStorage.getItem("ia.agentesAnalisis");
+  ok(!crudo.includes(agAn.ID_PREDETERMINADO), "el predeterminado nunca se escribe en el almacenamiento");
+  lista = agAn.cargarAgentes();
+  ok(lista.length === 3 && lista[0].id === def.id && lista[1].instrucciones === copia.instrucciones && lista[2].temperatura === 0.9, "carga: predeterminado primero y luego los propios");
+
+  // la regla fija se añade a los propios, no al predeterminado
+  const sistemaPropio = agAn.construirSistema(lista[1]);
+  ok(sistemaPropio.startsWith("Responde en inglés") && sistemaPropio.endsWith(agAn.REGLA_FIJA), "los agentes propios llevan la regla fija de no calcular al final");
+  ok(agAn.promptReporte(lista[2]) === analisis.PROMPT_REPORTE && agAn.promptReporte({ reporte: "Solo un párrafo." }) === "Solo un párrafo.", "reporte vacío = estándar; con texto = el del agente");
+  ok(agAn.temperaturaDe(lista[2], 0.3) === 0.9 && agAn.temperaturaDe(lista[1], 0.3) === 0.3, "temperatura del agente o la general");
+
+  // almacenamiento manipulado: no puede suplantar ni romper el predeterminado
+  window.localStorage.setItem("ia.agentesAnalisis", JSON.stringify([{ id: agAn.ID_PREDETERMINADO, nombre: "Falso", instrucciones: "hackeado" }, { id: "x", nombre: "ok", instrucciones: "a", temperatura: 99 }]));
+  lista = agAn.cargarAgentes();
+  ok(lista.length === 2 && lista[0] === def && lista[1].id === "x" && lista[1].temperatura === 1.5, "un guardado con el id del predeterminado se ignora y la temperatura se acota");
+  window.localStorage.setItem("ia.agentesAnalisis", "no es json");
+  ok(agAn.cargarAgentes().length === 1, "JSON corrupto -> solo el predeterminado");
+  limpiar();
 });
 
 const acceso = await import("../js/auth/backend.js");
