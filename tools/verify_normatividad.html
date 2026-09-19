@@ -156,6 +156,27 @@ await seccion("todos los visores ocupan el ancho disponible", async () => {
   ok(marcos.length === 2 && Math.abs(marcos[0].top - marcos[1].top) < 1 && marcos[1].left > marcos[0].right - 1 && marcos[0].width < w2.width * 0.6, "Zona de servidumbre: sus dos imágenes siguen lado a lado, cada una en su mitad");
 });
 
+await seccion("Resoluciones: ficha de detalle", async () => {
+  const detalle = await import("../js/views/detalle-resolucion.js");
+  const resoluciones = await (await fetch("../data/resoluciones.json")).json();
+  stage.innerHTML = "";
+  await detalle.render(stage, { id: String(resoluciones[0].id) });
+  const grid = $(".detail-grid").getBoundingClientRect();
+  const tarjeta = $(".card").getBoundingClientRect();
+  ok(texto($(".page-title")) === resoluciones[0].resolucion && $$(".detail-item").length === 2 && texto($(".card .section-title")) === "Resumen", "la ficha muestra la resolución, el año y la tarjeta «Resumen»");
+  ok(Math.abs(tarjeta.top - grid.bottom - 24) < 0.6, `entre «Resolución / Año» y la tarjeta «Resumen» hay 24 px (${(tarjeta.top - grid.bottom).toFixed(1)} px)`);
+  // el mismo espacio en pantalla angosta (una columna)
+  stage.innerHTML = "";
+  const estrecho = document.createElement("div");
+  estrecho.style.width = "360px";
+  stage.append(estrecho);
+  await detalle.render(estrecho, { id: String(resoluciones[0].id) });
+  const g2 = estrecho.querySelector(".detail-grid").getBoundingClientRect();
+  const t2 = estrecho.querySelector(".card").getBoundingClientRect();
+  ok(Math.abs(t2.top - g2.bottom - 24) < 0.6, `también 24 px en pantalla angosta (${(t2.top - g2.bottom).toFixed(1)} px)`);
+  stage.innerHTML = "";
+});
+
 await seccion("la imagen del numeral ya no existe", async () => {
   ok(!(await existe("assets/normativa/numeral-3-20-6-3-g.jpg")), "el archivo numeral-3-20-6-3-g.jpg ya no está en assets/normativa");
   const fuente = await (await fetch("../js/views/normativa-imagen.js")).text();

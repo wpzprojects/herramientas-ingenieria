@@ -432,7 +432,7 @@ td.wrap, th.wrap { white-space: normal; }
   .hide-narrow { display: none !important; }
 }
 
-.detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-4); }
+.detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-4); margin-bottom: var(--space-5); } /* espacio de 24px antes de la tarjeta Resumen */
 .detail-item { display: flex; flex-direction: column; gap: 2px; }
 .detail-item .k { font-size: 0.74rem; text-transform: uppercase; letter-spacing: .03em; color: var(--text-faint); font-weight: 700; }
 .detail-item .v { font-size: 1rem; font-weight: 600; }
