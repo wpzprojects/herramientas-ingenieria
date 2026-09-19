@@ -147,6 +147,32 @@ await seccion("tools: esquema para Gemini", async () => {
   ok(barrido.herramienta.enum.length === 6, "barrido: enum de 6 calculadoras");
 });
 
+await seccion("tools: herramientas permitidas por agente", async () => {
+  ok(tools.HERRAMIENTAS_ESTANDAR.length === 9 && Object.isFrozen(tools.HERRAMIENTAS_ESTANDAR), "el estándar habilita las 9 herramientas actuales");
+  const cat = tools.catalogoHerramientas();
+  ok(cat.length === 9 && cat.every((h) => h.nombre && h.titulo && h.grupo && h.descripcion), "catálogo: 9 herramientas con título, grupo y descripción");
+  ok(new Set(cat.map((h) => h.grupo)).size === 3, "tres grupos: Calculadoras, Catálogos y Análisis");
+  ok(tools.declaraciones(["calcular_perdidas", "buscar_tuberia"]).map((d) => d.name).join() === "calcular_perdidas,buscar_tuberia", "declaraciones(permitidas) solo declara esas");
+  const conBarrido = tools.declaraciones(["calcular_perdidas", "calcular_regulacion", "barrer_parametro"]).find((d) => d.name === "barrer_parametro");
+  ok(conBarrido.parameters.properties.herramienta.enum.join() === "calcular_perdidas,calcular_regulacion", "el barrido solo ofrece las calculadoras permitidas");
+  ok(tools.declaraciones(["buscar_tuberia", "barrer_parametro"]).map((d) => d.name).join() === "buscar_tuberia", "sin calculadoras permitidas el barrido no se declara");
+  ok(tools.declaraciones().find((d) => d.name === "barrer_parametro").parameters.properties.herramienta.enum.length === 6, "sin lista: todas, y el enum del barrido no se altera");
+  ok(tools.herramientasValidas(["buscar_tuberia", "inventada", "calcular_perdidas", "buscar_tuberia"]).join() === "calcular_perdidas,buscar_tuberia", "herramientasValidas descarta desconocidas y repetidas");
+
+  // el bloqueo lo hace el codigo, aunque el modelo pida una herramienta no habilitada
+  const ctx = ctxNuevo();
+  ctx.permitidas = new Set(["calcular_perdidas"]);
+  const a = await tools.ejecutarLlamada("buscar_tuberia", {}, ctx);
+  ok(a.ok === false && a.error.includes("no está habilitada") && a.error.includes("calcular_perdidas") && ctx.log.length === 0, "llamada a una herramienta no habilitada: error y sin corrida");
+  const b = await tools.ejecutarLlamada("calcular_perdidas", { ...LINEA, factor_carga: 0.5, resistencia_ohm_km: 0.3 }, ctx);
+  ok(b.ok === true && ctx.log.length === 1, "la herramienta habilitada sigue funcionando");
+  const c = await tools.ejecutarLlamada("barrer_parametro", { herramienta: "calcular_regulacion", parametros_json: "{}", parametro: "longitud_km", desde: 1, hasta: 2 }, ctx);
+  ok(c.ok === false && !c.puntos, "barrido de una calculadora no habilitada (y del propio barrido): error");
+  ctx.permitidas.add("barrer_parametro");
+  const d = await tools.ejecutarLlamada("barrer_parametro", { herramienta: "calcular_regulacion", parametros_json: "{}", parametro: "longitud_km", desde: 1, hasta: 2 }, ctx);
+  ok(d.ok === false && d.error.includes("no está habilitada") && ctx.presupuesto.usado === 1, "barrido con calculadora no habilitada: error y no consume presupuesto");
+});
+
 await seccion("tools: pérdidas", async () => {
   const ctx = ctxNuevo();
   const r = await tools.ejecutarLlamada("calcular_perdidas", { ...LINEA, factor_carga: 0.564, red: "Aerea", material: "ACSR", calibre: "4/0" }, ctx);
@@ -342,6 +368,19 @@ await seccion("analisis: bucle con herramientas (Gemini simulado)", async () => 
   await analisis.ejecutarTurno({ conv: { contenidos: [] }, texto: "a", clave: "k", ajustes, ctx: ctxNuevo() });
   await analisis.ejecutarTurno({ conv: { contenidos: [] }, texto: "b", clave: "k", ajustes, ctx: ctxNuevo(), sistema: "PROMPT PROPIO" });
   ok(sistemas[0] === analisis.SISTEMA_ANALISIS && sistemas[1] === "PROMPT PROPIO", "usa el prompt del agente si se pasa y el estándar por defecto");
+
+  // herramientas permitidas: se declaran solo esas y las demas se rechazan aunque el modelo las pida
+  const declaradas = [];
+  let respuestaTuberia = null;
+  gemini.usarMock(async ({ cuerpo }) => {
+    declaradas.push(cuerpo.tools[0].functionDeclarations.map((d) => d.name).join());
+    if (declaradas.length === 1) return { candidates: [{ content: { role: "model", parts: [{ functionCall: { name: "buscar_tuberia", args: {} } }] } }] };
+    respuestaTuberia = cuerpo.contents.at(-1).parts[0].functionResponse.response;
+    return { candidates: [{ content: { role: "model", parts: [{ text: "ok" }] } }] };
+  });
+  const rp = await analisis.ejecutarTurno({ conv: { contenidos: [] }, texto: "q", clave: "k", ajustes, ctx: ctxNuevo(), permitidas: ["calcular_perdidas", "calcular_regulacion"] });
+  ok(declaradas[0] === "calcular_perdidas,calcular_regulacion", "el turno declara solo las herramientas permitidas del agente");
+  ok(respuestaTuberia && respuestaTuberia.ok === false && respuestaTuberia.error.includes("no está habilitada") && rp.herramientas.length === 1 && rp.herramientas[0].ok === false, "una herramienta no permitida que el modelo pida se rechaza y se informa como error");
   gemini.usarMock(null);
 });
 
@@ -372,6 +411,17 @@ await seccion("agentes de análisis", async () => {
   ok(sistemaPropio.startsWith("Responde en inglés") && sistemaPropio.endsWith(agAn.REGLA_FIJA), "los agentes propios llevan la regla fija de no calcular al final");
   ok(agAn.promptReporte(lista[2]) === analisis.PROMPT_REPORTE && agAn.promptReporte({ reporte: "Solo un párrafo." }) === "Solo un párrafo.", "reporte vacío = estándar; con texto = el del agente");
   ok(agAn.temperaturaDe(lista[2], 0.3) === 0.9 && agAn.temperaturaDe(lista[1], 0.3) === 0.3, "temperatura del agente o la general");
+
+  // herramientas por agente
+  ok(agAn.herramientasDe(def).length === 9 && def.herramientas === tools.HERRAMIENTAS_ESTANDAR, "el predeterminado habilita las herramientas estándar");
+  ok(copia.herramientas.length === 9 && !Object.isFrozen(copia.herramientas) && nuevo.herramientas.length === 9, "duplicar y crear agentes parten de las estándar (lista editable)");
+  const soloDos = { ...agAn.nuevoAgente(), nombre: "Dos", instrucciones: "x", herramientas: ["buscar_tuberia", "calcular_perdidas"] };
+  agAn.guardarPropios([soloDos]);
+  ok(agAn.cargarAgentes()[1].herramientas.join() === "calcular_perdidas,buscar_tuberia", "la lista de herramientas se guarda y se carga");
+  window.localStorage.setItem("ia.agentesAnalisis", JSON.stringify([{ id: "v", nombre: "viejo", instrucciones: "a" }, { id: "w", nombre: "raro", instrucciones: "a", herramientas: ["inventada", "calcular_perdidas"] }, { id: "z", nombre: "vacio", instrucciones: "a", herramientas: [] }]));
+  const cargados = agAn.cargarAgentes();
+  ok(cargados[1].herramientas.length === 9, "un agente guardado sin lista usa las herramientas estándar");
+  ok(cargados[2].herramientas.join() === "calcular_perdidas" && cargados[3].herramientas.length === 0, "nombres desconocidos se descartan; una lista vacía se respeta");
 
   // almacenamiento manipulado: no puede suplantar ni romper el predeterminado
   window.localStorage.setItem("ia.agentesAnalisis", JSON.stringify([{ id: agAn.ID_PREDETERMINADO, nombre: "Falso", instrucciones: "hackeado" }, { id: "x", nombre: "ok", instrucciones: "a", temperatura: 99 }]));

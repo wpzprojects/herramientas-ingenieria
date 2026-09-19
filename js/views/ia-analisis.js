@@ -9,7 +9,7 @@ import { claveEnUso } from "../ai/clave.js";
 import { ErrorGemini } from "../ai/gemini.js";
 import { verificarAcceso } from "../ai/ui-clave.js";
 import { markdownAHtml } from "../ai/markdown.js";
-import { crearContexto } from "../ai/tools.js";
+import { crearContexto, catalogoHerramientas } from "../ai/tools.js";
 import { ejecutarTurno } from "../ai/analisis.js";
 import {
   ID_PREDETERMINADO,
@@ -23,6 +23,7 @@ import {
   construirSistema,
   promptReporte,
   temperaturaDe,
+  herramientasDe,
 } from "../ai/agentes-analisis.js";
 import { escenariosHtml, reporteMd, reporteHtmlExportable, armarTablas, AVISO_REPORTE } from "../ai/reporte.js";
 import * as historial from "../ai/historial.js";
@@ -235,6 +236,7 @@ export async function render(container) {
         clave: claveEnUso(),
         ajustes: { ...ajustes, temperatura: temperaturaDe(agente, ajustes.temperatura) },
         sistema: construirSistema(agente),
+        permitidas: herramientasDe(agente),
         ctx,
         onEvento: (e) => {
           if (e.tipo === "herramienta") {
@@ -496,6 +498,24 @@ export async function render(container) {
     const ver = modo === "ver";
     const cont = panelConfig.querySelector("#config-form");
     const titulo = modo === "nuevo" ? "Nuevo agente" : `${ver ? "Ver" : "Editar"}: ${escapeHtml(a.nombre)}`;
+    const habilitadas = new Set(herramientasDe(a));
+    const porGrupo = new Map();
+    for (const h of catalogoHerramientas()) porGrupo.set(h.grupo, [...(porGrupo.get(h.grupo) || []), h]);
+    const herramientasHtml = [...porGrupo]
+      .map(
+        ([grupo, lista]) => `
+          <div style="margin-top:var(--space-2)"><strong class="text-sm">${escapeHtml(grupo)}</strong>
+            <div style="display:flex; flex-wrap:wrap; gap:var(--space-2) var(--space-5); margin-top:4px">
+              ${lista
+                .map(
+                  (h) =>
+                    `<label class="checkbox-row" title="${escapeHtml(h.descripcion)}"><input type="checkbox" data-h="${h.nombre}"${habilitadas.has(h.nombre) ? " checked" : ""}${ver ? " disabled" : ""}> ${escapeHtml(h.titulo)}</label>`
+                )
+                .join("")}
+            </div>
+          </div>`
+      )
+      .join("");
     cont.innerHTML = `
       <div class="card" style="margin-top:var(--space-4); background:var(--bg-sunken); box-shadow:none">
         <h3 style="margin-top:0">${titulo}</h3>
@@ -508,6 +528,11 @@ export async function render(container) {
           <label for="g-temp">Temperatura (0–1.5, opcional)</label>
           <input type="number" id="g-temp" min="0" max="1.5" step="0.1" placeholder="Vacío = la de Configuración de IA">
           <span class="hint">Menor = más estable y repetible. Mayor = más libre.</span>
+        </div>
+        <div class="field">
+          <label>Herramientas que puede usar</label>
+          ${herramientasHtml}
+          <span class="hint">La IA solo podrá usar las marcadas (pasa el cursor sobre una para ver qué hace). Si las instrucciones nombran una que desmarques, la IA dirá que no la tiene.</span>
         </div>
         <div class="field">
           <label for="g-instr">Instrucciones del agente</label>
@@ -546,6 +571,8 @@ export async function render(container) {
           alert("Escribe las instrucciones del agente.");
           return g("#g-instr").focus();
         }
+        const herramientas = [...cont.querySelectorAll("input[data-h]:checked")].map((c) => c.dataset.h);
+        if (!herramientas.length) return alert("Marca al menos una herramienta.");
         const t = parseFloat(String(g("#g-temp").value).replace(",", "."));
         const nuevo = {
           ...a,
@@ -554,6 +581,7 @@ export async function render(container) {
           temperatura: Number.isFinite(t) ? Math.min(Math.max(t, 0), 1.5) : null,
           instrucciones,
           reporte: g("#g-rep").value.trim(),
+          herramientas,
           predefinido: false,
         };
         const i = agentes.findIndex((x) => x.id === nuevo.id);

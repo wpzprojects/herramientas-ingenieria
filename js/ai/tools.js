@@ -623,9 +623,40 @@ const T_BARRIDO = {
 
 const REGISTRO = Object.fromEntries([...CALCULADORAS, T_BUSCAR_CONDUCTOR, T_BUSCAR_TUBERIA, T_BARRIDO].map((t) => [t.nombre, t]));
 
-/** functionDeclarations para Gemini. */
-export function declaraciones() {
-  return Object.values(REGISTRO).map((t) => ({ name: t.nombre, description: t.descripcion, parameters: esquemaDe(t.campos) }));
+// Cada agente elige cuales herramientas puede usar. Una herramienta con `opcional: true` no forma parte de las del
+// agente estandar (queda desmarcada hasta que un agente propio la active); `grupo` la ubica en el formulario.
+const GRUPOS = { calculo: "Calculadoras", consulta: "Catálogos", barrido: "Análisis" };
+
+/** Herramientas de la app, para que el formulario del agente ofrezca cuales habilitar. */
+export function catalogoHerramientas() {
+  return Object.values(REGISTRO).map((t) => ({ nombre: t.nombre, titulo: t.titulo, grupo: t.grupo || GRUPOS[t.tipo], descripcion: t.descripcion }));
+}
+
+/** Las del agente estandar: todas salvo las opcionales. */
+export const HERRAMIENTAS_ESTANDAR = Object.freeze(Object.values(REGISTRO).filter((t) => !t.opcional).map((t) => t.nombre));
+
+/** Deja solo nombres que existen (sin repetidos), en el orden del registro. */
+export function herramientasValidas(nombres) {
+  const pedidas = new Set(nombres);
+  return Object.keys(REGISTRO).filter((n) => pedidas.has(n));
+}
+
+const disponibles = (ctx) => (ctx?.permitidas ? [...ctx.permitidas] : Object.keys(REGISTRO));
+
+/**
+ * functionDeclarations para Gemini. Con `permitidas` (lista de nombres) solo se declaran esas; el barrido solo ofrece
+ * las calculadoras permitidas y se omite si no hay ninguna.
+ */
+export function declaraciones(permitidas) {
+  const ok = permitidas ? new Set(permitidas) : null;
+  const calcs = CALCULADORAS.filter((t) => !ok || ok.has(t.nombre)).map((t) => t.nombre);
+  return Object.values(REGISTRO)
+    .filter((t) => (!ok || ok.has(t.nombre)) && (t.tipo !== "barrido" || calcs.length))
+    .map((t) => {
+      const parameters = esquemaDe(t.campos);
+      if (t.tipo === "barrido") parameters.properties.herramienta.enum = calcs;
+      return { name: t.nombre, description: t.descripcion, parameters };
+    });
 }
 
 export function tituloDe(nombre) {
@@ -674,6 +705,9 @@ function linspace(desde, hasta, pasos) {
 async function ejecutarBarrido(args, ctx) {
   const { v } = normalizar(T_BARRIDO.campos, args);
   const tool = CALCULADORAS.find((t) => t.nombre === v.herramienta);
+  if (ctx.permitidas && !ctx.permitidas.has(tool.nombre)) {
+    throw new ErrorHerramienta(`La herramienta "${tool.nombre}" no está habilitada para este agente. Disponibles: ${disponibles(ctx).join(", ")}.`);
+  }
 
   let base;
   try {
@@ -717,11 +751,15 @@ async function ejecutarBarrido(args, ctx) {
 /**
  * Ejecuta una llamada de Gemini. Nunca lanza por datos invalidos: devuelve
  * { ok:false, error } para que el modelo corrija y reintente.
- * @param {{presupuesto:{max:number,usado:number}, log:object[], siguienteId:number}} ctx
+ * @param {{presupuesto:{max:number,usado:number}, permitidas?:Set<string>|null, log:object[], siguienteId:number}} ctx
+ *   `permitidas` (opcional): nombres de las herramientas habilitadas para el agente; null/ausente = todas.
  */
 export async function ejecutarLlamada(nombre, args, ctx) {
   const tool = REGISTRO[nombre];
-  if (!tool) return { ok: false, error: `Herramienta desconocida "${nombre}". Disponibles: ${Object.keys(REGISTRO).join(", ")}.` };
+  if (!tool) return { ok: false, error: `Herramienta desconocida "${nombre}". Disponibles: ${disponibles(ctx).join(", ")}.` };
+  if (ctx.permitidas && !ctx.permitidas.has(nombre)) {
+    return { ok: false, error: `La herramienta "${nombre}" no está habilitada para este agente. Disponibles: ${disponibles(ctx).join(", ")}.` };
+  }
   try {
     if (tool.tipo === "calculo") {
       consumir(ctx, 1);

@@ -1,9 +1,11 @@
 // Agentes de "Analisis con calculadoras": cada uno es el prompt de sistema con el que trabaja Gemini, mas las
-// instrucciones del reporte y una temperatura opcional. El agente predeterminado vive en el codigo
+// instrucciones del reporte, una temperatura opcional y la lista de herramientas que puede usar (js/ai/tools.js;
+// un agente guardado sin lista usa las del estandar). El agente predeterminado vive en el codigo
 // (SISTEMA_ANALISIS y PROMPT_REPORTE de analisis.js): es de solo lectura, no se guarda ni se puede borrar; se puede
 // ver y duplicar. Los agentes propios se guardan en el navegador (localStorage).
 
 import { SISTEMA_ANALISIS, PROMPT_REPORTE } from "./analisis.js";
+import { HERRAMIENTAS_ESTANDAR, herramientasValidas } from "./tools.js";
 
 const K_AGENTES = "ia.agentesAnalisis";
 const K_ACTIVO = "ia.agenteAnalisisActivo";
@@ -17,6 +19,7 @@ export const AGENTE_PREDETERMINADO = Object.freeze({
   temperatura: null, // null = la de Configuracion de IA
   instrucciones: SISTEMA_ANALISIS,
   reporte: PROMPT_REPORTE,
+  herramientas: HERRAMIENTAS_ESTANDAR,
   predefinido: true,
 });
 
@@ -38,6 +41,7 @@ function normalizar(a, i = 0) {
     temperatura: Number.isFinite(t) ? Math.min(Math.max(t, 0), 1.5) : null,
     instrucciones: String(a?.instrucciones || "").slice(0, 20000),
     reporte: String(a?.reporte || "").slice(0, 8000),
+    herramientas: Array.isArray(a?.herramientas) ? herramientasValidas(a.herramientas) : [...HERRAMIENTAS_ESTANDAR],
     predefinido: false,
   };
 }
@@ -86,7 +90,7 @@ export function guardarActivo(id) {
 const idNuevo = () => `agente-analisis-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`;
 
 export function nuevoAgente() {
-  return { id: idNuevo(), nombre: "Nuevo agente", descripcion: "", temperatura: null, instrucciones: "", reporte: "", predefinido: false };
+  return { id: idNuevo(), nombre: "Nuevo agente", descripcion: "", temperatura: null, instrucciones: "", reporte: "", herramientas: [...HERRAMIENTAS_ESTANDAR], predefinido: false };
 }
 
 /** Copia editable de cualquier agente (incluido el predeterminado). */
@@ -102,6 +106,11 @@ export function construirSistema(a) {
 /** Instrucciones del reporte; si el agente no define las suyas se usan las estandar. */
 export function promptReporte(a) {
   return a.reporte?.trim() || PROMPT_REPORTE;
+}
+
+/** Nombres de las herramientas que el agente puede usar. */
+export function herramientasDe(a) {
+  return Array.isArray(a.herramientas) ? a.herramientas : HERRAMIENTAS_ESTANDAR;
 }
 
 /** Temperatura del agente, o la general de Configuracion si no define una. */
