@@ -15,7 +15,7 @@ export const sectionMeta = {
   catalogos: { title: "Catálogos", subtitle: "Consulta técnica de conductores por familia, con filtros y ficha de detalle." },
   normatividad: { title: "Normatividad", subtitle: "Referencia normativa RETIE / NTC 2050 y resoluciones del sector eléctrico." },
   varios: { title: "Varios", subtitle: "Herramientas de apoyo: conversión de unidades, coordenadas y codificación." },
-  ia: { title: "Funciones de IA", subtitle: "Análisis de escenarios con las calculadoras locales y herramientas de redacción." },
+  ia: { title: "Funciones de IA", subtitle: "Análisis de escenarios con calculadoras locales y herramientas de redacción." },
 };
 
 export const sectionMenus = {
