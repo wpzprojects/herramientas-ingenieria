@@ -454,6 +454,8 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .ia-chat--hilo .ia-msg { scroll-margin-top: calc(var(--topbar-h, 56px) + var(--space-4)); }
 .ia-caja { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-sunken); padding: 4px 14px; }
 .ia-caja:focus-within { border-color: var(--accent); }
+/* caja dentro de una tarjeta con padding de 24px (Analisis): queda a 12px de los bordes izquierdo, derecho e inferior, como en el corrector */
+.ia-caja--al-borde { margin-left: calc(-1 * var(--space-3)); margin-right: calc(-1 * var(--space-3)); margin-bottom: calc(-1 * var(--space-3)); }
 .ia-caja textarea, .ia-caja textarea:focus {
   display: block; width: 100%; min-height: 40px; resize: none; overflow-y: hidden; border: none; outline: none; box-shadow: none;
   background: transparent; padding: 10px 0; line-height: 1.4;

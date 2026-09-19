@@ -61,7 +61,7 @@ export async function render(container) {
       <div id="panel-historial" hidden style="margin-bottom:var(--space-4)"></div>
       <div class="ia-chat" id="chat" aria-live="polite"></div>
       <div class="ia-chips" id="ejemplos" aria-label="Ejemplos de preguntas"></div>
-      <div class="ia-caja" style="margin-top:var(--space-4)">
+      <div class="ia-caja ia-caja--al-borde" style="margin-top:var(--space-4)">
         <textarea id="f-pregunta" rows="1" placeholder="Ej.: analiza pérdidas y regulación de una línea de 34.5 kV, 9.9 MW, fp 0.95, 5.2 km con ACSR 4/0 y compara con 336.4…"></textarea>
       </div>
     </div>
