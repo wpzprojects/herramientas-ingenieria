@@ -367,7 +367,16 @@ td.wrap, th.wrap { white-space: normal; }
 .detail-row:first-child { border-top: none; }
 .detail-row .k { color: var(--text-muted); font-size: 0.92rem; font-weight: 600; }
 .detail-row .v { color: var(--text); font-size: 0.92rem; font-weight: 700; text-align: left; overflow-wrap: anywhere; }
-@media (max-width: 560px) { .detail-row { grid-template-columns: 45% 1fr; column-gap: var(--space-3); padding-left: var(--space-4); padding-right: var(--space-4); } }
+/* Pantallas estrechas: los valores son cortos y las etiquetas largas, asi que la columna de etiquetas se ajusta a la etiqueta
+   mas larga (con tope del 66%) y los valores se corren a la derecha lo necesario, para que se partan menos etiquetas.
+   Con subgrid todas las filas comparten esa misma columna; sin subgrid queda un reparto fijo. */
+@media (max-width: 560px) {
+  .detail-row { grid-template-columns: 60% 1fr; column-gap: var(--space-3); padding-left: var(--space-4); padding-right: var(--space-4); }
+  @supports (grid-template-columns: subgrid) {
+    .detail-list { display: grid; grid-template-columns: fit-content(66%) 1fr; column-gap: var(--space-3); }
+    .detail-row { grid-column: 1 / -1; grid-template-columns: subgrid; }
+  }
+}
 
 .empty-state { text-align: center; padding: var(--space-7) var(--space-4); color: var(--text-muted); }
 
