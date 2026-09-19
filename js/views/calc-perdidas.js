@@ -82,7 +82,7 @@ export async function render(container) {
 
     <form id="form-calc" novalidate>
       <div class="card form-section">
-        <div class="form-section-title">${icon("waveSine")} Datos de la línea</div>
+        <div class="form-section-title barra-media">${icon("circuitVoltmeter")} Datos de la línea</div>
         <div class="grid-2">
           <div class="field">
             <label for="f-tension">Tensión de línea (kV)</label>
@@ -168,8 +168,8 @@ export async function render(container) {
     const cont = document.createElement("div");
     cont.innerHTML = `
       <div class="card form-section tramo-block">
-        <div class="form-section-title">
-          ${icon("circuitResistor")} <span class="tramo-titulo">Conductor — Tramo 1</span>
+        <div class="form-section-title barra-tenue">
+          ${icon("plugConnected")} <span class="tramo-titulo">Conductor — Tramo 1</span>
           <button type="button" class="btn btn-ghost btn-tramo-quitar" hidden>${icon("close")} Quitar</button>
         </div>
         <div class="grid-2">
@@ -282,7 +282,7 @@ export async function render(container) {
   let siguienteId = 0;
 
   const filaAgregar = document.createElement("div");
-  filaAgregar.className = "btn-row";
+  filaAgregar.className = "btn-row fila-agregar";
   filaAgregar.innerHTML = `<button type="button" class="btn btn-agregar-tramo">${icon("plus")} Agregar tramo</button>`;
   filaAgregar.querySelector("button").addEventListener("click", () => agregarTramo());
 

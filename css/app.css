@@ -246,7 +246,7 @@ input:disabled, select:disabled { opacity: 0.55; }
 
 /* ---------- pantalla en tarjetas (Perdidas): titulo con icono, casilla junto al campo, tablas de resultado, formulas KaTeX ---------- */
 /* Barra de titulo de la tarjeta: de borde a borde, con el color atenuado del menu lateral (--accent-soft) y una linea delgada del color del tema */
-.form-section { padding-bottom: 20px; }
+.form-section { padding-bottom: 12px; }
 .form-section-title {
   display: flex; align-items: center; gap: var(--space-2);
   min-height: 48px; box-sizing: border-box;
@@ -263,6 +263,17 @@ input:disabled, select:disabled { opacity: 0.55; }
 /* `.btn.x` (no solo `.x`): la regla general `.btn` esta mas abajo en este archivo y, con la misma especificidad, ganaria */
 .btn.btn-tramo-quitar { margin-left: auto; padding: 2px 8px; font-size: 0.72rem; text-transform: none; letter-spacing: normal; }
 .btn.btn-agregar-tramo { padding: 8px 12px; }
+.form-section .fila-agregar { margin-top: 10px; } /* (dos clases: `.btn-row` esta mas abajo y ganaria) */
+/* PRUEBA de la linea inferior de la barra de titulo (tema oscuro): se dejan dos alternativas a la vista para elegir una y aplicarla a todas.
+   A (.barra-media): mitad de grosor. Una linea de 0.5px real desaparece en pantallas de densidad normal (se redondea a 0), asi que se
+      dibuja una de 1px escalada a la mitad: en pantallas densas es un hilo de 1 pixel fisico y en las normales queda suavizada (mas tenue).
+   B (.barra-tenue): mismo grosor, con 35 % menos de intensidad (color mezclado con el fondo de la barra). */
+.form-section-title.barra-media { border-bottom-color: transparent; position: relative; }
+.form-section-title.barra-media::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px;
+  background: var(--accent); transform: scaleY(0.5); transform-origin: bottom;
+}
+.form-section-title.barra-tenue { border-bottom-color: color-mix(in srgb, var(--accent) 65%, var(--accent-soft)); }
 .input-with-toggle { display: flex; align-items: center; gap: var(--space-3); }
 .input-with-toggle input[type="number"] { flex: 1 1 auto; min-width: 0; }
 .input-with-toggle .checkbox-row { white-space: nowrap; }

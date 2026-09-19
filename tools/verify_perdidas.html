@@ -151,6 +151,8 @@ await seccion("vista: aspecto de las tarjetas", async () => {
   const resolver = (variable) => { sonda.style.backgroundColor = `var(${variable})`; return getComputedStyle(sonda).backgroundColor; };
   const suave = resolver("--accent-soft");
   const acento = resolver("--accent");
+  sonda.style.borderBottomColor = "color-mix(in srgb, var(--accent) 65%, var(--accent-soft))";
+  const mezcla = getComputedStyle(sonda).borderBottomColor;
   sonda.remove();
   ok(suave !== acento && suave !== "rgba(0, 0, 0, 0)", `colores del tema resueltos (${suave} / ${acento})`);
 
@@ -169,6 +171,9 @@ await seccion("vista: aspecto de las tarjetas", async () => {
       fondo: cs.backgroundColor,
       lineaColor: cs.borderBottomColor,
       lineaGrosor: cs.borderBottomWidth,
+      clases: t.className,
+      despues: (({ transform, height, backgroundColor, position }) => ({ transform, height, backgroundColor, position }))(getComputedStyle(t, "::after")),
+      arribaBoton: card.querySelector(".fila-agregar")?.getBoundingClientRect().top,
       colorIcono: getComputedStyle(svg).color,
       // fin del contenido: el ultimo elemento de la tarjeta (en la ultima tarjeta es la fila del boton «Agregar tramo»)
       ultimoCampo: card.lastElementChild.getBoundingClientRect().bottom,
@@ -182,20 +187,26 @@ await seccion("vista: aspecto de las tarjetas", async () => {
     ok(Math.abs(rt.left - (rc.left + 1)) <= 0.6 && Math.abs(rt.right - (rc.right - 1)) <= 0.6, `«${nombre}»: la barra llega de borde a borde de la tarjeta`);
     ok(rt.top - rc.top <= 1.6, `«${nombre}»: la barra queda arriba, pegada al borde superior de la tarjeta`);
     ok(m.fondo === suave, `«${nombre}»: fondo con el color atenuado del tema`);
-    ok(m.lineaColor === acento && m.lineaGrosor === "1px", `«${nombre}»: línea inferior delgada con el color del tema`);
+    if (m.clases.includes("barra-media")) {
+      ok(m.lineaGrosor === "1px" && m.lineaColor === "rgba(0, 0, 0, 0)" && m.despues.position === "absolute" && m.despues.height === "1px" && m.despues.transform === "matrix(1, 0, 0, 0.5, 0, 0)" && m.despues.backgroundColor === acento, `«${nombre}»: prueba A: línea de 1px escalada a la mitad, con el color del tema (${m.despues.transform})`);
+    } else if (m.clases.includes("barra-tenue")) {
+      ok(m.lineaGrosor === "1px" && m.lineaColor === mezcla && m.lineaColor !== acento, `«${nombre}»: prueba B: misma línea con 35 % menos de intensidad (${m.lineaColor})`);
+    } else {
+      ok(m.lineaColor === acento && m.lineaGrosor === "1px", `«${nombre}»: línea inferior delgada con el color del tema`);
+    }
     ok(m.colorIcono === acento, `«${nombre}»: el icono lleva el color pleno del tema`);
     ok(Math.abs(ri.top + ri.height / 2 - centroBarra) <= 1, `«${nombre}»: icono centrado verticalmente en la barra (${(ri.top + ri.height / 2 - centroBarra).toFixed(1)} px)`);
     if (rTexto) ok(Math.abs(rTexto.top + rTexto.height / 2 - centroBarra) <= 1.5, `«${nombre}»: texto centrado verticalmente en la barra (${(rTexto.top + rTexto.height / 2 - centroBarra).toFixed(1)} px)`);
     const espacio = rc.bottom - m.ultimoCampo;
-    ok(espacio >= 15 && espacio <= 24, `«${nombre}»: margen justo bajo el último elemento (${espacio.toFixed(0)} px)`);
+    ok(espacio >= 8 && espacio <= 14, `«${nombre}»: margen compacto bajo el último elemento (${espacio.toFixed(0)} px)`);
     if (m.tieneBoton) {
-      const sep = m.ultimoCampo - m.finCampos; // = alto del boton + separacion sobre el
-      ok(sep > 0 && sep <= 16 + 45, `«${nombre}»: el botón «Agregar tramo» queda a poca distancia del último campo (${sep.toFixed(0)} px con el botón incluido)`);
+      const sep = m.arribaBoton - m.finCampos;
+      ok(sep >= 6 && sep <= 12, `«${nombre}»: el botón «Agregar tramo» queda pegado al último campo (${sep.toFixed(0)} px de separación)`);
     }
   }
   ok(new Set(medidas.map((m) => Math.round(m.rt.height))).size === 1, "todas las barras de título tienen la misma altura");
   const iconos = titulos.map((t) => t.querySelector("svg path").getAttribute("d"));
-  ok(iconos[0].startsWith("M21 12h-2c-.894") && iconos[1].startsWith("M2 12h2l2 -5l3 10"), "iconos de Tabler: onda senoidal (línea) y resistencia (conductor); ya no el rayo ni la calculadora");
+  ok(iconos[0].startsWith("M5 12a7 7 0 1 0 14 0") && iconos[1].startsWith("M7 12l5 5l-1.5 1.5"), "iconos de Tabler: voltímetro (línea) y cable enchufado (conductor)");
   const agregar = $$(".btn-agregar-tramo")[0];
   ok(texto(agregar) === "Agregar tramo", `el botón dice «${texto(agregar)}»`);
   const pad = getComputedStyle(agregar);
