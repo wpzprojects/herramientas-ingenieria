@@ -52,6 +52,11 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Iconos en `js/icons.js` deben calcarse trazo a trazo del path real de Tabler Icons, no
   aproximarse: un pequeño error en las coordenadas (p.ej. el icono `hash`, corregido el
   2026-09-17) deforma visualmente el símbolo.
+- Menú lateral: en pantallas anchas (>880px) se puede contraer con el botón de arriba de
+  "Cálculos" (queda una barra de 64px solo con iconos; estado en `localStorage.sidebarCollapsed`
+  y clase `sb-collapsed` en `<html>`). En móvil se ignora y se usa el cajón emergente. El orden
+  del menú (`sidebarLinks` en `js/nav.js`) es Cálculos, Catálogos, Normatividad, Funciones de IA,
+  Varios, Ayuda; el Home y Ayuda siguen el mismo orden.
 - Modo oscuro: `--bg` es `#0f0f0f` (antes `#1e1e1e`, se oscureció ~50% el 2026-09-17).
 
 ## Verificación visual de cambios de UI

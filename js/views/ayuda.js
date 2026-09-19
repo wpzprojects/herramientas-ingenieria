@@ -4,7 +4,7 @@
 
 import { sectionMenus, sectionMeta } from "../nav.js";
 
-const SECCIONES = ["calculos", "catalogos", "normatividad", "varios", "ia"];
+const SECCIONES = ["calculos", "catalogos", "normatividad", "ia", "varios"];
 const APP_VERSION = "1.0.0";
 
 export function render(container) {

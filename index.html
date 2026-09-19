@@ -18,6 +18,8 @@
       var saved = localStorage.getItem("theme");
       var theme = saved || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
       document.documentElement.setAttribute("data-theme", theme);
+      // menu lateral contraido (solo aplica en pantallas anchas): se aplica antes del primer pintado para evitar parpadeo
+      if (localStorage.getItem("sidebarCollapsed") === "1") document.documentElement.classList.add("sb-collapsed");
     } catch (e) {}
   })();
 </script>
@@ -38,6 +40,9 @@
   </header>
   <div class="app-body">
     <nav class="sidebar" id="sidebar" aria-label="Navegación principal">
+      <div class="sidebar-head">
+        <button type="button" class="icon-btn sidebar-collapse-btn" id="sidebar-collapse" aria-controls="nav-list"></button>
+      </div>
       <ul class="nav-list" id="nav-list"></ul>
     </nav>
     <div class="sidebar-backdrop" id="sidebar-backdrop"></div>

@@ -45,17 +45,43 @@ prefersDark.addEventListener("change", () => {
   if (!localStorage.getItem(THEME_KEY)) applyTheme(systemTheme());
 });
 
+// title: con el menu contraido (solo iconos) sirve de tooltip
 navList.innerHTML = sidebarLinks
   .map(
     (link) => `
     <li>
-      <a class="nav-link" data-key="${link.key}" href="${link.hash}">
+      <a class="nav-link" data-key="${link.key}" href="${link.hash}" title="${link.title}">
         <span class="nav-icon">${icon(link.icon)}</span>
-        <span>${link.title}</span>
+        <span class="nav-label">${link.title}</span>
       </a>
     </li>`
   )
   .join("");
+
+// --- Menu lateral contraible (solo pantallas anchas; en movil se mantiene el cajon emergente) ---
+const SIDEBAR_KEY = "sidebarCollapsed";
+const collapseBtn = document.getElementById("sidebar-collapse");
+
+function applySidebarCollapsed(collapsed) {
+  document.documentElement.classList.toggle("sb-collapsed", collapsed);
+  collapseBtn.innerHTML = icon(collapsed ? "sidebarExpand" : "sidebarCollapse");
+  const label = collapsed ? "Expandir menú" : "Contraer menú";
+  collapseBtn.setAttribute("aria-label", label);
+  collapseBtn.setAttribute("title", label);
+  collapseBtn.setAttribute("aria-expanded", String(!collapsed));
+}
+
+applySidebarCollapsed(document.documentElement.classList.contains("sb-collapsed"));
+
+collapseBtn.addEventListener("click", () => {
+  const next = !document.documentElement.classList.contains("sb-collapsed");
+  try {
+    localStorage.setItem(SIDEBAR_KEY, next ? "1" : "0");
+  } catch (e) {
+    /* sin storage: el estado solo dura la sesion */
+  }
+  applySidebarCollapsed(next);
+});
 
 function setActiveLink(path) {
   const section = path.split("/").filter(Boolean)[0] || "";

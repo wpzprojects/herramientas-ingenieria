@@ -5,8 +5,8 @@ export const sidebarLinks = [
   { key: "calculos", title: "Cálculos", icon: "calculator", hash: "#/calculos" },
   { key: "catalogos", title: "Catálogos", icon: "book", hash: "#/catalogos" },
   { key: "normatividad", title: "Normatividad", icon: "archive", hash: "#/normatividad" },
-  { key: "varios", title: "Varios", icon: "grid", hash: "#/varios" },
   { key: "ia", title: "Funciones de IA", icon: "sparkles", hash: "#/ia" },
+  { key: "varios", title: "Varios", icon: "grid", hash: "#/varios" },
   { key: "ayuda", title: "Ayuda", icon: "help", hash: "#/ayuda" },
 ];
 

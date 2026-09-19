@@ -24,16 +24,16 @@ const TILES = [
     hash: "#/normatividad",
   },
   {
-    title: "Varios",
-    desc: "Codificación de entregables, coordenadas y conversión de unidades.",
-    icon: "grid",
-    hash: "#/varios",
-  },
-  {
     title: "Funciones de IA",
     desc: "Análisis de escenarios con las calculadoras y corrección de redacción (Gemini).",
     icon: "sparkles",
     hash: "#/ia",
+  },
+  {
+    title: "Varios",
+    desc: "Codificación de entregables, coordenadas y conversión de unidades.",
+    icon: "grid",
+    hash: "#/varios",
   },
 ];
 
