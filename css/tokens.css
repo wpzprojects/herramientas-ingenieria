@@ -47,7 +47,7 @@
   --focus-ring: #0e7c7b;
   color-scheme: light;
 
-  --topbar-bg: linear-gradient(135deg, #0e7c7b, #0a5f5e);
+  --topbar-bg: #0a5f5e;
   --topbar-text: #ffffff;
   --topbar-hover: rgba(255, 255, 255, 0.16);
   --topbar-border: transparent;
