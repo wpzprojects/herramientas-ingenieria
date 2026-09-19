@@ -139,13 +139,14 @@ export async function render(container, params) {
     el("h1", { class: "page-title" }, titulo)
   );
 
-  const grid = el("div", { class: "detail-grid" });
+  // Lista de filas (etiqueta a la izquierda, valor a la derecha). Los campos vacios no se muestran.
+  const lista = el("div", { class: "detail-list" });
   cfg.campos.forEach((f) => {
     const value = row[f.key];
     if (value === null || value === undefined || value === "") return;
     const display = typeof value === "number" ? fmt(value, 2) : String(value);
-    grid.append(el("div", { class: "detail-item" }, [el("span", { class: "k" }, f.label), el("span", { class: "v" }, display)]));
+    lista.append(el("div", { class: "detail-row" }, [el("span", { class: "k" }, f.label), el("span", { class: "v" }, display)]));
   });
 
-  container.append(el("div", { class: "card" }, grid));
+  container.append(el("div", { class: "card detail-list-card" }, lista));
 }
