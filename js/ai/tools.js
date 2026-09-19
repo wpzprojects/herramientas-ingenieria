@@ -11,8 +11,9 @@
 // (busqueda del conductor en el catalogo, valores por defecto, etc.).
 
 import { loadData, distinct } from "../util/format.js";
-import { calcularPerdidas } from "../calc/perdidas.js";
-import { calcularRegulacion } from "../calc/regulacion.js";
+import { calcularPerdidasTramos, clasificarPerdidas, UMBRAL_OPTIMO_PCT as P_OPT, UMBRAL_ACEPTABLE_PCT as P_ACE } from "../calc/perdidas-tramos.js";
+import { calcularRegulacionTramos, clasificarRegulacion, UMBRAL_OPTIMO_PCT as R_OPT, UMBRAL_ACEPTABLE_PCT as R_ACE } from "../calc/regulacion-tramos.js";
+import { potenciaActivaMw } from "../calc/circuito.js";
 import { calcularCortocircuito } from "../calc/cortocircuito.js";
 import { calcularAmpacidadAerea } from "../calc/ampacidad-aerea.js";
 import { calcularAmpacidadSubterranea } from "../calc/ampacidad-subterranea.js";
@@ -61,7 +62,7 @@ function esquemaDe(campos) {
     }
     const p = { type: c.t, description: desc };
     if (c.enum) p.enum = c.enum;
-    if (c.t === "array") p.items = { type: c.items };
+    if (c.t === "array") p.items = c.itemCampos ? esquemaDe(c.itemCampos) : { type: c.items };
     properties[c.n] = p;
   }
   const required = campos.filter((c) => c.req).map((c) => c.n);
@@ -115,7 +116,20 @@ function normalizar(campos, args) {
         errores.push(`"${c.n}" debe ser una lista`);
         continue;
       }
-      v[c.n] = raw;
+      if (c.itemCampos) {
+        const items = [];
+        raw.forEach((it, i) => {
+          try {
+            items.push(normalizar(c.itemCampos, it).v);
+          } catch (e) {
+            if (!(e instanceof ErrorHerramienta)) throw e;
+            errores.push(`${c.n}[${i + 1}]: ${e.message.replace(/^Parámetros inválidos: /, "").replace(/\.$/, "")}`);
+          }
+        });
+        v[c.n] = items;
+      } else {
+        v[c.n] = raw;
+      }
     } else {
       const texto = String(raw).trim();
       if (c.enum) {
@@ -211,86 +225,181 @@ async function resistencia75(v, extra) {
 
 // ---------------------------------------------------------------- calculadoras
 
+const MAX_TRAMOS = 10;
+const sinDefecto = (campos) => campos.map(({ defecto, req, ...c }) => c);
+
 const CAMPOS_LINEA = [
   N("tension_kv", "Tensión línea-línea", { u: "kV", req: true, min: 0, minExcl: true }),
-  N("potencia_mw", "Potencia activa", { u: "MW", req: true, min: 0, minExcl: true }),
-  N("factor_potencia", "Factor de potencia (cos φ). Si solo se conoce la potencia aparente en MVA, usa esa potencia con factor 1", { e: "Factor de potencia", req: true, min: 0, minExcl: true, max: 1 }),
-  N("longitud_km", "Longitud de la línea", { u: "km", req: true, min: 0, minExcl: true }),
+  N("factor_potencia", "Factor de potencia (cos φ)", { e: "Factor de potencia", req: true, min: 0, minExcl: true, max: 1 }),
+  N("potencia_mw", "DATO DE PARTIDA (indica solo uno de los tres): potencia activa", { u: "MW", min: 0, minExcl: true }),
+  N("potencia_mva", "DATO DE PARTIDA (alternativa): potencia aparente; la activa es S·cos φ", { u: "MVA", min: 0, minExcl: true }),
+  N("corriente_a", "DATO DE PARTIDA (alternativa): corriente de línea; la activa es √3·V·I·cos φ", { u: "A", min: 0, minExcl: true }),
+  N("longitud_km", "Longitud de la línea (un solo tramo; con varios tramos va dentro de cada uno de \"tramos\")", { u: "km", min: 0, minExcl: true }),
 ];
 const CAMPO_R_MANUAL = N("resistencia_ohm_km", "Resistencia AC a 75 °C del conductor (opcional: reemplaza al catálogo)", { u: "Ω/km", min: 0, max: 10000, oculto: true });
+const CAMPO_POR_FASE = I("conductores_por_fase", "Conductores por fase (haz); la resistencia efectiva es R/N (por defecto 1)", { min: 1, max: 6, oculto: true });
+
+/** Campo `tramos`: lista de tramos; cada dato que un tramo no trae lo toma del nivel superior (sirve de valor común). */
+const campoTramos = (campos) => ({
+  n: "tramos",
+  t: "array",
+  d: `Solo con VARIOS tramos en serie (hasta ${MAX_TRAMOS}), cada uno con su conductor y su longitud; lo que un tramo no indique se toma del nivel superior. La corriente es la misma en todos y el resultado total es la suma de los tramos`,
+  itemCampos: sinDefecto(campos),
+});
+
+/** Dato de partida: exactamente uno de potencia_mw, potencia_mva o corriente_a. Devuelve la potencia activa (MW). */
+function datoPartida(v) {
+  const dados = ["potencia_mw", "potencia_mva", "corriente_a"].filter((k) => v[k] !== undefined);
+  if (dados.length !== 1) {
+    throw new ErrorHerramienta(
+      dados.length ? `Indica solo UN dato de partida (recibí ${dados.join(", ")}).` : 'Falta el dato de partida: indica "potencia_mw" (potencia activa), "potencia_mva" (aparente) o "corriente_a".'
+    );
+  }
+  const modo = { potencia_mw: "potencia", potencia_mva: "aparente", corriente_a: "corriente" }[dados[0]];
+  const potenciaMw = potenciaActivaMw({ modo, potenciaMw: v.potencia_mw, potenciaMva: v.potencia_mva, corrienteA: v.corriente_a, tensionKv: v.tension_kv, factorPotencia: v.factor_potencia });
+  return { modo, potenciaMw };
+}
+
+/** Lista de tramos con lo heredable del nivel superior; sin `tramos` es un solo tramo con los datos superiores. */
+const listaTramos = (v, heredables) =>
+  (v.tramos?.length ? v.tramos : [{}]).map((t) => Object.fromEntries(heredables.map((k) => [k, t[k] ?? v[k]])));
+
+/** Copia lo que se anotó al resolver el tramo i (de n) con «Tramo i — » delante si hay varios. */
+function volcarTramo(extra, sub, i, n) {
+  const pre = n > 1 ? `Tramo ${i + 1} — ` : "";
+  for (const e of sub.entradas) extra.entradas.push(n > 1 ? { ...e, clave: `tramo${i + 1}_${e.clave}`, etiqueta: pre + e.etiqueta } : e);
+  extra.supuestos.push(...sub.supuestos.map((x) => pre + x));
+  extra.notas.push(...sub.notas.map((x) => pre + x));
+}
+
+const subNuevo = () => ({ entradas: [], supuestos: [], notas: [] });
+const enTramo = (i, n) => (n > 1 ? ` en el tramo ${i + 1}` : "");
+
+const HEREDABLES_PERDIDAS = ["red", "material", "calibre", "referencia", "resistencia_ohm_km", "longitud_km", "conductores_por_fase"];
+const CAMPOS_TRAMO_PERDIDAS = [...CAMPOS_CONDUCTOR, CAMPO_R_MANUAL, CAMPO_POR_FASE, N("longitud_km", "Longitud del tramo", { u: "km", min: 0, minExcl: true })];
+
+const nota = (optimo, aceptable, que) => `Referencias de diseño (NO son límite normativo): ${que} hasta ${optimo} % es óptimo, hasta ${aceptable} % es aceptable y por encima es elevado.`;
 
 const T_PERDIDAS = {
   nombre: "calcular_perdidas",
   tipo: "calculo",
   titulo: "Pérdidas",
   descripcion:
-    "Calcula corriente, potencias aparente/reactiva y el % de pérdidas por efecto Joule de una línea trifásica, ajustado por factor de carga. " +
-    "El conductor se define con red+material+calibre (resistencia AC a 75 °C del catálogo) o con resistencia_ohm_km manual.",
-  campos: [...CAMPOS_LINEA, N("factor_carga", "Factor de carga Fc", { req: true, min: 0, max: 1 }), ...CAMPOS_CONDUCTOR, CAMPO_R_MANUAL],
+    "Calcula corriente, potencias aparente/reactiva y el % de pérdidas por efecto Joule de una línea trifásica de uno o varios tramos, ajustado por factor de carga, y las clasifica como Óptimo / Aceptable / Elevado (referencias de diseño, no límite normativo). " +
+    "El dato de partida es potencia_mw, potencia_mva o corriente_a (uno solo). El conductor de cada tramo se define con red+material+calibre (resistencia AC a 75 °C del catálogo) o con resistencia_ohm_km manual; con varios conductores por fase usa conductores_por_fase. " +
+    "Para un solo tramo basta con los campos de nivel superior; para varios tramos en serie usa \"tramos\".",
+  campos: [...CAMPOS_LINEA, N("factor_carga", "Factor de carga Fc", { req: true, min: 0, max: 1 }), ...CAMPOS_CONDUCTOR, CAMPO_R_MANUAL, CAMPO_POR_FASE, campoTramos(CAMPOS_TRAMO_PERDIDAS)],
   async calcular(v, extra) {
-    const { r75 } = await resistencia75(v, extra);
-    const r = calcularPerdidas({
-      tensionLineaKv: v.tension_kv,
-      potenciaActivaMw: v.potencia_mw,
-      factorPotencia: v.factor_potencia,
-      resistenciaOhmKm: r75,
-      longitudKm: v.longitud_km,
-      factorCarga: v.factor_carga,
-    });
-    return [
+    const { modo, potenciaMw } = datoPartida(v);
+    const lista = listaTramos(v, HEREDABLES_PERDIDAS);
+    const n = lista.length;
+    const tramos = [];
+    for (const [i, t] of lista.entries()) {
+      if (t.longitud_km === undefined) throw new ErrorHerramienta(`Falta "longitud_km"${enTramo(i, n)}.`);
+      const sub = subNuevo();
+      const { r75 } = await resistencia75(t, sub);
+      const porFase = t.conductores_por_fase ?? 1;
+      if (porFase > 1) sub.entradas.push(ent("conductores_por_fase", "Conductores por fase", porFase));
+      if (n > 1) sub.entradas.push(ent("longitud_km", "Longitud", t.longitud_km, "km"));
+      volcarTramo(extra, sub, i, n);
+      tramos.push({ resistenciaOhmKm: r75, longitudKm: t.longitud_km, numConductoresPorFase: porFase });
+    }
+    const r = calcularPerdidasTramos({ tensionLineaKv: v.tension_kv, potenciaActivaMw: potenciaMw, factorPotencia: v.factor_potencia, factorCarga: v.factor_carga }, tramos);
+    extra.notas.push(nota(P_OPT, P_ACE, "las pérdidas"));
+    const salida = [
       res("corriente_a", "Corriente", r.corriente, "A"),
       res("potencia_aparente_mva", "Potencia aparente", r.potenciaS, "MVA"),
       res("potencia_reactiva_mvar", "Potencia reactiva", r.potenciaQ, "MVAR"),
-      res("perdidas_pct", "Pérdidas", r.perdidasPct, "%"),
     ];
+    if (modo !== "potencia") salida.push(res("potencia_activa_mw", "Potencia activa", potenciaMw, "MW"));
+    salida.push(res("perdidas_pct", n > 1 ? "Pérdidas totales" : "Pérdidas", r.perdidasPct, "%"), res("perdidas_mw", n > 1 ? "Pérdidas totales de potencia" : "Pérdidas de potencia", r.perdidasMw, "MW", 4));
+    if (n > 1) {
+      r.tramos.forEach((f, i) => salida.push(res(`tramo${i + 1}_perdidas_pct`, `Tramo ${i + 1} — Pérdidas`, f.perdidasPct, "%"), res(`tramo${i + 1}_perdidas_mw`, `Tramo ${i + 1} — Pérdidas de potencia`, f.perdidasMw, "MW", 4)));
+    }
+    salida.push(res("clasificacion", "Clasificación (referencia de diseño)", clasificarPerdidas(r.perdidasPct).etiqueta));
+    return salida;
   },
 };
+
+const HEREDABLES_REGULACION = [...HEREDABLES_PERDIDAS, "rmg_m", "dab_m", "dac_m", "dbc_m", "separacion_haz_m"];
+const CAMPOS_TRAMO_REGULACION = [
+  ...CAMPOS_TRAMO_PERDIDAS,
+  N("rmg_m", "Radio medio geométrico de UN conductor (opcional: reemplaza al catálogo)", { u: "m", min: 0, minExcl: true, oculto: true }),
+  N("separacion_haz_m", "Separación entre subconductores del haz (obligatoria con más de 1 conductor por fase)", { u: "m", min: 0, minExcl: true, oculto: true }),
+  N("dab_m", "Distancia entre fases A-B del tramo", { u: "m", min: 0, minExcl: true }),
+  N("dac_m", "Distancia entre fases A-C del tramo", { u: "m", min: 0, minExcl: true }),
+  N("dbc_m", "Distancia entre fases B-C del tramo", { u: "m", min: 0, minExcl: true }),
+];
 
 const T_REGULACION = {
   nombre: "calcular_regulacion",
   tipo: "calculo",
   titulo: "Regulación",
   descripcion:
-    "Calcula la caída de tensión (%) de una línea trifásica, con corriente, potencias y constante de regulación. " +
-    "El conductor se define con red+material+calibre (resistencia y radio medio geométrico del catálogo) o con valores manuales.",
+    "Calcula la caída de tensión (%) de una línea trifásica de uno o varios tramos, con corriente, potencias y constante de regulación, y la clasifica como Óptimo / Aceptable / Elevado (referencias de diseño, no límite normativo). " +
+    "El dato de partida es potencia_mw, potencia_mva o corriente_a (uno solo). El conductor de cada tramo se define con red+material+calibre (resistencia y radio medio geométrico del catálogo) o con valores manuales; con varios conductores por fase usa conductores_por_fase y separacion_haz_m. " +
+    "Para un solo tramo basta con los campos de nivel superior; para varios tramos en serie usa \"tramos\" (cada uno con su longitud, conductor y distancias entre fases).",
   campos: [
     ...CAMPOS_LINEA,
     ...CAMPOS_CONDUCTOR,
     CAMPO_R_MANUAL,
-    N("rmg_m", "Radio medio geométrico del conductor (opcional: reemplaza al catálogo)", { u: "m", min: 0, minExcl: true, oculto: true }),
+    CAMPO_POR_FASE,
+    N("rmg_m", "Radio medio geométrico de UN conductor (opcional: reemplaza al catálogo)", { u: "m", min: 0, minExcl: true, oculto: true }),
+    N("separacion_haz_m", "Separación entre subconductores del haz (obligatoria con más de 1 conductor por fase)", { u: "m", min: 0, minExcl: true, oculto: true }),
     N("dab_m", "Distancia entre fases A-B", { u: "m", min: 0, minExcl: true, defecto: 2 }),
     N("dac_m", "Distancia entre fases A-C", { u: "m", min: 0, minExcl: true, defecto: 2.84 }),
     N("dbc_m", "Distancia entre fases B-C", { u: "m", min: 0, minExcl: true, defecto: 0.84 }),
+    campoTramos(CAMPOS_TRAMO_REGULACION),
   ],
   async calcular(v, extra) {
-    const { r75, fila } = await resistencia75(v, extra);
-    let rmgM = v.rmg_m;
-    if (rmgM === undefined) {
-      if (!fila) throw new ErrorHerramienta('Con "resistencia_ohm_km" manual también debes indicar "rmg_m" (radio medio geométrico en metros).');
-      rmgM = fila.radio_medio_geometrico_mm / 1000;
-      if (!Number.isFinite(rmgM) || rmgM <= 0) throw new ErrorHerramienta('El conductor no tiene radio medio geométrico en el catálogo; indica "rmg_m".');
-      extra.entradas.push(ent("rmg_m", "Radio medio geométrico (catálogo)", rmgM, "m"));
-    } else {
-      extra.entradas.push(ent("rmg_m", "Radio medio geométrico (manual)", rmgM, "m"));
+    const { modo, potenciaMw } = datoPartida(v);
+    const lista = listaTramos(v, HEREDABLES_REGULACION);
+    const n = lista.length;
+    const tramos = [];
+    for (const [i, t] of lista.entries()) {
+      if (t.longitud_km === undefined) throw new ErrorHerramienta(`Falta "longitud_km"${enTramo(i, n)}.`);
+      const sub = subNuevo();
+      const { r75, fila } = await resistencia75(t, sub);
+      let rmgM = t.rmg_m;
+      if (rmgM === undefined) {
+        if (!fila) throw new ErrorHerramienta(`Con "resistencia_ohm_km" manual también debes indicar "rmg_m" (radio medio geométrico en metros)${enTramo(i, n)}.`);
+        rmgM = fila.radio_medio_geometrico_mm / 1000;
+        if (!Number.isFinite(rmgM) || rmgM <= 0) throw new ErrorHerramienta(`El conductor no tiene radio medio geométrico en el catálogo; indica "rmg_m"${enTramo(i, n)}.`);
+        sub.entradas.push(ent("rmg_m", "Radio medio geométrico (catálogo)", rmgM, "m"));
+      } else {
+        sub.entradas.push(ent("rmg_m", "Radio medio geométrico (manual)", rmgM, "m"));
+      }
+      const porFase = t.conductores_por_fase ?? 1;
+      if (porFase > 1) {
+        if (t.separacion_haz_m === undefined) throw new ErrorHerramienta(`Con más de 1 conductor por fase indica "separacion_haz_m" (separación entre subconductores, en m)${enTramo(i, n)}.`);
+        sub.entradas.push(ent("conductores_por_fase", "Conductores por fase", porFase), ent("separacion_haz_m", "Separación entre subconductores del haz", t.separacion_haz_m, "m"));
+      }
+      if (n > 1) sub.entradas.push(ent("longitud_km", "Longitud", t.longitud_km, "km"), ent("dab_m", "Distancia A-B", t.dab_m, "m"), ent("dac_m", "Distancia A-C", t.dac_m, "m"), ent("dbc_m", "Distancia B-C", t.dbc_m, "m"));
+      volcarTramo(extra, sub, i, n);
+      tramos.push({ resistenciaOhmKm: r75, rmgMm: rmgM * 1000, longitudKm: t.longitud_km, dabM: t.dab_m, dacM: t.dac_m, dbcM: t.dbc_m, numConductoresPorFase: porFase, separacionHazM: t.separacion_haz_m });
     }
-    const r = calcularRegulacion({
-      tensionLineaKv: v.tension_kv,
-      potenciaActivaMw: v.potencia_mw,
-      factorPotencia: v.factor_potencia,
-      longitudKm: v.longitud_km,
-      resistenciaOhmKm: r75,
-      rmgM,
-      dabM: v.dab_m,
-      dacM: v.dac_m,
-      dbcM: v.dbc_m,
-    });
-    return [
+    const r = calcularRegulacionTramos({ tensionLineaKv: v.tension_kv, potenciaActivaMw: potenciaMw, factorPotencia: v.factor_potencia }, tramos);
+    extra.notas.push(nota(R_OPT, R_ACE, "la caída de tensión"));
+    const salida = [
       res("corriente_a", "Corriente", r.corriente, "A"),
       res("potencia_aparente_mva", "Potencia aparente", r.potenciaS, "MVA"),
       res("potencia_reactiva_mvar", "Potencia reactiva", r.potenciaQ, "MVAR"),
-      res("constante_regulacion", "Constante de regulación", r.constanteRegulacion, "", 7),
-      res("caida_tension_pct", "Caída de tensión", r.caidaTensionPct, "%"),
     ];
+    if (modo !== "potencia") salida.push(res("potencia_activa_mw", "Potencia activa", potenciaMw, "MW"));
+    if (n === 1) salida.push(res("constante_regulacion", "Constante de regulación", r.tramos[0].constanteRegulacion, "", 7));
+    salida.push(res("caida_tension_pct", n > 1 ? "Caída de tensión total" : "Caída de tensión", r.caidaTensionPct, "%"));
+    if (n > 1) {
+      r.tramos.forEach((f, i) => salida.push(res(`tramo${i + 1}_constante_regulacion`, `Tramo ${i + 1} — Constante de regulación`, f.constanteRegulacion, "", 7), res(`tramo${i + 1}_caida_tension_pct`, `Tramo ${i + 1} — Caída de tensión`, f.caidaTensionPct, "%")));
+    }
+    r.tramos.forEach((f, i) => {
+      if ((tramos[i].numConductoresPorFase ?? 1) > 1) {
+        const pre = n > 1 ? `Tramo ${i + 1} — ` : "";
+        const cl = n > 1 ? `tramo${i + 1}_` : "";
+        salida.push(res(`${cl}resistencia_efectiva_ohm_km`, `${pre}Resistencia efectiva del haz`, f.resistenciaEfectivaOhmKm, "Ω/km", 4), res(`${cl}rmg_efectivo_mm`, `${pre}RMG equivalente del haz`, f.rmgEfectivoMm, "mm", 3));
+      }
+    });
+    salida.push(res("clasificacion", "Clasificación (referencia de diseño)", clasificarRegulacion(r.caidaTensionPct).etiqueta));
+    return salida;
   },
 };
 

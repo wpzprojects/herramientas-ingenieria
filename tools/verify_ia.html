@@ -317,11 +317,90 @@ await seccion("tools: ocupación de ductos", async () => {
   ok(r.ok === true && ctx2.log[0].entradas.some((e) => e.clave === "diametro_tubo_mm" && e.valor > 90), `tubería 4" de catálogo (${r.error || "ok"})`);
 });
 
+await seccion("tools: pérdidas y regulación con varios tramos, dato de partida y haz", async () => {
+  const pt = await import("../js/calc/perdidas-tramos.js");
+  const rt = await import("../js/calc/regulacion-tramos.js");
+  const r4 = ACSR_4_0.r_ac_75c_ohm_km;
+  const rmg4 = ACSR_4_0.radio_medio_geometrico_mm;
+  const val = (ctx, clave) => ctx.log.at(-1).resultados.find((x) => x.clave === clave)?.valor;
+  const base = { tension_kv: 34.5, factor_potencia: 0.95, factor_carga: 0.564, red: "Aerea", material: "ACSR", calibre: "4/0" };
+
+  // --- dato de partida
+  let ctx = ctxNuevo();
+  const a = await tools.ejecutarLlamada("calcular_perdidas", { ...base, potencia_mva: 10, longitud_km: 5 }, ctx);
+  const pAct = 10 * 0.95;
+  const espA = pt.calcularPerdidasTramos({ tensionLineaKv: 34.5, potenciaActivaMw: pAct, factorPotencia: 0.95, factorCarga: 0.564 }, [{ resistenciaOhmKm: r4, longitudKm: 5 }]);
+  ok(a.ok === true, "pérdidas con potencia aparente (MVA) como dato de partida");
+  cerca(val(ctx, "perdidas_pct"), espA.perdidasPct, 1e-9, "MVA: pérdidas % = potencia activa S·cosφ en el motor de tramos");
+  cerca(val(ctx, "potencia_activa_mw"), pAct, 1e-9, "MVA: la potencia activa sale en los resultados");
+  ctx = ctxNuevo();
+  await tools.ejecutarLlamada("calcular_perdidas", { ...base, corriente_a: 200, longitud_km: 5 }, ctx);
+  cerca(val(ctx, "potencia_activa_mw"), (Math.sqrt(3) * 34.5 * 200 * 0.95) / 1000, 1e-9, "corriente en A: potencia activa √3·V·I·cosφ");
+  cerca(val(ctx, "corriente_a"), 200, 1e-9, "corriente en A: la corriente calculada vuelve a dar 200 A");
+  ctx = ctxNuevo();
+  const b = await tools.ejecutarLlamada("calcular_perdidas", { ...base, potencia_mw: 9, corriente_a: 100, longitud_km: 5 }, ctx);
+  ok(b.ok === false && b.error.includes("solo UN dato de partida"), "dos datos de partida: error claro");
+  const c = await tools.ejecutarLlamada("calcular_regulacion", { ...base, longitud_km: 5 }, ctxNuevo());
+  ok(c.ok === false && c.error.includes("potencia_mva") && c.error.includes("corriente_a"), "sin dato de partida: el error lista las tres opciones");
+
+  // --- varios tramos en serie
+  ctx = ctxNuevo();
+  const m = await tools.ejecutarLlamada("calcular_perdidas", { ...base, potencia_mw: 9.9, tramos: [{ longitud_km: 3 }, { longitud_km: 2, calibre: "1/0" }] }, ctx);
+  const r1_0 = desnudos.find((c) => c.tipo === "ACSR" && c.calibre_awg_kcmil === "1/0").r_ac_75c_ohm_km;
+  const espM = pt.calcularPerdidasTramos({ tensionLineaKv: 34.5, potenciaActivaMw: 9.9, factorPotencia: 0.95, factorCarga: 0.564 }, [{ resistenciaOhmKm: r4, longitudKm: 3 }, { resistenciaOhmKm: r1_0, longitudKm: 2 }]);
+  ok(m.ok === true, "pérdidas con dos tramos (el segundo cambia de calibre)");
+  cerca(val(ctx, "perdidas_pct"), espM.perdidasPct, 1e-9, "dos tramos: el % total es la suma de los tramos");
+  cerca(val(ctx, "tramo1_perdidas_pct"), espM.tramos[0].perdidasPct, 1e-9, "dos tramos: pérdidas del tramo 1");
+  cerca(val(ctx, "tramo2_perdidas_pct"), espM.tramos[1].perdidasPct, 1e-9, "dos tramos: pérdidas del tramo 2 (calibre propio)");
+  cerca(val(ctx, "perdidas_mw"), espM.perdidasMw, 1e-9, "dos tramos: pérdidas totales en MW");
+  ok(ctx.log.at(-1).entradas.some((e) => e.etiqueta.startsWith("Tramo 2 — ")), "las entradas del log llevan «Tramo N —» cuando hay varios");
+  ok(val(ctx, "clasificacion") === pt.clasificarPerdidas(espM.perdidasPct).etiqueta, "la clasificación es la de la pantalla (Óptimo / Aceptable / Elevado)");
+  ok(ctx.log.at(-1).notas.some((n) => n.includes("NO son límite normativo") && n.includes("1 %") && n.includes("3 %")), "una nota entrega las referencias de diseño (1 % / 3 %) y aclara que no son norma");
+  const sinLong = await tools.ejecutarLlamada("calcular_perdidas", { ...base, potencia_mw: 9.9, tramos: [{ longitud_km: 3 }, {}] }, ctxNuevo());
+  ok(sinLong.ok === false && sinLong.error.includes("tramo 2"), "tramo sin longitud: el error dice cuál");
+  const malo = await tools.ejecutarLlamada("calcular_perdidas", { ...base, potencia_mw: 9.9, tramos: [{ longitud_km: -1 }] }, ctxNuevo());
+  ok(malo.ok === false && malo.error.includes("tramos[1]") && malo.error.includes("longitud_km"), "dato inválido dentro de un tramo: el error dice tramos[1]");
+
+  // --- conductores por fase (haz)
+  ctx = ctxNuevo();
+  await tools.ejecutarLlamada("calcular_perdidas", { ...base, potencia_mw: 9.9, longitud_km: 5, conductores_por_fase: 2 }, ctx);
+  const esp2 = pt.calcularPerdidasTramos({ tensionLineaKv: 34.5, potenciaActivaMw: 9.9, factorPotencia: 0.95, factorCarga: 0.564 }, [{ resistenciaOhmKm: r4, longitudKm: 5, numConductoresPorFase: 2 }]);
+  cerca(val(ctx, "perdidas_pct"), esp2.perdidasPct, 1e-9, "2 conductores por fase: resistencia R/2 (pérdidas a la mitad)");
+
+  // --- regulación
+  ctx = ctxNuevo();
+  await tools.ejecutarLlamada("calcular_regulacion", { tension_kv: 34.5, factor_potencia: 0.95, potencia_mw: 9.9, red: "Aerea", material: "ACSR", calibre: "4/0", tramos: [{ longitud_km: 3 }, { longitud_km: 2, dab_m: 1.5, dac_m: 1.5, dbc_m: 1.5 }] }, ctx);
+  const espR = rt.calcularRegulacionTramos({ tensionLineaKv: 34.5, potenciaActivaMw: 9.9, factorPotencia: 0.95 }, [
+    { resistenciaOhmKm: r4, rmgMm: rmg4, longitudKm: 3, dabM: 2, dacM: 2.84, dbcM: 0.84 },
+    { resistenciaOhmKm: r4, rmgMm: rmg4, longitudKm: 2, dabM: 1.5, dacM: 1.5, dbcM: 1.5 },
+  ]);
+  cerca(val(ctx, "caida_tension_pct"), espR.caidaTensionPct, 1e-9, "regulación con dos tramos: caída total = suma (cada uno con su disposición de fases)");
+  cerca(val(ctx, "tramo2_caida_tension_pct"), espR.tramos[1].caidaTensionPct, 1e-9, "regulación: caída del tramo 2 con sus propias distancias");
+  ok(val(ctx, "clasificacion") === rt.clasificarRegulacion(espR.caidaTensionPct).etiqueta, "regulación: clasificación de la pantalla");
+  ctx = ctxNuevo();
+  const h = await tools.ejecutarLlamada("calcular_regulacion", { tension_kv: 34.5, factor_potencia: 0.95, corriente_a: 250, red: "Aerea", material: "ACSR", calibre: "4/0", longitud_km: 8, conductores_por_fase: 2, separacion_haz_m: 0.4 }, ctx);
+  const espH = rt.calcularRegulacionTramos({ tensionLineaKv: 34.5, potenciaActivaMw: (Math.sqrt(3) * 34.5 * 250 * 0.95) / 1000, factorPotencia: 0.95 }, [{ resistenciaOhmKm: r4, rmgMm: rmg4, longitudKm: 8, dabM: 2, dacM: 2.84, dbcM: 0.84, numConductoresPorFase: 2, separacionHazM: 0.4 }]);
+  ok(h.ok === true, "regulación con haz de 2 conductores y dato de partida en A");
+  cerca(val(ctx, "caida_tension_pct"), espH.caidaTensionPct, 1e-9, "haz: caída igual al motor de tramos (R/N y RMG del haz)");
+  cerca(val(ctx, "rmg_efectivo_mm"), espH.tramos[0].rmgEfectivoMm, 1e-9, "haz: se informa el RMG equivalente");
+  const sinSep = await tools.ejecutarLlamada("calcular_regulacion", { tension_kv: 34.5, factor_potencia: 0.95, potencia_mw: 5, red: "Aerea", material: "ACSR", calibre: "4/0", longitud_km: 8, conductores_por_fase: 2 }, ctxNuevo());
+  ok(sinSep.ok === false && sinSep.error.includes("separacion_haz_m"), "haz sin separación: el error la pide");
+
+  // --- esquema para Gemini y barrido
+  const dPer = tools.declaraciones().find((d) => d.name === "calcular_perdidas").parameters;
+  ok(dPer.properties.tramos.type === "array" && dPer.properties.tramos.items.type === "object" && "longitud_km" in dPer.properties.tramos.items.properties, "el esquema de Gemini declara «tramos» como lista de objetos");
+  ok(!(dPer.required || []).includes("potencia_mw") && !(dPer.required || []).includes("longitud_km"), "potencia_mw y longitud_km ya no son obligatorios a nivel superior (los cubre el dato de partida / los tramos)");
+  ctx = ctxNuevo();
+  const bar = await tools.ejecutarLlamada("barrer_parametro", { herramienta: "calcular_perdidas", parametros_json: JSON.stringify({ ...base, potencia_mw: 9.9, tramos: [{ longitud_km: 2 }, { longitud_km: 3 }] }), parametro: "factor_carga", valores: [0.4, 0.8] }, ctx);
+  ok(bar.ok === true && bar.puntos.length === 2 && bar.puntos.every((p) => p.resultados && Number.isFinite(p.resultados.perdidas_pct)), "el barrido funciona con calculadoras de varios tramos");
+  ok(bar.puntos[1].resultados.perdidas_pct > bar.puntos[0].resultados.perdidas_pct, "el barrido de Fc sobre 2 tramos crece con el factor de carga");
+});
+
 await seccion("tools: validación y errores orientadores", async () => {
   const a = await tools.ejecutarLlamada("calcular_perdidas", { ...LINEA, factor_potencia: 1.5, factor_carga: 0.5, resistencia_ohm_km: 0.3 }, ctxNuevo());
   ok(a.ok === false && a.error.includes("factor_potencia"), "factor de potencia fuera de rango");
   const b = await tools.ejecutarLlamada("calcular_perdidas", { tension_kv: 34.5 }, ctxNuevo());
-  ok(b.ok === false && b.error.includes("potencia_mw") && b.error.includes("longitud_km"), "lista los parámetros obligatorios faltantes");
+  ok(b.ok === false && b.error.includes("factor_potencia") && b.error.includes("factor_carga"), "lista los parámetros obligatorios faltantes");
   const c = await tools.ejecutarLlamada("calcular_perdidas", { ...LINEA, factor_carga: 0.5, red: "Aerea", material: "ACSR", calibre: "999" }, ctxNuevo());
   ok(c.ok === false && c.error.includes("Calibres disponibles"), "calibre inexistente lista los disponibles");
   const d = await tools.ejecutarLlamada("calcular_perdidas", { ...LINEA, factor_carga: 0.5 }, ctxNuevo());
