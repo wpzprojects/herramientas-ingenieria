@@ -11,9 +11,9 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - `js/calc/*.js`: motores de cálculo puros, sin DOM, 1:1 con las fórmulas del original
   en Power Apps. No mezclar lógica de UI aquí.
 - `js/views/*.js`: un módulo por pantalla, exporta `async function render(container, params)`.
-- Los datos de catálogos (`data/*.json`) son generados desde el `.msapp` original con
-  `tools/extract_data.py` — no editarlos a mano salvo `data/factores-conversion.json`
-  (documentado en el README, transcrito manualmente).
+- Los datos de catálogos (`data/*.json`) son la fuente de verdad y se editan directamente: el `.msapp` original de Power Apps
+  se retiró del repo el 2026-09-19 (sigue en el historial de git) y `tools/extract_data.py` quedó obsoleto (ver README,
+  «Catálogos de datos», por si hubiera que regenerarlos).
 - Antes de tocar `js/calc/*.js`, revisar si hay un script en `tools/verify_*.py`
   equivalente para validar numéricamente el cambio.
 - Revisar la sección "Decisiones de migración que vale la pena recordar" del README
@@ -47,8 +47,8 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   «Consulta» cuyas sugerencias desaparecen al iniciar el chat: el usuario rechazó dividirla en dos tarjetas.
 - Dictado por voz (`js/ai/voz.js`): el pitido lo pone Android al iniciar el reconocimiento y la web no puede silenciarlo; por eso
   NO se reinicia el reconocimiento en las pausas (cada reinicio pita) y en Android los resultados se fusionan con
-  `unirAcumulados` (Chrome los entrega acumulados y duplicaba el texto). El usuario descartó transcribir con Gemini. Pendiente
-  por decidir: ocultar «Dictar» en Android para usar el micrófono del teclado (Gboard).
+  `unirAcumulados` (Chrome los entrega acumulados y duplicaba el texto). El usuario descartó transcribir con Gemini y decidió
+  (2026-09-19) dejar el dictado como está (además puede dictar con el micrófono del teclado, Gboard): no modificarlo.
 - Iconos `send`, `plus`, `copy` y `microphone` (`js/icons.js`) se escribieron de memoria de Tabler: si alguno se ve raro,
   recalcarlo del path real.
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
@@ -56,9 +56,6 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
 - Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v61); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
-- Git: `APP_PowerApps/` (34 archivos, incluido el `.msapp` que necesita `tools/extract_data.py`) aparece borrado en el árbol de
-  trabajo desde antes de esta sesión, sin commit de borrado; no commitearlo ni agregarlo con `git add -A` salvo que el usuario
-  lo decida (se recupera con `git checkout -- APP_PowerApps`).
 
 ## Acceso con Google (Ayuda → "Configuración avanzada", `js/auth/*`, `firebase/firestore.rules`)
 

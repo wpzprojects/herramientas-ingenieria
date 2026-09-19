@@ -2,7 +2,7 @@
 
 PWA (Progressive Web App) instalable con calculadoras y catálogos de ingeniería para líneas y redes de distribución eléctrica: ampacidad (IEEE Std 738 / IEC 60287-1-1), cortocircuito, pérdidas, regulación, ocupación de ductos, catálogos de conductores, normatividad RETIE/NTC-2050/CREG, conversión de unidades y de coordenadas.
 
-Migración a HTML/CSS/JS (vanilla, sin build step) de la app original de Power Apps "Herramientas (offline)" (`APP_PowerApps/Herramientas (offline).msapp`). 100% estática y offline: no requiere backend ni conexión a internet salvo un enlace externo opcional en Conversión de coordenadas y la sección **Funciones de IA** (ver más abajo), que se conecta a Google Gemini con la clave de API del propio usuario.
+Migración a HTML/CSS/JS (vanilla, sin build step) de la app original de Power Apps "Herramientas (offline)" (el `.msapp` original se retiró del repositorio el 2026-09-19 y sigue en el historial de git). 100% estática y offline: no requiere backend ni conexión a internet salvo un enlace externo opcional en Conversión de coordenadas y la sección **Funciones de IA** (ver más abajo), que se conecta a Google Gemini con la clave de API del propio usuario.
 
 ## Ejecutar localmente
 
@@ -31,18 +31,13 @@ data/*.json                                # catalogos (conductores, tuberias, r
 assets/normativa/*.jpg                     # tablas/figuras normativas escaneadas (RETIE / NTC 2050)
 icons/                                     # iconos PWA (placeholder generado, ver mas abajo)
 tools/                                     # scripts de extraccion/verificacion (no forman parte de la app en runtime)
-APP_PowerApps/                             # app original de Power Apps (fuente de verdad de datos y formulas)
 ```
 
-## Actualizar los catálogos desde una nueva exportación del .msapp
+## Catálogos de datos
 
-1. Reemplaza `APP_PowerApps/Herramientas (offline).msapp` por la nueva exportación.
-2. Descomprímelo (es un .zip) a `APP_PowerApps/_extracted/` — esa carpeta está en `.gitignore` porque es 100% regenerable:
-   ```
-   unzip "APP_PowerApps/Herramientas (offline).msapp" -d "APP_PowerApps/_extracted"
-   ```
-3. Ejecuta `python tools/extract_data.py` — regenera `data/*.json` (excepto `data/factores-conversion.json`, que se transcribió a mano porque esa tabla vive embebida en un `.pa.yaml` y no en `DataSources.json`; revisa `Src/Pantalla_Conversion_Unidadades.pa.yaml` si esa tabla cambia).
-4. Si cambiaron las imágenes normativas, vuelve a copiarlas a `assets/normativa/` (ver el mapeo de nombres en `References/Resources.json` dentro de `_extracted`).
+Los `data/*.json` son la **fuente de verdad** de los catálogos y se editan directamente. Se generaron una sola vez desde el `.msapp` de la app original de Power Apps; ese archivo (y las capturas de pantalla de `APP_PowerApps/`) se retiró del repositorio el 2026-09-19 porque la app ya no depende de él, pero **sigue en el historial de git**.
+
+`tools/extract_data.py` quedó **obsoleto**: solo se conserva como registro de cómo se sanearon los datos. Si algún día hubiera que regenerar los catálogos desde el original, se restaura `APP_PowerApps/` desde el historial (`git log --diff-filter=D --oneline -- "APP_PowerApps/Herramientas (offline).msapp"` da el commit del borrado; luego `git checkout <commit>^ -- APP_PowerApps`), se descomprime el `.msapp` (es un .zip) en `APP_PowerApps/_extracted/` y se ejecuta `python tools/extract_data.py`. Ese script no regenera `data/factores-conversion.json`, que se transcribió a mano.
 
 ## Verificación de los motores de cálculo
 

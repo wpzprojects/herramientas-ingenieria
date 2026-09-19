@@ -1,6 +1,5 @@
-# Extraccion de trabajo del .msapp original (se regenera con un simple
-# unzip del .msapp; ver README.md). El .msapp en si SI se versiona como
-# fuente de verdad/provenance de los datos.
+# Extraccion de trabajo del .msapp original, solo si algun dia se restaura desde el historial de git para
+# regenerar los catalogos (ver README.md, "Catalogos de datos"): no debe subirse.
 APP_PowerApps/_extracted/
 
 # SO / editor

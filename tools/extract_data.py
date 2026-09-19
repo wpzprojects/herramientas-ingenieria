@@ -1,4 +1,8 @@
 """
+OBSOLETO (2026-09-19): el .msapp y APP_PowerApps/ se retiraron del repositorio (siguen en el historial de git) y los
+data/*.json son ahora la fuente de verdad. Este script se conserva solo como registro de como se saneo la informacion;
+para volver a usarlo hay que restaurar APP_PowerApps desde el historial (ver README.md, "Catalogos de datos").
+
 Extrae y sanea los catalogos de datos embebidos en el .msapp original de
 Power Apps ("Herramientas offline") hacia JSON limpio para la PWA.
 
