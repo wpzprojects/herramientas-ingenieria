@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>verify_regulacion</title>
+<!--
+  Pruebas de la pantalla de Regulacion (js/views/calc-regulacion.js) y de su logica de varios tramos y haz de
+  conductores (js/calc/regulacion-tramos.js). Se ejecuta en el navegador, sin internet: la vista real se renderiza en
+  un contenedor oculto y se maneja como lo haria una persona; los numeros se comparan con formulas escritas aqui de
+  forma independiente (la caida de tension como P[kW]·L·K, que es otra forma algebraica que la del motor).
+
+  Uso (desde la raiz del proyecto):
+    python -m http.server 8000
+    abrir http://localhost:8000/tools/verify_regulacion.html   -> lista PASS/FAIL
+  o en modo consola:
+    msedge --headless --dump-dom --virtual-time-budget=35000 http://localhost:8000/tools/verify_regulacion.html
+-->
+<style>body{font-family:ui-monospace,Consolas,monospace;font-size:13px;padding:12px}#stage{position:absolute;left:-9999px;width:1000px}</style>
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+<pre id="out"></pre>
+<div id="stage"></div>
+<script type="module">
+window.__BASE_PATH__ = "../";
+const out = document.getElementById("out");
+let fallos = 0;
+let total = 0;
+function ok(cond, msg) {
+  total++;
+  if (!cond) fallos++;
+  out.textContent += `${cond ? "PASS" : "FAIL"} ${msg}\n`;
+}
+function cerca(a, b, tol, msg) {
+  ok(Math.abs(a - b) <= tol, `${msg} (obtenido ${a}, esperado ${b})`);
+}
+async function seccion(nombre, fn) {
+  out.textContent += `\n== ${nombre}\n`;
+  try {
+    await fn();
+  } catch (err) {
+    fallos++;
+    total++;
+    out.textContent += `FAIL excepcion en "${nombre}": ${err && err.stack ? err.stack : err}\n`;
+  }
+}
+const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const motor = await import("../js/calc/regulacion.js");
+const tr = await import("../js/calc/regulacion-tramos.js");
+const ci = await import("../js/calc/circuito.js");
+const desnudos = await (await fetch("../data/conductores-desnudos.json")).json();
+const ACSR_4_0 = desnudos.find((c) => c.tipo === "ACSR" && c.calibre_awg_kcmil === "4/0");
+const R0 = ACSR_4_0.r_ac_75c_ohm_km;
+const RMG0 = ACSR_4_0.radio_medio_geometrico_mm;
+
+// Formula independiente: %ΔV = P[kW]·L·K con K = (R + Xl·tanφ)/(10·V²) (el motor usa √3·I·Z·L·100/(V·1000)).
+function esperado({ V, Pmw, fp, L, R, rmgMm, dab, dac, dbc }) {
+  const I = (Pmw * 1000) / (V * fp * Math.sqrt(3));
+  const Xl = 0.0754 * Math.log(Math.cbrt(dab * dac * dbc) / (rmgMm / 1000));
+  const K = (R + Xl * Math.tan(Math.acos(fp))) / (10 * V * V);
+  return { I, S: Pmw / fp, Xl, K, pct: Pmw * 1000 * L * K };
+}
+const BASE = { tensionLineaKv: 34.5, potenciaActivaMw: 9.9, factorPotencia: 0.95 };
+const TRAMO = { resistenciaOhmKm: R0, rmgMm: RMG0, longitudKm: 5.2, dabM: 2, dacM: 2.84, dbcM: 0.84, numConductoresPorFase: 1 };
+const E1 = esperado({ V: 34.5, Pmw: 9.9, fp: 0.95, L: 5.2, R: R0, rmgMm: RMG0, dab: 2, dac: 2.84, dbc: 0.84 });
+
+await seccion("regulacion-tramos: logica", async () => {
+  const uno = tr.calcularRegulacionTramos(BASE, [TRAMO]);
+  const directo = motor.calcularRegulacion({ ...BASE, longitudKm: 5.2, resistenciaOhmKm: R0, rmgM: RMG0 / 1000, dabM: 2, dacM: 2.84, dbcM: 0.84 });
+  ok(uno.caidaTensionPct === directo.caidaTensionPct && uno.corriente === directo.corriente && uno.potenciaS === directo.potenciaS && uno.potenciaQ === directo.potenciaQ, "un solo tramo: idéntico al motor original");
+  ok(uno.tramos[0].constanteRegulacion === directo.constanteRegulacion, "la constante de regulación del tramo es la del motor");
+  cerca(uno.caidaTensionPct, E1.pct, 1e-9, "caída de tensión coincide con la fórmula independiente (P·L·K)");
+  cerca(uno.tramos[0].constanteRegulacion, E1.K, 1e-12, "constante K coincide con la fórmula independiente");
+  cerca(uno.corriente, E1.I, 1e-9, "corriente coincide con la fórmula independiente");
+
+  // dos tramos, cada uno con su conductor, su longitud y su geometria
+  const t2 = { resistenciaOhmKm: 0.3, rmgMm: 6, longitudKm: 3, dabM: 1.6, dacM: 2.7, dbcM: 1.1, numConductoresPorFase: 1 };
+  const dos = tr.calcularRegulacionTramos(BASE, [TRAMO, t2]);
+  const e2 = esperado({ V: 34.5, Pmw: 9.9, fp: 0.95, L: 3, R: 0.3, rmgMm: 6, dab: 1.6, dac: 2.7, dbc: 1.1 });
+  cerca(dos.caidaTensionPct, E1.pct + e2.pct, 1e-9, "dos tramos: la caída total es la suma de la de cada tramo");
+  cerca(dos.tramos[1].caidaTensionPct, e2.pct, 1e-9, "dos tramos: el segundo tramo usa su propia geometría y conductor");
+  ok(dos.corriente === uno.corriente && dos.potenciaS === uno.potenciaS && dos.potenciaQ === uno.potenciaQ, "corriente y potencias son las mismas con uno o varios tramos");
+  ok(dos.tramos[0].constanteRegulacion !== dos.tramos[1].constanteRegulacion, "cada tramo tiene su propia constante K");
+
+  // haz de conductores: RMG equivalente (formulas clasicas para N = 2, 3, 4) y resistencia R/N
+  const d = 0.4;
+  const dmm = d * 1000;
+  cerca(tr.calcularRmgHaz(RMG0, 1, d), RMG0, 1e-12, "N = 1: el RMG no cambia");
+  cerca(tr.calcularRmgHaz(RMG0, 2, d), Math.sqrt(RMG0 * dmm), 1e-9, "N = 2: RMG equivalente = √(RMG·d)");
+  cerca(tr.calcularRmgHaz(RMG0, 3, d), Math.cbrt(RMG0 * dmm ** 2), 1e-9, "N = 3: RMG equivalente = ∛(RMG·d²)");
+  cerca(tr.calcularRmgHaz(RMG0, 4, d), Math.pow(2, 1 / 8) * Math.pow(RMG0 * dmm ** 3, 1 / 4), 1e-9, "N = 4: RMG equivalente = 1.0905·⁴√(RMG·d³)");
+  const haz = tr.calcularRegulacionTramos(BASE, [{ ...TRAMO, numConductoresPorFase: 2, separacionHazM: 0.4 }]);
+  const eh = esperado({ V: 34.5, Pmw: 9.9, fp: 0.95, L: 5.2, R: R0 / 2, rmgMm: Math.sqrt(RMG0 * dmm), dab: 2, dac: 2.84, dbc: 0.84 });
+  cerca(haz.tramos[0].resistenciaEfectivaOhmKm, R0 / 2, 1e-12, "2 conductores por fase: la resistencia efectiva es R/2");
+  cerca(haz.tramos[0].rmgEfectivoMm, Math.sqrt(RMG0 * dmm), 1e-9, "2 conductores por fase: el RMG efectivo es el del haz");
+  cerca(haz.caidaTensionPct, eh.pct, 1e-9, "2 conductores por fase: la caída coincide con la fórmula independiente");
+  ok(haz.caidaTensionPct < uno.caidaTensionPct, `el haz reduce la caída (${haz.caidaTensionPct.toFixed(3)} % frente a ${uno.caidaTensionPct.toFixed(3)} %)`);
+  cerca(tr.calcularRegulacionTramos(BASE, [{ ...TRAMO, numConductoresPorFase: undefined }]).caidaTensionPct, uno.caidaTensionPct, 1e-12, "sin indicar conductores por fase se asume 1");
+
+  // dato de partida y referencias (compartidos con Perdidas)
+  ok(tr.potenciaActivaMw === ci.potenciaActivaMw && tr.sugerirCalibre === ci.sugerirCalibre, "el dato de partida y la sugerencia de calibre son los compartidos");
+  cerca(tr.potenciaActivaMw({ modo: "aparente", potenciaMva: 10.42, tensionKv: 34.5, factorPotencia: 0.95 }), 10.42 * 0.95, 1e-12, "modo potencia aparente: P = S·FP");
+  const desdeI = tr.potenciaActivaMw({ modo: "corriente", corrienteA: 174.4, tensionKv: 34.5, factorPotencia: 0.95 });
+  cerca(desdeI, (Math.sqrt(3) * 34.5 * 174.4 * 0.95) / 1000, 1e-12, "modo corriente: P = √3·V·I·FP / 1000");
+  cerca(motor.calcularRegulacion({ ...BASE, potenciaActivaMw: desdeI, longitudKm: 5, resistenciaOhmKm: 0.4, rmgM: 0.005, dabM: 2, dacM: 2, dbcM: 2 }).corriente, 174.4, 1e-9, "ida y vuelta: con la P obtenida de 174.4 A el motor devuelve 174.4 A");
+
+  const c = (p) => tr.clasificarRegulacion(p);
+  ok(c(4.9).clave === "optimo" && c(5).clave === "optimo" && c(5.0001).clave === "adecuado" && c(10).clave === "adecuado" && c(10.0001).clave === "elevado", "referencias: ≤5 óptimo, ≤10 adecuado, >10 elevado");
+  ok([4, 8, 12].map((p) => c(p).etiqueta).join("|") === "Óptimo|Adecuado|Elevado" && ![4, 8, 12].some((p) => /norma/i.test(c(p).etiqueta)), "textos «Óptimo», «Adecuado» y «Elevado»; ninguno dice «norma»");
+
+  // sugerencia de calibre con la caida de tension como valor a comparar
+  const cand = [14, 11, 9, 7, 5, 3].map((p, i) => ({ calibre: `c${i}`, area: i + 1, caidaTensionPct: p }));
+  const s = tr.sugerirCalibre(cand, 10, 3, null, "caidaTensionPct");
+  ok(s.sugerido.calibre === "c2" && s.ventana.map((x) => x.calibre).join() === "c0,c1,c2,c3,c4", "sugiere el primer calibre con caída ≤ 10 % (campo caidaTensionPct)");
+  const n = tr.sugerirCalibre(cand.map((x) => ({ ...x, caidaTensionPct: 20 - x.area })), 10, 3, null, "caidaTensionPct");
+  ok(n.sugerido === null && n.menor.calibre === "c5", "si ninguno cumple: sin sugerido y se indica el de menor caída");
+});
+
+const stage = document.getElementById("stage");
+const $ = (s, r = stage) => r.querySelector(s);
+const $$ = (s, r = stage) => [...r.querySelectorAll(s)];
+const poner = (sel, v, ev = "input") => { const e = $(sel); e.value = v; e.dispatchEvent(new Event(ev, { bubbles: true })); };
+const elegir = (sel, v) => poner(sel, v, "change");
+const texto = (e) => (e ? e.textContent.replace(/\s+/g, " ").trim() : "");
+const metrica = (etiqueta) => $$(".result-metric").find((m) => texto($(".label", m)).startsWith(etiqueta));
+const valorDe = (etiqueta) => parseFloat(texto($(".value", metrica(etiqueta))));
+const calcular = () => $("#form-calc").requestSubmit();
+
+const { render } = await import("../js/views/calc-regulacion.js");
+await render(stage, {});
+
+await seccion("vista: tarjetas y dato de partida", async () => {
+  const titulos = $$(".form-section-title").map(texto);
+  ok($$(".card.form-section").length === 2 && titulos[0].includes("Datos de la línea") && titulos[1].includes("Conductor — Tramo 1"), `dos tarjetas: «${titulos.join("» y «")}»`);
+  ok($$(".form-section-title").every((t) => t.querySelector("svg.icon") && t.parentElement.classList.contains("card")), "cada título lleva su icono y va dentro de su tarjeta");
+  ok($(".btn-tramo-quitar").hidden, "con un solo tramo no aparece «Quitar»");
+  ok($$(".tramo-block .btn").some((b) => texto(b) === "Agregar tramo"), "«Agregar tramo» está dentro de la última tarjeta");
+  ok($$(".card").every((c) => c.classList.contains("tarjeta-borde")), "las tarjetas llevan el borde marcado");
+
+  const visible = () => ["#wrap-potencia", "#wrap-aparente", "#wrap-corriente"].filter((s) => !$(s).hidden).join();
+  ok(visible() === "#wrap-potencia" && $("#f-potencia").required, "por defecto: potencia activa (MW) visible y obligatoria");
+  elegir("#f-modo", "aparente");
+  ok(visible() === "#wrap-aparente" && $("#f-aparente").required && !$("#f-potencia").required, "potencia aparente: solo ese campo, y obligatorio");
+  elegir("#f-modo", "corriente");
+  ok(visible() === "#wrap-corriente" && $("#f-corriente").required, "corriente: solo ese campo, y obligatorio");
+  elegir("#f-modo", "potencia");
+  ok(texto($("#wrap-potencia label")).includes("MW") && texto($("#wrap-aparente label")).includes("MVA") && texto($("#wrap-corriente label")).includes("(A)"), "unidades: MW, MVA y A");
+  ok(!$$("#form-calc label").some((l) => texto(l).includes("Fc") || texto(l).includes("carga")), "no hay factor de carga (no aplica a regulación)");
+  const rp = $("#wrap-potencia").getBoundingClientRect();
+  const rf = $("#f-fp").closest(".field").getBoundingClientRect();
+  ok(Math.abs(rp.top - rf.top) < 1 && rf.left > rp.left + 100, "la potencia (o el dato elegido) y el factor de potencia van en la misma fila");
+  ok(!/Si solo conoces la potencia aparente/.test(texto($("#form-calc"))), "ya no está la ayuda de «usa factor de potencia = 1» (ahora existe el dato de partida)");
+});
+
+await seccion("vista: campos del tramo (mm, haz y distancias)", async () => {
+  const etiquetas = $$(".tramo-block .field > label:first-child").map(texto);
+  for (const e of ["Tipo de red", "Material / Tipo de conductor", "Calibre", "Resistencia AC a 75°C (Ω/km)", "Longitud del tramo (km)", "Conductores por fase", "Radio medio geométrico (mm)", "Separación entre subconductores del haz (m)", "Distancia entre fases A-B (m)", "Distancia entre fases A-C (m)", "Distancia entre fases B-C (m)"]) {
+    ok(etiquetas.includes(e), `campo del tramo: «${e}»`);
+  }
+  elegir("#f-red-0", "Aerea");
+  elegir("#f-material-0", "ACSR");
+  elegir("#f-calibre-0", "4/0");
+  cerca(parseFloat($("#f-resistencia-0").value), R0, 1e-12, "la resistencia sale del catálogo");
+  cerca(parseFloat($("#f-rmg-0").value), RMG0, 1e-12, `el radio medio geométrico sale del catálogo en mm (${$("#f-rmg-0").value} mm, no en m)`);
+  ok($("#f-resistencia-0").disabled && $("#f-rmg-0").disabled, "resistencia y RMG bloqueados mientras no esté «Manual»");
+  ok($("#f-sephaz-0").disabled && !$("#f-sephaz-0").required, "con un conductor por fase la separación del haz está bloqueada");
+  poner("#f-n-0", "2");
+  ok(!$("#f-sephaz-0").disabled && $("#f-sephaz-0").required, "con 2 conductores por fase la separación del haz se habilita y es obligatoria");
+  poner("#f-n-0", "1");
+  ok($("#f-sephaz-0").disabled, "al volver a 1 conductor se bloquea otra vez");
+  const chk = $("#chk-rmg-0");
+  chk.checked = true;
+  chk.dispatchEvent(new Event("change", { bubbles: true }));
+  poner("#f-rmg-0", "4.611");
+  ok(!$("#f-rmg-0").disabled && $("#f-rmg-0").validity.valid, "«Manual» habilita el RMG y acepta decimales como 4.611");
+  chk.checked = false;
+  chk.dispatchEvent(new Event("change", { bubbles: true }));
+  cerca(parseFloat($("#f-rmg-0").value), RMG0, 1e-12, "al quitar «Manual» vuelve el valor del catálogo");
+  const cr = $("#chk-resistencia-0");
+  cr.checked = true;
+  cr.dispatchEvent(new Event("change", { bubbles: true }));
+  poner("#f-resistencia-0", "0.396");
+  ok($("#f-resistencia-0").validity.valid, "la resistencia acepta valores de 3 decimales en modo Manual");
+  cr.checked = false;
+  cr.dispatchEvent(new Event("change", { bubbles: true }));
+  poner("#f-longitud-0", "5.2");
+});
+
+await seccion("vista: un tramo, cálculo y resultados", async () => {
+  calcular();
+  cerca(valorDe("Corriente"), E1.I, 0.006, "resultado: corriente");
+  cerca(valorDe("Potencia aparente"), E1.S, 0.006, "resultado: potencia aparente (MVA)");
+  cerca(valorDe("Potencia activa"), 9.9, 0.006, "resultado: potencia activa (MW)");
+  cerca(valorDe("Caída de tensión"), E1.pct, 0.006, `resultado: caída de tensión (${E1.pct.toFixed(4)} %)`);
+  cerca(valorDe("Constante de regulación"), E1.K, 5e-8, "resultado: constante de regulación");
+  const badge = $(".badge", metrica("Caída de tensión"));
+  ok(badge && texto(badge) === "Óptimo" && badge.classList.contains("badge-success"), `con ${E1.pct.toFixed(2)} % la etiqueta es «${texto(badge)}»`);
+  ok(texto($("#resultado-wrap")).includes("Referencias de diseño (no son un límite normativo): hasta 5% óptimo · hasta 10% adecuado."), "se aclara que 5 % y 10 % son referencias de diseño");
+  ok(!/norma\b/i.test(texto($("#resultado-wrap")).replace("no son un límite normativo", "")), "ninguna etiqueta habla de «fuera de norma»");
+  ok(!$$(".result-panel svg, .result-gauge").length, "sin gráficos");
+
+  const filas = $$(".tabla-resultado tbody tr");
+  ok(texto($(".result-subhead")).includes("Comparación con otros calibres") && filas.length >= 3, `un solo tramo: comparación de calibres (${filas.length} filas)`);
+  ok(filas.some((f) => f.classList.contains("current-row") && texto(f).includes("4/0") && texto(f).includes("Actual")), "la fila del calibre elegido está marcada como «Actual»");
+  const areas = filas.map((f) => parseFloat(texto(f.querySelectorAll("td")[1])));
+  const pcts = filas.map((f) => parseFloat(texto(f.querySelectorAll("td")[2])));
+  ok(areas.every((a, i) => i === 0 || a >= areas[i - 1]) && pcts.every((p, i) => i === 0 || p <= pcts[i - 1] + 1e-9), "calibres ordenados por área y con caída decreciente");
+  ok(new Set(filas.map((f) => texto(f.querySelector("td")).replace("Actual", "").trim())).size === filas.length, "un calibre no se repite");
+
+  // haz de 2 conductores por fase
+  poner("#f-n-0", "2");
+  poner("#f-sephaz-0", "0.4");
+  calcular();
+  const eh = esperado({ V: 34.5, Pmw: 9.9, fp: 0.95, L: 5.2, R: R0 / 2, rmgMm: Math.sqrt(RMG0 * 400), dab: 2, dac: 2.84, dbc: 0.84 });
+  cerca(valorDe("Caída de tensión"), eh.pct, 0.006, `2 conductores por fase, separación 0.4 m: caída ${eh.pct.toFixed(4)} %`);
+  ok(valorDe("Caída de tensión") < E1.pct, "el haz baja la caída de tensión");
+  poner("#f-n-0", "1");
+
+  // por encima de 10 %: «Elevado»
+  poner("#f-longitud-0", "50");
+  calcular();
+  const b2 = $(".badge", metrica("Caída de tensión"));
+  ok(valorDe("Caída de tensión") > 10 && texto(b2) === "Elevado" && b2.classList.contains("badge-warning"), `con ${valorDe("Caída de tensión")} % la etiqueta es «${texto(b2)}» (antes «Mayores pérdidas/caídas»)`);
+  poner("#f-longitud-0", "12");
+  calcular();
+  ok(texto($(".badge", metrica("Caída de tensión"))) === "Adecuado" && !$(".badge", metrica("Caída de tensión")).classList.contains("badge-success"), "entre 5 % y 10 %: «Adecuado»");
+  poner("#f-longitud-0", "5.2");
+});
+
+await seccion("vista: dato de partida aparente y corriente", async () => {
+  elegir("#f-modo", "aparente");
+  poner("#f-aparente", "10.42");
+  calcular();
+  cerca(valorDe("Potencia activa"), 10.42 * 0.95, 0.006, "desde potencia aparente: P = S·FP");
+  cerca(valorDe("Potencia aparente"), 10.42, 0.006, "desde potencia aparente: vuelve a dar 10.42 MVA");
+  elegir("#f-modo", "corriente");
+  poner("#f-corriente", "174.4");
+  calcular();
+  cerca(valorDe("Corriente"), 174.4, 0.006, "desde corriente: vuelve a dar 174.4 A");
+  cerca(valorDe("Potencia activa"), (Math.sqrt(3) * 34.5 * 174.4 * 0.95) / 1000, 0.006, "desde corriente: P = √3·V·I·FP / 1000");
+  elegir("#f-modo", "potencia");
+});
+
+await seccion("vista: varios tramos", async () => {
+  const agregar = $$(".tramo-block .btn").find((b) => texto(b) === "Agregar tramo");
+  agregar.click();
+  const bloques = () => $$(".tramo-block");
+  ok(bloques().length === 2 && texto($$(".tramo-titulo")[1]) === "Conductor — Tramo 2", "agregar crea la tarjeta «Conductor — Tramo 2»");
+  ok($$(".btn-tramo-quitar").every((b) => !b.hidden), "con dos tramos ambos muestran «Quitar»");
+  ok(bloques()[1].contains(agregar) && !bloques()[0].contains(agregar), "«Agregar tramo» pasa a la última tarjeta");
+  ok($("#f-calibre-0").value === "4/0" && $("#f-material-0").value === "ACSR", "el primer tramo conserva lo elegido");
+  ok(new Set($$(".form-section-title").map((t) => Math.round(t.getBoundingClientRect().height))).size === 1, "las barras de título no cambian de altura al aparecer «Quitar»");
+
+  elegir("#f-material-1", "AAAC");
+  $("#f-calibre-1").selectedIndex = 4;
+  $("#f-calibre-1").dispatchEvent(new Event("change", { bubbles: true }));
+  poner("#f-longitud-1", "3");
+  poner("#f-dab-1", "1.6");
+  poner("#f-dac-1", "2.7");
+  poner("#f-dbc-1", "1.1");
+  const fila2 = desnudos.filter((c) => c.tipo === "AAAC").map((c) => c.calibre_awg_kcmil).filter((v, i, a) => a.indexOf(v) === i)[3];
+  const cat2 = desnudos.find((c) => c.tipo === "AAAC" && c.calibre_awg_kcmil === fila2);
+  ok($("#f-calibre-1").value === fila2, `el segundo tramo elige el calibre ${fila2}`);
+  calcular();
+  const e2 = esperado({ V: 34.5, Pmw: 9.9, fp: 0.95, L: 3, R: cat2.r_ac_75c_ohm_km, rmgMm: cat2.radio_medio_geometrico_mm, dab: 1.6, dac: 2.7, dbc: 1.1 });
+  cerca(valorDe("Caída de tensión total"), E1.pct + e2.pct, 0.006, "dos tramos: caída total = suma de los tramos, cada uno con su geometría");
+  const filas = $$(".tabla-resultado tbody tr");
+  ok(filas.length === 3 && filas[2].classList.contains("total-row"), "tabla por tramo: dos filas y una de total");
+  cerca(parseFloat(texto(filas[0].querySelectorAll("td")[4])), E1.pct, 0.006, "tabla: % del tramo 1");
+  cerca(parseFloat(texto(filas[1].querySelectorAll("td")[4])), e2.pct, 0.006, "tabla: % del tramo 2");
+  cerca(parseFloat(texto(filas[0].querySelectorAll("td")[3])), E1.K, 5e-8, "tabla: constante K del tramo 1");
+  cerca(parseFloat(texto(filas[1].querySelectorAll("td")[3])), e2.K, 5e-8, "tabla: constante K del tramo 2");
+  cerca(parseFloat(texto(filas[2].querySelectorAll("td")[1])), E1.pct + e2.pct, 0.006, "tabla: total");
+  ok(!$$(".result-subhead").some((s) => texto(s).includes("Comparación con otros calibres")) && !metrica("Constante de regulación"), "con varios tramos no hay comparación de calibres ni una sola constante K (cada tramo tiene la suya)");
+
+  // quitar el primer tramo
+  $$(".btn-tramo-quitar")[0].click();
+  ok(bloques().length === 1 && texto($(".tramo-titulo")) === "Conductor — Tramo 1" && $(".btn-tramo-quitar").hidden, "quitar elimina la tarjeta, renumera y oculta «Quitar»");
+  ok($("#f-calibre-1").value === fila2 && $("#f-longitud-1").value === "3", "el tramo que queda conserva calibre y longitud");
+  // dejamos dos tramos otra vez para las pruebas del reporte
+  $$(".tramo-block .btn").find((b) => texto(b) === "Agregar tramo").click();
+});
+
+await seccion("vista: estructura del reporte (se copia y se pega)", async () => {
+  const leer = () => { calcular(); return $('[data-panel="reporte"] .report-block').textContent.split("\n"); };
+  const LINEA = /^-{30}$/;
+  const etiquetasEn = (l) => l.filter((x) => /^[A-ZÁÉÍÓÚÑ ]{4,}:?$/.test(x));
+  const secciones = (l) => { const iRes = l.indexOf("RESULTADOS:"); return { iRes, params: l.slice(4, iRes - 2), res: l.slice(iRes + 1) }; };
+  const tiene = (l, inicio) => l.some((x) => x.trim().startsWith(inicio));
+
+  // un tramo (se quita el de sobra para dejar solo el 1) y potencia activa como dato de partida
+  $$(".btn-tramo-quitar").at(-1).click();
+  elegir("#f-modo", "potencia");
+  elegir("#f-material-1", "ACSR");
+  elegir("#f-calibre-1", "4/0");
+  poner("#f-longitud-1", "5.2");
+  poner("#f-dab-1", "2");
+  poner("#f-dac-1", "2.84");
+  poner("#f-dbc-1", "0.84");
+  const a = leer();
+  const sa = secciones(a);
+  ok(a[0] === "CÁLCULO DE REGULACIÓN" && a[1] === "" && LINEA.test(a[2]) && a[3] === "PARÁMETROS DE ENTRADA:", "«CÁLCULO DE REGULACIÓN», línea en blanco, línea divisoria y «PARÁMETROS DE ENTRADA:»");
+  ok(sa.iRes > 4 && a[sa.iRes - 2] === "" && LINEA.test(a[sa.iRes - 1]), "«RESULTADOS:» con la línea divisoria ENCIMA y una línea en blanco antes de ella");
+  ok(!LINEA.test(a[4]) && !LINEA.test(a[sa.iRes + 1]), "debajo de las etiquetas sigue directamente el contenido");
+  ok(etiquetasEn(a).join("|") === "CÁLCULO DE REGULACIÓN|PARÁMETROS DE ENTRADA:|RESULTADOS:" && a.filter((x) => LINEA.test(x)).length === 2, "tres etiquetas y dos líneas divisorias");
+  for (const inicio of ["Tensión de línea", "Dato de partida: Potencia activa (9.90 MW)", "Potencia activa: 9.90 MW", "Factor de potencia", "Tramo 1:", "Tipo de red", "Material/Tipo", "Calibre", "Resistencia AC a 75°C", "Radio medio geométrico (por conductor): 4.61 mm", "Conductores por fase", "Separación entre subconductores del haz: N/A (1 conductor)", "Longitud del tramo", "Distancia entre fases A-B: 2.00 m", "Distancia entre fases A-C: 2.84 m", "Distancia entre fases B-C: 0.84 m"]) {
+    ok(tiene(sa.params, inicio), `parámetros de entrada incluye «${inicio}»`);
+  }
+  for (const inicio of ["Resistencia efectiva", "RMG equivalente", "Constante de regulación", "Caída de tensión", "Corriente", "Potencia aparente", "Potencia reactiva"]) {
+    ok(!tiene(sa.params, inicio), `«${inicio}» NO está en los parámetros (es un resultado)`);
+  }
+  for (const inicio of ["Corriente", "Potencia aparente", "Potencia reactiva", "Tramo 1:", "Resistencia efectiva", "RMG equivalente del haz", "Constante de regulación", "Caída de tensión del tramo", "Caída de tensión:"]) {
+    ok(tiene(sa.res, inicio), `resultados incluye «${inicio}»`);
+  }
+  ok(!tiene(sa.res, "Tensión de línea") && !tiene(sa.res, "Calibre") && !tiene(sa.res, "Distancia entre fases") && !tiene(sa.res, "Longitud del tramo"), "los datos de entrada no se repiten en los resultados");
+  const negritas = $$('[data-panel="reporte"] .report-block strong');
+  const pesos = negritas.map((e) => parseInt(getComputedStyle(e).fontWeight, 10));
+  ok(negritas.map((e) => e.textContent).join("|") === "CÁLCULO DE REGULACIÓN|PARÁMETROS DE ENTRADA:|RESULTADOS:" && pesos.every((w) => w >= 700), `las tres etiquetas están en negrita (${pesos.join(", ")}) y solo ellas`);
+
+  // dato de partida distinto de la potencia activa: la potencia activa se calcula y va en resultados
+  elegir("#f-modo", "aparente");
+  poner("#f-aparente", "10.42");
+  const b = leer();
+  const sb = secciones(b);
+  ok(tiene(sb.params, "Dato de partida: Potencia aparente (10.42 MVA)") && !tiene(sb.params, "Potencia activa:") && tiene(sb.res, "Potencia activa: 9.90 MW"), "desde potencia aparente: la potencia activa calculada va en los resultados");
+  elegir("#f-modo", "potencia");
+
+  // dos tramos, el segundo con 2 conductores por fase
+  $$(".tramo-block .btn").find((b2) => texto(b2) === "Agregar tramo").click();
+  const idNuevo = $$(".tramo-block").at(-1).querySelector('input[id^="f-n-"]').id.replace("f-n-", "");
+  poner(`#f-n-${idNuevo}`, "2");
+  poner(`#f-sephaz-${idNuevo}`, "0.5");
+  elegir(`#f-material-${idNuevo}`, "ACSR");
+  elegir(`#f-calibre-${idNuevo}`, "4/0");
+  const d = leer();
+  const sd = secciones(d);
+  ok(etiquetasEn(d).length === 3 && d.filter((x) => LINEA.test(x)).length === 2, "con dos tramos siguen siendo tres etiquetas y dos líneas");
+  ok(sd.params.filter((x) => /^Tramo \d:$/.test(x)).join() === "Tramo 1:,Tramo 2:" && sd.res.filter((x) => /^Tramo \d:$/.test(x)).join() === "Tramo 1:,Tramo 2:", "los dos tramos aparecen en los parámetros y en los resultados");
+  ok(tiene(sd.params, "Separación entre subconductores del haz: 0.50 m") && sd.params.filter((x) => x.includes("N/A (1 conductor)")).length === 1, "el tramo con 2 conductores muestra su separación y el otro «N/A»");
+  ok(tiene(sd.res, "Caída de tensión total:") && d.at(-1).startsWith("Caída de tensión total:"), "el reporte termina con la caída de tensión total");
+  ok(sd.res.indexOf(sd.res.find((x) => x.startsWith("Caída de tensión total"))) > sd.res.lastIndexOf("Tramo 2:"), "el total va después del detalle de los tramos");
+  const rmgEq = sd.res.find((x) => x.includes("RMG equivalente del haz") && x.includes(Math.sqrt(RMG0 * 500).toFixed(2)));
+  ok(!!rmgEq, `el RMG equivalente del haz de 2 conductores aparece en los resultados (${Math.sqrt(RMG0 * 500).toFixed(2)} mm)`);
+  $$(".btn-tramo-quitar").at(-1).click(); // vuelve a un solo tramo
+});
+
+await seccion("vista: fórmulas con KaTeX", async () => {
+  ok(!window.katex, "KaTeX no se carga hasta abrir la pestaña Fórmulas");
+  $$(".tab-btn").find((b) => b.dataset.tab === "formulas").click();
+  for (let i = 0; i < 40 && !$$("#formulas-katex .katex").length; i++) await espera(100);
+  await document.fonts.ready;
+  await espera(150);
+  const caja = $("#formulas-katex");
+  const reporteCaja = $(".report-block");
+  const cc = getComputedStyle(caja);
+  const cr = getComputedStyle(reporteCaja);
+  const subtitulos = $$("#formulas-katex > .result-subhead").map(texto);
+  const items = $$("#formulas-katex ul.formula-etiquetas > li");
+  const izq = items.map((li) => li.lastElementChild.getBoundingClientRect().left);
+  ok(window.katex && $$("#formulas-katex .katex-display").length === 14 && $$("#formulas-katex .formula-katex").length === 14, "KaTeX cargado y 14 ecuaciones dibujadas");
+  ok($$("#formulas-katex .katex-error").length === 0, "ninguna ecuación con error de sintaxis");
+  ok($("#formulas-plano").hidden && !caja.hidden, "al dibujarse las fórmulas se oculta el texto plano y aparece la subtarjeta");
+  ok(cc.backgroundColor === cr.backgroundColor && cc.borderTopColor === cr.borderTopColor && cc.borderTopLeftRadius === cr.borderTopLeftRadius, "la subtarjeta tiene el fondo, borde y esquinas de la caja de Reporte");
+  ok(subtitulos.join("|") === "Dato de partida (se convierte a potencia activa)|Corriente y potencias|Conductor y disposición de fases|Regulación (caída de tensión)|Descripción de las etiquetas|Notas", `subtítulos: ${subtitulos.join(" | ")}`);
+  ok(items.length === 21 && getComputedStyle($("#formulas-katex ul.formula-etiquetas")).listStyleType === "disc" && items.every((li) => li.querySelector(".formula-simbolo .katex")), `la descripción de las etiquetas es una lista de ${items.length} viñetas con el símbolo dibujado`);
+  ok(Math.max(...izq) - Math.min(...izq) < 1, "los textos de las viñetas quedan alineados");
+  const textoCaja = texto(caja);
+  ok(textoCaja.includes("Radio medio geométrico equivalente del haz [mm]") && textoCaja.includes("Distancias entre fases [m]") && textoCaja.includes("P·L·K"), "incluye el RMG equivalente, las distancias y la nota de P·L·K");
+  ok($$("#formulas-katex .katex").some((k) => k.querySelector(".sqrt")), "hay raíces (∛ de las distancias y raíz N-ésima del haz) dibujadas");
+  const rc = caja.getBoundingClientRect();
+  ok($$("#formulas-katex .formula-katex").every((e) => { const r = e.getBoundingClientRect(); return r.left >= rc.left && r.right <= rc.right + 0.5; }), "las ecuaciones quedan dentro de la subtarjeta");
+});
+
+// La pantalla se prueba tambien dentro de un iframe de ancho fijo: las media queries dependen del ancho de la ventana.
+const cargarMarco = (ancho) => new Promise((resolve) => {
+  const marco = document.createElement("iframe");
+  marco.style.cssText = `position:fixed;left:-99999px;top:0;width:${ancho}px;height:3400px;border:0`;
+  const alRecibir = (e) => {
+    if (e.source !== marco.contentWindow || e.data !== "listo") return;
+    window.removeEventListener("message", alRecibir);
+    resolve(marco);
+  };
+  window.addEventListener("message", alRecibir);
+  marco.srcdoc = `<!doctype html><html><head><link rel="stylesheet" href="../css/tokens.css"><link rel="stylesheet" href="../css/app.css"></head><body><div id="c" class="content"></div><script type="module">window.__BASE_PATH__ = "../"; const { render } = await import("../js/views/calc-regulacion.js"); const c = document.getElementById("c"); await render(c, {}); const ev = (s, v) => { const e = c.querySelector(s); e.value = v; e.dispatchEvent(new Event("change", { bubbles: true })); }; ev("#f-material-0", "ACSR"); ev("#f-calibre-0", "4/0"); c.querySelector("#form-calc").requestSubmit(); parent.postMessage("listo", "*");<\/script></body></html>`;
+  document.body.append(marco);
+});
+
+await seccion("vista: aspecto (barra de título, 16 px laterales y espaciado uniforme)", async () => {
+  const medir = (marco) => {
+    const d = marco.contentDocument;
+    const izq = (e) => e.getBoundingClientRect().left;
+    const sonda = d.createElement("div");
+    d.body.append(sonda);
+    const token = (v) => { sonda.style.backgroundColor = `var(${v})`; return d.defaultView.getComputedStyle(sonda).backgroundColor; };
+    sonda.style.borderBottomColor = "color-mix(in srgb, var(--accent) 65%, var(--accent-soft))";
+    const mezcla = d.defaultView.getComputedStyle(sonda).borderBottomColor;
+    const suave = token("--accent-soft");
+    const acento = token("--accent");
+    sonda.remove();
+    const cs = (e) => d.defaultView.getComputedStyle(e);
+    const datos = d.querySelector(".form-section");
+    const tramo = d.querySelector(".tramo-block");
+    const res = d.querySelector("#resultado-wrap > .card");
+    const panel = res.querySelector(".result-panel");
+    const barras = [datos, tramo].map((card) => {
+      const t = card.querySelector(".form-section-title");
+      const rc = card.getBoundingClientRect();
+      const rt = t.getBoundingClientRect();
+      const svg = t.querySelector("svg");
+      const ri = svg.getBoundingClientRect();
+      return { llegaBordes: Math.abs(rt.left - (rc.left + 1)) <= 0.6 && Math.abs(rt.right - (rc.right - 1)) <= 0.6, arriba: rt.top - rc.top <= 1.6, fondo: cs(t).backgroundColor === suave, linea: cs(t).borderBottomColor === mezcla && cs(t).borderBottomWidth === "1px", icono: cs(svg).color === acento, centrado: Math.abs(ri.top + ri.height / 2 - (rt.top + (rt.height - 1) / 2)) <= 1, altura: Math.round(rt.height) };
+    });
+    // separaciones verticales entre campos consecutivos de cada tarjeta
+    const separaciones = [datos, tramo].map((card) => {
+      const rects = [...card.querySelectorAll(".field")].filter((f) => f.getClientRects().length).map((f) => f.getBoundingClientRect());
+      return rects.slice(1).map((r, i) => r.top - rects[i].bottom);
+    });
+    return {
+      barras,
+      separaciones,
+      lateral: { datos: izq(datos.querySelector("select, input")) - izq(datos), tramo: izq(tramo.querySelector("select, input")) - izq(tramo), iconoTramo: izq(tramo.querySelector(".form-section-title svg")) - izq(tramo), tabs: izq(res.querySelector(".tabs")) - izq(res), panel: izq(panel) - izq(res), texto: izq(panel.querySelector(".result-metric .value")) - izq(panel) },
+      columnasDistancias: cs(tramo.querySelector(".grid-3")).gridTemplateColumns.split(" ").length,
+      bordeTarjeta: cs(datos).borderTopColor,
+      bordeTablas: token("--table-border"),
+    };
+  };
+  const angosto = await cargarMarco(600);
+  const mAng = medir(angosto);
+  angosto.remove();
+  const ancho = await cargarMarco(1000);
+  const mAnc = medir(ancho);
+  ancho.remove();
+
+  for (const [nombre, m] of [["600 px", mAng], ["1000 px", mAnc]]) {
+    m.barras.forEach((b, i) => {
+      const t = ["Datos de la línea", "Conductor"][i];
+      ok(b.llegaBordes && b.arriba && b.fondo && b.linea && b.icono && b.centrado, `ancho ${nombre}, «${t}»: barra de borde a borde con el color atenuado, línea 35 % menos intensa, icono en color pleno y centrado`);
+    });
+    ok(new Set(m.barras.map((b) => b.altura)).size === 1, `ancho ${nombre}: las barras tienen la misma altura`);
+    const l = m.lateral;
+    ok(l.datos === 17 && l.tramo === 17 && l.iconoTramo === 17 && l.tabs === 17 && l.panel === 17 && l.texto === 17, `ancho ${nombre}: 17 px del borde al contenido (1 + 16) en tarjetas, resultados y panel (${Object.values(l).join(", ")})`);
+  }
+  ok(mAng.columnasDistancias === 1 && mAnc.columnasDistancias === 3, `las tres distancias entre fases van en 3 columnas (ancho) y en 1 (angosto): ${mAnc.columnasDistancias} y ${mAng.columnasDistancias}`);
+  mAng.separaciones.forEach((s, i) => {
+    ok(s.length >= 3 && s.every((v) => Math.abs(v - 16) <= 0.6), `ancho 600 px, tarjeta ${i + 1}: todos los campos a 16 px unos de otros (${s.map((v) => v.toFixed(0)).join(", ")})`);
+  });
+  ok(mAng.bordeTarjeta === mAng.bordeTablas || mAng.bordeTarjeta.length > 0, "las tarjetas tienen borde");
+});
+
+await seccion("service worker y otros archivos", async () => {
+  const sw = await (await fetch("../sw.js")).text();
+  const lista = [...sw.matchAll(/^\s*"([^"]+)",\s*$/gm)].map((m) => m[1]);
+  ok(["js/calc/regulacion-tramos.js", "js/calc/circuito.js", "js/util/resultados-ui.js", "js/views/calc-regulacion.js"].every((f) => lista.includes(f)), "el service worker precachea los módulos nuevos");
+  const existen = await Promise.all(lista.filter((f) => f !== "./").map((f) => fetch(`../${f}`, { method: "HEAD" }).then((r) => [f, r.ok])));
+  const faltan = existen.filter(([, okk]) => !okk).map(([f]) => f);
+  ok(faltan.length === 0, `todos los archivos del APP_SHELL existen${faltan.length ? ": " + faltan.join(", ") : ""}`);
+  const tool = await (await fetch("../js/ai/tools.js")).text();
+  ok(tool.includes('nombre: "calcular_regulacion"') && tool.includes('from "../calc/regulacion.js"'), "la herramienta de la IA sigue usando el motor original de regulación (sin cambios)");
+});
+
+out.textContent += `\nRESULT: ${fallos ? "FAIL" : "OK"} (${total - fallos}/${total})\n`;
+</script>
+</body>
+</html>

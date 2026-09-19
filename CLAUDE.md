@@ -20,7 +20,20 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   antes de "corregir" comportamientos que parezcan bugs (algunos son intencionales,
   replicando el comportamiento original).
 
-## Pantalla de Pérdidas (tarjetas, varios tramos) y KaTeX
+## Pantallas de Pérdidas y Regulación (tarjetas, varios tramos) y KaTeX
+
+- Regulación (2026-09-19) replica el rediseño de Pérdidas (mismas tarjetas, iconos, relleno, reporte y fórmulas). Diferencias: sin
+  factor de carga; por tramo agrega radio medio geométrico (mm, del catálogo, editable con «Manual»), conductores por fase con
+  «Separación entre subconductores del haz» (RMG equivalente del haz, `calcularRmgHaz`) y las 3 distancias entre fases (propias de
+  cada tramo). Referencias de diseño 5 % (Óptimo) / 10 % (Adecuado) / «Elevado» por encima; NO son límite normativo. El motor
+  `js/calc/regulacion.js` y la herramienta de la IA NO se tocan. Lógica en `js/calc/regulacion-tramos.js`; pruebas en
+  `tools/verify_regulacion.html`. Las dos fórmulas de caída (`√3·I·Z·L·100/(V·1000)` y `P[kW]·L·K`) son equivalentes (verificado).
+- Código compartido para las próximas calculadoras: `js/calc/circuito.js` (dato de partida, `clasificarPorUmbrales`,
+  `sugerirCalibre` con `campo`) y `js/util/resultados-ui.js` (tarjeta con pestañas, `reporteHtml` con negrita, panel de fórmulas
+  y `activarPestanas`, que además alinea la columna de símbolos midiendo el más ancho: `--ancho-simbolo`). Etiquetas: siempre
+  «Óptimo» / «Adecuado» / «Elevado» (antes «Mayores pérdidas»). Clase de tablas de resultado: `.tabla-resultado`.
+- Campos numéricos que vienen del catálogo (resistencia, RMG) llevan `step="any"`: con `step="0.01"` el modo «Manual» fallaba la
+  validación con valores de 3 decimales (p. ej. 0.396).
 
 - Rediseño acordado con el usuario (2026-09-19) tomando de referencia el módulo de pérdidas de otro proyecto («Calculadora
   Normativa»): tarjeta «Datos de la línea» (con *dato de partida*: MW, MVA o A) + una tarjeta «Conductor — Tramo N» por tramo
@@ -28,7 +41,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   que ya había (métricas + tablas); **sin gráficos** (barras, velocímetro): el usuario los quiere más adelante, no ahora.
   Unidades: se mantienen MW y MVA. El motor `js/calc/perdidas.js` NO se toca; la suma de tramos y el dato de partida viven en
   `js/calc/perdidas-tramos.js`. La IA (`calcular_perdidas`) sigue igual (un tramo). Pruebas: `tools/verify_perdidas.html`.
-- Umbrales 1 % / 3 %: solo «referencias de diseño» (Óptimo / Adecuado / Mayores pérdidas). NUNCA escribir «fuera de norma».
+- Umbrales 1 % / 3 %: solo «referencias de diseño» (Óptimo / Adecuado / Elevado). NUNCA escribir «fuera de norma».
 - Tarjetas (`.form-section`): título como BARRA de borde a borde (`.form-section-title`: fondo `--accent-soft` como el botón activo del
   menú lateral, línea inferior delgada `--accent`, icono `--accent` pleno, centrado vertical, `min-height` fijo para que no cambie al
   aparecer «Quitar»); espacio inferior compacto (`.grid-2.ultima`, relleno de 12px; botón «Agregar tramo» a 10px del último campo).
@@ -50,11 +63,12 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   `sw.js`. El usuario quiere extenderlo a las pestañas «Fórmulas» de las demás calculadoras, una por una. Las ecuaciones van
   DENTRO de una subtarjeta (`.formula-caja`: mismo fondo hundido, borde y esquinas que la caja de «Reporte», sin letra mono); mientras
   KaTeX carga (o si falla) se ve el texto plano `.formula-block`.
-- Pestaña «Reporte» de Pérdidas (texto para copiar y pegar), estructura pedida por el usuario: `CÁLCULO DE PÉRDIDAS`, línea en
-  blanco, `PARÁMETROS DE ENTRADA` + línea de 30 guiones, y `RESULTADOS` + línea de 30 guiones. Parámetros = lo que el usuario dio
-  (tensión, dato de partida, FP, Fc y, por tramo, red/material/calibre/R/conductores por fase/longitud); resultados = todo lo que
-  sale del cálculo (Fp primero, corriente, potencias, detalle por tramo con R efectiva, % y MW, y totales). Si el dato de partida no
-  es la potencia activa, esta va en resultados. Cubierto por la sección «estructura del reporte» de `verify_perdidas.html`.
+- Pestaña «Reporte» (texto para copiar y pegar), estructura pedida por el usuario: `CÁLCULO DE …` (sin dos puntos), línea en
+  blanco, línea de 30 guiones y `PARÁMETROS DE ENTRADA:`, línea en blanco, línea de 30 guiones y `RESULTADOS:` (la línea va ENCIMA
+  de esas dos etiquetas, con dos puntos al final; las tres etiquetas van en negrita con `<strong>`, el texto copiado no cambia).
+  Parámetros = lo que el usuario dio; resultados = todo lo que sale del cálculo (en Pérdidas el Fp va primero; detalle por tramo
+  con lo calculado y totales). Si el dato de partida no es la potencia activa, esta va en resultados. Cubierto por la sección
+  «estructura del reporte» de `verify_perdidas.html` y `verify_regulacion.html`.
 - Las tarjetas de Pérdidas llevan `.tarjeta-borde` (borde `--table-border`: en claro más marcado que `--border`, que casi se perdía
   contra el fondo; en oscuro no cambia). Se dejó en 1px; si aún se ve tenue, probar 1.5px antes que un color nuevo.
   Relleno de esas tarjetas y del panel azul de resultados: 16px (`--pad-tarjeta`, pedido por el usuario; antes 24px = `--space-5`),
@@ -106,7 +120,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v77); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v78); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (Ayuda → "Configuración avanzada", `js/auth/*`, `firebase/firestore.rules`)

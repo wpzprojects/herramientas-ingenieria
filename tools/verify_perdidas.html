@@ -100,8 +100,10 @@ await seccion("perdidas-tramos: logica", async () => {
 
   // referencias de diseño
   const c = (p) => tr.clasificarPerdidas(p).clave;
-  ok(c(0.5) === "optimo" && c(1) === "optimo" && c(1.0001) === "adecuado" && c(3) === "adecuado" && c(3.0001) === "mayores", "etiquetas: ≤1 óptimo, ≤3 adecuado, >3 mayores pérdidas");
-  ok(!/norma/i.test(["optimo", "adecuado", "mayores"].map((k) => tr.clasificarPerdidas({ optimo: 0.5, adecuado: 2, mayores: 5 }[k]).etiqueta).join(" ")), "ninguna etiqueta dice «norma»");
+  ok(c(0.5) === "optimo" && c(1) === "optimo" && c(1.0001) === "adecuado" && c(3) === "adecuado" && c(3.0001) === "elevado", "etiquetas: ≤1 óptimo, ≤3 adecuado, >3 elevado");
+  const etiquetas = [0.5, 2, 5].map((p) => tr.clasificarPerdidas(p).etiqueta);
+  ok(etiquetas.join("|") === "Óptimo|Adecuado|Elevado", `textos de las etiquetas: ${etiquetas.join(" | ")} (por encima de 3 % dice «Elevado»)`);
+  ok(!/norma/i.test(etiquetas.join(" ")), "ninguna etiqueta dice «norma»");
 
   // sugerencia de calibre
   const cand = [10, 6, 4, 3.5, 2.9, 2, 1.5, 1, 0.8].map((p, i) => ({ calibre: `c${i}`, area: i + 1, perdidasPct: p }));
@@ -317,7 +319,7 @@ await seccion("vista: un tramo, cálculo y resultados", async () => {
   ok(texto($("#resultado-wrap")).includes("no son un límite normativo"), "se aclara que 1 % y 3 % son referencias de diseño");
   ok(!$$(".result-panel svg, .result-gauge").length, "sin gráficos: solo los formatos de resultado que ya existían");
 
-  const filas = $$(".tabla-perdidas tbody tr");
+  const filas = $$(".tabla-resultado tbody tr");
   ok(texto($(".result-subhead")).includes("Comparación con otros calibres") && filas.length >= 3, `un solo tramo: comparación de calibres (${filas.length} filas)`);
   ok(filas.some((f) => f.classList.contains("current-row") && texto(f).includes("4/0") && texto(f).includes("Actual")), "la fila del calibre elegido está marcada como «Actual»");
   const pcts = filas.map((f) => parseFloat(texto(f.querySelectorAll("td")[2])));
@@ -346,9 +348,9 @@ await seccion("vista: color de la fila sugerida en cada tema", async () => {
     stage.append(sonda);
     const token = (v) => { sonda.style.backgroundColor = `var(${v})`; return getComputedStyle(sonda).backgroundColor; };
     const r = {
-      fila: getComputedStyle($(".tabla-perdidas tr.match-row")).backgroundColor,
+      fila: getComputedStyle($(".tabla-resultado tr.match-row")).backgroundColor,
       panel: getComputedStyle($(".result-panel")).backgroundColor,
-      tabla: getComputedStyle($(".tabla-perdidas")).backgroundColor,
+      tabla: getComputedStyle($(".tabla-resultado")).backgroundColor,
       exito: token("--success-soft"),
       acentoSuave: token("--accent-soft"),
       bordeTarjeta: getComputedStyle($(".card.tarjeta-borde")).borderTopColor,
@@ -407,7 +409,7 @@ await seccion("vista: varios tramos", async () => {
   const e1 = esperado({ V: 34.5, Pmw: 19.9, fp: 0.9, fc: 0.564, R: ACSR_4_0.r_ac_75c_ohm_km, L: 10 });
   const e2 = esperado({ V: 34.5, Pmw: 19.9, fp: 0.9, fc: 0.564, R: ACSR_1_0.r_ac_75c_ohm_km, L: 4 });
   cerca(valorDe("Porcentaje de pérdidas total"), e1.pct + e2.pct, 0.006, "dos tramos: % total = suma de los tramos");
-  const filas = $$(".tabla-perdidas tbody tr");
+  const filas = $$(".tabla-resultado tbody tr");
   ok(filas.length === 3 && filas[2].classList.contains("total-row"), "tabla por tramo: dos filas y una de total");
   cerca(parseFloat(texto(filas[0].querySelectorAll("td")[3])), e1.pct, 0.006, "tabla: % del tramo 1");
   cerca(parseFloat(texto(filas[1].querySelectorAll("td")[3])), e2.pct, 0.006, "tabla: % del tramo 2");
@@ -419,13 +421,15 @@ await seccion("vista: varios tramos", async () => {
   poner("#f-n-1", "2");
   $("#form-calc").requestSubmit();
   cerca(valorDe("Porcentaje de pérdidas total"), e1.pct + e2.pct / 2, 0.006, "2 conductores por fase en el tramo 2: sus pérdidas se dividen entre 2");
-  ok(texto($$(".tabla-perdidas tbody tr")[1].querySelectorAll("td")[1]).includes("×2"), "la tabla indica ×2 en ese tramo");
+  ok(texto($$(".tabla-resultado tbody tr")[1].querySelectorAll("td")[1]).includes("×2"), "la tabla indica ×2 en ese tramo");
 
   // resistencia manual
   const chk = $("#chk-resistencia-1");
   chk.checked = true;
   chk.dispatchEvent(new Event("change", { bubbles: true }));
   ok(!$("#f-resistencia-1").disabled, "«Manual» habilita la resistencia");
+  poner("#f-resistencia-1", "0.396");
+  ok($("#f-resistencia-1").step === "any" && $("#f-resistencia-1").validity.valid, "la resistencia acepta valores como 0.396 (los del catálogo tienen 3 decimales; antes fallaba la validación en modo Manual)");
   poner("#f-resistencia-1", "0.5");
   poner("#f-n-1", "1");
   $("#form-calc").requestSubmit();
@@ -443,10 +447,10 @@ await seccion("vista: varios tramos", async () => {
 await seccion("vista: estructura del reporte (se copia y se pega)", async () => {
   const leer = () => { $("#form-calc").requestSubmit(); return $('[data-panel="reporte"] .report-block').textContent.split("\n"); };
   const LINEA = /^-{30}$/;
-  const etiquetasEn = (l) => l.filter((x) => /^[A-ZÁÉÍÓÚÑ ]{4,}$/.test(x));
+  const etiquetasEn = (l) => l.filter((x) => /^[A-ZÁÉÍÓÚÑ ]{4,}:?$/.test(x));
   const secciones = (l) => {
-    const iRes = l.indexOf("RESULTADOS");
-    return { iRes, params: l.slice(3, iRes), res: l.slice(iRes + 2) };
+    const iRes = l.indexOf("RESULTADOS:");
+    return { iRes, params: l.slice(4, iRes - 2), res: l.slice(iRes + 1) };
   };
   const tiene = (l, inicio) => l.some((x) => x.trim().startsWith(inicio));
 
@@ -455,10 +459,16 @@ await seccion("vista: estructura del reporte (se copia y se pega)", async () => 
   const a = leer();
   const sa = secciones(a);
   ok(a[0] === "CÁLCULO DE PÉRDIDAS" && a[1] === "", "primera etiqueta: «CÁLCULO DE PÉRDIDAS», seguida de una línea en blanco");
-  ok(a[2] === "PARÁMETROS DE ENTRADA" && LINEA.test(a[3]), "segunda etiqueta: «PARÁMETROS DE ENTRADA» con su línea divisoria debajo");
-  ok(sa.iRes > 3 && a[sa.iRes - 1] === "" && LINEA.test(a[sa.iRes + 1]), "tercera etiqueta: «RESULTADOS» (con una línea en blanco antes) y su línea divisoria debajo");
-  ok(etiquetasEn(a).join("|") === "CÁLCULO DE PÉRDIDAS|PARÁMETROS DE ENTRADA|RESULTADOS" && a.filter((x) => LINEA.test(x)).length === 2, "son exactamente tres etiquetas y dos líneas divisorias");
-  ok(a[sa.iRes + 2].startsWith("Factor de pérdidas (Fp = 0.7·Fc + 0.3): 0.6948"), `el resultado arranca con el factor de pérdidas (${a[sa.iRes + 2]})`);
+  ok(LINEA.test(a[2]) && a[3] === "PARÁMETROS DE ENTRADA:", "segunda etiqueta: «PARÁMETROS DE ENTRADA:» (con dos puntos) y la línea divisoria ENCIMA");
+  ok(sa.iRes > 4 && a[sa.iRes - 2] === "" && LINEA.test(a[sa.iRes - 1]), "tercera etiqueta: «RESULTADOS:» (con dos puntos), la línea divisoria ENCIMA y una línea en blanco antes de ella");
+  ok(!LINEA.test(a[4]) && !LINEA.test(a[sa.iRes + 1]), "debajo de las etiquetas ya no hay línea divisoria: sigue directamente el contenido");
+  ok(etiquetasEn(a).join("|") === "CÁLCULO DE PÉRDIDAS|PARÁMETROS DE ENTRADA:|RESULTADOS:" && a.filter((x) => LINEA.test(x)).length === 2, "son exactamente tres etiquetas y dos líneas divisorias");
+  ok(a[sa.iRes + 1].startsWith("Factor de pérdidas (Fp = 0.7·Fc + 0.3): 0.6948"), `el resultado arranca con el factor de pérdidas (${a[sa.iRes + 1]})`);
+  // negrita: las tres etiquetas van en <strong> y el texto copiado no cambia
+  const negritas = $$('[data-panel="reporte"] .report-block strong');
+  const pesos = negritas.map((e) => parseInt(getComputedStyle(e).fontWeight, 10));
+  ok(negritas.map((e) => e.textContent).join("|") === "CÁLCULO DE PÉRDIDAS|PARÁMETROS DE ENTRADA:|RESULTADOS:" && pesos.every((w) => w >= 700), `las tres etiquetas están en negrita (${pesos.join(", ")}) y solo ellas`);
+  ok($('[data-panel="reporte"] .report-block').textContent.split("\n")[3] === "PARÁMETROS DE ENTRADA:", "el texto que se copia no lleva marcas de formato");
   for (const inicio of ["Tensión de línea", "Dato de partida", "Potencia activa", "Factor de potencia", "Factor de carga", "Tramo 1:", "Tipo de red", "Material/Tipo", "Calibre", "Resistencia AC a 75°C", "Conductores por fase", "Longitud del tramo"]) {
     ok(tiene(sa.params, inicio), `parámetros de entrada incluye «${inicio}»`);
   }
@@ -506,6 +516,8 @@ await seccion("vista: fórmulas con KaTeX", async () => {
   ok(!window.katex, "KaTeX no se carga hasta abrir la pestaña Fórmulas");
   $$(".tab-btn").find((b) => b.dataset.tab === "formulas").click();
   for (let i = 0; i < 40 && !$$("#formulas-katex .katex").length; i++) await espera(100);
+  await document.fonts.ready;
+  await espera(150);
   const ecuaciones = $$("#formulas-katex .formula-katex");
   ok(window.katex && ecuaciones.length === 10, `KaTeX cargado y 10 ecuaciones dibujadas (${ecuaciones.length})`);
   ok($$("#formulas-katex .katex-error").length === 0, "ninguna ecuación con error de sintaxis");

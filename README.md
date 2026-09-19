@@ -24,6 +24,7 @@ css/                                       # tokens.css (paleta clara/oscura) + 
 js/app.js, router.js, nav.js, icons.js     # bootstrap, router SPA por hash, navegacion, iconos SVG inline
 js/util/format.js                          # formato de numeros, fetch de datos con cache, helpers DOM
 js/util/katex.js                           # carga perezosa de KaTeX (solo al abrir una pestaña de formulas)
+js/util/resultados-ui.js                   # tarjeta de resultados con pestañas, reporte con negrita y panel de formulas (Perdidas, Regulacion)
 vendor/katex/                              # copia local de KaTeX 0.16.11 (MIT): js, css y fuentes woff2; precacheada por el service worker
 js/calc/*.js                               # motores de calculo PUROS (sin DOM), 1:1 con las formulas originales
 js/ai/*.js                                 # capa de IA (Gemini): cliente, herramientas, agentes, reporte (ver "Funciones de IA")
@@ -44,6 +45,8 @@ Los `data/*.json` son la **fuente de verdad** de los catálogos y se editan dire
 ## Verificación de los motores de cálculo
 
 `tools/verify_calc.py` y `tools/verify_coordenadas.py` son scripts Python independientes (reimplementan las mismas fórmulas en otro lenguaje) usados para validar numéricamente los módulos de `js/calc/` durante la migración — no son parte de la app, pero conviene conservarlos como referencia/regresión si se vuelve a tocar esa lógica.
+
+`tools/verify_regulacion.html` hace lo mismo con la pantalla de Regulación (varios tramos, haz de conductores, RMG en mm, reporte y fórmulas).
 
 `tools/verify_perdidas.html` (arnés en el navegador, sin internet) prueba la pantalla de Pérdidas: la lógica de varios tramos (`js/calc/perdidas-tramos.js`) contra fórmulas escritas de forma independiente, y la vista real manejada como lo haría una persona (dato de partida, agregar/quitar tramos, resultados, fórmulas con KaTeX, archivos del service worker). Se ejecuta igual que `verify_ia.html` (ver su encabezado).
 
@@ -98,7 +101,8 @@ Pantalla de acceso restringido (`#/ayuda/configuracion`, tarjeta "Configuración
 - Los paneles "Reporte" y "Fórmulas" de cada calculadora, que en el original estaban condicionados a un nivel de acceso oculto (`vAcceso >= 3`, fijado siempre en 3 al abrir la app), quedan siempre visibles en la PWA.
 - Se omitieron del menú las 6 opciones que ya estaban deshabilitadas/sin implementar en la app original (resistencia de puesta a tierra, DPS, catálogo de aisladores, criterios Celsia, bitácora, verificación documental) y la pantalla de desarrollo interno (`Pantalla_Pruebas`).
 
-- **Pérdidas (pantalla en tarjetas)**: «Datos de la línea» (con el *dato de partida*: potencia activa en MW, potencia aparente en MVA o corriente en A, que se convierte a potencia activa) y una tarjeta «Conductor» por tramo (con conductores por fase: la resistencia efectiva es R/N). El % de pérdidas total es la **suma** de los % de cada tramo, válido con la misma corriente en todo el circuito (sin cargas intermedias). `js/calc/perdidas.js` no se modificó: `js/calc/perdidas-tramos.js` lo usa tramo por tramo. Los umbrales de 1 % y 3 % son **referencias de diseño** (etiquetas «Óptimo», «Adecuado» y «Mayores pérdidas», y calibre sugerido); no se presentan como límite normativo ni como «fuera de norma». La herramienta de la IA (`calcular_perdidas`) sigue con un solo tramo y potencia en MW.
+- **Pérdidas (pantalla en tarjetas)**: «Datos de la línea» (con el *dato de partida*: potencia activa en MW, potencia aparente en MVA o corriente en A, que se convierte a potencia activa) y una tarjeta «Conductor» por tramo (con conductores por fase: la resistencia efectiva es R/N). El % de pérdidas total es la **suma** de los % de cada tramo, válido con la misma corriente en todo el circuito (sin cargas intermedias). `js/calc/perdidas.js` no se modificó: `js/calc/perdidas-tramos.js` lo usa tramo por tramo. Los umbrales de 1 % y 3 % son **referencias de diseño** (etiquetas «Óptimo», «Adecuado» y «Elevado», y calibre sugerido); no se presentan como límite normativo ni como «fuera de norma». La herramienta de la IA (`calcular_perdidas`) sigue con un solo tramo y potencia en MW.
+- **Regulación (pantalla en tarjetas)**: misma estructura que Pérdidas, sin factor de carga. Cada tramo lleva su conductor, su longitud, su radio medio geométrico (en mm, del catálogo o «Manual»), sus conductores por fase con la separación del haz (RMG equivalente del haz; la resistencia efectiva es R/N) y sus tres distancias entre fases. La caída de tensión total es la suma de la de cada tramo (misma corriente en todo el circuito). Referencias de diseño: hasta 5 % «Óptimo», hasta 10 % «Adecuado» y por encima «Elevado» (no son un límite normativo). `js/calc/regulacion.js` y la herramienta de la IA no se modificaron; la lógica de tramos está en `js/calc/regulacion-tramos.js` y lo común con Pérdidas en `js/calc/circuito.js`.
 - **KaTeX** (`vendor/katex`): única biblioteca de terceros incluida, como copia local (MIT, sin npm ni build) para que las fórmulas se vean bien sin internet. Se carga solo al abrir la pestaña «Fórmulas» de Pérdidas.
 
 ## Iconos / logo

@@ -263,9 +263,9 @@ input:disabled, select:disabled { opacity: 0.55; }
   letter-spacing: 0.04em; text-transform: uppercase;
 }
 .form-section-title .icon { width: 18px; height: 18px; color: var(--accent); flex: 0 0 auto; }
-.form-section .grid-2.ultima > .field { margin-bottom: 0; } /* el relleno de la tarjeta ya da el espacio inferior */
+.form-section :is(.grid-2, .grid-3).ultima > .field { margin-bottom: 0; } /* el relleno de la tarjeta ya da el espacio inferior */
 @media (max-width: 720px) { /* en una columna el primer campo de la ultima fila si necesita su margen (el ultimo no) */
-  .form-section .grid-2.ultima > .field:not(:last-child) { margin-bottom: var(--space-4); }
+  .form-section :is(.grid-2, .grid-3).ultima > .field:not(:last-child) { margin-bottom: var(--space-4); }
 }
 /* `.btn.x` (no solo `.x`): la regla general `.btn` esta mas abajo en este archivo y, con la misma especificidad, ganaria */
 .btn.btn-tramo-quitar { margin-left: auto; padding: 2px 8px; font-size: 0.72rem; text-transform: none; letter-spacing: normal; }
@@ -281,9 +281,9 @@ input:disabled, select:disabled { opacity: 0.55; }
   margin: var(--space-5) 0 var(--space-3); padding-top: var(--space-4);
   border-top: 1px solid var(--border);
 }
-.tabla-perdidas th.num, .tabla-perdidas td.num { text-align: right; font-variant-numeric: tabular-nums; }
-.tabla-perdidas tr.match-row { background: var(--fila-sugerida); } /* verde suave en el tema claro; azul del tema (mas claro que el panel) en el oscuro */
-.tabla-perdidas tr.current-row td, .tabla-perdidas tr.total-row td { font-weight: 700; }
+.tabla-resultado th.num, .tabla-resultado td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.tabla-resultado tr.match-row { background: var(--fila-sugerida); } /* verde suave en el tema claro; azul del tema (mas claro que el panel) en el oscuro */
+.tabla-resultado tr.current-row td, .tabla-resultado tr.total-row td { font-weight: 700; }
 /* Borde de las tarjetas de esta pantalla: el color del borde de las tablas (--table-border): en el tema claro es mas marcado que --border
    (que casi se pierde contra el fondo) y en el oscuro es el mismo --border de siempre. Se mantiene en 1px: mas grueso se veria pesado. */
 .card.tarjeta-borde { border-color: var(--table-border); --pad-tarjeta: var(--space-4); padding: var(--pad-tarjeta); }
@@ -304,7 +304,7 @@ input:disabled, select:disabled { opacity: 0.55; }
 .formula-etiquetas { margin: 0; padding-left: 1.3em; font-size: 0.88rem; }
 .formula-etiquetas li { margin-bottom: var(--space-1); padding-left: var(--space-1); }
 .formula-etiquetas li::marker { color: var(--text-faint); }
-.formula-etiquetas .formula-simbolo { display: inline-block; min-width: 4.2em; margin-right: var(--space-2); }
+.formula-etiquetas .formula-simbolo { display: inline-block; min-width: var(--ancho-simbolo, 4.2em); margin-right: var(--space-2); } /* --ancho-simbolo lo mide resultados-ui.js */
 .formula-katex { overflow-x: auto; overflow-y: hidden; text-align: center; margin: 0 0 var(--space-3); padding: var(--space-1) 0; }
 .formula-katex .katex-display { margin: 0; }
 .formula-vars { white-space: pre-line; margin: var(--space-4) 0 0; }

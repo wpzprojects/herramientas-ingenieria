@@ -14,7 +14,7 @@ import {
   UMBRAL_OPTIMO_PCT,
   UMBRAL_ADECUADO_PCT,
 } from "../calc/perdidas-tramos.js";
-import { cargarKatex, ecuacionHtml } from "../util/katex.js";
+import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 
 // Ecuaciones (LaTeX) de la pestaña Fórmulas: replican lo que hace el motor, con las mismas unidades (MW, kV, Ω/km, km).
 const FORMULAS_TEX = [
@@ -80,8 +80,8 @@ Dato de partida: P = S·cos φ   |   P = √3·V·I·cos φ / 1000
 
 ${FORMULAS_NOTA}`;
 
-// Linea divisoria del reporte de texto: corta (30 caracteres) para que no se parta en pantallas angostas.
-const LINEA_REPORTE = "-".repeat(30);
+// Lineas del reporte que son etiquetas: van en negrita (el texto que se copia es el mismo).
+const ETIQUETAS_REPORTE = ["CÁLCULO DE PÉRDIDAS", "PARÁMETROS DE ENTRADA:", "RESULTADOS:"];
 
 const MODOS = {
   potencia: "Potencia activa",
@@ -212,7 +212,7 @@ export async function render(container) {
           <div class="field">
             <label for="f-resistencia-${id}">Resistencia AC a 75°C (Ω/km)</label>
             <div class="input-with-toggle">
-              <input type="number" id="f-resistencia-${id}" min="0" max="10000" step="0.01" required disabled>
+              <input type="number" id="f-resistencia-${id}" min="0" max="10000" step="any" required disabled>
               <label class="checkbox-row"><input type="checkbox" id="chk-resistencia-${id}"> Manual</label>
             </div>
           </div>
@@ -389,7 +389,7 @@ export async function render(container) {
     return `
       <div class="result-subhead">Comparación con otros calibres</div>
       <p class="text-muted text-sm" style="margin: 0 0 var(--space-3);">${mensaje}</p>
-      <div class="table-wrap tabla-perdidas"><table>
+      <div class="table-wrap tabla-resultado"><table>
         <thead><tr><th>Calibre</th><th class="num">Área (mm²)</th><th class="num">% pérdidas</th></tr></thead>
         <tbody>${filas}</tbody>
       </table></div>`;
@@ -407,7 +407,7 @@ export async function render(container) {
       .join("");
     return `
       <div class="result-subhead">Pérdidas por tramo</div>
-      <div class="table-wrap tabla-perdidas"><table>
+      <div class="table-wrap tabla-resultado"><table>
         <thead><tr><th>Tramo</th><th>Conductor</th><th class="num">Longitud (km)</th><th class="num">% pérdidas</th><th class="num">Pérdidas (MW)</th></tr></thead>
         <tbody>${filas}<tr class="total-row"><td colspan="3">Total</td><td class="num">${fmtPercent(r.perdidasPct)}</td><td class="num">${fmt(r.perdidasMw, 3)}</td></tr></tbody>
       </table></div>`;
@@ -438,8 +438,8 @@ export async function render(container) {
     return [
       `CÁLCULO DE PÉRDIDAS`,
       ``,
-      `PARÁMETROS DE ENTRADA`,
       LINEA_REPORTE,
+      `PARÁMETROS DE ENTRADA:`,
       `Tensión de línea: ${fmt(base.tensionLineaKv)} kV`,
       `Dato de partida: ${MODOS[modo]} (${fmt(datoPartida)} ${unidadDato})`,
       ...(modo === "potencia" ? [potenciaActiva] : []), // si parte de otro dato, la potencia activa se calcula y va en resultados
@@ -447,8 +447,8 @@ export async function render(container) {
       `Factor de carga (Fc): ${fmt(base.factorCarga, 4)}`,
       ...parametrosTramos,
       ``,
-      `RESULTADOS`,
       LINEA_REPORTE,
+      `RESULTADOS:`,
       `Factor de pérdidas (Fp = 0.7·Fc + 0.3): ${fmt(r.factorPerdidas, 4)}`,
       ...(modo === "potencia" ? [] : [potenciaActiva]),
       `Corriente: ${fmt(r.corriente)} A`,
@@ -466,14 +466,7 @@ export async function render(container) {
     const clase = Number.isFinite(r.perdidasPct) ? clasificarPerdidas(r.perdidasPct) : null; // sin etiqueta si los datos no dan un numero
     const varios = r.tramos.length > 1;
 
-    wrap.innerHTML = `
-      <div class="card tarjeta-borde">
-        <div class="tabs">
-          <button type="button" class="tab-btn active" data-tab="resultado">Resultado</button>
-          <button type="button" class="tab-btn" data-tab="reporte">Reporte</button>
-          <button type="button" class="tab-btn" data-tab="formulas">Fórmulas</button>
-        </div>
-        <div class="tab-panel" data-panel="resultado">
+    const resultado = `
           <div class="result-panel">
             <div class="grid-2">
               <div class="result-metric">
@@ -503,48 +496,14 @@ export async function render(container) {
             </div>
             <p class="text-muted text-sm" style="margin: var(--space-3) 0 0;">Referencias de diseño (no son un límite normativo): hasta ${UMBRAL_OPTIMO_PCT}% óptimo · hasta ${UMBRAL_ADECUADO_PCT}% adecuado.</p>
             ${varios ? tablaTramosHtml(r, estados) : comparacionCalibresHtml(base, estados[0])}
-          </div>
-        </div>
-        <div class="tab-panel" data-panel="reporte" hidden>
-          <div class="report-block">${escapeHtml(reporteTexto(r, base, estados, dato))}</div>
-        </div>
-        <div class="tab-panel" data-panel="formulas" hidden>
-          <div id="formulas-katex" class="formula-caja" hidden></div>
-          <div class="formula-block" id="formulas-plano">${escapeHtml(FORMULAS_TEXTO)}</div>
-        </div>
-      </div>
-    `;
+          </div>`;
 
-    let formulasListas = false;
-    async function mostrarFormulas() {
-      if (formulasListas) return;
-      formulasListas = true;
-      try {
-        const katex = await cargarKatex();
-        const caja = wrap.querySelector("#formulas-katex");
-        caja.innerHTML =
-          FORMULAS_TEX.map(
-            (g) => `<div class="result-subhead">${escapeHtml(g.titulo)}</div>` + g.ecuaciones.map((tex) => `<div class="formula-katex">${ecuacionHtml(katex, tex)}</div>`).join("")
-          ).join("") +
-          `<div class="result-subhead">Descripción de las etiquetas</div><ul class="formula-etiquetas">` +
-          FORMULAS_ETIQUETAS.map((e) => `<li><span class="formula-simbolo">${katex.renderToString(e.tex, { throwOnError: false })}</span><span>${escapeHtml(e.texto)}</span></li>`).join("") +
-          `</ul><div class="result-subhead">Notas</div><p class="text-muted text-sm formula-vars">${escapeHtml(FORMULAS_NOTA)}</p>`;
-        caja.hidden = false; // la caja (subtarjeta) solo aparece cuando ya hay fórmulas dibujadas; mientras tanto se ve el texto plano
-        wrap.querySelector("#formulas-plano").hidden = true;
-      } catch {
-        formulasListas = false; // sin KaTeX se queda el texto plano; se reintenta la proxima vez que se abra la pestaña
-      }
-    }
-
-    wrap.querySelectorAll(".tab-btn").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        wrap.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b === btn));
-        wrap.querySelectorAll(".tab-panel").forEach((panel) => {
-          panel.hidden = panel.dataset.panel !== btn.dataset.tab;
-        });
-        if (btn.dataset.tab === "formulas") mostrarFormulas();
-      });
+    wrap.innerHTML = tarjetaResultadosHtml({
+      resultado,
+      reporte: reporteHtml(reporteTexto(r, base, estados, dato), ETIQUETAS_REPORTE),
+      formulasPlano: FORMULAS_TEXTO,
     });
+    activarPestanas(wrap, { grupos: FORMULAS_TEX, etiquetas: FORMULAS_ETIQUETAS, nota: FORMULAS_NOTA });
 
     wrap.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
