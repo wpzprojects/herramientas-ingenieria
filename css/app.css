@@ -190,6 +190,9 @@ button { font-family: inherit; }
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); }
 @media (max-width: 720px) {
   .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  /* En una sola columna cada .field ya trae su margen inferior: con el espacio de la rejilla ademas, los campos del mismo grupo
+     quedaban a 32px y los de grupos distintos a 16px (irregular). Solo se quita a las rejillas de campos (no a las de metricas). */
+  .grid-2:has(> .field), .grid-3:has(> .field) { row-gap: 0; }
 }
 
 /* ---------- listas de la pantalla Ayuda ---------- */
@@ -261,6 +264,9 @@ input:disabled, select:disabled { opacity: 0.55; }
 }
 .form-section-title .icon { width: 18px; height: 18px; color: var(--accent); flex: 0 0 auto; }
 .form-section .grid-2.ultima > .field { margin-bottom: 0; } /* el relleno de la tarjeta ya da el espacio inferior */
+@media (max-width: 720px) { /* en una columna el primer campo de la ultima fila si necesita su margen (el ultimo no) */
+  .form-section .grid-2.ultima > .field:not(:last-child) { margin-bottom: var(--space-4); }
+}
 /* `.btn.x` (no solo `.x`): la regla general `.btn` esta mas abajo en este archivo y, con la misma especificidad, ganaria */
 .btn.btn-tramo-quitar { margin-left: auto; padding: 2px 8px; font-size: 0.72rem; text-transform: none; letter-spacing: normal; }
 .btn.btn-agregar-tramo { padding: 8px 12px; }

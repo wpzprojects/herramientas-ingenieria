@@ -205,6 +205,53 @@ await seccion("vista: aspecto de las tarjetas", async () => {
   ok(parseFloat(pad.paddingLeft) <= 12 && parseFloat(pad.paddingRight) <= 12, `el botón tiene poco margen lateral (${pad.paddingLeft})`);
 });
 
+// La pantalla se prueba tambien dentro de un iframe de ancho fijo: las media queries dependen del ancho de la ventana, no del contenedor.
+const cargarMarco = (ancho) => new Promise((resolve) => {
+  const marco = document.createElement("iframe");
+  marco.style.cssText = `position:fixed;left:-99999px;top:0;width:${ancho}px;height:3000px;border:0`;
+  const alRecibir = (e) => {
+    if (e.source !== marco.contentWindow || e.data !== "listo") return;
+    window.removeEventListener("message", alRecibir);
+    resolve(marco);
+  };
+  window.addEventListener("message", alRecibir);
+  marco.srcdoc = `<!doctype html><html><head><link rel="stylesheet" href="../css/tokens.css"><link rel="stylesheet" href="../css/app.css"></head><body><div id="c" class="content"></div><script type="module">window.__BASE_PATH__ = "../"; const { render } = await import("../js/views/calc-perdidas.js"); await render(document.getElementById("c"), {}); parent.postMessage("listo", "*");<\/script></body></html>`;
+  document.body.append(marco);
+});
+
+await seccion("vista: espaciado uniforme entre campos (pantalla angosta y ancha)", async () => {
+  // Separacion vertical entre campos consecutivos de la misma tarjeta, medida dentro del iframe (todas las medidas antes de ok()).
+  const separaciones = (marco) => {
+    const d = marco.contentDocument;
+    const porTarjeta = new Map();
+    for (const f of d.querySelectorAll("#form-calc .field")) {
+      if (!f.getClientRects().length) continue; // campos ocultos (p. ej. potencia aparente y corriente)
+      const card = f.closest(".card");
+      porTarjeta.set(card, [...(porTarjeta.get(card) || []), f.getBoundingClientRect()]);
+    }
+    return [...porTarjeta.values()].map((rects) => rects.slice(1).map((r, i) => r.top - rects[i].bottom));
+  };
+  const columnas = (marco) => marco.contentDocument.querySelector("#form-calc .grid-2").ownerDocument.defaultView.getComputedStyle(marco.contentDocument.querySelector("#form-calc .grid-2")).gridTemplateColumns.split(" ").length;
+
+  const angosto = await cargarMarco(600);
+  const sepAngosto = separaciones(angosto);
+  const colAngosto = columnas(angosto);
+  angosto.remove();
+  const ancho = await cargarMarco(1000);
+  const sepAncho = separaciones(ancho);
+  const colAncho = columnas(ancho);
+  ancho.remove();
+
+  ok(colAngosto === 1, `ancho 600 px: los campos pasan a una sola columna (${colAngosto})`);
+  sepAngosto.forEach((s, i) => {
+    ok(s.length >= 3 && s.every((v) => Math.abs(v - 16) <= 0.6), `ancho 600 px, tarjeta ${i + 1}: todos los campos quedan a 16 px unos de otros (${s.map((v) => v.toFixed(0)).join(", ")})`);
+  });
+  ok(colAncho === 2, `ancho 1000 px: se mantienen las dos columnas (${colAncho})`);
+  sepAncho.forEach((s, i) => {
+    ok(s.every((v) => v >= 15.4 || v < 0), `ancho 1000 px, tarjeta ${i + 1}: sin cambios en el espaciado entre filas`);
+  });
+});
+
 await seccion("vista: un tramo, cálculo y resultados", async () => {
   elegir("#f-red-0", "Aerea");
   elegir("#f-material-0", "ACSR");
