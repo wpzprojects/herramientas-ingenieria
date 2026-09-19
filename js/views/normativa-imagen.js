@@ -75,7 +75,7 @@ export async function render(container, params) {
 
   if (tema.selector) {
     wrap.innerHTML = `
-      <div class="field" style="max-width: 480px;">
+      <div class="field" style="max-width: 760px;">
         <label for="sel-tabla">Tabla / figura</label>
         <select id="sel-tabla">
           ${tema.opciones.map((op, i) => `<option value="${i}">${op.label}</option>`).join("")}
