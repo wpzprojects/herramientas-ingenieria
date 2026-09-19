@@ -25,8 +25,5 @@ export function render(container) {
         )
         .join("")}
     </div>
-    <div class="callout callout-info" style="margin-top: var(--space-5);">
-      <span>Esta sección necesita conexión a internet y una clave gratuita de Google Gemini. El resto de la aplicación sigue funcionando sin conexión.</span>
-    </div>
   `;
 }

@@ -12,13 +12,6 @@ export function render(container) {
     <h1 class="page-title">Ayuda</h1>
     <p class="page-subtitle">Cómo usar Herramientas de Ingeniería.</p>
 
-    <div class="callout callout-info">
-      Esta aplicación funciona 100% offline una vez cargada por primera vez: es instalable como
-      PWA y todos los catálogos, tablas normativas y datos de cálculo viven embebidos en la app,
-      sin necesitar conexión a internet. La única excepción es la sección de Funciones de IA,
-      que se conecta a Google Gemini y por tanto requiere internet y una clave de API gratuita.
-    </div>
-
     ${SECCIONES.map((key) => {
       const meta = sectionMeta[key];
       const items = sectionMenus[key];
