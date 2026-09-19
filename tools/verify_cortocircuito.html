@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>verify_cortocircuito</title>
+<!--
+  Pruebas de la pantalla de Cortocircuito (js/views/calc-cortocircuito.js) y del motor (js/calc/cortocircuito.js). Se
+  ejecuta en el navegador, sin internet: la vista real se renderiza en un contenedor oculto y se maneja como lo haria una
+  persona; los numeros se comparan con la formula escrita aqui de forma independiente
+  (I = A·k1·√(log10((T2+λ)/(T1+λ))/t)/1000, con el logaritmo natural dividido por ln 10).
+
+  Uso (desde la raiz del proyecto):
+    python -m http.server 8000
+    abrir http://localhost:8000/tools/verify_cortocircuito.html   -> lista PASS/FAIL
+  o en modo consola:
+    msedge --headless --dump-dom --virtual-time-budget=35000 http://localhost:8000/tools/verify_cortocircuito.html
+-->
+<style>body{font-family:ui-monospace,Consolas,monospace;font-size:13px;padding:12px}#stage{position:absolute;left:-9999px;width:1000px}</style>
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+<pre id="out"></pre>
+<div id="stage"></div>
+<script type="module">
+window.__BASE_PATH__ = "../";
+const out = document.getElementById("out");
+let fallos = 0;
+let total = 0;
+function ok(cond, msg) {
+  total++;
+  if (!cond) fallos++;
+  out.textContent += `${cond ? "PASS" : "FAIL"} ${msg}\n`;
+}
+function cerca(a, b, tol, msg) {
+  ok(Math.abs(a - b) <= tol, `${msg} (obtenido ${a}, esperado ${b})`);
+}
+async function seccion(nombre, fn) {
+  out.textContent += `\n== ${nombre}\n`;
+  try {
+    await fn();
+  } catch (err) {
+    fallos++;
+    total++;
+    out.textContent += `FAIL excepcion en "${nombre}": ${err && err.stack ? err.stack : err}\n`;
+  }
+}
+const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const motor = await import("../js/calc/cortocircuito.js");
+const desnudos = await (await fetch("../data/conductores-desnudos.json")).json();
+const xlpe = await (await fetch("../data/conductores-xlpe.json")).json();
+
+// Formula independiente.
+const CONST = { Cobre: { lam: 234, k1: 341 }, Aluminio: { lam: 228, k1: 224 } };
+const esperado = ({ material, A, T1, T2, t }) => {
+  const { lam, k1 } = CONST[material];
+  const lg = Math.log((T2 + lam) / (T1 + lam)) / Math.LN10;
+  return { lg, kA: (A * k1 * Math.sqrt(lg / t)) / 1000, lam, k1 };
+};
+const CU = xlpe.find((c) => c.material_conductor === "Cobre" && c.calibre_awg_kcmil === "4/0");
+const ALX = xlpe.find((c) => c.material_conductor === "Aluminio" && c.calibre_awg_kcmil === "4/0");
+const ACSR = desnudos.find((c) => c.tipo === "ACSR" && c.calibre_awg_kcmil === "4/0");
+
+await seccion("cortocircuito: motor", async () => {
+  for (const [material, A, T1, T2, t] of [["Cobre", CU.area_conductor_mm2, 90, 250, 0.3], ["Aluminio", ALX.area_conductor_mm2, 90, 250, 0.5], ["Aluminio", ACSR.area_seccion_aluminio_mm2, 75, 250, 1], ["Cobre", 100, 75, 300, 0.1]]) {
+    const e = esperado({ material, A, T1, T2, t });
+    const r = motor.calcularCortocircuito({ material, areaMm2: A, tempOperacionC: T1, tempFallaC: T2, tiempoS: t });
+    cerca(r.capacidadCcKa, e.kA, 1e-9, `${material}, A=${A} mm², ${T1}→${T2} °C, ${t} s: ${e.kA.toFixed(4)} kA`);
+    ok(r.intermedios.tempRes0 === e.lam && r.intermedios.k1 === e.k1, `constantes de ${material}: λ=${e.lam}, k1=${e.k1}`);
+    cerca(r.intermedios.logaritmo, e.lg, 1e-12, "logaritmo base 10");
+  }
+  const a = motor.calcularCortocircuito({ material: "Cobre", areaMm2: 100, tempOperacionC: 90, tempFallaC: 250, tiempoS: 0.3 });
+  const b = motor.calcularCortocircuito({ material: "Cobre", areaMm2: 100, tempOperacionC: 90, tempFallaC: 250, tiempoS: 1.2 });
+  cerca(a.capacidadCcKa / b.capacidadCcKa, 2, 1e-9, "al cuadruplicar el tiempo la capacidad baja a la mitad (√t)");
+});
+
+const stage = document.getElementById("stage");
+const $ = (s, r = stage) => r.querySelector(s);
+const $$ = (s, r = stage) => [...r.querySelectorAll(s)];
+const poner = (sel, v, ev = "input") => { const e = $(sel); e.value = v; e.dispatchEvent(new Event(ev, { bubbles: true })); };
+const elegir = (sel, v) => poner(sel, v, "change");
+const marcar = (sel, v) => { const e = $(sel); e.checked = v; e.dispatchEvent(new Event("change", { bubbles: true })); };
+const texto = (e) => (e ? e.textContent.replace(/\s+/g, " ").trim() : "");
+const calcular = () => $("#form-calc").requestSubmit();
+const resultadoKa = () => parseFloat(texto($(".result-metric .value")));
+
+const { render } = await import("../js/views/calc-cortocircuito.js");
+await render(stage, {});
+
+await seccion("vista: tarjetas y campos", async () => {
+  const titulos = $$(".form-section-title").map(texto);
+  ok($$(".card.form-section").length === 2 && titulos[0].includes("Conductor") && titulos[1].includes("Condiciones de la falla"), `dos tarjetas: «${titulos.join("» y «")}»`);
+  ok($$(".form-section-title").every((t) => t.querySelector("svg.icon") && t.parentElement.classList.contains("card")), "cada título lleva su icono y va dentro de su tarjeta");
+  ok($$(".card").every((c) => c.classList.contains("tarjeta-borde")), "las tarjetas llevan el borde marcado");
+  ok($$(".hint").length === 0, "no quedan textos de ayuda fijos (.hint) debajo de los campos");
+  const tarjetas = $$(".form-section").map((c) => c.getBoundingClientRect());
+  ok(Math.abs(tarjetas[1].top - tarjetas[0].bottom - 16) < 0.6, `las tarjetas están separadas 16 px (${(tarjetas[1].top - tarjetas[0].bottom).toFixed(1)} px)`);
+
+  const filas = (card) => {
+    const campos = $$(".field", card).map((f) => ({ n: texto($(":scope > label:first-child", f)), r: f.getBoundingClientRect() }));
+    const fs = [];
+    for (const c of campos) { const f = fs.find((x) => Math.abs(x[0].r.top - c.r.top) < 2); if (f) f.push(c); else fs.push([c]); }
+    return fs.map((f) => f.map((c) => c.n).join(" | ")).join(" // ");
+  };
+  const [c1, c2] = $$(".form-section");
+  ok(filas(c1) === "Tipo de red | Material / Tipo de conductor // Calibre | Área del conductor (mm²)", `tarjeta Conductor: ${filas(c1)}`);
+  ok(filas(c2) === "Temperatura de operación (°C) | Temperatura máxima admisible en falla (°C) // Tiempo de despeje de la falla (s)", `tarjeta Condiciones: ${filas(c2)}`);
+  ok($$(".input-with-toggle").length === 3 && $$(".input-with-toggle").every((w) => texto($("label.checkbox-row", w)) === "Manual"), "área y las dos temperaturas llevan la casilla «Manual» a su derecha");
+});
+
+await seccion("vista: valores por defecto y casillas «Manual»", async () => {
+  ok($("#f-red").value === "Aereo" && $("#f-top").value === "75" && $("#f-tfalla").value === "250" && $("#f-tiempo").value === "0.3", "por defecto: red aérea, 75 °C, 250 °C y 0.3 s");
+  ok($("#f-area").disabled && $("#f-top").disabled && $("#f-tfalla").disabled, "área y temperaturas bloqueadas mientras no esté «Manual»");
+  elegir("#f-red", "Subterraneo");
+  ok($("#f-top").value === "90", "red subterránea: temperatura de operación 90 °C");
+  elegir("#f-red", "Aereo");
+  ok($("#f-top").value === "75", "red aérea: vuelve a 75 °C");
+
+  elegir("#f-material", "ACSR");
+  elegir("#f-calibre", "4/0");
+  cerca(parseFloat($("#f-area").value), ACSR.area_seccion_aluminio_mm2, 1e-12, `aéreo: el área es la de aluminio del catálogo (${$("#f-area").value} mm²)`);
+
+  marcar("#chk-area", true);
+  poner("#f-area", "107.219");
+  ok(!$("#f-area").disabled && $("#f-area").validity.valid, "«Manual» habilita el área y acepta decimales como 107.219");
+  marcar("#chk-area", false);
+  cerca(parseFloat($("#f-area").value), ACSR.area_seccion_aluminio_mm2, 1e-12, "al quitar «Manual» vuelve el área del catálogo");
+
+  marcar("#chk-top", true);
+  poner("#f-top", "80");
+  elegir("#f-red", "Aereo");
+  ok($("#f-top").value === "80", "con «Manual» la temperatura no se pisa al cambiar de red");
+  marcar("#chk-top", false);
+  ok($("#f-top").value === "75", "al quitar «Manual» vuelve el valor por defecto");
+  marcar("#chk-tfalla", true);
+  poner("#f-tfalla", "300");
+  ok(!$("#f-tfalla").disabled, "«Manual» habilita la temperatura de falla");
+  marcar("#chk-tfalla", false);
+  ok($("#f-tfalla").value === "250" && $("#f-tfalla").disabled, "al quitar «Manual» vuelve a 250 °C");
+});
+
+await seccion("vista: cálculo y resultados", async () => {
+  // red aerea: el material se calcula siempre como aluminio
+  elegir("#f-material", "ACSR");
+  elegir("#f-calibre", "4/0");
+  calcular();
+  const e1 = esperado({ material: "Aluminio", A: ACSR.area_seccion_aluminio_mm2, T1: 75, T2: 250, t: 0.3 });
+  cerca(resultadoKa(), e1.kA, 0.006, `aéreo ACSR 4/0 (como aluminio): ${e1.kA.toFixed(3)} kA`);
+  ok(texto($(".result-metric .label")) === "Capacidad de corriente de cortocircuito" && texto($(".result-metric .unit")) === "kA", "la métrica muestra la capacidad en kA");
+
+  // subterraneo cobre
+  elegir("#f-red", "Subterraneo");
+  elegir("#f-material", "Cobre");
+  elegir("#f-calibre", "4/0");
+  poner("#f-tiempo", "0.5");
+  calcular();
+  const e2 = esperado({ material: "Cobre", A: CU.area_conductor_mm2, T1: 90, T2: 250, t: 0.5 });
+  cerca(resultadoKa(), e2.kA, 0.006, `subterráneo cobre 4/0, 0.5 s: ${e2.kA.toFixed(3)} kA`);
+  elegir("#f-material", "Aluminio");
+  elegir("#f-calibre", "4/0");
+  calcular();
+  const e3 = esperado({ material: "Aluminio", A: ALX.area_conductor_mm2, T1: 90, T2: 250, t: 0.5 });
+  cerca(resultadoKa(), e3.kA, 0.006, `subterráneo aluminio 4/0, 0.5 s: ${e3.kA.toFixed(3)} kA`);
+  ok(e2.kA > e3.kA, "el cobre soporta más que el aluminio de igual calibre");
+
+  // manual
+  marcar("#chk-tfalla", true);
+  poner("#f-tfalla", "300");
+  calcular();
+  cerca(resultadoKa(), esperado({ material: "Aluminio", A: ALX.area_conductor_mm2, T1: 90, T2: 300, t: 0.5 }).kA, 0.006, "con temperatura de falla manual de 300 °C");
+  marcar("#chk-tfalla", false);
+
+  // sin calibre el formulario no es valido
+  elegir("#f-red", "Aereo");
+  ok(!$("#form-calc").checkValidity(), "sin calibre elegido el formulario no es válido");
+  elegir("#f-material", "ACSR");
+  elegir("#f-calibre", "4/0");
+  poner("#f-tiempo", "0.3");
+  ok($("#form-calc").checkValidity(), "con calibre elegido el formulario es válido");
+});
+
+await seccion("vista: estructura del reporte (se copia y se pega)", async () => {
+  const leer = () => { calcular(); return $('[data-panel="reporte"] .report-block').textContent.split("\n"); };
+  const LINEA = /^-{30}$/;
+  const etiquetasEn = (l) => l.filter((x) => /^[A-ZÁÉÍÓÚÑ ]{4,}:?$/.test(x));
+  const tiene = (l, inicio) => l.some((x) => x.trim().startsWith(inicio));
+  const a = leer();
+  const iRes = a.indexOf("RESULTADOS:");
+  const params = a.slice(4, iRes - 1);
+  const res = a.slice(iRes + 2);
+  ok(a[0] === "CÁLCULO DE CORTOCIRCUITO" && a[1] === "" && a[2] === "PARÁMETROS DE ENTRADA:" && LINEA.test(a[3]), "«CÁLCULO DE CORTOCIRCUITO», línea en blanco, «PARÁMETROS DE ENTRADA:» y su línea divisoria DEBAJO");
+  ok(iRes > 4 && a[iRes - 1] === "" && LINEA.test(a[iRes + 1]), "«RESULTADOS:» con una línea en blanco antes y su línea divisoria DEBAJO");
+  ok(!LINEA.test(a[2]) && !LINEA.test(a[iRes - 1]) && !LINEA.test(a[4]) && !LINEA.test(a[iRes + 2]), "encima de las etiquetas no hay línea y debajo de la línea sigue directamente el contenido");
+  ok(etiquetasEn(a).join("|") === "CÁLCULO DE CORTOCIRCUITO|PARÁMETROS DE ENTRADA:|RESULTADOS:" && a.filter((x) => LINEA.test(x)).length === 2, "tres etiquetas y dos líneas divisorias");
+  for (const inicio of ["Tipo de red: Aéreo", "Tipo/Material de conductor: ACSR", "Calibre: 4/0", "Área del conductor", "Temperatura de operación: 75.00 °C", "Temperatura máxima admisible en falla: 250.00 °C", "Tiempo de despeje de la falla: 0.3 s"]) {
+    ok(tiene(params, inicio), `parámetros de entrada incluye «${inicio}»`);
+  }
+  for (const inicio of ["Material eléctrico", "λ", "k1", "log10", "Capacidad"]) {
+    ok(!tiene(params, inicio), `«${inicio}…» NO está en los parámetros (es un resultado)`);
+  }
+  for (const inicio of ["Material eléctrico usado en el cálculo: Aluminio", "λ (constante material): 228", "k1 (constante material): 224", "log10((T2+λ)/(T1+λ))", "Capacidad de cortocircuito:"]) {
+    ok(tiene(res, inicio), `resultados incluye «${inicio}»`);
+  }
+  ok(a.at(-1).startsWith("Capacidad de cortocircuito:") && !tiene(res, "Calibre") && !tiene(res, "Área") && !tiene(res, "Temperatura"), "el reporte termina con la capacidad y los datos de entrada no se repiten en los resultados");
+  const negritas = $$('[data-panel="reporte"] .report-block strong');
+  const pesos = negritas.map((e) => parseInt(getComputedStyle(e).fontWeight, 10));
+  ok(negritas.map((e) => e.textContent).join("|") === "CÁLCULO DE CORTOCIRCUITO|PARÁMETROS DE ENTRADA:|RESULTADOS:" && pesos.every((w) => w >= 700), `las tres etiquetas están en negrita (${pesos.join(", ")}) y solo ellas`);
+});
+
+await seccion("vista: fórmulas con KaTeX", async () => {
+  ok(!window.katex, "KaTeX no se carga hasta abrir la pestaña Fórmulas");
+  $$(".tab-btn").find((b) => b.dataset.tab === "formulas").click();
+  for (let i = 0; i < 40 && !$$("#formulas-katex .katex").length; i++) await espera(100);
+  await document.fonts.ready;
+  await espera(150);
+  const caja = $("#formulas-katex");
+  const subtitulos = $$("#formulas-katex > .result-subhead").map(texto);
+  const items = $$("#formulas-katex ul.formula-etiquetas > li");
+  const izq = items.map((li) => li.lastElementChild.getBoundingClientRect().left);
+  ok(window.katex && $$("#formulas-katex .formula-katex").length === 3 && $$("#formulas-katex .katex-display").length === 3, "KaTeX cargado y 3 ecuaciones dibujadas");
+  ok($$("#formulas-katex .katex-error").length === 0, "ninguna ecuación con error de sintaxis");
+  ok($("#formulas-plano").hidden && !caja.hidden, "al dibujarse las fórmulas se oculta el texto plano y aparece la subtarjeta");
+  ok(subtitulos.join("|") === "Capacidad de cortocircuito|Constantes del material|Descripción de las etiquetas|Notas", `subtítulos: ${subtitulos.join(" | ")}`);
+  ok(items.length === 7 && items.every((li) => li.querySelector(".formula-simbolo .katex")), `la descripción de las etiquetas es una lista de ${items.length} viñetas con el símbolo dibujado`);
+  ok(Math.max(...izq) - Math.min(...izq) < 1, "los textos de las viñetas quedan alineados");
+  const ks = $$("#formulas-katex .katex").map((k) => k.textContent);
+  ok(ks.some((t) => t.includes("234") && t.includes("228")) && ks.some((t) => t.includes("341") && t.includes("224")), "las constantes λ y k1 de cobre y aluminio se dibujan por casos");
+  ok($$("#formulas-katex .katex .sqrt").length >= 1, "la raíz cuadrada de la fórmula principal está dibujada");
+  ok(texto(caja).includes("base 10") && texto(caja).includes("aluminio"), "las notas explican el logaritmo y el uso de aluminio en red aérea");
+  const rc = caja.getBoundingClientRect();
+  ok($$("#formulas-katex .formula-katex").every((e) => { const r = e.getBoundingClientRect(); return r.left >= rc.left && r.right <= rc.right + 0.5; }), "las ecuaciones quedan dentro de la subtarjeta");
+});
+
+// La pantalla se prueba tambien dentro de un iframe de ancho fijo: las media queries dependen del ancho de la ventana.
+const cargarMarco = (ancho) => new Promise((resolve) => {
+  const marco = document.createElement("iframe");
+  marco.style.cssText = `position:fixed;left:-99999px;top:0;width:${ancho}px;height:3000px;border:0`;
+  const alRecibir = (e) => {
+    if (e.source !== marco.contentWindow || e.data !== "listo") return;
+    window.removeEventListener("message", alRecibir);
+    resolve(marco);
+  };
+  window.addEventListener("message", alRecibir);
+  marco.srcdoc = `<!doctype html><html><head><link rel="stylesheet" href="../css/tokens.css"><link rel="stylesheet" href="../css/app.css"></head><body><div id="c" class="content"></div><script type="module">window.__BASE_PATH__ = "../"; const { render } = await import("../js/views/calc-cortocircuito.js"); const c = document.getElementById("c"); await render(c, {}); const ev = (s, v) => { const e = c.querySelector(s); e.value = v; e.dispatchEvent(new Event("change", { bubbles: true })); }; ev("#f-material", "ACSR"); ev("#f-calibre", "4/0"); c.querySelector("#form-calc").requestSubmit(); parent.postMessage("listo", "*");<\/script></body></html>`;
+  document.body.append(marco);
+});
+
+await seccion("vista: aspecto (barra de título, 16 px laterales y espaciado uniforme)", async () => {
+  const medir = (marco) => {
+    const d = marco.contentDocument;
+    const izq = (e) => e.getBoundingClientRect().left;
+    const sonda = d.createElement("div");
+    d.body.append(sonda);
+    const token = (v) => { sonda.style.backgroundColor = `var(${v})`; return d.defaultView.getComputedStyle(sonda).backgroundColor; };
+    sonda.style.borderBottomColor = "color-mix(in srgb, var(--accent) 65%, var(--accent-soft))";
+    const mezcla = d.defaultView.getComputedStyle(sonda).borderBottomColor;
+    const suave = token("--accent-soft");
+    const acento = token("--accent");
+    sonda.remove();
+    const cs = (e) => d.defaultView.getComputedStyle(e);
+    const tarjetas = [...d.querySelectorAll(".form-section")];
+    const res = d.querySelector("#resultado-wrap > .card");
+    const panel = res.querySelector(".result-panel");
+    const barras = tarjetas.map((card) => {
+      const t = card.querySelector(".form-section-title");
+      const rc = card.getBoundingClientRect();
+      const rt = t.getBoundingClientRect();
+      const svg = t.querySelector("svg");
+      const ri = svg.getBoundingClientRect();
+      return { llegaBordes: Math.abs(rt.left - (rc.left + 1)) <= 0.6 && Math.abs(rt.right - (rc.right - 1)) <= 0.6, arriba: rt.top - rc.top <= 1.6, fondo: cs(t).backgroundColor === suave, linea: cs(t).borderBottomColor === mezcla && cs(t).borderBottomWidth === "1px", icono: cs(svg).color === acento, centrado: Math.abs(ri.top + ri.height / 2 - (rt.top + (rt.height - 1) / 2)) <= 1, altura: Math.round(rt.height) };
+    });
+    const separaciones = tarjetas.map((card) => {
+      const rects = [...card.querySelectorAll(".field")].filter((f) => f.getClientRects().length).map((f) => f.getBoundingClientRect());
+      return rects.slice(1).map((r, i) => r.top - rects[i].bottom);
+    });
+    return {
+      barras,
+      separaciones,
+      lateral: { conductor: izq(tarjetas[0].querySelector("select, input")) - izq(tarjetas[0]), condiciones: izq(tarjetas[1].querySelector("select, input")) - izq(tarjetas[1]), icono: izq(tarjetas[1].querySelector(".form-section-title svg")) - izq(tarjetas[1]), tabs: izq(res.querySelector(".tabs")) - izq(res), panel: izq(panel) - izq(res) },
+    };
+  };
+  const angosto = await cargarMarco(600);
+  const mAng = medir(angosto);
+  angosto.remove();
+  const ancho = await cargarMarco(1000);
+  const mAnc = medir(ancho);
+  ancho.remove();
+
+  for (const [nombre, m] of [["600 px", mAng], ["1000 px", mAnc]]) {
+    m.barras.forEach((b, i) => {
+      const t = ["Conductor", "Condiciones de la falla"][i];
+      ok(b.llegaBordes && b.arriba && b.fondo && b.linea && b.icono && b.centrado, `ancho ${nombre}, «${t}»: barra de borde a borde con el color atenuado, línea 35 % menos intensa, icono en color pleno y centrado`);
+    });
+    ok(new Set(m.barras.map((b) => b.altura)).size === 1, `ancho ${nombre}: las barras tienen la misma altura`);
+    ok(Object.values(m.lateral).every((v) => v === 17), `ancho ${nombre}: 17 px del borde al contenido (1 + 16) en tarjetas, resultados y panel (${Object.values(m.lateral).join(", ")})`);
+  }
+  mAng.separaciones.forEach((s, i) => {
+    ok(s.length >= 2 && s.every((v) => Math.abs(v - 16) <= 0.6), `ancho 600 px, tarjeta ${i + 1}: todos los campos a 16 px unos de otros (${s.map((v) => v.toFixed(0)).join(", ")})`);
+  });
+});
+
+await seccion("vista: ayuda de los campos con botón de información", async () => {
+  // etiquetas: con o sin boton deben medir lo mismo (todas las medidas juntas, antes de ok())
+  const campos = $$("#form-calc .field").filter((f) => f.getClientRects().length && f.querySelector(":scope > label"));
+  const medidas = campos.map((f) => {
+    const label = f.querySelector(":scope > label");
+    const control = f.querySelector("input, select");
+    return { conInfo: !!label.querySelector(".info-btn"), alto: Math.round(label.getBoundingClientRect().height * 10) / 10, desfase: Math.round((control.getBoundingClientRect().top - f.getBoundingClientRect().top) * 10) / 10 };
+  });
+  ok(medidas.filter((m) => m.conInfo).length === 3 && medidas.filter((m) => !m.conInfo).length >= 3, "se comparan campos con y sin botón de información");
+  ok(new Set(medidas.map((m) => m.alto)).size === 1 && new Set(medidas.map((m) => m.desfase)).size === 1, `el botón no cambia la altura de las etiquetas ni la posición de las casillas (${[...new Set(medidas.map((m) => m.alto))].join(", ")} px)`);
+
+  const botones = $$(".info-btn");
+  const nombres = botones.map((b) => b.getAttribute("aria-label").replace("Más información sobre ", ""));
+  ok(nombres.join("|") === "Material / Tipo de conductor|Área del conductor (mm²)|Temperatura de operación (°C)", `botones de información junto al nombre de: ${nombres.join(" | ")}`);
+  ok(botones.every((b) => b.tagName === "BUTTON" && b.type === "button" && b.getAttribute("aria-expanded") === "false" && document.getElementById(b.getAttribute("aria-controls"))), "son botones reales, con aria-expanded y aria-controls");
+  const b0 = botones[2];
+  const campo = b0.closest(".field");
+  const card = b0.closest(".card");
+  const pop = document.getElementById(b0.getAttribute("aria-controls"));
+  const antes = card.getBoundingClientRect().height;
+  b0.click();
+  const abierto = { oculto: pop.hidden, texto: texto(pop), abajo: pop.classList.contains("info-popover--abajo"), rp: pop.getBoundingClientRect(), rl: campo.querySelector("label").getBoundingClientRect(), card: card.getBoundingClientRect().height };
+  b0.click();
+  ok(!abierto.oculto && abierto.texto === "Por defecto: 75 °C en red aérea y 90 °C en subterránea.", `al pulsar el botón se abre el cuadro: «${abierto.texto}»`);
+  ok(!abierto.abajo && abierto.rp.bottom <= abierto.rl.top + 0.5, "el cuadro se abre arriba de la etiqueta");
+  ok(Math.abs(abierto.card - antes) < 0.5 && pop.hidden, "abrir el cuadro no mueve el formulario y un segundo clic lo cierra");
+});
+
+await seccion("service worker y otros archivos", async () => {
+  const sw = await (await fetch("../sw.js")).text();
+  const lista = [...sw.matchAll(/^\s*"([^"]+)",\s*$/gm)].map((m) => m[1]);
+  ok(["js/calc/cortocircuito.js", "js/views/calc-cortocircuito.js", "js/util/info-campo.js", "js/util/resultados-ui.js"].every((f) => lista.includes(f)), "el service worker precachea los módulos que usa la pantalla");
+  const existen = await Promise.all(lista.filter((f) => f !== "./").map((f) => fetch(`../${f}`, { method: "HEAD" }).then((r) => [f, r.ok])));
+  const faltan = existen.filter(([, okk]) => !okk).map(([f]) => f);
+  ok(faltan.length === 0, `todos los archivos del APP_SHELL existen${faltan.length ? ": " + faltan.join(", ") : ""}`);
+  const tool = await (await fetch("../js/ai/tools.js")).text();
+  ok(tool.includes('nombre: "calcular_cortocircuito"') && tool.includes('from "../calc/cortocircuito.js"'), "la herramienta de la IA sigue usando el motor original de cortocircuito (sin cambios)");
+});
+
+out.textContent += `\nRESULT: ${fallos ? "FAIL" : "OK"} (${total - fallos}/${total})\n`;
+</script>
+</body>
+</html>

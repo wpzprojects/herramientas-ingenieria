@@ -76,6 +76,9 @@ const shapes = {
   // Tabler "cylinder" (SVG oficial): icono de la tarjeta Tuberia (Ocupacion de ductos).
   cylinder:
     '<g stroke-width="2"><path d="M5 6a7 3 0 1 0 14 0a7 3 0 1 0 -14 0"/><path d="M5 6v12c0 1.657 3.134 3 7 3s7 -1.343 7 -3v-12"/></g>',
+  // Tabler "temperature" (SVG oficial): icono de la tarjeta Condiciones de la falla (Cortocircuito).
+  temperature:
+    '<g stroke-width="2"><path d="M10 13.5a4 4 0 1 0 4 0v-8.5a2 2 0 0 0 -4 0v8.5"/><path d="M10 9l4 0"/></g>',
 };
 
 export function icon(name, cls = "") {
