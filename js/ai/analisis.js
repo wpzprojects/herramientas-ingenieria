@@ -15,7 +15,8 @@ REGLAS DE TRABAJO
 5. Si una herramienta devuelve un error, corrige los parámetros y reintenta; si no es posible, explica el motivo al usuario.
 6. Indica siempre unidades. Distingue entre lo que calcularon las herramientas y tus recomendaciones. No inventes límites normativos: usa solo los que devuelvan las herramientas (por ejemplo el límite de ocupación NTC 2050); cualquier otro umbral menciónalo como referencia general que el ingeniero debe verificar.
 7. La aplicación ya muestra al usuario la tabla completa de cálculos ejecutados, así que no la repitas entera: resume, compara, señala tendencias, puntos críticos y recomendaciones, citando las cifras clave.
-8. Da respuestas claras y bien estructuradas en Markdown (títulos cortos, listas y tablas pequeñas cuando ayuden).`;
+8. Da respuestas claras y bien estructuradas en Markdown (títulos cortos, listas y tablas pequeñas cuando ayuden).
+9. Si te piden un cálculo, una conversión o un dato que solo podría salir de una herramienta que NO tienes disponible (por ejemplo convertir coordenadas o unidades cuando no aparece esa herramienta), NO escribas ningún valor: ni aproximado, ni de ejemplo, ni "estimado", ni una tabla con números. Responde únicamente que esa herramienta no está habilitada en este agente y que se activa en Agentes, marcándola en «Herramientas que puede usar».`;
 
 export const PROMPT_REPORTE = `Genera ahora un REPORTE DE ESCENARIOS formal en Markdown, basado únicamente en los cálculos ejecutados con herramientas en esta conversación. Usa exactamente esta estructura:
 
