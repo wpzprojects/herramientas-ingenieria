@@ -96,6 +96,11 @@ await seccion("agentes", async () => {
   ok(s.includes("Tono requerido: Profesional cordial") && s.includes("Ejemplo 1") && s.includes("sin formato Markdown"), "construirSistema arma tono, ejemplos y formato");
   const s2 = agentes.construirSistema({ ...lista[0], explicarCambios: true });
   ok(s2.includes("Cambios realizados"), "explicarCambios agrega seccion");
+  const sSin = agentes.construirSistema({ ...lista[0], tono: "" });
+  ok(!sSin.includes("Tono requerido") && sSin.includes(lista[0].instrucciones), "sin tono: no se agrega la línea de tono y se conservan las instrucciones");
+  ok(agentes.nuevoAgenteVacio().tono === "", "un agente nuevo empieza sin tono");
+  const impSin = agentes.importarAgentesJson(agentes.exportarAgentesJson([{ ...lista[0], tono: "" }, { ...lista[0], tono: "Inventado" }]));
+  ok(impSin[0].tono === "" && impSin[1].tono === "Profesional cordial", "importar conserva «sin tono» y normaliza un tono desconocido");
   let e1 = null;
   try { agentes.importarAgentesJson("no es json"); } catch (e) { e1 = e; }
   ok(!!e1, "importar JSON invalido lanza error");

@@ -490,7 +490,7 @@ export async function render(container) {
           <div class="field"><label for="g-desc">Descripción corta</label><input type="text" id="g-desc" maxlength="300"></div>
         </div>
         <div class="grid-3">
-          <div class="field"><label for="g-tono">Tono</label><select id="g-tono">${TONOS.map((t) => `<option>${t}</option>`).join("")}</select></div>
+          <div class="field"><label for="g-tono">Tono</label><select id="g-tono"><option value="">Sin tono</option>${TONOS.map((t) => `<option>${t}</option>`).join("")}</select><span class="hint">«Sin tono» no agrega nada al prompt: solo mandan tus instrucciones.</span></div>
           <div class="field"><label for="g-temp">Temperatura (0–1.5)</label><input type="number" id="g-temp" min="0" max="1.5" step="0.1"><span class="hint">Menor = más fiel al texto. Mayor = más libre.</span></div>
           <div class="field"><label>&nbsp;</label><label class="checkbox-row"><input type="checkbox" id="g-explicar"> Explicar los cambios realizados</label></div>
         </div>
@@ -512,7 +512,7 @@ export async function render(container) {
     const g = (s) => cont.querySelector(s);
     g("#g-nombre").value = a.nombre;
     g("#g-desc").value = a.descripcion || "";
-    g("#g-tono").value = TONOS.includes(a.tono) ? a.tono : TONOS[1];
+    g("#g-tono").value = a.tono === "" || TONOS.includes(a.tono) ? a.tono : TONOS[1];
     g("#g-temp").value = a.temperatura ?? 0.4;
     g("#g-explicar").checked = !!a.explicarCambios;
     g("#g-instr").value = a.instrucciones || "";

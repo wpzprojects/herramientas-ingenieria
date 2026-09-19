@@ -4,6 +4,7 @@
 
 const K_AGENTES = "ia.agentes";
 
+// El tono "" (sin tono) no agrega nada al prompt: mandan solo las instrucciones del agente.
 export const TONOS = ["Formal", "Profesional cordial", "Neutro y técnico", "Cercano"];
 
 const BASE_REDACCION =
@@ -110,7 +111,7 @@ export function nuevoAgenteVacio() {
     id: `agente-${Date.now().toString(36)}`,
     nombre: "Nuevo agente",
     descripcion: "",
-    tono: "Profesional cordial",
+    tono: "",
     temperatura: 0.4,
     explicarCambios: false,
     ejemplos: [],
@@ -157,7 +158,7 @@ export function importarAgentesJson(texto) {
     id: String(a.id || `importado-${Date.now().toString(36)}-${i}`),
     nombre: String(a.nombre || `Agente ${i + 1}`).slice(0, 80),
     descripcion: String(a.descripcion || "").slice(0, 300),
-    tono: TONOS.includes(a.tono) ? a.tono : "Profesional cordial",
+    tono: a.tono === "" || TONOS.includes(a.tono) ? a.tono : "Profesional cordial",
     temperatura: Number.isFinite(+a.temperatura) ? Math.min(Math.max(+a.temperatura, 0), 1.5) : 0.4,
     explicarCambios: !!a.explicarCambios,
     ejemplos: Array.isArray(a.ejemplos)
