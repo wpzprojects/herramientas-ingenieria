@@ -174,7 +174,7 @@ await seccion("pantalla — modo normal", async () => {
   elegir($("#f-origen"), "m");
   ok(claves($("#f-destino")).join("|") === "ft|in", `m → solo ft e in, como siempre (${claves($("#f-destino")).join(", ")})`);
   elegir($("#f-categoria"), "Area");
-  ok(textos($("#f-origen")).join("|") === "ha|in²|kcmil|m²|mm²", `Área: unidades escritas con símbolo (${textos($("#f-origen")).join(", ")})`);
+  ok(textos($("#f-origen")).join("|") === "ha — hectárea|in² — pulgada cuadrada|kcmil — mil circular mils|m² — metro cuadrado|mm² — milímetro cuadrado", `Área: unidades con símbolo y nombre (${textos($("#f-origen")).join(", ")})`);
   ok(await convertir("Longitud", "m", "ft", 10) === "32.8084ft", "10 m → 32.8084 ft (igual que antes)");
   ok(await convertir("Temperatura", "C", "F", 100) === "212.0000°F", `100 °C → 212.0000 °F (${texto($("#resultado-wrap .value"))})`);
   ok(texto($("#resultado-wrap .label")) === "100 °C → °F", `etiqueta del resultado: ${texto($("#resultado-wrap .label"))}`);

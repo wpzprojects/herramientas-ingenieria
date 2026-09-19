@@ -146,7 +146,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 
 - Dos modos (2026-09-19, pedido del usuario). Casilla «Habilitar todas las conversiones» DEBAJO de la tarjeta (mismo estilo que la de
   coordenadas). Apagada: mismas categorías/unidades/pares de siempre (`data/factores-conversion.json`, motor `convertirUnidad`), con
-  Ángulos al final y nombres con tilde (Área, Presión, Ángulos). Encendida: catálogo `data/unidades.json` (cada unidad con factor a la
+  Ángulos al final y nombres con tilde (Área, Presión, Ángulos); las listas de unidades llevan «símbolo — nombre» en ambos modos. Encendida: catálogo `data/unidades.json` (cada unidad con factor a la
   base de su categoría y offset solo en temperatura), motor `js/calc/unidades-extendido.js` (cualquier unidad a cualquier otra), 19
   categorías (alfabético, Ángulos al final; nuevas: Potencia, Energía, Masa, Peso por longitud, Resistencia por longitud,
   Resistividad térmica, Volumen, Tiempo con «ciclos (60 Hz)», Densidad y Calibre de conductor AWG/kcmil ↔ mm²/diámetro/calibre más
@@ -198,7 +198,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v121); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v122); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (Ayuda → "Configuración avanzada", `js/auth/*`, `firebase/firestore.rules`)

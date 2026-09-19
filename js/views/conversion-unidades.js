@@ -28,6 +28,7 @@ export async function render(container) {
   const catPorClave = Object.fromEntries(catalogo.categorias.map((c) => [c.clave, c]));
   const unidadDe = (clave, codigo) => catPorClave[clave]?.unidades.find((u) => u.codigo === codigo);
   const simbolo = (clave, codigo) => unidadDe(clave, codigo)?.simbolo ?? codigo;
+  const rotulo = (clave, codigo) => { const u = unidadDe(clave, codigo); return u ? `${u.simbolo} — ${u.nombre}` : codigo; };
 
   container.innerHTML = `
     <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/varios">Varios</a> <span>/</span> <span>Conversión de unidades</span></div>
@@ -96,13 +97,13 @@ export async function render(container) {
   };
   const listaOrigenes = (cat) => {
     if (!cat) return [];
-    if (!completo()) return distinct(tabla.filter((r) => r.categoria === cat), "unidad_origen").map((u) => [u, simbolo(cat, u)]);
+    if (!completo()) return distinct(tabla.filter((r) => r.categoria === cat), "unidad_origen").map((u) => [u, rotulo(cat, u)]);
     if (cat === "Calibre") return [[CALIBRE_AWG, "Calibre (AWG / kcmil)"], [MM2, "Sección (mm²)"]];
     return catPorClave[cat].unidades.map((u) => [u.codigo, `${u.simbolo} — ${u.nombre}`]);
   };
   const listaDestinos = (cat, origen) => {
     if (!cat || !origen) return [];
-    if (!completo()) return distinct(tabla.filter((r) => r.categoria === cat && r.unidad_origen === origen), "unidad_destino").map((u) => [u, simbolo(cat, u)]);
+    if (!completo()) return distinct(tabla.filter((r) => r.categoria === cat && r.unidad_origen === origen), "unidad_destino").map((u) => [u, rotulo(cat, u)]);
     if (cat === "Calibre") {
       return origen === CALIBRE_AWG ? [["mm2", "Sección (mm²)"], ["kcmil", "Sección (kcmil)"], ["d", "Diámetro (mm)"]] : [["calibre", "Calibre más cercano (AWG / kcmil)"]];
     }
