@@ -379,6 +379,8 @@ export async function render(container) {
       cont.append(
         el("div", { class: "ia-historial-item" }, [
           el("span", { class: "titulo", title: c.titulo }, `${c.agenteId && c.agenteId !== ID_PREDETERMINADO ? `[${c.agenteNombre}] ` : ""}${c.titulo}`),
+          // fecha, «Abrir» y «Borrar» van JUNTOS: si la fila no cabe en una linea, los tres pasan a la segunda linea
+          el("div", { class: "ia-historial-acciones" }, [
           el("span", { class: "fecha" }, fechaCorta(c.actualizado)),
           el(
             "button",
@@ -416,6 +418,7 @@ export async function render(container) {
             },
             "Borrar"
           ),
+          ]),
         ])
       );
     }

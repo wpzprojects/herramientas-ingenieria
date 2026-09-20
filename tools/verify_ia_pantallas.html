@@ -396,6 +396,17 @@ await seccion("Análisis con calculadoras rediseñado", async () => {
     const cE = getComputedStyle(b), cD = getComputedStyle(q("#desc-agente"));
     ok(cD.fontSize === cE.fontSize && cD.color === cE.color, `la descripción del agente tiene la letra de los ejemplos de pregunta (${cD.fontSize}, ${cD.color})`);
     b.remove(); }
+  { // fila de historial en pantalla angosta: fecha, «Abrir» y «Borrar» pasan JUNTOS a la segunda linea
+    const marco = document.createElement("div"); marco.style.width = "300px"; marco.className = "ia-historial";
+    const fila = (titulo) => `<div class="ia-historial-item"><span class="titulo">${titulo}</span><div class="ia-historial-acciones"><span class="fecha">19 sep 10:30</span><button class="btn btn-sm">Abrir</button><button class="btn btn-sm">Borrar</button></div></div>`;
+    marco.innerHTML = fila("Analiza las pérdidas de una línea de 34.5 kV con ACSR 4/0 y compara con otros calibres") + fila("Pérdidas");
+    q("#conv").append(marco);
+    const medir = (f) => { const t = f.querySelector(".titulo").getBoundingClientRect(), g = [...f.querySelectorAll(".fecha, button")].map((e) => e.getBoundingClientRect()); return { t, g }; };
+    const [larga, corta] = [...marco.children].map(medir);
+    const mismaLinea = (m) => m.g.every((r) => Math.abs(r.top + r.height / 2 - (m.g[0].top + m.g[0].height / 2)) < 2);
+    ok(larga.g[0].top >= larga.t.bottom - 1 && mismaLinea(larga), "título largo: fecha, Abrir y Borrar pasan los TRES a la segunda línea, alineados entre sí");
+    ok(corta.g[0].top < corta.t.bottom + 2 && mismaLinea(corta), "título corto: todo cabe y queda en una sola línea");
+    marco.remove(); }
   ok(!q("#desc-agente").hidden && !q("#desc-agente").classList.contains("text-muted"), "la descripción del agente se ve");
   ok(!q("#linea-modelo") && !q("#badge-modelo") && !/Cambiar en Configuración/.test(texto(q("#tarjeta-agente"))) && q("#vista-agentes").lastElementChild === q("#desc-agente"), "la tarjeta «Agente» ya no tiene la línea «Modelo … Cambiar en Configuración»: queda igual que en el Corrector (píldoras y descripción); el modelo sigue en el resumen del reporte");
   ok(/Modelo: /.test(texto(q("#reporte-meta"))) || q("#card-reporte").hidden, "(el reporte conserva su línea con el modelo cuando aparece)");
