@@ -18,6 +18,14 @@
       var saved = localStorage.getItem("theme");
       var theme = saved || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
       document.documentElement.setAttribute("data-theme", theme);
+      // colores personales del tema (Perfil > Apariencia): ya calculados, se aplican antes del primer pintado
+      var css = localStorage.getItem("tema.css");
+      if (css) {
+        var st = document.createElement("style");
+        st.id = "tema-personal";
+        st.textContent = css;
+        document.head.appendChild(st);
+      }
       // menu lateral contraido (solo aplica en pantallas anchas): se aplica antes del primer pintado para evitar parpadeo
       if (localStorage.getItem("sidebarCollapsed") === "1") document.documentElement.classList.add("sb-collapsed");
     } catch (e) {}

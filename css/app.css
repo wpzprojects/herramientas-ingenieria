@@ -215,6 +215,29 @@ button { font-family: inherit; }
 .ia-avanzado { margin-top: var(--space-2); }
 .ia-avanzado summary { cursor: pointer; font-weight: 700; font-size: 0.88rem; color: var(--text-muted); padding: var(--space-1) 0; }
 .ia-avanzado summary:hover { color: var(--text); }
+/* Perfil > Apariencia */
+.ap-tema { margin-top: var(--space-4); }
+.ap-tema + .ap-tema { padding-top: var(--space-4); border-top: 1px solid var(--border); }
+.ap-cabecera { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-3); }
+.ap-cabecera h3 { margin: 0; font-size: 0.95rem; }
+.ap-selector { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.ap-selector input[type="color"] { width: 52px; height: 40px; padding: 2px; border-radius: var(--radius-sm); cursor: pointer; }
+.ap-selector code { font-size: 0.85rem; color: var(--text-muted); min-width: 4.5rem; }
+.ap-muestras { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.ap-muestra { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--border-strong); cursor: pointer; padding: 0; }
+.ap-muestra[aria-pressed="true"] { outline: 2px solid var(--text); outline-offset: 2px; }
+/* vista previa: usa la paleta del tema mostrado (tokens.css) aunque la pagina este en el otro */
+.vista-tema { margin-top: var(--space-3); background: var(--bg); color: var(--text); border: 1px solid var(--border-strong); border-radius: var(--radius-md); overflow: hidden; font-size: 0.85rem; }
+.vt-barra { display: flex; align-items: center; gap: var(--space-2); background: var(--topbar-bg); color: var(--topbar-text); border-bottom: 1px solid var(--topbar-border); padding: 8px 12px; font-weight: 700; }
+.vt-logo { width: 18px; height: 18px; border-radius: 5px; background: var(--topbar-badge-bg); }
+.vt-cuerpo { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.vt-fila { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.vt-activo { background: var(--accent-soft); color: var(--accent-strong); border-radius: var(--radius-sm); padding: 4px 10px; font-weight: 700; }
+.vt-tarjeta-barra { background: var(--accent-soft); border-bottom: 1px solid var(--accent); color: var(--text-muted); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 5px 10px; border-radius: 6px 6px 0 0; }
+.vt-tabla { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--table-border); border-radius: 6px; overflow: hidden; }
+.vt-tabla span { padding: 6px 10px; }
+.vt-tabla span:nth-child(-n + 2) { background: var(--thead-bg); color: var(--thead-fg); font-weight: 700; }
+.vt-tabla .vt-sugerida { background: var(--fila-sugerida); }
 .ca-tabs { margin: var(--space-4) 0; }
 .ca-sola { margin-top: var(--space-4); }
 .ca-agregar { display: grid; grid-template-columns: minmax(0, 1fr) 190px auto; gap: var(--space-3); align-items: end; margin-bottom: var(--space-4); }

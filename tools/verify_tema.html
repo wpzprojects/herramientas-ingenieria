@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>verify_tema</title>
+<!--
+  Pruebas del color principal personal de cada tema (Perfil → Apariencia, js/util/tema.js):
+   1. CON EL COLOR PREDETERMINADO LA PALETA ES EXACTAMENTE LA ACTUAL (se compara contra los valores reales de css/tokens.css, en
+      claro y en oscuro, con y sin el atajo de la paleta guardada: prueba que la matematica de la derivacion reproduce la actual);
+   2. otros colores: tonos validos, contraste legible, ajuste automatico y que los fondos/grises/estados no cambian;
+   3. guardar / restablecer / CSS previo; 4. la pestaña Apariencia de Perfil.
+  Se ejecuta en el navegador, sin internet.
+
+  Uso (desde la raiz del proyecto):
+    python -m http.server 8000
+    abrir http://localhost:8000/tools/verify_tema.html   -> lista PASS/FAIL
+  o en modo consola:
+    msedge --headless --dump-dom --virtual-time-budget=35000 http://localhost:8000/tools/verify_tema.html
+-->
+<style>body{font-family:ui-monospace,Consolas,monospace;font-size:13px;padding:12px}#stage{position:absolute;left:-9999px;width:1000px}</style>
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+<pre id="out"></pre>
+<div id="stage"></div>
+<script type="module">
+window.__BASE_PATH__ = "../";
+const out = document.getElementById("out");
+let fallos = 0;
+let total = 0;
+function ok(cond, msg) {
+  total++;
+  if (!cond) fallos++;
+  out.textContent += `${cond ? "PASS" : "FAIL"} ${msg}\n`;
+}
+async function seccion(nombre, fn) {
+  out.textContent += `\n== ${nombre}\n`;
+  try {
+    await fn();
+  } catch (err) {
+    fallos++;
+    total++;
+    out.textContent += `FAIL excepcion en "${nombre}": ${err && err.stack ? err.stack : err}\n`;
+  }
+}
+const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+const stage = document.getElementById("stage");
+const texto = (e) => (e ? e.textContent.replace(/\s+/g, " ").trim() : "");
+const raiz = document.documentElement;
+const tema = await import("../js/util/tema.js");
+
+const TEMAS = { claro: "light", oscuro: "dark" };
+function poner(t) {
+  raiz.setAttribute("data-theme", TEMAS[t]);
+}
+const valor = (nombre, el = raiz) => getComputedStyle(el).getPropertyValue(nombre).trim().toLowerCase();
+function limpiar() {
+  tema.guardarColor("claro", null);
+  tema.guardarColor("oscuro", null);
+  document.getElementById(tema.ID_ESTILO)?.remove();
+  localStorage.removeItem(tema.CLAVE_COLORES);
+  localStorage.removeItem(tema.CLAVE_CSS);
+}
+limpiar();
+
+// todos los tokens de la paleta (claro y oscuro), sin personalizar: es la referencia de «hoy»
+const TODOS = ["--bg", "--bg-elevated", "--bg-sunken", "--bg-input", "--text", "--text-muted", "--text-faint", "--border", "--border-strong", "--accent", "--accent-strong", "--accent-soft", "--accent-contrast", "--success", "--success-soft", "--warning", "--warning-soft", "--danger", "--danger-soft", "--focus-ring", "--topbar-bg", "--topbar-text", "--thead-bg", "--thead-fg", "--table-border", "--fila-sugerida", "--donut-track"];
+const REFERENCIA = {};
+for (const t of ["claro", "oscuro"]) {
+  poner(t);
+  REFERENCIA[t] = Object.fromEntries(TODOS.map((k) => [k, valor(k)]));
+}
+
+await seccion("con el color predeterminado la paleta es EXACTAMENTE la actual", async () => {
+  for (const t of ["claro", "oscuro"]) {
+    ok(tema.PREDETERMINADO[t].base === REFERENCIA[t]["--accent"], `${t}: el color base predeterminado (${tema.PREDETERMINADO[t].base}) es el --accent de tokens.css`);
+    for (const sinAtajo of [false, true]) {
+      const { tokens, ajustado } = tema.derivarTema(t, tema.PREDETERMINADO[t].base, { sinAtajo });
+      const distintos = Object.entries(tokens).filter(([k, v]) => v.toLowerCase() !== REFERENCIA[t][k]).map(([k, v]) => `${k}: ${v} ≠ ${REFERENCIA[t][k]}`);
+      ok(distintos.length === 0 && !ajustado, `${t} ${sinAtajo ? "(SIN atajo: solo matemática)" : "(con atajo)"}: los ${Object.keys(tokens).length} tonos derivados son idénticos a los de tokens.css${distintos.length ? " — " + distintos.join("; ") : ""}`);
+    }
+  }
+  // aplicar «el predeterminado» tampoco cambia nada de lo que se ve
+  tema.guardarColor("claro", tema.PREDETERMINADO.claro.base);
+  tema.guardarColor("oscuro", tema.PREDETERMINADO.oscuro.base);
+  ok(!document.getElementById(tema.ID_ESTILO) && localStorage.getItem(tema.CLAVE_COLORES) === null, "elegir el color predeterminado no guarda nada ni crea estilos");
+  for (const t of ["claro", "oscuro"]) {
+    poner(t);
+    ok(TODOS.every((k) => valor(k) === REFERENCIA[t][k]), `${t}: los ${TODOS.length} tokens de la página siguen igual`);
+  }
+  ok(tema.colorMeta("light") === "#0a5f5e" && tema.colorMeta("dark") === "#1e1e1e", "el color de la barra del navegador sigue siendo #0a5f5e (claro) y #1e1e1e (oscuro)");
+});
+
+await seccion("otros colores: tonos válidos, legibles y sin tocar fondos ni estados", async () => {
+  const hues = [];
+  for (let h = 0; h < 360; h += 30) hues.push(h);
+  let malos = [];
+  for (const t of ["claro", "oscuro"]) {
+    for (const h of hues) {
+      for (const [L, C] of [[0.55, 0.16], [0.7, 0.12], [0.4, 0.1]]) {
+        const pedido = tema.oklchAHex({ L, C, h });
+        const r = tema.derivarTema(t, pedido);
+        const cfg = tema.PREDETERMINADO[t];
+        const v = Object.values(r.tokens);
+        const l = (hex) => tema.luminancia(hex);
+        const razones = [];
+        if (!v.every((x) => /^#[0-9a-f]{6}$/.test(x))) razones.push("hex inválido");
+        if (tema.contraste(r.base, cfg.fondoTexto) < 4.5) razones.push("acento poco legible");
+        if (tema.contraste(r.tokens["--accent-contrast"], r.base) < 4.5) razones.push("texto sobre el acento");
+        if (t === "claro" && !(l(r.tokens["--accent-strong"]) < l(r.base) + 1e-9)) razones.push("strong no es más oscuro");
+        if (t === "oscuro" && !(l(r.tokens["--accent-strong"]) > l(r.base) - 1e-9)) razones.push("strong no es más claro");
+        if (t === "claro" && !(l(r.tokens["--accent-soft"]) > 0.75)) razones.push("soft no es claro");
+        if (t === "oscuro" && !(l(r.tokens["--accent-soft"]) < 0.06)) razones.push("soft no es oscuro");
+        if (r.tokens["--focus-ring"] !== r.base) razones.push("focus-ring");
+        if (razones.length) malos.push(`${t} ${pedido}: ${razones.join(", ")}`);
+      }
+    }
+  }
+  ok(malos.length === 0, `72 combinaciones (12 matices × 3 × 2 temas): tonos válidos, texto legible (≥ 4.5:1), strong más oscuro/claro y fondos suaves en su rango${malos.length ? " — " + malos.slice(0, 4).join(" | ") : ""}`);
+
+  // ajuste automatico
+  const amarillo = tema.derivarTema("claro", "#ffe600");
+  ok(amarillo.ajustado && amarillo.base !== "#ffe600" && tema.contraste(amarillo.base, "#ffffff") >= 4.5, `un amarillo casi ilegible sobre blanco se ajusta (${amarillo.base}, contraste ${tema.contraste(amarillo.base, "#ffffff").toFixed(1)}:1)`);
+  const marino = tema.derivarTema("oscuro", "#001a66");
+  ok(marino.ajustado && tema.contraste(marino.base, "#2b2b2b") >= 4.5, `un azul marino casi ilegible sobre fondo oscuro se ajusta (${marino.base}, contraste ${tema.contraste(marino.base, "#2b2b2b").toFixed(1)}:1)`);
+  ok(!tema.derivarTema("claro", "#15803d").ajustado && !tema.derivarTema("oscuro", "#a78bfa").ajustado, "los colores legibles no se tocan");
+
+  // en la pagina: solo cambia la familia del acento
+  tema.guardarColor("oscuro", "#a78bfa");
+  tema.guardarColor("claro", "#7c3aed");
+  const cambian = { claro: ["--accent", "--accent-strong", "--accent-soft", "--accent-contrast", "--focus-ring", "--topbar-bg", "--thead-bg", "--thead-fg"], oscuro: ["--accent", "--accent-strong", "--accent-soft", "--focus-ring", "--fila-sugerida"] };
+  for (const t of ["claro", "oscuro"]) {
+    poner(t);
+    const iguales = TODOS.filter((k) => !cambian[t].includes(k) && valor(k) !== REFERENCIA[t][k]);
+    ok(iguales.length === 0, `${t}: los fondos, textos, bordes y colores de estado NO cambian${iguales.length ? " — cambiaron: " + iguales.join(", ") : ""}`);
+    ok(cambian[t].filter((k) => valor(k) !== REFERENCIA[t][k]).length >= 4, `${t}: sí cambia la familia del color principal`);
+  }
+  poner("claro");
+  ok(valor("--accent") === tema.derivarTema("claro", "#7c3aed").tokens["--accent"] && valor("--topbar-bg") === valor("--accent-strong"), "claro: la página muestra los tonos derivados y la barra superior sigue siendo el tono fuerte");
+  ok(tema.colorMeta("light") === valor("--accent-strong"), "la barra del navegador (theme-color) toma el tono fuerte del claro");
+  limpiar();
+});
+
+await seccion("guardar, restablecer y arranque", async () => {
+  limpiar();
+  const efectivo = tema.guardarColor("oscuro", "#4ade80");
+  ok(efectivo === "#4ade80" && JSON.stringify(tema.leerColores()) === '{"oscuro":"#4ade80"}', "guardar un color lo deja registrado (solo el tema cambiado)");
+  const estilo = document.getElementById(tema.ID_ESTILO);
+  ok(!!estilo && /html:root\[data-theme="dark"\]/.test(estilo.textContent) && /div\.vista-tema\[data-vista="dark"\]/.test(estilo.textContent) && !/light/.test(estilo.textContent), "el CSS personal solo toca el tema oscuro y su vista previa (selectores más específicos que tokens.css)");
+  ok(localStorage.getItem(tema.CLAVE_CSS) === estilo.textContent, "el CSS calculado queda guardado para el próximo arranque (sin parpadeo)");
+  const index = await (await fetch("../index.html")).text();
+  ok(index.includes('localStorage.getItem("tema.css")') && index.includes('"tema-personal"'), "index.html aplica ese CSS antes del primer pintado");
+  poner("oscuro");
+  ok(valor("--accent") === "#4ade80", "la página ya muestra el color nuevo");
+  tema.guardarColor("oscuro", null);
+  ok(!document.getElementById(tema.ID_ESTILO) && localStorage.getItem(tema.CLAVE_COLORES) === null && localStorage.getItem(tema.CLAVE_CSS) === null, "restablecer quita el color, el estilo y el CSS guardado");
+  ok(TODOS.every((k) => valor(k) === REFERENCIA.oscuro[k]), "y la paleta oscura vuelve a ser exactamente la de antes");
+  localStorage.setItem(tema.CLAVE_COLORES, JSON.stringify({ claro: "no-es-color", oscuro: "#A78BFA" }));
+  ok(JSON.stringify(tema.leerColores()) === '{"oscuro":"#a78bfa"}', "un dato dañado en el almacenamiento se ignora (y los hex se normalizan a minúsculas)");
+  limpiar();
+  tema.guardarColor("claro", "#ffe600");
+  ok(tema.leerColores().claro !== "#ffe600" && tema.contraste(tema.leerColores().claro, "#ffffff") >= 4.5, "lo que se guarda es el color ya ajustado por legibilidad");
+  limpiar();
+});
+
+await seccion("pestaña Apariencia en Perfil", async () => {
+  const { usarBackend } = await import("../js/auth/backend.js");
+  const { crearBackendMock } = await import("../js/auth/backend-mock.js");
+  const acc = await import("../js/auth/acceso.js");
+  const vista = await import("../js/views/configuracion-avanzada.js");
+  const marco = document.createElement("div");
+  stage.innerHTML = "";
+  stage.append(marco);
+  const q = (s) => marco.querySelector(s);
+  const qa = (s) => [...marco.querySelectorAll(s)];
+  const dibujar = async (sesion) => {
+    acc.reiniciarAccesoParaPruebas();
+    usarBackend(crearBackendMock({ usuarios: [{ email: "ana@empresa.com", rol: "usuario" }, { email: "jefe@empresa.com", rol: "admin" }], sesion }));
+    marco.innerHTML = "";
+    await vista.render(marco, {});
+    await espera(200);
+  };
+  poner("claro");
+  limpiar();
+
+  await dibujar({ email: "ana@empresa.com", nombre: "Ana", foto: "" });
+  ok(qa(".ca-tabs .tab-btn").map(texto).join("|") === "Clave de Gemini|Apariencia", "el usuario normal ve las pestañas «Clave de Gemini | Apariencia»");
+  await dibujar({ email: "jefe@empresa.com", nombre: "Jefe", foto: "" });
+  ok(qa(".ca-tabs .tab-btn").map(texto).join("|") === "Usuarios|Clave de Gemini|Apariencia", "el administrador ve «Usuarios | Clave de Gemini | Apariencia» (Apariencia a la derecha de la clave)");
+  qa(".ca-tabs .tab-btn")[2].click();
+  ok(!q("#ca-tab-apariencia").hidden && q("#ca-tab-usuarios").hidden && !!q("#ca-apariencia .form-section-title .icon"), "la pestaña abre su tarjeta con barra de título e icono");
+  const bloques = qa(".ap-tema");
+  ok(bloques.map((b) => texto(b.querySelector("h3"))).join("|") === "Tema oscuro|Tema claro", "hay un bloque por tema: oscuro y claro");
+  ok(bloques.every((b) => !!b.querySelector('input[type="color"]') && b.querySelectorAll(".ap-muestra").length === 6 && !!b.querySelector("[data-restablecer]") && !!b.querySelector(".vista-tema") && !!b.querySelector("label[data-info]")), "cada uno con selector de color, 6 muestras, «Restablecer», vista previa y ayuda «i»");
+  ok(bloques[0].querySelector("[data-hex]").textContent === "#4C9EFF" && bloques[1].querySelector("[data-hex]").textContent === "#0E7C7B", "por defecto muestran los colores actuales: azul #4C9EFF (oscuro) y verde azulado #0E7C7B (claro)");
+  ok(bloques[0].querySelector('.ap-muestra[aria-pressed="true"]').dataset.color === "#4c9eff" && bloques[1].querySelector('.ap-muestra[aria-pressed="true"]').dataset.color === "#0e7c7b", "y la muestra predeterminada aparece marcada");
+
+  // la vista previa oscura muestra la paleta oscura aunque la pagina este en claro
+  const previaOscura = bloques[0].querySelector(".vista-tema");
+  ok(getComputedStyle(previaOscura).backgroundColor === "rgb(15, 15, 15)" && valor("--bg") === REFERENCIA.claro["--bg"], "la vista previa del tema oscuro usa la paleta oscura aunque la página esté en el tema claro");
+
+  // elegir una muestra
+  bloques[0].querySelectorAll(".ap-muestra")[3].click(); // violeta oscuro
+  const oscuroVioleta = tema.leerColores().oscuro;
+  ok(oscuroVioleta === "#a78bfa" && valor("--accent", previaOscura) === "#a78bfa", "elegir una muestra guarda el color y cambia la vista previa al instante");
+  ok(bloques[0].querySelector('.ap-muestra[aria-pressed="true"]').dataset.color === "#a78bfa" && bloques[0].querySelector("[data-hex]").textContent === "#A78BFA", "la muestra elegida queda marcada y se muestra su código");
+  ok(valor("--accent-strong", previaOscura) === tema.derivarTema("oscuro", "#a78bfa").tokens["--accent-strong"], "los demás tonos de la vista previa son los derivados");
+  ok(valor("--accent") === REFERENCIA.claro["--accent"], "la página (tema claro en uso) no cambia con el color del tema oscuro");
+
+  // elegir con el selector, con ajuste
+  const entradaClaro = bloques[1].querySelector('input[type="color"]');
+  entradaClaro.value = "#ffe600";
+  entradaClaro.dispatchEvent(new Event("input"));
+  ok(!bloques[1].querySelector("[data-ajuste]").hidden && tema.contraste(tema.leerColores().claro, "#ffffff") >= 4.5, "un color ilegible se ajusta y la pantalla lo avisa («Ajustamos un poco el tono…»)");
+  ok(valor("--accent") === tema.leerColores().claro, "el tema claro en uso ya muestra el color nuevo en toda la página");
+
+  // restablecer
+  bloques[1].querySelector("[data-restablecer]").click();
+  ok(tema.leerColores().claro === undefined && bloques[1].querySelector("[data-hex]").textContent === "#0E7C7B" && bloques[1].querySelector("[data-ajuste]").hidden, "«Restablecer» del tema claro vuelve al verde original");
+  poner("claro");
+  ok(TODOS.every((k) => valor(k) === REFERENCIA.claro[k]), "y la página en claro vuelve a ser exactamente la de antes");
+  ok(tema.leerColores().oscuro === "#a78bfa", "sin tocar el otro tema");
+  bloques[0].querySelector("[data-restablecer]").click();
+  ok(JSON.stringify(tema.leerColores()) === "{}" && localStorage.getItem(tema.CLAVE_CSS) === null, "«Restablecer» del oscuro deja todo por defecto");
+  limpiar();
+});
+
+await seccion("archivos", async () => {
+  const sw = await (await fetch("../sw.js")).text();
+  ok(sw.includes('"js/util/tema.js"'), "el service worker precachea js/util/tema.js");
+  const app = await (await fetch("../js/app.js")).text();
+  ok(app.includes("aplicarTema()") && app.includes("colorMeta"), "la app aplica los colores personales al arrancar y usa el color de la barra del navegador derivado");
+  const css = await (await fetch("../css/app.css")).text();
+  ok(!/#0e7c7b|#0a5f5e|#4c9eff/i.test(css), "app.css no tiene los colores del tema escritos a mano (todo pasa por variables)");
+});
+
+limpiar();
+poner("light");
+out.textContent += `\nRESULT: ${fallos ? "FAIL" : "OK"} (${total - fallos}/${total})\n`;
+</script>
+</body>
+</html>

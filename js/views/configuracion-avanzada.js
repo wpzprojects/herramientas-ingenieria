@@ -11,6 +11,7 @@ import { activarInfos } from "../util/info-campo.js";
 import { obtenerBackend, esperarSesion, ROLES, ErrorAcceso, correoValido, normalizarCorreo } from "../auth/backend.js";
 import { FUENTES, obtenerFuente, guardarFuente, olvidarClaveServidor } from "../ai/clave.js";
 import { estadoAcceso, venceLaCache, leerCache, revalidar } from "../auth/acceso.js";
+import { PREDETERMINADO, leerColores, guardarColor, ajustarBase } from "../util/tema.js";
 
 const fecha = (ms) => (ms ? new Date(ms).toLocaleDateString("es-CO", { dateStyle: "medium" }) : "—");
 const mensajeDe = (e) => (e instanceof ErrorAcceso ? e.message : `Error inesperado: ${e?.message || e}`);
@@ -24,6 +25,16 @@ const OPCIONES_FUENTE = {
   compartida: { titulo: "Clave compartida (servidor)", donde: "la clave del administrador, para todos los usuarios" },
 };
 const AYUDA_FUENTE = "Las funciones de IA necesitan una clave de Gemini. Elige dónde está guardada la que vas a usar.";
+
+// Apariencia (Perfil): muestras de color y textos
+const MUESTRAS = {
+  oscuro: [["#4c9eff", "Azul (predeterminado)"], ["#2dd4bf", "Turquesa"], ["#4ade80", "Verde"], ["#a78bfa", "Violeta"], ["#fb923c", "Naranja"], ["#f472b6", "Rosa"]],
+  claro: [["#0e7c7b", "Verde azulado (predeterminado)"], ["#2563eb", "Azul"], ["#15803d", "Verde"], ["#7c3aed", "Violeta"], ["#c2410c", "Naranja"], ["#be185d", "Rosa"]],
+};
+const NOMBRE_TEMA = { oscuro: "Tema oscuro", claro: "Tema claro" };
+const VISTA = { oscuro: "dark", claro: "light" };
+const AYUDA_COLOR =
+  "Elige el color principal; los demás tonos (botones, fondos suaves, encabezados de tabla…) se calculan solos. Con el color predeterminado la paleta queda exactamente como está. Si el color dificulta la lectura, se ajusta un poco.";
 
 export async function render(container) {
   container.innerHTML = `
@@ -147,6 +158,8 @@ export async function render(container) {
   // ---------- 3. panel ----------
   function pintarPanel(u, perfil) {
     const esAdmin = perfil.rol === "admin";
+    // el administrador ve Usuarios; todos los autorizados ven la clave de Gemini y la apariencia (color personal, por dispositivo)
+    const pestanas = [...(esAdmin ? [["usuarios", "Usuarios"]] : []), ["clave", "Clave de Gemini"], ["apariencia", "Apariencia"]];
     const cache = leerCache();
     // un solo parrafo: se ajusta al ancho de la tarjeta (no se fuerza a dos lineas)
     const vigencia = cache
@@ -165,16 +178,10 @@ export async function render(container) {
           <button type="button" class="btn btn-sm ca-cuenta-salir" data-salir>Cerrar sesión</button>
         </div>
       </div>
-      ${
-        esAdmin
-          ? `<div class="tabs ca-tabs" role="tablist">
-              <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-tab="usuarios">Usuarios</button>
-              <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="clave">Clave de Gemini</button>
-            </div>
-            <div class="tab-panel" id="ca-tab-usuarios"><div class="card tarjeta-borde form-section" id="ca-usuarios"></div></div>
-            <div class="tab-panel" id="ca-tab-clave" hidden><div class="card tarjeta-borde form-section" id="ca-clave"></div></div>`
-          : `<div class="card tarjeta-borde form-section ca-sola" id="ca-clave"></div>`
-      }`;
+      <div class="tabs ca-tabs" role="tablist">
+        ${pestanas.map(([id, rotulo], i) => `<button type="button" class="tab-btn${i === 0 ? " active" : ""}" role="tab" aria-selected="${i === 0}" data-tab="${id}">${rotulo}</button>`).join("")}
+      </div>
+      ${pestanas.map(([id], i) => `<div class="tab-panel" id="ca-tab-${id}"${i === 0 ? "" : " hidden"}><div class="card tarjeta-borde form-section" id="ca-${id}"></div></div>`).join("")}`;
     cuerpo.querySelector("[data-salir]").addEventListener("click", cerrarSesion);
     for (const btn of cuerpo.querySelectorAll(".ca-tabs .tab-btn")) {
       btn.addEventListener("click", () => {
@@ -188,6 +195,74 @@ export async function render(container) {
     }
     if (esAdmin) pintarUsuarios(perfil);
     pintarClave(esAdmin);
+    pintarApariencia();
+  }
+
+  // ---------- apariencia: color principal de cada tema (personal, por dispositivo; ver js/util/tema.js) ----------
+  function pintarApariencia() {
+    const box = cuerpo.querySelector("#ca-apariencia");
+    const bloque = (tema) => `
+      <div class="ap-tema" data-tema="${tema}">
+        <div class="ap-cabecera">
+          <h3>${NOMBRE_TEMA[tema]}</h3>
+          <button type="button" class="btn btn-sm" data-restablecer>Restablecer</button>
+        </div>
+        <div class="field">
+          <label for="ap-color-${tema}" data-info="${escapeHtml(AYUDA_COLOR)}">Color principal</label>
+          <div class="ap-selector">
+            <input type="color" id="ap-color-${tema}" value="${PREDETERMINADO[tema].base}" aria-label="Color principal del ${NOMBRE_TEMA[tema].toLowerCase()}">
+            <code data-hex></code>
+            <div class="ap-muestras">${MUESTRAS[tema].map(([hex, nombre]) => `<button type="button" class="ap-muestra" style="background:${hex}" data-color="${hex}" aria-label="${nombre}" title="${nombre}" aria-pressed="false"></button>`).join("")}</div>
+          </div>
+          <p class="text-muted text-sm" data-ajuste hidden style="margin:var(--space-2) 0 0">Ajustamos un poco el tono para que el texto siga legible.</p>
+        </div>
+        <div class="vista-tema" data-vista="${VISTA[tema]}" aria-label="Vista previa del ${NOMBRE_TEMA[tema].toLowerCase()}">
+          <div class="vt-barra"><span class="vt-logo"></span> Herramientas de Ingeniería</div>
+          <div class="vt-cuerpo">
+            <div class="vt-fila"><span class="vt-activo">Cálculos</span><span class="vt-tarjeta-barra">Título de tarjeta</span></div>
+            <div class="vt-fila"><button type="button" class="btn btn-primary btn-sm" tabindex="-1">Botón</button><button type="button" class="btn btn-sm" tabindex="-1">Secundario</button><a href="#/perfil" tabindex="-1" onclick="return false">Enlace</a><span class="badge badge-success">Estado</span></div>
+            <div class="vt-tabla"><span>Encabezado</span><span>Valor</span><span class="vt-sugerida">Fila sugerida</span><span class="vt-sugerida">12,3</span></div>
+          </div>
+        </div>
+      </div>`;
+    box.innerHTML = `${barra("palette", "Apariencia")}
+      <p class="text-muted text-sm" style="margin:0">Elige el color principal de cada tema; los demás tonos se calculan a partir de él. Se guarda solo en este dispositivo.</p>
+      ${bloque("oscuro")}${bloque("claro")}`;
+    activarInfos(box);
+
+    const refrescar = (tema) => {
+      const cont = box.querySelector(`.ap-tema[data-tema="${tema}"]`);
+      const actual = leerColores()[tema] || PREDETERMINADO[tema].base;
+      cont.querySelector("[data-hex]").textContent = actual.toUpperCase();
+      for (const m of cont.querySelectorAll(".ap-muestra")) m.setAttribute("aria-pressed", String(m.dataset.color === actual));
+      return { cont, actual };
+    };
+    for (const tema of ["oscuro", "claro"]) {
+      const { cont } = refrescar(tema);
+      const entrada = cont.querySelector('input[type="color"]');
+      entrada.value = leerColores()[tema] || PREDETERMINADO[tema].base;
+      const elegir = (hex) => {
+        const pedido = hex.toLowerCase();
+        const efectivo = guardarColor(tema, pedido);
+        const { cont: c } = refrescar(tema);
+        const ajustado = ajustarBase(tema, pedido).ajustado;
+        c.querySelector("[data-ajuste]").hidden = !ajustado;
+        if (ajustado || hex === efectivo) entrada.value = efectivo; // si se ajusto, el selector muestra el color efectivo
+      };
+      entrada.addEventListener("input", () => elegir(entrada.value));
+      for (const m of cont.querySelectorAll(".ap-muestra")) {
+        m.addEventListener("click", () => {
+          entrada.value = m.dataset.color;
+          elegir(m.dataset.color);
+        });
+      }
+      cont.querySelector("[data-restablecer]").addEventListener("click", () => {
+        guardarColor(tema, null);
+        refrescar(tema);
+        entrada.value = PREDETERMINADO[tema].base;
+        cont.querySelector("[data-ajuste]").hidden = true;
+      });
+    }
   }
 
   async function pintarUsuarios(perfil) {

@@ -83,6 +83,10 @@ Sección nueva (no existía en la app original) con tres pantallas: **Análisis 
 - **Verificación**: `tools/verify_ia.html` (arnés en el navegador, sin clave ni internet, Gemini simulado: contrasta cada adaptador contra fórmulas independientes y los motores) y `tools/preview_ia.html` (vista previa de las pantallas con Gemini simulado). Ver instrucciones en el encabezado de cada archivo.
 - Si se cambia la firma de un motor de `js/calc/*.js`, hay que actualizar también su adaptador en `js/ai/tools.js` y correr `verify_ia.html`.
 
+## Apariencia (color del tema)
+
+En Perfil → Apariencia, cada persona autorizada puede elegir el color principal del tema oscuro y del claro (personal, guardado en su dispositivo). Los demás tonos del acento se calculan a partir de ese color (`js/util/tema.js`, en el espacio OKLCH); con el color predeterminado la paleta queda exactamente como antes. Pruebas: `tools/verify_tema.html`.
+
 ## Niveles de acceso
 
 Sin iniciar sesión (o con un correo que no esté en la lista) la app funciona como **visitante**: solo tres módulos (Ocupación de ductos, Conductores desnudos y Distancias de seguridad); el resto se ve pero sin enlace, y Varios y Funciones de IA quedan bloqueadas. Con un correo autorizado (**usuario**) se habilitan todos los módulos, y el **administrador** además gestiona la lista de usuarios y la clave compartida de Gemini (Perfil). Sin internet, el acceso completo dura 15 días desde la última vez que el servidor lo confirmó (`js/auth/acceso.js`; se renueva solo al abrir con conexión). Reglas por ruta en `js/auth/permisos.js`; pruebas en `tools/verify_acceso.html`. Es un control de uso de la interfaz, no de confidencialidad (los archivos del sitio son públicos).

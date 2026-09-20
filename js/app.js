@@ -1,6 +1,7 @@
 import { icon } from "./icons.js";
 import { sidebarLinks, perfilLink } from "./nav.js";
 import { iniciarAcceso, alCambiarAcceso } from "./auth/acceso.js";
+import { aplicarTema, colorMeta } from "./util/tema.js";
 import { initRouter } from "./router.js";
 
 const shell = document.getElementById("app-shell");
@@ -29,12 +30,12 @@ function applyTheme(theme) {
     "aria-label",
     theme === "dark" ? "Cambiar a tema claro" : "Cambiar a tema oscuro"
   );
-  document
-    .getElementById("theme-color-meta")
-    .setAttribute("content", theme === "dark" ? "#1e1e1e" : "#0a5f5e");
+  document.getElementById("theme-color-meta").setAttribute("content", colorMeta(theme));
 }
 
+aplicarTema(); // colores personales de Perfil > Apariencia (si los hay)
 applyTheme(localStorage.getItem(THEME_KEY) || systemTheme());
+document.addEventListener("tema-personal", () => applyTheme(document.documentElement.getAttribute("data-theme") || "light"));
 
 themeToggle.addEventListener("click", () => {
   const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";

@@ -206,7 +206,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v152); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v153); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (menú lateral → «Perfil», `js/auth/*`, `firebase/firestore.rules`)
@@ -228,6 +228,21 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   denegadas por el servidor; el login de Google con el administrador funciona (confirmado por el
   usuario el 2026-09-18). El arnés no puede iniciar sesión: los cambios en las reglas o el login
   se prueban a mano (y con el Simulador de reglas de la consola).
+
+## Apariencia: color principal personal de cada tema (Perfil → Apariencia, `js/util/tema.js`, 2026-09-19)
+
+- Pestaña «Apariencia» a la derecha de «Clave de Gemini» para usuario y administrador (los visitantes no ven el panel de Perfil). El color es
+  PERSONAL y POR DISPOSITIVO (`localStorage`: `tema.colores` = solo los temas cambiados, y `tema.css` = CSS ya calculado que `index.html` aplica antes
+  del primer pintado, sin parpadeo; sin Firebase ni reglas). Por tema: selector de color + 6 muestras + «Restablecer» + vista previa (`.vista-tema`,
+  que usa la paleta de OTRO tema gracias a los selectores agregados en `tokens.css`).
+- REGLA DE ORO (pedida por el usuario): elegir el color predeterminado (oscuro `#4c9eff`, claro `#0e7c7b`) deja la paleta EXACTAMENTE como estaba, y ningún
+  color escrito a mano se rompe. La derivación es RELATIVA a la paleta actual: cada tono derivado se mide contra el base predeterminado en OKLCH
+  (`rel` = misma diferencia de luminosidad, `abs` = misma luminosidad; misma proporción de saturación y diferencia de matiz) y se reaplica al color elegido.
+  Solo se derivan los tonos del acento (claro: accent, strong, soft, contrast, focus-ring, topbar-bg, thead-bg, thead-fg; oscuro: accent, strong, soft, contrast,
+  focus-ring, fila-sugerida). Fondos, grises y estados (éxito/advertencia/error) NO cambian. Si el color queda ilegible (contraste < 4.5:1 contra
+  blanco en claro / contra `#2b2b2b` en oscuro) se ajusta solo la luminosidad. Si cambia `tokens.css`, actualizar `PREDETERMINADO` en `tema.js`:
+  `tools/verify_tema.html` compara contra los valores reales de tokens.css y falla si no coinciden (con y sin el atajo, o sea, prueba la matemática).
+- `app.css` NO debe tener colores del tema escritos a mano (todo por variables; la prueba lo vigila). `manifest.webmanifest` (theme_color) es estático y no cambia.
 
 ## Niveles de acceso: visitante / usuario / administrador (FASE 1 implementada 2026-09-19)
 
