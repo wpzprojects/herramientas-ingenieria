@@ -159,6 +159,13 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 
 ## Sección "Funciones de IA" (`js/ai/*`, `js/views/ia*.js`)
 
+- Rediseño de las pantallas de IA (2026-09-19, el usuario dijo «cualquier cosa nos devolvemos al commit anterior»): en curso, una por una.
+  **Configuración de IA** HECHA (commit anterior al rediseño: `c5d9379`): tarjetas `tarjeta-borde` con barra de título e icono («Conexión con
+  Gemini», «Modelo», «Datos y privacidad»), ayudas en botones «i» (sin `.hint`), estado de la clave en uso con enlace a Perfil (y aviso si es una
+  clave del servidor), «¿Cómo obtener mi clave?» como enlace (`.btn-enlace`), «Probar conexión» SOLO verifica la clave y «Actualizar lista» carga los
+  modelos (antes lo hacía «Probar»), ajustes avanzados (temperatura, rondas, cálculos) plegados en `<details>`, privacidad en recuadro con viñetas.
+  Pendientes con el mismo criterio: Análisis con calculadoras y Corrector de redacción. Pruebas: `tools/verify_ia_pantallas.html`.
+
 - Es la ÚNICA excepción a "100% offline": se conecta a Google Gemini con la clave del propio
   usuario (BYOK, guardada en el navegador; no hay backend). Detalle en el README.
 - Análisis con calculadoras tiene agentes (`js/ai/agentes-analisis.js`, botón «Agentes»): el predeterminado («Agente estándar») sale del
@@ -199,7 +206,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v150); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v151); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (menú lateral → «Perfil», `js/auth/*`, `firebase/firestore.rules`)
