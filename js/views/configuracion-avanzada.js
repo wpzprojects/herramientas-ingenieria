@@ -207,6 +207,7 @@ export async function render(container) {
           <h3>${NOMBRE_TEMA[tema]}</h3>
           <button type="button" class="btn btn-sm" data-restablecer>Restablecer</button>
         </div>
+        <div class="ap-cuerpo">
         <div class="field">
           <label for="ap-color-${tema}" data-info="${escapeHtml(AYUDA_COLOR)}">Color principal</label>
           <div class="ap-selector">
@@ -217,12 +218,12 @@ export async function render(container) {
           <p class="text-muted text-sm" data-ajuste hidden style="margin:var(--space-2) 0 0">Ajustamos un poco el tono para que el texto siga legible.</p>
         </div>
         <div class="vista-tema" data-vista="${VISTA[tema]}" aria-label="Vista previa del ${NOMBRE_TEMA[tema].toLowerCase()}">
-          <div class="vt-barra"><span class="vt-logo"></span> Herramientas de Ingeniería</div>
+          <div class="vt-barra"><span class="vt-logo"></span> Herramientas</div>
           <div class="vt-cuerpo">
-            <div class="vt-fila"><span class="vt-activo">Cálculos</span><span class="vt-tarjeta-barra">Título de tarjeta</span></div>
-            <div class="vt-fila"><button type="button" class="btn btn-primary btn-sm" tabindex="-1">Botón</button><button type="button" class="btn btn-sm" tabindex="-1">Secundario</button><a href="#/perfil" tabindex="-1" onclick="return false">Enlace</a><span class="badge badge-success">Estado</span></div>
-            <div class="vt-tabla"><span>Encabezado</span><span>Valor</span><span class="vt-sugerida">Fila sugerida</span><span class="vt-sugerida">12,3</span></div>
+            <div class="vt-fila"><span class="vt-activo">Cálculos</span><button type="button" class="btn btn-primary btn-sm" tabindex="-1">Botón</button><a href="#/perfil" tabindex="-1" onclick="return false">Enlace</a><span class="badge badge-success">Estado</span></div>
+            <div class="vt-tabla"><span>Encabezado</span><span>Valor</span><span class="vt-sugerida">Sugerida</span><span class="vt-sugerida">12,3</span></div>
           </div>
+        </div>
         </div>
       </div>`;
     box.innerHTML = `${barra("palette", "Apariencia")}

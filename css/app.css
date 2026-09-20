@@ -227,15 +227,19 @@ button { font-family: inherit; }
 .ap-muestra { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--border-strong); cursor: pointer; padding: 0; }
 .ap-muestra[aria-pressed="true"] { outline: 2px solid var(--text); outline-offset: 2px; }
 /* vista previa: usa la paleta del tema mostrado (tokens.css) aunque la pagina este en el otro */
-.vista-tema { margin-top: var(--space-3); background: var(--bg); color: var(--text); border: 1px solid var(--border-strong); border-radius: var(--radius-md); overflow: hidden; font-size: 0.85rem; }
-.vt-barra { display: flex; align-items: center; gap: var(--space-2); background: var(--topbar-bg); color: var(--topbar-text); border-bottom: 1px solid var(--topbar-border); padding: 8px 12px; font-weight: 700; }
+/* controles a la izquierda y una vista previa compacta a la derecha (en celular, una debajo de la otra) */
+.ap-cuerpo { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: var(--space-4); align-items: start; }
+.ap-cuerpo .field { margin-bottom: 0; }
+@media (max-width: 720px) { .ap-cuerpo { grid-template-columns: 1fr; } }
+.vista-tema { margin-top: 0; background: var(--bg); color: var(--text); border: 1px solid var(--border-strong); border-radius: var(--radius-md); overflow: hidden; font-size: 0.85rem; }
+.vt-barra { display: flex; align-items: center; gap: var(--space-2); background: var(--topbar-bg); color: var(--topbar-text); border-bottom: 1px solid var(--topbar-border); padding: 6px 10px; font-weight: 700; font-size: 0.8rem; }
 .vt-logo { width: 18px; height: 18px; border-radius: 5px; background: var(--topbar-badge-bg); }
-.vt-cuerpo { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
-.vt-fila { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.vt-cuerpo { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.vt-fila { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .vt-activo { background: var(--accent-soft); color: var(--accent-strong); border-radius: var(--radius-sm); padding: 4px 10px; font-weight: 700; }
 .vt-tarjeta-barra { background: var(--accent-soft); border-bottom: 1px solid var(--accent); color: var(--text-muted); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 5px 10px; border-radius: 6px 6px 0 0; }
 .vt-tabla { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--table-border); border-radius: 6px; overflow: hidden; }
-.vt-tabla span { padding: 6px 10px; }
+.vt-tabla span { padding: 4px 8px; font-size: 0.8rem; }
 .vt-tabla span:nth-child(-n + 2) { background: var(--thead-bg); color: var(--thead-fg); font-weight: 700; }
 .vt-tabla .vt-sugerida { background: var(--fila-sugerida); }
 .ca-tabs { margin: var(--space-4) 0; }
