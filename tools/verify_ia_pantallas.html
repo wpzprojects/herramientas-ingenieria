@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <title>verify_ia_pantallas</title>
 <!--
-  Pruebas del rediseño de las pantallas de Funciones de IA (2026-09-19): por ahora «Configuración de IA»
-  (js/views/ia-configuracion.js). Se ejecuta en el navegador, sin internet (Gemini simulado con un fetch falso).
+  Pruebas del rediseño de las pantallas de Funciones de IA (2026-09-19): «Configuración de IA» (js/views/ia-configuracion.js)
+  y «Corrector de redacción» (js/views/ia-redaccion.js). Se ejecuta en el navegador, sin internet (Gemini simulado con un fetch falso).
 
   Uso (desde la raiz del proyecto):
     python -m http.server 8000
@@ -171,6 +171,98 @@ await seccion("Configuración de IA rediseñada", async () => {
   await dibujar();
   ok(/Clave compartida \(servidor\)/.test(texto(q("#fuente-clave .badge"))) && /clave del servidor/.test(texto(q("#aviso-fuente"))), "si en Perfil se eligió una clave del servidor, la pantalla lo dice y aclara que el campo local no se usa");
   limpiarTodo();
+});
+
+await seccion("Corrector de redacción rediseñado", async () => {
+  // Gemini simulado: la respuesta cambia con lo ultimo que se le pide
+  const generaciones = [];
+  const fetchPrevio = window.fetch;
+  window.fetch = async (url, opciones) => {
+    if (String(url).includes(":generateContent")) {
+      const cuerpo = JSON.parse(opciones.body);
+      const ultimo = cuerpo.contents.at(-1).parts[0].text;
+      generaciones.push(ultimo);
+      return new Response(JSON.stringify({ candidates: [{ content: { role: "model", parts: [{ text: `RESPUESTA ${generaciones.length}` }] }, finishReason: "STOP" }] }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    return fetchPrevio(url, opciones);
+  };
+  cfg.guardarClave("AIzaSyPRUEBA1234567890", false);
+  clave.guardarFuente("local");
+  try { localStorage.removeItem("ia.agentesRedaccion"); localStorage.removeItem("ia.agenteRedaccionActivo"); } catch { /* nada */ }
+  const vista = await import("../js/views/ia-redaccion.js");
+  const marco = document.createElement("div");
+  stage.innerHTML = "";
+  stage.append(marco);
+  const q = (s) => marco.querySelector(s);
+  const qa = (s) => [...marco.querySelectorAll(s)];
+  await vista.render(marco, {});
+  await espera(150);
+
+  // --- tarjeta Agente
+  const tarjeta = q(".card");
+  ok(tarjeta.classList.contains("tarjeta-borde") && /Agente/.test(texto(tarjeta.querySelector(".form-section-title"))) && !!tarjeta.querySelector(".form-section-title .icon"), "la tarjeta «Agente» tiene relleno de 16 px y barra de título con icono");
+  ok(!!q(".form-section-title #btn-gestionar svg") && !!q(".form-section-title #btn-historial svg") && /Gestionar agentes/.test(texto(q("#btn-gestionar"))) && /Historial/.test(texto(q("#btn-historial"))), "«Gestionar agentes» e «Historial» van dentro de la barra de título, con icono");
+  ok(qa("#lista-agentes .ia-chip").length === 4 && q("#lista-agentes .ia-chip").getAttribute("aria-pressed") === "true", "los 4 agentes siguen como píldoras y el primero está activo");
+  const desc = q("#desc-agente");
+  ok(desc.classList.contains("ia-desc-agente") && !desc.classList.contains("text-muted") && /correos/i.test(texto(desc)), "la descripción del agente es más visible (ya no es gris tenue)");
+
+  // --- estado vacio: el ejemplo cambia con el agente
+  ok(/borrador del correo/.test(q("#f-texto").placeholder), `el ejemplo de la caja habla del agente activo: «${q("#f-texto").placeholder}»`);
+  qa("#lista-agentes .ia-chip")[3].click();
+  ok(/resumen/.test(q("#f-texto").placeholder) && /borrador/.test(q("#f-texto").placeholder) === false, "al elegir «Resúmenes» el ejemplo cambia");
+  qa("#lista-agentes .ia-chip")[0].click();
+
+  // --- respuesta con etiqueta, «Copiar» donde estaba y atajos de ajuste
+  q("#f-texto").value = "hola equipo les mando el informe";
+  q("#btn-enviar").click();
+  await espera(300);
+  const resp = qa(".ia-msg--model").find((m) => /RESPUESTA 1/.test(m.textContent));
+  ok(!!resp && texto(resp.querySelector(".ia-msg-etiqueta")) === "Correo corregido", "la respuesta lleva la etiqueta «Correo corregido» (según el agente)");
+  ok(!!resp.querySelector(".ia-msg-acciones button svg") && /Copiar/.test(texto(resp.querySelector(".ia-msg-acciones"))), "el botón «Copiar» sigue en el mismo lugar, dentro de la respuesta");
+  const chips = qa(".ia-ajustes .ia-chip").map(texto);
+  ok(chips.join("|") === "Más corto|Más formal|Más cordial|Explica los cambios", `debajo de la respuesta hay atajos de ajuste: ${chips.join(", ")}`);
+  ok(q(".ia-ajustes").previousElementSibling === resp, "y van justo después de la última respuesta");
+  qa(".ia-ajustes .ia-chip")[0].click();
+  await espera(300);
+  ok(generaciones.length === 2 && /más corto/i.test(generaciones[1]), "«Más corto» le pide el ajuste a la IA sin escribir nada");
+  ok(qa(".ia-msg--user").some((m) => texto(m) === "Más corto"), "el mensaje del usuario se ve como «Más corto»");
+  ok(qa(".ia-ajustes").length === 1 && qa(".ia-msg--model").length === 2 && q(".ia-ajustes").previousElementSibling === qa(".ia-msg--model")[1], "los atajos se mueven bajo la respuesta nueva (solo hay un grupo)");
+
+  // --- historial
+  q("#btn-historial").click();
+  await espera(150);
+  const ph = q("#panel-historial");
+  ok(!ph.hidden && ph.classList.contains("tarjeta-borde") && /Historial de conversaciones/.test(texto(ph.querySelector(".form-section-title"))) && !!ph.querySelector(".form-section-title .icon"), "el historial usa la misma tarjeta con barra de título e icono");
+  q("#btn-historial").click();
+
+  // --- gestor de agentes
+  q("#btn-gestionar").click();
+  await espera(100);
+  const pg = q("#panel-gestor");
+  ok(!pg.hidden && pg.classList.contains("tarjeta-borde") && /Gestionar agentes/.test(texto(pg.querySelector(".form-section-title"))), "«Gestionar agentes» abre una tarjeta con barra de título");
+  ok(!!pg.querySelector('.form-section-title [data-a="nuevo"].btn-primary') && !!pg.querySelector(".form-section-title .menu-mas"), "«Nuevo agente» es el único botón principal, y hay un menú «Más»");
+  const menu = pg.querySelector(".menu-mas");
+  ok(!menu.open && !pg.querySelector(".menu-mas-lista").checkVisibility(), "el menú «Más» empieza cerrado (Exportar, Importar y Restaurar no se ven)");
+  menu.querySelector("summary").click();
+  await espera(50);
+  ok(menu.open && pg.querySelectorAll(".menu-mas-lista button").length === 3 && pg.querySelector(".menu-mas-lista").checkVisibility(), "al abrirlo muestra Exportar JSON, Importar JSON y Restaurar predeterminados");
+  ok(pg.querySelector(".menu-mas-lista").getBoundingClientRect().right <= pg.getBoundingClientRect().right + 1, "y el menú cabe dentro de la tarjeta");
+  document.body.click();
+  ok(!menu.open, "se cierra al pulsar fuera");
+
+  // --- editor de agente
+  const editar = [...pg.querySelectorAll("#gestor-lista button")].find((b) => b.textContent === "Editar");
+  editar.click();
+  await espera(100);
+  const ed = pg.querySelector(".ia-editor");
+  ok(!!ed && !ed.classList.contains("card") && !ed.closest("#gestor-form")?.querySelector(".card") && /Editar: Correos/.test(texto(ed.querySelector("h3"))), "el editor ya no es una tarjeta dentro de otra tarjeta");
+  ok(ed.querySelectorAll("label[data-info]").length === 3 && ed.querySelectorAll(".hint").length === 0, "las ayudas del formulario (tono, temperatura, instrucciones) son botones «i», sin textos .hint");
+  ok(ed.querySelectorAll("label[data-info] button, label[data-info] .info-btn").length >= 3, "cada una con su botón «i»");
+  pg.querySelector("#g-cancelar").click();
+  q("#btn-gestionar").click();
+
+  window.fetch = fetchPrevio;
+  try { cfg.borrarClave(); } catch { /* nada */ }
 });
 
 await seccion("archivos", async () => {

@@ -4,6 +4,7 @@
 // pantalla (crear, editar, duplicar, borrar, exportar/importar JSON).
 
 import { el, escapeHtml } from "../util/format.js";
+import { activarInfos } from "../util/info-campo.js";
 import { obtenerAjustes } from "../ai/config.js";
 import { claveEnUso } from "../ai/clave.js";
 import { generar, ErrorGemini } from "../ai/gemini.js";
@@ -73,6 +74,21 @@ const fechaCorta = (ms) => new Date(ms).toLocaleString("es-CO", { dateStyle: "sh
 
 const PH_TEXTO = "Pega aquí el texto a corregir (correo, descripción, acta…)";
 const PH_AJUSTE = "Pide un ajuste: más formal, más corto, agrega un cierre…";
+// Agentes predeterminados: ejemplo de lo que se pega y nombre del resultado. Los agentes propios usan los textos generales.
+const POR_AGENTE = {
+  correos: { ph: "Pega aquí el borrador del correo y lo dejo claro y cordial…", etiqueta: "Correo corregido" },
+  "descripciones-tecnicas": { ph: "Pega aquí la descripción técnica y la dejo precisa y ordenada…", etiqueta: "Descripción corregida" },
+  "informes-actas": { ph: "Pega aquí el informe o el acta y lo dejo claro y bien estructurado…", etiqueta: "Texto corregido" },
+  resumenes: { ph: "Pega aquí el texto largo y te entrego un resumen…", etiqueta: "Resumen" },
+};
+// Atajos de ajuste que aparecen bajo la respuesta: (nombre visible, lo que se le pide a la IA)
+const AJUSTES_RAPIDOS = [
+  ["Más corto", "Hazlo más corto, sin perder la información clave."],
+  ["Más formal", "Hazlo más formal."],
+  ["Más cordial", "Hazlo más cordial y cercano, sin perder claridad."],
+  ["Explica los cambios", "Explica brevemente qué cambios hiciste y por qué."],
+];
+const btnBarra = (id, ico, texto, extra = "") => `<button type="button" class="btn btn-sm btn-con-icono ${extra}" id="${id}">${icon(ico)} ${texto}</button>`;
 
 export async function render(container) {
   container.innerHTML = `
@@ -89,20 +105,16 @@ export async function render(container) {
   container.insertAdjacentHTML(
     "beforeend",
     `
-    <div class="card">
-      <div class="ia-toolbar">
-        <h2 class="section-title" style="margin:0">Agente</h2>
-        <div class="grupo">
-          <button type="button" class="btn btn-sm" id="btn-gestionar">Gestionar agentes</button>
-          <button type="button" class="btn btn-sm" id="btn-historial">Historial</button>
-        </div>
+    <div class="card tarjeta-borde form-section">
+      <div class="form-section-title">${icon("pencil")} Agente
+        <div class="barra-acciones">${btnBarra("btn-gestionar", "settings", "Gestionar agentes")}${btnBarra("btn-historial", "history", "Historial")}</div>
       </div>
       <div class="ia-agente-lista" id="lista-agentes" role="group" aria-label="Agentes de redacción"></div>
-      <p class="text-muted text-sm" id="desc-agente" style="margin-bottom:0"></p>
+      <p class="ia-desc-agente" id="desc-agente"></p>
     </div>
 
-    <div id="panel-historial" class="card" hidden></div>
-    <div id="panel-gestor" class="card" hidden></div>
+    <div id="panel-historial" class="card tarjeta-borde form-section" hidden></div>
+    <div id="panel-gestor" class="card tarjeta-borde form-section" hidden></div>
 
     <div class="card ia-conv" id="conv">
       <div class="ia-chat ia-chat--hilo" id="chat" aria-live="polite" hidden></div>
@@ -126,7 +138,7 @@ export async function render(container) {
   function mostrarHilo(v) {
     mic?.detener();
     chat.hidden = !v;
-    fTexto.placeholder = v ? PH_AJUSTE : PH_TEXTO;
+    fTexto.placeholder = v ? PH_AJUSTE : phTexto();
     ajustarAlto(); // el texto de ejemplo cambia y puede ocupar mas o menos lineas
   }
   function ajustarAlto() {
@@ -148,6 +160,8 @@ export async function render(container) {
   const alFinal = () => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
 
   const agenteActivo = () => agentes.find((a) => a.id === activoId) || agentes[0];
+  const phTexto = () => POR_AGENTE[agenteActivo().id]?.ph || PH_TEXTO;
+  const etiquetaRespuesta = () => POR_AGENTE[(conv?.agenteId && agentes.some((a) => a.id === conv.agenteId) ? conv.agenteId : activoId)]?.etiqueta || "Respuesta";
 
   // ---------- agentes ----------
   function pintarAgentes() {
@@ -175,6 +189,9 @@ export async function render(container) {
       );
     }
     $("#desc-agente").textContent = agenteActivo().descripcion || "";
+    $("#desc-agente").hidden = !agenteActivo().descripcion;
+    if (!conv) fTexto.placeholder = phTexto(); // sin conversacion, el ejemplo cambia con el agente
+    ajustarAlto();
   }
 
   // ---------- conversacion ----------
@@ -182,6 +199,7 @@ export async function render(container) {
     const cls = rol === "user" ? "ia-msg ia-msg--user" : rol === "error" ? "ia-msg ia-msg--error" : "ia-msg ia-msg--model ia-msg--plano";
     const nodo = el("div", { class: cls }, texto);
     if (rol === "model") {
+      nodo.prepend(el("div", { class: "ia-msg-etiqueta" }, etiquetaRespuesta())); // «Correo corregido», «Resumen»…
       nodo.append(
         el("div", { class: "ia-msg-acciones" }, [
           el("button", {
@@ -203,6 +221,18 @@ export async function render(container) {
     return nodo;
   }
 
+  // Atajos de ajuste (Mas corto, Mas formal…) bajo la ultima respuesta: piden el ajuste sin tener que escribirlo
+  function pintarAjustes() {
+    chat.querySelector(".ia-ajustes")?.remove();
+    const ultimo = conv?.mensajes?.at(-1);
+    if (!ultimo || ultimo.rol !== "model" || ocupado) return;
+    const fila = el("div", { class: "ia-ajustes", role: "group", "aria-label": "Ajustes rápidos" });
+    for (const [nombre, pedido] of AJUSTES_RAPIDOS) {
+      fila.append(el("button", { type: "button", class: "ia-chip", onclick: () => enviar(pedido, nombre) }, nombre));
+    }
+    chat.append(fila);
+  }
+
   function reiniciarConversacion() {
     conv = null;
     chat.innerHTML = "";
@@ -213,6 +243,7 @@ export async function render(container) {
     chat.innerHTML = "";
     for (const m of conv.mensajes) burbuja(m.rol, m.texto);
     mostrarHilo(true);
+    pintarAjustes();
   }
 
   function bloquear(v) {
@@ -236,6 +267,7 @@ export async function render(container) {
       };
     }
     mostrarHilo(true);
+    chat.querySelector(".ia-ajustes")?.remove();
     conv.contenidos.push({ role: "user", parts: [{ text: textoUsuario }] });
     conv.mensajes.push({ rol: "user", texto: textoVisible || textoUsuario });
     burbuja("user", textoVisible || textoUsuario);
@@ -257,7 +289,10 @@ export async function render(container) {
       conv.contenidos.push({ role: "model", parts: [{ text: r.texto || texto }] });
       conv.mensajes.push({ rol: "model", texto });
       espera.remove();
-      burbuja("model", texto).scrollIntoView({ behavior: "smooth", block: "start" }); // se lee desde el inicio de la respuesta
+      ocupado = false;
+      const nodoRespuesta = burbuja("model", texto);
+      pintarAjustes();
+      nodoRespuesta.scrollIntoView({ behavior: "smooth", block: "start" }); // se lee desde el inicio de la respuesta
       historial.guardar(conv); // en segundo plano: un guardado lento no debe bloquear la interfaz
     } catch (err) {
       // se revierte el turno del usuario para no dejar el historial desbalanceado
@@ -275,10 +310,11 @@ export async function render(container) {
       if (!conv.contenidos.length) {
         // fallo el primer envio: se vuelve al modo "texto"
         conv = null;
-        fTexto.placeholder = PH_TEXTO;
+        fTexto.placeholder = phTexto();
       }
     } finally {
       bloquear(false);
+      if (conv) pintarAjustes(); // tras un error se vuelven a ofrecer los atajos de la respuesta anterior
     }
   }
 
@@ -315,10 +351,12 @@ export async function render(container) {
   // ---------- historial ----------
   const panelHistorial = $("#panel-historial");
   async function pintarHistorial() {
+    const barra = `<div class="form-section-title">${icon("history")} Historial de conversaciones</div>`;
+    panelHistorial.innerHTML = barra; // la barra aparece de inmediato; la lista llega cuando se lee el almacenamiento
     const lista = await historial.listar("redaccion");
-    panelHistorial.innerHTML = `<h2 class="section-title" style="margin-top:0">Historial de conversaciones</h2>`;
+    panelHistorial.innerHTML = barra;
     if (!lista.length) {
-      panelHistorial.insertAdjacentHTML("beforeend", `<p class="text-muted" style="margin-bottom:0">Aún no hay conversaciones guardadas.</p>`);
+      panelHistorial.insertAdjacentHTML("beforeend", `<p class="text-muted" style="margin:0">Aún no hay conversaciones guardadas.</p>`);
       return;
     }
     const cont = el("div", { class: "ia-historial" });
@@ -376,6 +414,8 @@ export async function render(container) {
     if (!panelGestor.hidden) pintarGestor();
   });
 
+  let cerrarMenuMas = () => {};
+
   function persistir() {
     if (!guardarAgentes(agentes)) alert("No se pudieron guardar los agentes en este navegador (¿almacenamiento bloqueado?).");
     if (!agentes.some((a) => a.id === activoId)) activoId = agentes[0].id;
@@ -385,13 +425,17 @@ export async function render(container) {
 
   function pintarGestor() {
     panelGestor.innerHTML = `
-      <div class="ia-toolbar">
-        <h2 class="section-title" style="margin:0">Gestionar agentes</h2>
-        <div class="grupo">
-          <button type="button" class="btn btn-sm btn-primary" data-a="nuevo">Nuevo agente</button>
-          <button type="button" class="btn btn-sm" data-a="exportar">Exportar JSON</button>
-          <button type="button" class="btn btn-sm" data-a="importar">Importar JSON</button>
-          <button type="button" class="btn btn-sm btn-ghost" data-a="restaurar">Restaurar predeterminados</button>
+      <div class="form-section-title">${icon("settings")} Gestionar agentes
+        <div class="barra-acciones">
+          <button type="button" class="btn btn-sm btn-primary btn-con-icono" data-a="nuevo">${icon("plus")} Nuevo agente</button>
+          <details class="menu-mas">
+            <summary class="btn btn-sm btn-con-icono" aria-label="Más acciones">${icon("dots")} Más</summary>
+            <div class="menu-mas-lista">
+              <button type="button" data-a="exportar">Exportar JSON</button>
+              <button type="button" data-a="importar">Importar JSON</button>
+              <button type="button" data-a="restaurar">Restaurar predeterminados</button>
+            </div>
+          </details>
           <input type="file" accept="application/json,.json" hidden id="f-importar">
         </div>
       </div>
@@ -441,6 +485,12 @@ export async function render(container) {
       panelGestor.querySelector("#gestor-msg").innerHTML = `<div class="callout callout-${tipo}" style="margin:var(--space-4) 0 0"><span>${escapeHtml(texto)}</span></div>`;
     };
 
+    // el menu «Mas» se cierra al elegir una opcion o al pulsar fuera
+    const menuMas = panelGestor.querySelector(".menu-mas");
+    menuMas.addEventListener("click", (e) => e.target.closest("button") && (menuMas.open = false));
+    document.removeEventListener("click", cerrarMenuMas);
+    cerrarMenuMas = (e) => !menuMas.contains(e.target) && (menuMas.open = false);
+    document.addEventListener("click", cerrarMenuMas);
     panelGestor.querySelector('[data-a="nuevo"]').addEventListener("click", () => pintarFormulario(nuevoAgenteVacio(), true));
     panelGestor.querySelector('[data-a="exportar"]').addEventListener("click", () => {
       descargar("agentes-redaccion.json", exportarAgentesJson(agentes), "application/json");
@@ -483,21 +533,20 @@ export async function render(container) {
   function pintarFormulario(a, esNuevo) {
     const cont = panelGestor.querySelector("#gestor-form");
     cont.innerHTML = `
-      <div class="card" style="margin-top:var(--space-4); background:var(--bg-sunken); box-shadow:none">
+      <div class="ia-editor">
         <h3 style="margin-top:0">${esNuevo ? "Nuevo agente" : `Editar: ${escapeHtml(a.nombre)}`}</h3>
         <div class="grid-2">
           <div class="field"><label for="g-nombre">Nombre</label><input type="text" id="g-nombre" maxlength="80"></div>
           <div class="field"><label for="g-desc">Descripción corta</label><input type="text" id="g-desc" maxlength="300"></div>
         </div>
         <div class="grid-3">
-          <div class="field"><label for="g-tono">Tono</label><select id="g-tono"><option value="">Sin tono</option>${TONOS.map((t) => `<option>${t}</option>`).join("")}</select><span class="hint">«Sin tono» no agrega nada al prompt: solo mandan tus instrucciones.</span></div>
-          <div class="field"><label for="g-temp">Temperatura (0–1.5)</label><input type="number" id="g-temp" min="0" max="1.5" step="0.1"><span class="hint">Menor = más fiel al texto. Mayor = más libre.</span></div>
+          <div class="field"><label for="g-tono" data-info="«Sin tono» no agrega nada al prompt: solo mandan tus instrucciones.">Tono</label><select id="g-tono"><option value="">Sin tono</option>${TONOS.map((t) => `<option>${t}</option>`).join("")}</select></div>
+          <div class="field"><label for="g-temp" data-info="Menor = más fiel al texto. Mayor = más libre.">Temperatura (0–1.5)</label><input type="number" id="g-temp" min="0" max="1.5" step="0.1"></div>
           <div class="field"><label>&nbsp;</label><label class="checkbox-row"><input type="checkbox" id="g-explicar"> Explicar los cambios realizados</label></div>
         </div>
         <div class="field">
-          <label for="g-instr">Instrucciones del agente</label>
+          <label for="g-instr" data-info="Se agregan a unas reglas base (español de Colombia, no inventar datos ni cambiar cifras).">Instrucciones del agente</label>
           <textarea id="g-instr" rows="7" placeholder="Describe cómo debe trabajar: rol, estructura del resultado, qué conservar, qué evitar…"></textarea>
-          <span class="hint">Se agregan a unas reglas base (español de Colombia, no inventar datos ni cambiar cifras).</span>
         </div>
         <div>
           <label style="font-size:.82rem;font-weight:600;color:var(--text-muted)">Ejemplos "antes / después" (opcional, máx. 5)</label>
@@ -509,6 +558,7 @@ export async function render(container) {
           <button type="button" class="btn" id="g-cancelar">Cancelar</button>
         </div>
       </div>`;
+    activarInfos(cont);
     const g = (s) => cont.querySelector(s);
     g("#g-nombre").value = a.nombre;
     g("#g-desc").value = a.descripcion || "";
