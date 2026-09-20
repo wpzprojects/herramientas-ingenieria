@@ -202,6 +202,9 @@ await seccion("Corrector de redacción rediseñado", async () => {
   const tarjeta = q(".card");
   ok(tarjeta.classList.contains("tarjeta-borde") && /Agente/.test(texto(tarjeta.querySelector(".form-section-title"))) && !!tarjeta.querySelector(".form-section-title .icon"), "la tarjeta «Agente» tiene relleno de 16 px y barra de título con icono");
   ok(!!q("#tarjeta-agente .form-section-title .icon g path[d^='M6 6a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v4']"), "el icono de la tarjeta «Agente» es el robot");
+  const rob = q("#tarjeta-agente .form-section-title .icon").getBoundingClientRect();
+  const otro = q("#conv .form-section-title .icon").getBoundingClientRect();
+  ok(rob.width > otro.width && rob.width <= 24 && rob.height <= 24, `el robot es un poco más grande que los demás iconos de barra (${Math.round(rob.width)} px frente a ${Math.round(otro.width)} px) sin ser desproporcionado`);
   ok(qa(".ia-pestanas .tab-btn").map(texto).join("|") === "Agentes|Gestionar|Historial" && q(".ia-pestanas .tab-btn.active").textContent === "Agentes", "debajo de la barra hay pestañas «Agentes | Gestionar | Historial» (empieza en «Agentes»)");
   ok(qa(".card").length === 2 || qa(".card").length === 1, "todo vive en UNA tarjeta (más la de la conversación): ya no se abren tarjetas nuevas debajo");
   ok(qa("#lista-agentes .ia-chip").length === 4 && q("#lista-agentes .ia-chip").getAttribute("aria-pressed") === "true", "los 4 agentes siguen como píldoras y el primero está activo");

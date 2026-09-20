@@ -389,6 +389,7 @@ input:disabled, select:disabled { opacity: 0.55; }
   letter-spacing: 0.04em; text-transform: uppercase;
 }
 .form-section-title .icon { width: 18px; height: 18px; color: var(--accent); flex: 0 0 auto; }
+.form-section-title .icon.icono-agente { width: 23px; height: 23px; } /* el robot del Corrector: un poco mas grande para que se lea mejor */
 .form-section :is(.grid-2, .grid-3).ultima > .field { margin-bottom: 0; } /* el relleno de la tarjeta ya da el espacio inferior */
 @media (max-width: 720px) { /* en una columna el primer campo de la ultima fila si necesita su margen (el ultimo no) */
   .form-section :is(.grid-2, .grid-3).ultima > .field:not(:last-child) { margin-bottom: var(--space-4); }

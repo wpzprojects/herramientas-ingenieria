@@ -105,7 +105,7 @@ export async function render(container) {
     "beforeend",
     `
     <div class="card tarjeta-borde form-section" id="tarjeta-agente">
-      <div class="form-section-title">${icon("robot")} Agente</div>
+      <div class="form-section-title">${icon("robot", "icono-agente")} Agente</div>
       <div class="tabs ia-pestanas" role="tablist">
         <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-vista="agentes">Agentes</button>
         <button type="button" class="tab-btn" role="tab" aria-selected="false" data-vista="gestionar">Gestionar</button>
