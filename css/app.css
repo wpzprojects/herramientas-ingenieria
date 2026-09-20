@@ -676,6 +676,8 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 /* Analisis, tarjeta Conversacion: 20 % menos de espacio bajo las pestañas Actual | Historial (ejemplos: 36 → 28.8 px; primera fila del historial: 32 → 25.6 px) */
 #conv .ia-chips { margin-top: 4.8px; }
 #conv #panel-historial .ia-historial { margin-top: 1.6px; }
+/* primera columna del historial con la misma letra que los ejemplos de pregunta (.ia-chip): 0.82rem y --text-muted */
+#panel-historial .ia-historial-item .titulo { font-size: 0.82rem; color: var(--text-muted); }
 .ia-conv { display: flex; flex-direction: column; padding: var(--space-3); }
 .ia-chat--hilo { max-height: none; overflow: visible; padding: 0; gap: var(--space-4); margin-bottom: var(--space-4); }
 .ia-chat--hilo .ia-msg-acciones { justify-content: flex-end; margin-top: 0; }

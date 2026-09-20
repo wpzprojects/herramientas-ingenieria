@@ -251,7 +251,12 @@ await seccion("Corrector de redacción rediseñado", async () => {
   ok(visible(q("#panel-historial")) && !visible(q("#vista-actual")) && q("#conv .ia-pestanas .tab-btn.active").textContent === "Historial", "«Historial» (en la tarjeta «Conversación») muestra el historial y oculta el chat y la caja");
   ok(q("#conv").contains(q("#panel-historial")) && !q("#tarjeta-agente").contains(q("#panel-historial")) && qa(".card").length === tarjetasAntes, "el historial vive en «Conversación», ya no en «Agente», y no abre tarjetas nuevas");
   { const prueba = document.createElement("div"); prueba.className = "ia-historial"; q("#panel-historial").append(prueba);
-    ok(getComputedStyle(prueba).marginTop === "1.6px", "el historial queda a 25.6 px de las pestañas (20 % menos que los 32 px de antes: margen 1.6 px + los 24 px bajo las pestañas)"); prueba.remove(); }
+    ok(getComputedStyle(prueba).marginTop === "1.6px", "el historial queda a 25.6 px de las pestañas (20 % menos que los 32 px de antes: margen 1.6 px + los 24 px bajo las pestañas)"); prueba.innerHTML = '<div class="ia-historial-item"><span class="titulo">x</span></div>';
+    const cT = getComputedStyle(prueba.querySelector(".titulo"));
+    const botonEj = document.createElement("button"); botonEj.className = "ia-chip"; botonEj.setAttribute("aria-pressed", "false"); q("#panel-historial").append(botonEj);
+    const cE = getComputedStyle(botonEj);
+    ok(cT.fontSize === cE.fontSize && cT.color === cE.color && cT.fontWeight === cE.fontWeight, `la primera columna del historial tiene la letra de los ejemplos de pregunta (${cT.fontSize}, ${cT.color})`);
+    botonEj.remove(); prueba.remove(); }
   ok(!q("#btn-enviar").checkVisibility() && q("#btn-nueva").checkVisibility() && !!q("#acciones.solo-nueva"), "viendo el historial la fila de abajo solo deja «Nueva conversación» (se ocultan Dictar y Enviar)");
   ok(q("#f-texto").value === "texto a medio escribir", "lo que estaba escrito en la caja se conserva");
   q("#btn-nueva").click();
@@ -500,7 +505,12 @@ await seccion("Análisis con calculadoras rediseñado", async () => {
   await espera(100);
   ok(!q("#panel-historial").hidden && q("#vista-actual").hidden && q("#conv").contains(q("#panel-historial")) && !q("#tarjeta-agente").contains(q("#panel-historial")), "«Historial» se muestra dentro de la tarjeta «Conversación» (ya no en «Agente»)");
   { const prueba = document.createElement("div"); prueba.className = "ia-historial"; q("#panel-historial").append(prueba);
-    ok(getComputedStyle(prueba).marginTop === "1.6px", "el historial queda a 25.6 px de las pestañas (20 % menos que los 32 px de antes: margen 1.6 px + los 24 px bajo las pestañas)"); prueba.remove(); }
+    ok(getComputedStyle(prueba).marginTop === "1.6px", "el historial queda a 25.6 px de las pestañas (20 % menos que los 32 px de antes: margen 1.6 px + los 24 px bajo las pestañas)"); prueba.innerHTML = '<div class="ia-historial-item"><span class="titulo">x</span></div>';
+    const cT = getComputedStyle(prueba.querySelector(".titulo"));
+    const botonEj = document.createElement("button"); botonEj.className = "ia-chip"; botonEj.setAttribute("aria-pressed", "false"); q("#panel-historial").append(botonEj);
+    const cE = getComputedStyle(botonEj);
+    ok(cT.fontSize === cE.fontSize && cT.color === cE.color && cT.fontWeight === cE.fontWeight, `la primera columna del historial tiene la letra de los ejemplos de pregunta (${cT.fontSize}, ${cT.color})`);
+    botonEj.remove(); prueba.remove(); }
   ok(!q("#btn-enviar").checkVisibility() && q("#btn-nueva").checkVisibility() && !!q("#acciones.solo-nueva"), "viendo el historial solo queda «Nueva conversación» abajo");
   q("#btn-nueva").click();
   await espera(60);
