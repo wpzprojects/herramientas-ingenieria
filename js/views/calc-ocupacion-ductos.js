@@ -9,6 +9,7 @@ import { icon } from "../icons.js";
 import { calcularOcupacionGrupos, getLimiteOcupacion } from "../calc/ocupacion-grupos.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 import { activarInfos } from "../util/info-campo.js";
+import { donaOcupacionSvg, corteDuctoSvg } from "../util/graficos.js";
 
 // Ecuaciones (LaTeX) de la pestaña Fórmulas.
 const FORMULAS_TEX = [
@@ -431,8 +432,6 @@ export async function render(container) {
 
   function renderResultado(data, ctx) {
     const wrap = container.querySelector("#resultado-wrap");
-    const pct = Math.min(Math.max(data.ocupacionPct, 0), 100);
-    const donutColor = data.cumple ? "var(--accent)" : "var(--danger)";
 
     const jammingHtml = data.riesgoAtascamiento
       ? `<div class="callout callout-warning" style="margin-top: var(--space-4);">
@@ -444,9 +443,9 @@ export async function render(container) {
 
     const resultado = `
           <div class="result-panel">
-            <div style="display:flex; gap: var(--space-6); align-items: center; flex-wrap: wrap;">
-              <div style="width:140px;height:140px;border-radius:50%;flex:0 0 auto;background:conic-gradient(${donutColor} 0% ${pct}%, var(--donut-track) ${pct}% 100%);"></div>
-              <div style="flex: 1 1 240px;">
+            <div class="oc-resumen">
+              <div class="oc-grafico oc-dona">${donaOcupacionSvg({ pct: data.ocupacionPct, limite: data.limitePct, cumple: data.cumple })}</div>
+              <div class="oc-metricas">
                 <div class="result-metric">
                   <div class="value">${fmtPercent(data.ocupacionPct)} <span class="badge ${data.cumple ? "badge-success" : "badge-danger"}">${data.cumple ? "Cumple" : "No cumple"}</span></div>
                   <div class="label">Porcentaje de ocupación (límite ${fmtPercent(data.limitePct)})</div>
@@ -464,6 +463,7 @@ export async function render(container) {
                     : ""
                 }
               </div>
+              <div class="oc-grafico oc-corte">${corteDuctoSvg({ diametroTuboMm: ctx.diametroTuboMm, tipos: ctx.estados.map((e) => ({ cantidad: e.cantidad, diametroMm: e.diametroMm })) })}</div>
             </div>
             ${data.grupos.length > 1 ? tablaGruposHtml(data, ctx) : ""}
             ${jammingHtml}

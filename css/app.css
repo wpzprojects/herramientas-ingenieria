@@ -744,6 +744,19 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .ia-chip:disabled { cursor: default; opacity: 0.65; }
 .ia-chip:disabled:hover { border-color: var(--border-strong); color: var(--text-muted); }
 .ia-chip[aria-pressed="true"]:disabled:hover { border-color: var(--accent); color: var(--accent-strong); }
+/* Ocupacion de ductos: resultado en TRES columnas (dona | cifras | corte transversal a escala); en pantalla angosta pasan a una columna */
+.oc-resumen { display: grid; grid-template-columns: 210px minmax(200px, 1fr) 250px; gap: var(--space-6); align-items: center; }
+.oc-grafico svg { display: block; width: 100%; height: auto; overflow: visible; }
+@media (max-width: 900px) {
+  .oc-resumen { grid-template-columns: 1fr; justify-items: center; gap: var(--space-5); }
+  .oc-grafico { width: 100%; max-width: 260px; }
+  .oc-metricas { width: 100%; }
+}
+@keyframes oc-trazo { from { stroke-dashoffset: var(--largo); } }
+@keyframes oc-aparece { from { opacity: 0; transform: scale(.85); } }
+.oc-trazo { animation: oc-trazo 1.1s cubic-bezier(.2, .7, .2, 1) both; }
+.oc-aparece { animation: oc-aparece .7s cubic-bezier(.2, .7, .2, 1) both; transform-box: fill-box; transform-origin: center; }
+@media (prefers-reduced-motion: reduce) { .oc-trazo, .oc-aparece { animation: none; } }
 .ia-typing { display: inline-flex; gap: 4px; align-items: center; }
 .ia-typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--text-faint); animation: ia-pulso 1.2s infinite ease-in-out; }
 .ia-typing span:nth-child(2) { animation-delay: .2s; }

@@ -175,7 +175,28 @@ await seccion("vista: un tipo de conductor, cálculo y resultados", async () => 
   const badge = $(".badge", metrica("Porcentaje de ocupación"));
   ok(badge && texto(badge) === (e.pct <= 40 ? "Cumple" : "No cumple"), `veredicto: «${texto(badge)}» (límite 40 %)`);
   ok(texto(metrica("Porcentaje de ocupación")).includes("límite 40.00%") || texto(metrica("Porcentaje de ocupación")).includes("límite 40"), "la etiqueta indica el límite aplicable");
-  ok($(".result-panel > div > div[style*='conic-gradient']"), "se conserva la dona de ocupación");
+  ok(!!$(".oc-resumen .oc-dona svg") && !$(".result-panel [style*='conic-gradient']"), "la dona de ocupación es ahora un gráfico SVG (dona con degradado y marca del límite)");
+  const cols = $$(".oc-resumen > *");
+  ok(cols.length === 3 && cols[0].classList.contains("oc-dona") && cols[1].classList.contains("oc-metricas") && cols[2].classList.contains("oc-corte"), "tres columnas en este orden: dona | cifras | corte transversal");
+  const rD = cols[0].getBoundingClientRect(), rM = cols[1].getBoundingClientRect(), rC = cols[2].getBoundingClientRect();
+  const ancha = window.innerWidth > 900; // con la ventana angosta (celular) las tres pasan a una sola columna
+  ok(ancha ? rD.right <= rM.left + 1 && rM.right <= rC.left + 1 && Math.abs(rD.top - rC.top) < 200 : rD.bottom <= rM.top + 1 && rM.bottom <= rC.top + 1, ancha ? "quedan una junto a otra (la dona a la izquierda, el corte a la derecha)" : "en ventana angosta se apilan en una columna (dona, cifras, corte)");
+  const cssApp = await (await fetch("../css/app.css")).text();
+  ok(/\.oc-resumen\s*\{[^}]*grid-template-columns:\s*210px minmax\(200px, 1fr\) 250px/.test(cssApp) && /@media \(max-width: 900px\)\s*\{\s*\.oc-resumen\s*\{\s*grid-template-columns: 1fr/.test(cssApp), "el CSS define tres columnas y una sola por debajo de 900 px");
+  ok(texto($(".oc-dona svg text")).length > 0 && /25\.8 %|%/.test($(".oc-dona").textContent) && $(".oc-dona").textContent.includes("40 %"), "la dona muestra la ocupación y el límite (40 %)");
+  { // los conductores dibujados no se encimaban ni salen del ducto (para 3 × Ø30 y para dos tipos)
+    const { asentarConductores } = await import("../js/util/graficos.js");
+    for (const tipos of [[{ cantidad: 3, diametroMm: 30 }], [{ cantidad: 3, diametroMm: 28 }, { cantidad: 3, diametroMm: 18 }]]) {
+      const cs = asentarConductores(102.3, tipos);
+      let minHolgura = Infinity, dentro = true;
+      cs.forEach((c, i) => {
+        if (Math.hypot(c.x, c.y) + c.r > 102.3 / 2 + 0.01) dentro = false;
+        for (let j = i + 1; j < cs.length; j++) minHolgura = Math.min(minHolgura, Math.hypot(c.x - cs[j].x, c.y - cs[j].y) - c.r - cs[j].r);
+      });
+      ok(dentro && minHolgura > -0.05, `corte: ${cs.length} conductores dentro del ducto y sin encimarse (holgura mínima ${minHolgura.toFixed(3)} mm)`);
+    }
+  }
+  ok($$(".oc-corte svg .oc-aparece").length === 3 && /3 conductores/.test($(".oc-corte svg").getAttribute("aria-label")), "el corte transversal dibuja los 3 conductores");
   ok(!$$(".tabla-resultado").length, "con un solo tipo no hay tabla por tipo");
   const rc = metrica("Radio de curvatura (12D)");
   ok(!!rc && texto($(".value", rc)) === "360.00mm" && texto($(".label", rc)) === "Radio de curvatura (12D)", `con un solo tipo hay una métrica «Radio de curvatura (12D)»: ${texto($(".value", rc))} (12 × 30 mm)`);
