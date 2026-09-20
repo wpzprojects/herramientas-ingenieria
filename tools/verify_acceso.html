@@ -317,11 +317,13 @@ await seccion("pantalla de Perfil rediseñada", async () => {
   const controles = qa("#ca-nuevo, #ca-rol-nuevo, #ca-agregar").map((c) => Math.round(c.getBoundingClientRect().bottom));
   const alturas = qa("#ca-nuevo, #ca-rol-nuevo, #ca-agregar").map((c) => Math.round(c.getBoundingClientRect().height));
   ok(Math.abs(etiquetas[0] - etiquetas[1]) < 1 && new Set(controles).size === 1, `agregar correo: etiquetas alineadas (${etiquetas.map((x) => x.toFixed(1)).join(" / ")}) y controles con la misma base (${[...new Set(controles)].join(",")}); alturas ${alturas.join("/")}`);
+  ok(q("#ca-rol-nuevo").value === "usuario", "el rol por defecto al agregar un correo es «Usuario» (no Administrador)");
   const inp = q("#ca-nuevo");
   inp.value = "nuevo@empresa.com";
   q("#ca-agregar").click();
   await espera(200);
   ok(qa("#ca-filas tr").length === 3 && /Se agregó nuevo@empresa.com/.test(texto(q("#ca-msg-usuarios"))), "agregar un correo lo suma a la lista y avisa");
+  ok(/Usuario/.test(texto(qa("#ca-filas tr").find((tr) => /nuevo@empresa.com/.test(tr.textContent)))) && !/Administrador/.test(texto(qa("#ca-filas tr").find((tr) => /nuevo@empresa.com/.test(tr.textContent)))), "y queda registrado con el rol «Usuario»");
   ok(!/\.hint/.test(marco.innerHTML) && qa(".info-btn, [data-info]").length >= 3, "la ayuda va en botones «i», no en textos fijos");
 
   // ---- clave de Gemini: solo el campo de la fuente elegida

@@ -211,7 +211,7 @@ export async function render(container) {
         </div>
         <div class="field">
           <label for="ca-rol-nuevo" data-info="Administrador: además de todos los módulos, gestiona esta lista y la clave compartida. Usuario: todos los módulos.">Rol</label>
-          <select id="ca-rol-nuevo">${ROLES.map((r) => `<option value="${r}">${ETIQUETA_ROL[r]}</option>`).join("")}</select>
+          <select id="ca-rol-nuevo">${ROLES.map((r) => `<option value="${r}"${r === "usuario" ? " selected" : ""}>${ETIQUETA_ROL[r]}</option>`).join("")}</select>
         </div>
         <button type="button" class="btn btn-primary" id="ca-agregar">Agregar</button>
       </div>
