@@ -4,6 +4,7 @@
 // calculos realmente ejecutados (auditables), exportable a Markdown/PDF.
 
 import { el, escapeHtml } from "../util/format.js";
+import { activarInfos } from "../util/info-campo.js";
 import { obtenerAjustes } from "../ai/config.js";
 import { claveEnUso } from "../ai/clave.js";
 import { ErrorGemini } from "../ai/gemini.js";
@@ -67,21 +68,27 @@ export async function render(container) {
   container.insertAdjacentHTML(
     "beforeend",
     `
-    <div class="card">
-      <div class="ia-toolbar">
-        <h2 class="section-title" style="margin:0">Consulta</h2>
-        <div class="grupo">
-          <span class="badge" title="Modelo activo (cámbialo en Configuración)">${escapeHtml(ajustes0.modelo)}</span>
-          <span class="badge" id="badge-agente" title="Agente activo (cámbialo en Agentes)"></span>
-          <button type="button" class="btn btn-sm" id="btn-historial">Historial</button>
-          <button type="button" class="btn btn-sm" id="btn-config">Agentes</button>
-        </div>
+    <div class="card tarjeta-borde form-section" id="tarjeta-agente">
+      <div class="form-section-title">${icon("robot", "icono-agente")} Agente</div>
+      <div class="tabs ia-pestanas" role="tablist">
+        <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-vista="agentes">Agentes</button>
+        <button type="button" class="tab-btn" role="tab" aria-selected="false" data-vista="gestionar">Gestionar</button>
+        <button type="button" class="tab-btn" role="tab" aria-selected="false" data-vista="historial">Historial</button>
       </div>
-      <div id="panel-config" hidden style="margin-top:var(--space-4)"></div>
-      <div id="panel-historial" hidden style="margin-bottom:var(--space-4)"></div>
+      <div id="vista-agentes">
+        <div class="ia-agente-lista" id="lista-agentes" role="group" aria-label="Agentes de análisis"></div>
+        <p class="ia-desc-agente" id="desc-agente"></p>
+        <p class="text-muted text-sm" id="linea-modelo" style="margin:var(--space-2) 0 0">Modelo: <span class="badge" id="badge-modelo">${escapeHtml(ajustes0.modelo)}</span> · <a href="#/ia/configuracion">Cambiar en Configuración</a></p>
+      </div>
+      <div id="panel-config" hidden></div>
+      <div id="panel-historial" hidden></div>
+    </div>
+
+    <div class="card tarjeta-borde form-section ia-conv" id="conv">
+      <div class="form-section-title">${icon("messageCircle")} Conversación</div>
       <div class="ia-chat ia-chat--hilo" id="chat" aria-live="polite"></div>
       <div class="ia-chips" id="ejemplos" aria-label="Ejemplos de preguntas"></div>
-      <div class="ia-caja ia-caja--al-borde" style="margin-top:var(--space-4)">
+      <div class="ia-caja">
         <textarea id="f-pregunta" rows="1" placeholder="Ej.: analiza pérdidas y regulación de una línea de 34.5 kV, 9.9 MW, fp 0.95, 5.2 km con ACSR 4/0 y compara con 336.4…"></textarea>
       </div>
     </div>
@@ -90,15 +97,13 @@ export async function render(container) {
       <button type="button" class="ia-accion ia-accion--enviar" id="btn-enviar" title="Enviar (Ctrl + Enter)">${icon("send")}<span>Enviar</span></button>
     </div>
 
-    <div class="card ia-reporte-card" id="card-reporte" hidden>
-      <div class="ia-toolbar no-print">
-        <h2 class="section-title" style="margin:0">Reporte de escenarios</h2>
-        <div class="grupo">
-          <button type="button" class="btn btn-sm btn-primary" id="btn-reporte">Generar reporte con IA</button>
-          <button type="button" class="btn btn-sm" id="btn-copiar">Copiar</button>
-          <button type="button" class="btn btn-sm" id="btn-md">Descargar .md</button>
-          <button type="button" class="btn btn-sm" id="btn-imprimir">Imprimir / PDF</button>
-        </div>
+    <div class="card tarjeta-borde form-section ia-reporte-card" id="card-reporte" hidden>
+      <div class="form-section-title no-print">${icon("chartLine")} Reporte de escenarios</div>
+      <div class="ia-reporte-acciones no-print">
+        <button type="button" class="btn btn-sm btn-primary" id="btn-reporte">Generar reporte con IA</button>
+        <button type="button" class="btn btn-sm" id="btn-copiar">Copiar</button>
+        <button type="button" class="btn btn-sm" id="btn-md">Descargar .md</button>
+        <button type="button" class="btn btn-sm" id="btn-imprimir">Imprimir / PDF</button>
       </div>
       <p class="text-muted text-sm" id="reporte-meta" style="margin-top:0"></p>
       <div id="reporte-cuerpo"></div>
@@ -386,7 +391,7 @@ export async function render(container) {
                 conv.log = ctx.log;
                 pintarChat();
                 pintarReporte();
-                panelHistorial.hidden = true;
+                mostrarVista("agentes"); // al abrir una conversacion se vuelve a los agentes (con el de esa conversacion elegido)
                 chat.scrollIntoView({ behavior: "smooth", block: "start" });
               },
             },
@@ -411,14 +416,20 @@ export async function render(container) {
     }
     panelHistorial.append(cont);
   }
-  $("#btn-historial").addEventListener("click", async () => {
-    panelHistorial.hidden = !panelHistorial.hidden;
-    if (!panelHistorial.hidden) await pintarHistorial();
-  });
 
   // ---------- configuracion: agentes ----------
   const panelConfig = $("#panel-config");
-  const pintarBadge = () => ($("#badge-agente").textContent = agenteActivo().nombre);
+  // «Agentes»: una pildora por agente (elegir uno = usarlo) y su descripcion
+  function pintarAgentes() {
+    const lista = $("#lista-agentes");
+    lista.innerHTML = "";
+    for (const a of agentes) {
+      lista.append(el("button", { type: "button", class: "ia-chip", "aria-pressed": String(a.id === activoId), onclick: () => usarAgente(a.id) }, a.nombre));
+    }
+    $("#desc-agente").textContent = agenteActivo().descripcion || "";
+    $("#desc-agente").hidden = !agenteActivo().descripcion;
+  }
+  const pintarBadge = pintarAgentes;
 
   function persistir() {
     if (!guardarPropios(agentes)) alert("No se pudieron guardar los agentes en este navegador (¿almacenamiento bloqueado?).");
@@ -434,20 +445,19 @@ export async function render(container) {
     guardarActivo(id);
     pintarBadge();
     if (conv) $("#btn-nueva").click();
-    pintarConfig();
+    if (!panelConfig.hidden) pintarConfig();
   }
 
   const botonFila = (texto, onclick, { disabled = false, ghost = false } = {}) =>
-    el("button", { type: "button", class: `btn btn-sm${ghost ? " btn-ghost" : ""}`, onclick, disabled }, texto);
+    el("button", { type: "button", class: "btn btn-sm", onclick, disabled }, texto);
 
   function pintarConfig(mensaje = "") {
     panelConfig.innerHTML = `
-      <div class="ia-toolbar" style="margin-bottom:var(--space-2)">
-        <h3 style="margin:0">Agentes de análisis</h3>
-        <div class="grupo"><button type="button" class="btn btn-sm btn-primary" data-a="nuevo">Nuevo agente</button></div>
-      </div>
-      <p class="text-muted text-sm" style="margin-top:0">Un agente son las instrucciones con las que la IA analiza y redacta el reporte. El predeterminado no se puede modificar: puedes verlo y duplicarlo para editar la copia, o crear uno nuevo.</p>
       <div class="ia-historial" id="config-lista" style="margin-top:0"></div>
+      <div class="ia-gestor-acciones">
+        <div class="barra-acciones"><button type="button" class="btn btn-sm btn-primary btn-con-icono" data-a="nuevo">${icon("plus")} Nuevo agente</button></div>
+      </div>
+      <p class="text-muted text-sm" style="margin:var(--space-3) 0 0">El agente predeterminado no se puede modificar: duplícalo para editar una copia.</p>
       <div id="config-msg"></div>
       <div id="config-form"></div>`;
     if (mensaje) {
@@ -457,13 +467,12 @@ export async function render(container) {
     for (const a of agentes) {
       const enUso = a.id === activoId;
       lista.append(
-        el("div", { class: "ia-historial-item" }, [
+        el("div", { class: "ia-historial-item", "data-agente": a.id }, [
           el("span", { class: "titulo", title: a.descripcion }, [
             a.nombre,
             a.predefinido ? el("span", { class: "badge", style: "margin-left:8px" }, "predeterminado") : null,
             enUso ? el("span", { class: "badge", style: "margin-left:8px" }, "en uso") : null,
           ]),
-          botonFila("Usar", () => usarAgente(a.id), { disabled: enUso }),
           botonFila("Ver", () => pintarFormulario(a, "ver")),
           botonFila("Editar", () => pintarFormulario(structuredClone(a), "editar"), { disabled: a.predefinido }),
           botonFila("Duplicar", () => duplicar(a)),
@@ -478,7 +487,7 @@ export async function render(container) {
               if (eraActivo && conv) $("#btn-nueva").click();
               pintarConfig();
             },
-            { disabled: a.predefinido, ghost: true }
+            { disabled: a.predefinido }
           ),
         ])
       );
@@ -498,7 +507,8 @@ export async function render(container) {
   function pintarFormulario(a, modo) {
     const ver = modo === "ver";
     const cont = panelConfig.querySelector("#config-form");
-    const titulo = modo === "nuevo" ? "Nuevo agente" : `${ver ? "Ver" : "Editar"}: ${escapeHtml(a.nombre)}`;
+    const titulo = modo === "nuevo" ? "Nuevo agente" : `${ver ? "Viendo" : "Editando"}: ${escapeHtml(a.nombre)}`;
+    for (const f of panelConfig.querySelectorAll("#config-lista .ia-historial-item")) f.classList.toggle("editando", modo !== "nuevo" && f.dataset.agente === a.id);
     const habilitadas = new Set(herramientasDe(a));
     const porGrupo = new Map();
     for (const h of catalogoHerramientas()) porGrupo.set(h.grupo, [...(porGrupo.get(h.grupo) || []), h]);
@@ -517,33 +527,32 @@ export async function render(container) {
           </div>`
       )
       .join("");
+    const AYUDA_TEMP = "Menor = más estable y repetible. Mayor = más libre. Vacío = la de Configuración de IA.";
+    const AYUDA_HERR = "La IA solo podrá usar las marcadas (pasa el cursor sobre una para ver qué hace). Si las instrucciones nombran una que desmarques, la IA dirá que no la tiene.";
+    const AYUDA_INSTR = `La aplicación agrega siempre al final esta regla, que no se puede quitar: «${REGLA_FIJA}»`;
     cont.innerHTML = `
-      <div class="card" style="margin-top:var(--space-4); background:var(--bg-sunken); box-shadow:none">
-        <h3 style="margin-top:0">${titulo}</h3>
+      <div class="ia-editor">
+        <div class="ia-editor-cabecera">${icon(modo === "nuevo" ? "plus" : "pencil")} ${titulo}</div>
         ${a.predefinido ? `<div class="callout callout-info" style="margin:0 0 var(--space-4)"><span>Agente predeterminado: solo lectura. Usa <strong>Duplicar y editar</strong> para crear una copia que sí puedas modificar.</span></div>` : ""}
         <div class="grid-2">
           <div class="field"><label for="g-nombre">Nombre</label><input type="text" id="g-nombre" maxlength="80"></div>
           <div class="field"><label for="g-desc">Descripción corta</label><input type="text" id="g-desc" maxlength="300"></div>
         </div>
         <div class="field">
-          <label for="g-temp">Temperatura (0–1.5, opcional)</label>
+          <label for="g-temp" data-info="${escapeHtml(AYUDA_TEMP)}">Temperatura (0–1.5, opcional)</label>
           <input type="number" id="g-temp" min="0" max="1.5" step="0.1" placeholder="Vacío = la de Configuración de IA">
-          <span class="hint">Menor = más estable y repetible. Mayor = más libre.</span>
         </div>
         <div class="field">
-          <label>Herramientas que puede usar</label>
+          <label data-info="${escapeHtml(AYUDA_HERR)}">Herramientas que puede usar</label>
           ${herramientasHtml}
-          <span class="hint">La IA solo podrá usar las marcadas (pasa el cursor sobre una para ver qué hace). Si las instrucciones nombran una que desmarques, la IA dirá que no la tiene.</span>
         </div>
         <div class="field">
-          <label for="g-instr">Instrucciones del agente</label>
+          <label for="g-instr"${a.predefinido ? "" : ` data-info="${escapeHtml(AYUDA_INSTR)}"`}>Instrucciones del agente</label>
           <textarea id="g-instr" rows="14" placeholder="Describe cómo debe analizar: rol, reglas de trabajo, formato de las respuestas…"></textarea>
-          ${a.predefinido ? "" : `<span class="hint">La aplicación agrega siempre al final esta regla, que no se puede quitar: «${escapeHtml(REGLA_FIJA)}»</span>`}
         </div>
         <div class="field">
-          <label for="g-rep">Instrucciones del reporte</label>
+          <label for="g-rep" data-info="Se envían al pulsar «Generar reporte con IA».">Instrucciones del reporte</label>
           <textarea id="g-rep" rows="9" placeholder="Vacío = se usa el reporte estándar"></textarea>
-          <span class="hint">Se envían al pulsar «Generar reporte con IA».</span>
         </div>
         <div class="btn-row">
           ${
@@ -553,6 +562,7 @@ export async function render(container) {
           }
         </div>
       </div>`;
+    activarInfos(cont);
     const g = (s) => cont.querySelector(s);
     g("#g-nombre").value = a.nombre;
     g("#g-desc").value = a.descripcion || "";
@@ -561,7 +571,10 @@ export async function render(container) {
     g("#g-rep").value = a.reporte || "";
     if (ver) for (const c of cont.querySelectorAll("input, textarea")) c.readOnly = true;
 
-    g("#g-cerrar").addEventListener("click", () => (cont.innerHTML = ""));
+    g("#g-cerrar").addEventListener("click", () => {
+      cont.innerHTML = "";
+      for (const f of panelConfig.querySelectorAll("#config-lista .ia-historial-item.editando")) f.classList.remove("editando");
+    });
     if (ver) g("#g-duplicar").addEventListener("click", () => duplicar(a));
     else {
       g("#g-guardar").addEventListener("click", () => {
@@ -589,16 +602,26 @@ export async function render(container) {
         if (i >= 0) agentes[i] = nuevo;
         else agentes.push(nuevo);
         persistir();
-        pintarConfig(modo === "nuevo" ? "Agente guardado. Pulsa «Usar» para trabajar con él." : "Cambios guardados.");
+        pintarConfig(modo === "nuevo" ? "Agente guardado. Elígelo en la pestaña «Agentes» para trabajar con él." : "Cambios guardados.");
       });
     }
     cont.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 
-  $("#btn-config").addEventListener("click", () => {
-    panelConfig.hidden = !panelConfig.hidden;
-    if (!panelConfig.hidden) pintarConfig();
-  });
+  // Las tres vistas de la tarjeta «Agente»: Agentes | Gestionar | Historial (cambian solo el contenido de la tarjeta)
+  function mostrarVista(vista) {
+    for (const b of container.querySelectorAll(".ia-pestanas .tab-btn")) {
+      const activa = b.dataset.vista === vista;
+      b.classList.toggle("active", activa);
+      b.setAttribute("aria-selected", String(activa));
+    }
+    $("#vista-agentes").hidden = vista !== "agentes";
+    panelConfig.hidden = vista !== "gestionar";
+    panelHistorial.hidden = vista !== "historial";
+    if (vista === "gestionar") pintarConfig();
+    if (vista === "historial") pintarHistorial();
+  }
+  for (const b of container.querySelectorAll(".ia-pestanas .tab-btn")) b.addEventListener("click", () => mostrarVista(b.dataset.vista));
 
   pintarBadge();
   pintarEjemplos();

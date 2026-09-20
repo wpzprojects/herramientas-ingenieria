@@ -235,10 +235,10 @@ const sinDefecto = (campos) => campos.map(({ defecto, req, ...c }) => c);
 const CAMPOS_LINEA = [
   N("tension_kv", "Tensión línea-línea", { u: "kV", req: true, min: 0, minExcl: true }),
   N("factor_potencia", "Factor de potencia (cos φ)", { e: "Factor de potencia", req: true, min: 0, minExcl: true, max: 1 }),
-  N("potencia_mw", "DATO DE PARTIDA (indica solo uno de los tres): potencia activa", { u: "MW", min: 0, minExcl: true }),
-  N("potencia_mva", "DATO DE PARTIDA (alternativa): potencia aparente; la activa es S·cos φ", { u: "MVA", min: 0, minExcl: true }),
-  N("corriente_a", "DATO DE PARTIDA (alternativa): corriente de línea; la activa es √3·V·I·cos φ", { u: "A", min: 0, minExcl: true }),
-  N("longitud_km", "Longitud de la línea (un solo tramo; con varios tramos va dentro de cada uno de \"tramos\")", { u: "km", min: 0, minExcl: true }),
+  N("potencia_mw", "DATO DE PARTIDA (indica solo uno de los tres): potencia activa", { e: "Potencia activa", u: "MW", min: 0, minExcl: true }),
+  N("potencia_mva", "DATO DE PARTIDA (alternativa): potencia aparente; la activa es S·cos φ", { e: "Potencia aparente", u: "MVA", min: 0, minExcl: true }),
+  N("corriente_a", "DATO DE PARTIDA (alternativa): corriente de línea; la activa es √3·V·I·cos φ", { e: "Corriente de línea", u: "A", min: 0, minExcl: true }),
+  N("longitud_km", "Longitud de la línea (un solo tramo; con varios tramos va dentro de cada uno de \"tramos\")", { e: "Longitud de la línea", u: "km", min: 0, minExcl: true }),
 ];
 const CAMPO_R_MANUAL = N("resistencia_ohm_km", "Resistencia AC a 75 °C del conductor (opcional: reemplaza al catálogo)", { u: "Ω/km", min: 0, max: 10000, oculto: true });
 const CAMPO_POR_FASE = I("conductores_por_fase", "Conductores por fase (haz); la resistencia efectiva es R/N (por defecto 1)", { min: 1, max: 6, oculto: true });

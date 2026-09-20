@@ -253,6 +253,7 @@ button { font-family: inherit; }
 .form-section-title .barra-acciones { margin-left: auto; display: flex; align-items: center; gap: var(--space-2); text-transform: none; letter-spacing: normal; font-weight: 600; }
 .form-section-title .barra-acciones .icon { color: currentColor; width: 16px; height: 16px; } /* los iconos de los botones de la barra toman el color del boton (el acento del titulo los volveria invisibles en «Nuevo agente») */
 .ia-pestanas { margin-bottom: var(--space-4); }
+.ia-reporte-acciones { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-3); }
 .ia-gestor-acciones { display: flex; justify-content: flex-start; margin-top: var(--space-4); }
 .ia-gestor-acciones .barra-acciones { display: flex; align-items: center; gap: var(--space-2); }
 .ia-desc-agente { margin: var(--space-3) 0 0; font-size: 0.9rem; color: var(--text); }

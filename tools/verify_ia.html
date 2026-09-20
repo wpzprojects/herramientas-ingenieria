@@ -645,6 +645,14 @@ await seccion("tools: ocupación de ductos con varios tipos de conductor y radio
   ok(dOcu.properties.grupos.type === "array" && dOcu.properties.grupos.items.type === "object" && "numero_conductores" in dOcu.properties.grupos.items.properties && !(dOcu.required || []).length, "el esquema declara «grupos» y ya no hay campos obligatorios a nivel superior");
 });
 
+await seccion("tools: etiquetas cortas en el reporte (dato de partida y longitud)", async () => {
+  const ctx = ctxNuevo();
+  await tools.ejecutarLlamada("calcular_perdidas", { ...LINEA, factor_carga: 0.5, resistencia_ohm_km: 0.3 }, ctx);
+  const etiquetas = ctx.log.at(-1).entradas.map((e) => e.etiqueta);
+  ok(etiquetas.every((e) => e.length < 40), `las etiquetas de las entradas son cortas (no la descripción larga del campo): ${etiquetas.join(" | ")}`);
+  ok(etiquetas.includes("Potencia activa") && etiquetas.includes("Longitud de la línea"), "«Potencia activa» y «Longitud de la línea», como antes");
+});
+
 await seccion("tools: validación y errores orientadores", async () => {
   const a = await tools.ejecutarLlamada("calcular_perdidas", { ...LINEA, factor_potencia: 1.5, factor_carga: 0.5, resistencia_ohm_km: 0.3 }, ctxNuevo());
   ok(a.ok === false && a.error.includes("factor_potencia"), "factor de potencia fuera de rango");

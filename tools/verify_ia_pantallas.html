@@ -5,7 +5,7 @@
 <title>verify_ia_pantallas</title>
 <!--
   Pruebas del rediseño de las pantallas de Funciones de IA (2026-09-19): «Configuración de IA» (js/views/ia-configuracion.js)
-  y «Corrector de redacción» (js/views/ia-redaccion.js). Se ejecuta en el navegador, sin internet (Gemini simulado con un fetch falso).
+  «Corrector de redacción» (js/views/ia-redaccion.js) y «Análisis con calculadoras» (js/views/ia-analisis.js). Se ejecuta en el navegador, sin internet (Gemini simulado con un fetch falso).
 
   Uso (desde la raiz del proyecto):
     python -m http.server 8000
@@ -327,6 +327,126 @@ await seccion("Corrector de redacción rediseñado", async () => {
   }
 
   window.fetch = fetchPrevio;
+  try { cfg.borrarClave(); } catch { /* nada */ }
+});
+
+await seccion("Análisis con calculadoras rediseñado", async () => {
+  // Gemini simulado: pide UN calculo (pérdidas) y luego redacta
+  const fetchPrevio = window.fetch;
+  let llamadasGemini = 0;
+  window.fetch = async (url, opciones) => {
+    if (String(url).includes(":generateContent")) {
+      llamadasGemini++;
+      const cuerpo = JSON.parse(opciones.body);
+      const ult = cuerpo.contents.at(-1);
+      const yaHayResultado = (ult.parts || []).some((p) => p.functionResponse);
+      const parts = yaHayResultado
+        ? [{ text: `Las pérdidas resultan bajas (respuesta ${llamadasGemini}).` }]
+        : [{ functionCall: { name: "calcular_perdidas", args: { tension_kv: 34.5, potencia_mw: 9.9, factor_potencia: 0.95, factor_carga: 0.56, longitud_km: 5.2, red: "Aerea", material: "ACSR", calibre: "4/0" } } }];
+      return new Response(JSON.stringify({ candidates: [{ content: { role: "model", parts }, finishReason: "STOP" }] }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    return fetchPrevio(url, opciones);
+  };
+  cfg.guardarClave("AIzaSyPRUEBA1234567890", false);
+  clave.guardarFuente("local");
+  const agAn = await import("../js/ai/agentes-analisis.js");
+  agAn.guardarPropios([]);
+  agAn.guardarActivo(agAn.ID_PREDETERMINADO);
+  const vista = await import("../js/views/ia-analisis.js");
+  const marco = document.createElement("div");
+  stage.innerHTML = "";
+  stage.append(marco);
+  const q = (s) => marco.querySelector(s);
+  const qa = (s) => [...marco.querySelectorAll(s)];
+  await vista.render(marco, {});
+  await espera(150);
+  const confirmReal = window.confirm;
+  window.confirm = () => true;
+
+  // --- tarjeta Agente
+  const ta = q("#tarjeta-agente");
+  ok(ta.classList.contains("tarjeta-borde") && /Agente/.test(texto(ta.querySelector(".form-section-title"))) && !!ta.querySelector(".form-section-title .icon g path[d^='M6 6a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v4']"), "la tarjeta «Agente» (robot) tiene relleno de 16 px y barra de título con icono, igual que en el Corrector");
+  ok(Math.round(ta.querySelector(".form-section-title .icon").getBoundingClientRect().width) === 21, "el robot mide 21 px");
+  ok(qa(".ia-pestanas .tab-btn").map(texto).join("|") === "Agentes|Gestionar|Historial" && q(".ia-pestanas .tab-btn.active").textContent === "Agentes", "pestañas «Agentes | Gestionar | Historial» dentro de la tarjeta, como el Corrector");
+  ok(qa("#lista-agentes .ia-chip").length === 1 && q("#lista-agentes .ia-chip").getAttribute("aria-pressed") === "true", "el agente se elige con píldoras (hoy solo el estándar, en uso)");
+  ok(!q("#desc-agente").hidden && !q("#desc-agente").classList.contains("text-muted"), "la descripción del agente se ve");
+  ok(/Modelo:/.test(texto(q("#linea-modelo"))) && !!q("#badge-modelo") && !!q('#linea-modelo a[href="#/ia/configuracion"]'), "el modelo activo se muestra en una línea con enlace a Configuración");
+  ok(!q(".ia-toolbar") && !q("#btn-config") && !q("#btn-historial"), "ya no hay la barra suelta con badges y botones «Historial» / «Agentes»");
+
+  // --- tarjeta Conversacion
+  const tc = q("#conv");
+  ok(tc.classList.contains("tarjeta-borde") && texto(tc.querySelector(".form-section-title")) === "Conversación" && !!tc.querySelector(".form-section-title .icon g path[d^='M3 20l1.3 -3.9']"), "la tarjeta de consulta se llama «Conversación» y lleva su barra de título (burbuja), como en el Corrector");
+  ok(qa("#ejemplos .ia-chip").length === 4 && !q("#ejemplos").hidden && !q(".ia-caja--al-borde"), "los 4 ejemplos de pregunta siguen ahí y la caja de texto ya no usa márgenes negativos");
+  ok(q("#card-reporte").hidden, "el reporte no aparece hasta que hay cálculos");
+
+  // --- una consulta con calculo y el reporte
+  q("#f-pregunta").value = "Analiza las pérdidas de la línea de 34.5 kV con ACSR 4/0.";
+  q("#btn-enviar").click();
+  await espera(700);
+  ok(qa(".ia-msg--model").some((m) => /Las pérdidas resultan bajas/.test(m.textContent)) && qa(".ia-toolchip").length >= 1, "la respuesta llega con las etiquetas de las calculadoras usadas");
+  const rc = q("#card-reporte");
+  ok(!rc.hidden && rc.classList.contains("tarjeta-borde") && /Reporte de escenarios/.test(texto(rc.querySelector(".form-section-title"))) && !!rc.querySelector(".form-section-title .icon"), "aparece la tarjeta «Reporte de escenarios» con barra de título e icono");
+  ok(rc.querySelector(".form-section-title").classList.contains("no-print") && rc.querySelector(".ia-reporte-acciones").classList.contains("no-print"), "la barra y los botones no se imprimen (el PDF sale como antes)");
+  ok(qa("#card-reporte .ia-reporte-acciones .btn").map(texto).join("|") === "Generar reporte con IA|Copiar|Descargar .md|Imprimir / PDF" && !!q("#btn-reporte.btn-primary"), "los botones del reporte van en una fila bajo la barra: «Generar reporte con IA» es el principal");
+  ok(!!rc.querySelector(".ia-escenarios table") && /cálculo/.test(texto(q("#reporte-meta"))), "las tablas de escenarios y la línea de resumen se conservan");
+
+  // --- gestionar
+  q('.ia-pestanas .tab-btn[data-vista="gestionar"]').click();
+  await espera(100);
+  const pc = q("#panel-config");
+  ok(!pc.hidden && q("#vista-agentes").hidden && ta.contains(pc), "«Gestionar» muestra los agentes en la misma tarjeta");
+  const filas = [...pc.querySelectorAll("#config-lista .ia-historial-item")];
+  ok(pc.firstElementChild === pc.querySelector("#config-lista") && filas.length === 1, "lo primero es la lista de agentes (el estándar)");
+  const botonesFila = [...filas[0].querySelectorAll("button")];
+  ok(botonesFila.map(texto).join("|") === "Ver|Editar|Duplicar|Eliminar" && botonesFila.every((b) => getComputedStyle(b).borderTopWidth !== "0px" && !b.classList.contains("btn-ghost")), "cada fila: Ver, Editar, Duplicar y Eliminar, todos con contorno (ya no hay «Usar»: se elige en «Agentes»)");
+  ok(botonesFila[1].disabled && botonesFila[3].disabled, "el agente estándar no se puede editar ni eliminar");
+  const rl = pc.querySelector("#config-lista").getBoundingClientRect();
+  const rn = pc.querySelector('[data-a="nuevo"]').getBoundingClientRect();
+  ok(rn.top >= rl.bottom && Math.abs(rn.left - filas[0].getBoundingClientRect().left) < 12 && pc.querySelector('[data-a="nuevo"]').classList.contains("btn-primary"), "«Nuevo agente» va debajo de la lista, a la izquierda");
+
+  // --- ver el estandar
+  botonesFila[0].click();
+  await espera(100);
+  const ed = pc.querySelector(".ia-editor");
+  ok(!!ed && /Viendo:/.test(texto(ed.querySelector(".ia-editor-cabecera"))) && !!ed.querySelector(".ia-editor-cabecera .icon") && ed.querySelector("#g-nombre").readOnly, "«Ver» abre el editor de solo lectura con su barra «Viendo: …»");
+  ok(filas[0].classList.contains("editando") && !!ed.querySelector(".callout-info"), "la fila queda marcada y se avisa que el estándar es de solo lectura");
+  ok(ed.querySelectorAll("label[data-info]").length === 3 && ed.querySelectorAll(".hint").length === 0, "las ayudas (temperatura, herramientas, reporte) son botones «i», sin textos .hint");
+  ok(ed.querySelectorAll("input[data-h]").length >= 9 && ed.querySelectorAll("input[data-h]").length === ed.querySelectorAll("input[data-h]:disabled").length, "las herramientas se listan (deshabilitadas en solo lectura)");
+  ed.querySelector("#g-cerrar").click();
+  ok(!pc.querySelector(".ia-editor") && !pc.querySelector(".editando"), "«Cerrar» quita el editor y la marca");
+
+  // --- duplicar, editar y usar
+  filas[0].querySelectorAll("button")[2].click(); // Duplicar
+  await espera(150);
+  ok(pc.querySelectorAll("#config-lista .ia-historial-item").length === 2 && /Editando:/.test(texto(pc.querySelector(".ia-editor-cabecera"))) && qa(".ia-editor label[data-info]").length === 4, "«Duplicar» crea la copia y abre su editor («Editando: …», con la ayuda de las instrucciones)");
+  pc.querySelector("#g-nombre").value = "Mi agente";
+  pc.querySelector("#g-guardar").click();
+  await espera(100);
+  ok(/Cambios guardados/.test(texto(pc.querySelector("#config-msg"))) && /Mi agente/.test(texto(pc.querySelector("#config-lista"))), "guardar deja el mensaje y la lista actualizada");
+  q('.ia-pestanas .tab-btn[data-vista="agentes"]').click();
+  ok(!q("#vista-agentes").hidden && qa("#lista-agentes .ia-chip").map(texto).includes("Mi agente"), "el agente nuevo aparece como píldora en «Agentes»");
+  qa("#lista-agentes .ia-chip").find((b) => b.textContent === "Mi agente").click();
+  await espera(100);
+  ok(qa("#lista-agentes .ia-chip").find((b) => b.textContent === "Mi agente").getAttribute("aria-pressed") === "true" && qa(".ia-msg").length === 0 && q("#card-reporte").hidden, "elegirlo lo activa y, como había una conversación, empieza una nueva (sin chat ni reporte)");
+  q('.ia-pestanas .tab-btn[data-vista="gestionar"]').click();
+  await espera(100);
+  ok(/en uso/.test(texto([...pc.querySelectorAll("#config-lista .ia-historial-item")].find((f) => /Mi agente/.test(f.textContent)))), "en «Gestionar» la etiqueta «en uso» marca al agente activo");
+  pc.querySelector('[data-a="nuevo"]').click();
+  await espera(80);
+  ok(/Nuevo agente/.test(texto(pc.querySelector(".ia-editor-cabecera"))) && !pc.querySelector(".editando"), "«Nuevo agente» abre el editor con su barra y sin fila marcada");
+  pc.querySelector("#g-cerrar").click();
+
+  // --- historial
+  q('.ia-pestanas .tab-btn[data-vista="historial"]').click();
+  await espera(100);
+  ok(!q("#panel-historial").hidden && q("#panel-config").hidden && q("#vista-agentes").hidden, "«Historial» se muestra en la misma tarjeta");
+  q('.ia-pestanas .tab-btn[data-vista="agentes"]').click();
+  ok(!q("#vista-agentes").hidden && q("#panel-historial").hidden, "y «Agentes» vuelve a mostrar los agentes");
+
+  window.confirm = confirmReal;
+  window.fetch = fetchPrevio;
+  agAn.guardarPropios([]);
+  agAn.guardarActivo(agAn.ID_PREDETERMINADO);
   try { cfg.borrarClave(); } catch { /* nada */ }
 });
 
