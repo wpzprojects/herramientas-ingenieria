@@ -264,7 +264,11 @@ button { font-family: inherit; }
 .menu-mas-lista { position: absolute; right: 0; top: calc(100% + 4px); z-index: 20; min-width: 210px; display: flex; flex-direction: column; padding: 4px; background: var(--bg-elevated); border: 1px solid var(--border-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-md); }
 .menu-mas-lista button { text-align: left; background: none; border: 0; color: var(--text); padding: 8px 10px; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.85rem; }
 .menu-mas-lista button:hover { background: var(--bg-sunken); }
-.ia-editor { margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--border); }
+/* Editor de un agente: panel con borde y barra de titulo del color del tema, y la fila que se edita queda marcada en la lista */
+.ia-editor { margin-top: var(--space-5); padding: var(--space-4); border: 1px solid color-mix(in srgb, var(--accent) 65%, var(--accent-soft)); border-radius: var(--radius-md); }
+.ia-editor-cabecera { display: flex; align-items: center; gap: var(--space-2); min-height: 40px; box-sizing: border-box; margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) var(--space-4); padding: var(--space-2) var(--space-4); background: var(--accent-soft); border-bottom: 1px solid color-mix(in srgb, var(--accent) 65%, var(--accent-soft)); border-radius: calc(var(--radius-md) - 1px) calc(var(--radius-md) - 1px) 0 0; color: var(--text-muted); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.ia-editor-cabecera .icon { width: 18px; height: 18px; color: var(--accent); flex: 0 0 auto; }
+.ia-historial-item.editando { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
 .ca-tabs { margin: var(--space-4) 0; }
 .ca-sola { margin-top: var(--space-4); }
 .ca-agregar { display: grid; grid-template-columns: minmax(0, 1fr) 190px auto; gap: var(--space-3); align-items: end; margin-bottom: var(--space-4); }

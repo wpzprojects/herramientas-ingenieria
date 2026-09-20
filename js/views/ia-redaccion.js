@@ -454,7 +454,7 @@ export async function render(container) {
     const lista = panelGestor.querySelector("#gestor-lista");
     for (const a of agentes) {
       lista.append(
-        el("div", { class: "ia-historial-item" }, [
+        el("div", { class: "ia-historial-item", "data-agente": a.id }, [
           el("span", { class: "titulo", title: a.descripcion }, [a.nombre, a.predefinido ? el("span", { class: "badge", style: "margin-left:8px" }, "predeterminado") : null]),
           el("button", { type: "button", class: "btn btn-sm", onclick: () => pintarFormulario(structuredClone(a), false) }, "Editar"),
           el(
@@ -541,9 +541,11 @@ export async function render(container) {
 
   function pintarFormulario(a, esNuevo) {
     const cont = panelGestor.querySelector("#gestor-form");
+    // se marca en la lista el agente que se edita (y solo ese)
+    for (const f of panelGestor.querySelectorAll("#gestor-lista .ia-historial-item")) f.classList.toggle("editando", !esNuevo && f.dataset.agente === a.id);
     cont.innerHTML = `
       <div class="ia-editor">
-        <h3 style="margin-top:0">${esNuevo ? "Nuevo agente" : `Editar: ${escapeHtml(a.nombre)}`}</h3>
+        <div class="ia-editor-cabecera">${icon(esNuevo ? "plus" : "pencil")} ${esNuevo ? "Nuevo agente" : `Editando: ${escapeHtml(a.nombre)}`}</div>
         <div class="grid-2">
           <div class="field"><label for="g-nombre">Nombre</label><input type="text" id="g-nombre" maxlength="80"></div>
           <div class="field"><label for="g-desc">Descripción corta</label><input type="text" id="g-desc" maxlength="300"></div>
@@ -600,7 +602,10 @@ export async function render(container) {
       pintarEjemplos();
     });
 
-    g("#g-cancelar").addEventListener("click", () => (cont.innerHTML = ""));
+    g("#g-cancelar").addEventListener("click", () => {
+      cont.innerHTML = "";
+      for (const f of panelGestor.querySelectorAll("#gestor-lista .ia-historial-item.editando")) f.classList.remove("editando");
+    });
     g("#g-guardar").addEventListener("click", () => {
       const nombre = g("#g-nombre").value.trim();
       if (!nombre) return g("#g-nombre").focus();

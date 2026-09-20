@@ -278,11 +278,19 @@ await seccion("Corrector de redacción rediseñado", async () => {
   editar.click();
   await espera(100);
   const ed = pg.querySelector(".ia-editor");
-  ok(!!ed && !ed.classList.contains("card") && !ed.closest("#gestor-form")?.querySelector(".card") && /Editar: Correos/.test(texto(ed.querySelector("h3"))), "el editor ya no es una tarjeta dentro de otra tarjeta");
+  ok(!!ed && !ed.classList.contains("card") && !ed.closest("#gestor-form")?.querySelector(".card") && /Editando: Correos/.test(texto(ed.querySelector(".ia-editor-cabecera"))), "el editor ya no es una tarjeta dentro de otra tarjeta y su barra dice «Editando: Correos»");
+  const cab = getComputedStyle(ed.querySelector(".ia-editor-cabecera"));
+  ok(!!ed.querySelector(".ia-editor-cabecera .icon") && cab.backgroundColor !== getComputedStyle(pg).backgroundColor && getComputedStyle(ed).borderTopWidth === "1px" && ed.getBoundingClientRect().top - pg.querySelector("#gestor-lista").getBoundingClientRect().bottom >= 20, "el editor se distingue de la lista: panel con borde, barra de título con icono y un espacio claro encima");
+  const marcadas = [...pg.querySelectorAll("#gestor-lista .ia-historial-item.editando")];
+  ok(marcadas.length === 1 && /Correos/.test(marcadas[0].textContent) && getComputedStyle(marcadas[0]).boxShadow !== "none", "en la lista queda marcada solo la fila del agente que se edita («Correos»)");
   ok(ed.querySelectorAll("label[data-info]").length === 3 && ed.querySelectorAll(".hint").length === 0, "las ayudas del formulario (tono, temperatura, instrucciones) son botones «i», sin textos .hint");
   ok(ed.querySelectorAll("label[data-info] button, label[data-info] .info-btn").length >= 3, "cada una con su botón «i»");
   pg.querySelector("#g-cancelar").click();
-  ok(visible(pg) && !pg.querySelector(".ia-editor"), "cancelar la edición te deja en «Gestionar»");
+  ok(visible(pg) && !pg.querySelector(".ia-editor") && !pg.querySelector(".ia-historial-item.editando"), "cancelar la edición te deja en «Gestionar» y quita la marca de la fila");
+  pg.querySelector('[data-a="nuevo"]').click();
+  await espera(80);
+  ok(/Nuevo agente/.test(texto(pg.querySelector(".ia-editor-cabecera"))) && !pg.querySelector(".ia-historial-item.editando"), "«Nuevo agente» abre el editor con su barra «Nuevo agente» y sin fila marcada");
+  pg.querySelector("#g-cancelar").click();
 
   // --- «Abrir» en el historial vuelve a «Agentes»
   const hist = await import("../js/ai/historial.js");
