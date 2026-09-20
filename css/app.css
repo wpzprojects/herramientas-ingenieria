@@ -726,12 +726,11 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 @keyframes ia-pulso { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .ia-typing span { animation: none; opacity: .6; } }
 
-/* lista (historial, agentes): filas sin caja, separadas por UNA sola linea fina; resalte suave al pasar el cursor */
+/* lista (historial, agentes): filas sin caja, separadas por UNA sola linea fina (sin resalte al pasar el cursor: lo pidio asi el usuario) */
 .ia-historial { display: flex; flex-direction: column; gap: 0; margin-top: var(--space-2); }
-.ia-historial-item { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-2); border: 0; border-bottom: 1px solid var(--border); border-radius: 0; transition: background .12s ease; }
+.ia-historial-item { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-2); border: 0; border-bottom: 1px solid var(--border); border-radius: 0; }
 .ia-historial-item:last-child { border-bottom: 0; }
-.ia-historial-item:hover { background: var(--bg-sunken); }
-.ia-historial-item .titulo { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.ia-historial-item .titulo { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; font-size: 0.9rem; }
 .ia-historial-item .fecha { color: var(--text-faint); font-size: 0.78rem; white-space: nowrap; }
 .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
 

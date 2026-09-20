@@ -249,6 +249,10 @@ await seccion("Corrector de redacción rediseñado", async () => {
   const filas = [...pg.querySelectorAll("#gestor-lista .ia-historial-item")];
   const est = (f) => getComputedStyle(f);
   ok(filas.length === 4 && filas.every((f, i) => est(f).borderTopWidth === "0px" && est(f).borderLeftWidth === "0px" && est(f).borderRightWidth === "0px" && est(f).borderBottomWidth === (i < filas.length - 1 ? "1px" : "0px")), "la lista no son cajas: entre cada fila hay UNA sola línea fina (sin borde arriba, a los lados ni en la última fila)");
+  const tit = getComputedStyle(filas[0].querySelector(".titulo"));
+  ok(parseFloat(tit.fontSize) <= 14.5 && parseInt(tit.fontWeight) <= 500, `el nombre de cada fila es más pequeño y suave (${tit.fontSize}, peso ${tit.fontWeight})`);
+  const cssApp = await (await fetch("../css/app.css")).text();
+  ok(!/\.ia-historial-item:hover/.test(cssApp), "las filas no se resaltan al pasar el cursor");
   ok(filas.slice(1).every((f, i) => Math.abs(f.getBoundingClientRect().top - filas[i].getBoundingClientRect().bottom) < 1), "y las filas quedan pegadas (sin espacio que duplique la línea)");
   ok(!!pg.querySelector('.ia-gestor-cabecera [data-a="nuevo"].btn-primary') && !!pg.querySelector(".ia-gestor-cabecera .menu-mas") && pg.querySelectorAll("#gestor-lista .ia-historial-item").length === 4, "«Nuevo agente» es el único botón principal, hay un menú «Más» y la lista de los 4 agentes");
   const menu = pg.querySelector(".menu-mas");
