@@ -645,6 +645,13 @@ await seccion("tools: ocupación de ductos con varios tipos de conductor y radio
   ok(dOcu.properties.grupos.type === "array" && dOcu.properties.grupos.items.type === "object" && "numero_conductores" in dOcu.properties.grupos.items.properties && !(dOcu.required || []).length, "el esquema declara «grupos» y ya no hay campos obligatorios a nivel superior");
 });
 
+await seccion("reporte estándar: incluye «Conclusiones» entre los hallazgos y las recomendaciones", async () => {
+  const { PROMPT_REPORTE } = await import("../js/ai/analisis.js");
+  const orden = ["## Resultados y hallazgos", "## Conclusiones", "## Recomendaciones", "## Advertencias y limitaciones"].map((x) => PROMPT_REPORTE.indexOf(x));
+  ok(orden.every((i) => i >= 0) && orden.every((i, k) => k === 0 || i > orden[k - 1]), "la sección «Conclusiones» va después de «Resultados y hallazgos» y antes de «Recomendaciones»");
+  ok(/conductor adecuado/i.test(PROMPT_REPORTE), "pide una conclusión concreta (p. ej. el conductor adecuado)");
+});
+
 await seccion("tools: etiqueta del barrido dice sobre qué calculadora corre", async () => {
   ok(tools.tituloDe("barrer_parametro", { herramienta: "calcular_perdidas" }) === "Barrido de parámetro · Pérdidas", "«Barrido de parámetro · Pérdidas»");
   ok(tools.tituloDe("barrer_parametro", { herramienta: "calcular_regulacion" }).startsWith("Barrido de parámetro · "), "también con otra calculadora");

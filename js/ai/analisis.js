@@ -27,6 +27,8 @@ export const PROMPT_REPORTE = `Genera ahora un REPORTE DE ESCENARIOS formal en M
 ## Escenarios evaluados
 (descríbelos brevemente; NO repitas las tablas completas, la aplicación las adjunta al reporte)
 ## Resultados y hallazgos
+## Conclusiones
+(la respuesta concreta y puntual a lo que se quería resolver, en 1 a 3 frases y con las cifras que la respaldan. Por ejemplo, si se buscaba un conductor: «El conductor adecuado es el ACSR 266.8: pérdidas de 0.86 % (Óptimo)». Si los cálculos no bastan para concluir, dilo y señala qué falta; no rellenes con suposiciones)
 ## Recomendaciones
 ## Advertencias y limitaciones
 
