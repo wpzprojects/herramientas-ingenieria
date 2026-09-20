@@ -464,39 +464,55 @@ export async function render(container) {
       lista.append(
         el("div", { class: "ia-historial-item", "data-agente": a.id }, [
           el("span", { class: "titulo", title: a.descripcion }, [a.nombre, a.predefinido ? el("span", { class: "badge", style: "margin-left:8px" }, "predeterminado") : null]),
-          el("button", { type: "button", class: "btn btn-sm", onclick: () => pintarFormulario(structuredClone(a), false) }, "Editar"),
-          el(
-            "button",
-            {
-              type: "button",
-              class: "btn btn-sm",
-              onclick: () => {
-                const copia = { ...structuredClone(a), id: `agente-${Date.now().toString(36)}`, nombre: `${a.nombre} (copia)`, predefinido: false };
-                agentes.push(copia);
-                persistir();
-                pintarGestor();
+          el("div", { class: "ia-historial-acciones" }, [
+            el("button", { type: "button", class: "btn btn-sm", onclick: () => pintarFormulario(structuredClone(a), false) }, "Editar"),
+            el(
+              "button",
+              {
+                type: "button",
+                class: "btn btn-sm",
+                onclick: () => {
+                  const copia = { ...structuredClone(a), id: `agente-${Date.now().toString(36)}`, nombre: `${a.nombre} (copia)`, predefinido: false };
+                  agentes.push(copia);
+                  persistir();
+                  pintarGestor();
+                },
               },
-            },
-            "Duplicar"
-          ),
-          el(
-            "button",
-            {
-              type: "button",
-              class: "btn btn-sm",
-              onclick: () => {
-                if (agentes.length <= 1) return alert("Debe quedar al menos un agente.");
-                if (!confirm(`¿Eliminar el agente "${a.nombre}"?`)) return;
-                agentes = agentes.filter((x) => x.id !== a.id);
-                persistir();
-                pintarGestor();
+              "Duplicar"
+            ),
+            el(
+              "button",
+              {
+                type: "button",
+                class: "btn btn-sm",
+                onclick: () => {
+                  if (agentes.length <= 1) return alert("Debe quedar al menos un agente.");
+                  if (!confirm(`¿Eliminar el agente "${a.nombre}"?`)) return;
+                  agentes = agentes.filter((x) => x.id !== a.id);
+                  persistir();
+                  pintarGestor();
+                },
               },
-            },
-            "Eliminar"
-          ),
+              "Eliminar"
+            ),
+          ]),
         ])
       );
     }
+    // si en alguna fila los botones ya no caben junto al nombre, todas los bajan (que ninguna quede distinta)
+    const alinearAcciones = () => {
+      if (!lista.offsetWidth) return;
+      lista.classList.remove("acciones-abajo");
+      const partida = [...lista.children].some((fila) => {
+        const t = fila.querySelector(".titulo");
+        const b = fila.querySelector(".ia-historial-acciones");
+        return t && b && b.offsetTop >= t.offsetTop + t.offsetHeight;
+      });
+      lista.classList.toggle("acciones-abajo", partida);
+    };
+    new ResizeObserver(alinearAcciones).observe(lista);
+    lista.addEventListener("alinear-acciones", alinearAcciones); // lo usan las pruebas (el navegador sin ventana no avisa cambios de tamaño)
+    document.fonts?.ready.then(alinearAcciones);
 
     const msg = (tipo, texto) => {
       panelGestor.querySelector("#gestor-msg").innerHTML = `<div class="callout callout-${tipo}" style="margin:var(--space-4) 0 0"><span>${escapeHtml(texto)}</span></div>`;

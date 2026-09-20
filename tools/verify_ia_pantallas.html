@@ -297,6 +297,22 @@ await seccion("Corrector de redacción rediseñado", async () => {
   const rPrimera = pg.querySelector("#gestor-lista .ia-historial-item").getBoundingClientRect();
   ok(rNuevo.top >= rLista.bottom && Math.abs(rNuevo.left - rPrimera.left) < 12, `«Nuevo agente» y «Más» van DEBAJO de la lista de agentes y alineados a la izquierda (la lista abre primero, como el historial)`);
   ok(pg.querySelector(".ia-historial") === pg.firstElementChild, "lo primero que se ve en «Gestionar» es la lista de agentes");
+  { // si los botones de UNA fila no caben junto al nombre, bajan en TODAS las filas
+    const lista = pg.querySelector("#gestor-lista"), fs = [...lista.querySelectorAll(".ia-historial-item")];
+    const abajo = (f) => { const t = f.querySelector(".titulo"), b = f.querySelector(".ia-historial-acciones"); return b.offsetTop >= t.offsetTop + t.offsetHeight; };
+    const recalcular = () => lista.dispatchEvent(new Event("alinear-acciones")); // el ResizeObserver real no avisa sin ventana visible
+    const largo = document.createElement("span"); largo.style.cssText = "display:inline-block;width:320px"; fs[0].querySelector(".titulo").append(largo);
+    lista.style.width = "600px"; recalcular();
+    ok(lista.classList.contains("acciones-abajo") && fs.every(abajo), "si en una fila los botones no caben junto al nombre, bajan en todas las filas");
+    lista.classList.remove("acciones-abajo");
+    const mixto = fs.some(abajo) && fs.some((f) => !abajo(f));
+    recalcular();
+    ok(mixto && fs.every(abajo), "(sin la regla, unas filas los tendrían abajo y otras al lado: la regla las iguala)");
+    ok(fs.every((f) => f.querySelector(".ia-historial-acciones").getBoundingClientRect().left - f.getBoundingClientRect().left < 40), "los botones bajados quedan alineados a la izquierda de su fila");
+    largo.remove(); lista.style.width = "1000px"; recalcular();
+    ok(!lista.classList.contains("acciones-abajo") && fs.every((f) => !abajo(f)), "si en ninguna fila hace falta, todas vuelven a llevar los botones junto al nombre");
+    lista.style.width = "";
+  }
   const menu = pg.querySelector(".menu-mas");
   ok(!menu.open && !pg.querySelector(".menu-mas-lista").checkVisibility(), "el menú «Más» empieza cerrado (Exportar, Importar y Restaurar no se ven)");
   menu.querySelector("summary").click();
