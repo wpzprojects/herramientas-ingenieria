@@ -90,7 +90,9 @@ await seccion("Configuración de IA rediseñada", async () => {
   ok(qa("label[data-info]").length === 5 && qa(".info-btn, label[data-info] button").length >= 5, "la ayuda va en 5 botones «i» (clave, modelo, temperatura, rondas y cálculos)");
 
   // conexion
-  ok(!!q("#btn-guardar.btn-primary") && !!q("#btn-probar") && !!q("#btn-borrar-clave.btn-ghost") && !q("#btn-instructivo.btn"), "«Guardar clave» es el principal, «Probar conexión» secundario y «Borrar clave» discreto; «¿Cómo obtener mi clave?» es un enlace, no un botón");
+  ok(!!q("#btn-guardar.btn-primary") && !!q("#btn-probar") && !!q("#btn-borrar-clave") && !q("#btn-instructivo.btn"), "«Guardar clave» es el principal, «Probar conexión» y «Borrar clave» secundarios; «¿Cómo obtener mi clave?» es un enlace, no un botón");
+  const bordeBorrar = getComputedStyle(q("#btn-borrar-clave")).borderTopWidth;
+  ok(!q("#btn-borrar-clave").classList.contains("btn-ghost") && bordeBorrar !== "0px" && bordeBorrar === getComputedStyle(q("#btn-probar")).borderTopWidth, `«Borrar clave» tiene borde como los demás botones (${bordeBorrar})`);
   ok(!!q("#btn-borrar-clave svg") && !!q("#btn-borrar-historial svg"), "los botones de borrar llevan icono de papelera");
   ok(/Cambiar en Perfil/.test(texto(q("#fuente-clave"))) && !!q("#fuente-clave a[href='#/perfil']") && !!q("#fuente-clave .badge"), "la línea de estado dice qué clave se usa (insignia) y enlaza a Perfil");
   ok(!q("#aviso-fuente .callout"), "con «Este navegador» no hay aviso sobre la clave del servidor");
@@ -113,6 +115,13 @@ await seccion("Configuración de IA rediseñada", async () => {
   q("#f-clave").value = "AIzaSyPRUEBA1234567890";
   q("#btn-guardar").click();
   ok(/Clave guardada/.test(texto(q("#msg-conexion"))) && /Clave guardada en este navegador: AIza/.test(texto(q("#estado-clave"))) && cfg.obtenerClave() === "AIzaSyPRUEBA1234567890", "guardar la clave la deja registrada y la muestra enmascarada");
+  ok(q("#f-clave").value === "AIzaSyPRUEBA1234567890" && q("#f-clave").type === "password", "la clave guardada aparece en el campo, oculta con puntos (type=password)");
+  q("#btn-ver").click();
+  ok(q("#f-clave").type === "text" && q("#btn-ver").textContent === "Ocultar", "«Mostrar» la revela");
+  q("#btn-ver").click();
+  ok(q("#f-clave").type === "password", "y «Ocultar» la vuelve a esconder");
+  await dibujar();
+  ok(q("#f-clave").value === "AIzaSyPRUEBA1234567890" && q("#f-clave").type === "password" && /Este navegador/.test(texto(q("#fuente-clave .badge"))), "al volver a abrir la pantalla, con «Este navegador» en uso, la clave guardada se ve en el campo (oculta): ya no queda vacío");
 
   // probar y actualizar: separados
   const antes = llamadas;
@@ -136,9 +145,22 @@ await seccion("Configuración de IA rediseñada", async () => {
   q("#btn-restaurar-ajustes").click();
   ok(cfg.obtenerAjustes().maxRondas === cfg.AJUSTES_POR_DEFECTO.maxRondas && /restablecidos/.test(texto(q("#msg-ajustes"))), "restablecer valores");
 
-  // borrar clave
+  // borrar clave: pide confirmacion
+  q("#f-clave").value = "AIzaSyPRUEBA1234567890";
+  cfg.guardarClave("AIzaSyPRUEBA1234567890", true);
+  const confirmReal = window.confirm;
+  let preguntas = [];
+  window.confirm = (m) => { preguntas.push(m); return false; };
   q("#btn-borrar-clave").click();
-  ok(cfg.obtenerClave() === "" || cfg.obtenerClave() === null, "«Borrar clave» la elimina");
+  ok(preguntas.length === 1 && /¿Borrar la clave guardada en este navegador\?/.test(preguntas[0]) && cfg.obtenerClave() === "AIzaSyPRUEBA1234567890", "«Borrar clave» pide confirmación y, si se cancela, NO borra");
+  window.confirm = () => true;
+  q("#btn-borrar-clave").click();
+  ok(!cfg.obtenerClave() && q("#f-clave").value === "" && /Clave eliminada/.test(texto(q("#msg-conexion"))), "si se confirma, la elimina y vacía el campo");
+  preguntas = [];
+  window.confirm = (m) => { preguntas.push(m); return true; };
+  q("#btn-borrar-clave").click();
+  ok(preguntas.length === 0 && /No hay una clave guardada/.test(texto(q("#msg-conexion"))), "sin clave guardada no pregunta nada: avisa que no hay clave");
+  window.confirm = confirmReal;
 
   // privacidad
   ok(qa("#ia-privacidad li").length === 4 && /Privacidad/.test(texto(q("#ia-privacidad strong"))) && /Google/.test(texto(q("#ia-privacidad"))), "el aviso de privacidad es un recuadro con 4 viñetas");

@@ -64,7 +64,7 @@ export async function render(container) {
       <div class="btn-row" style="margin-top: 0;">
         <button type="button" class="btn btn-primary" id="btn-guardar">Guardar clave</button>
         <button type="button" class="btn" id="btn-probar">Probar conexión</button>
-        <button type="button" class="btn btn-ghost btn-con-icono" id="btn-borrar-clave">${icon("trash")} Borrar clave</button>
+        <button type="button" class="btn btn-con-icono" id="btn-borrar-clave">${icon("trash")} Borrar clave</button>
       </div>
       <div id="msg-conexion" style="margin-top: var(--space-4);"></div>
     </div>
@@ -138,6 +138,7 @@ export async function render(container) {
         }`
       : "Todavía no hay una clave guardada en este navegador.";
     chkRecordar.checked = clave ? clavePersistente() : true;
+    fClave.value = clave || ""; // la clave guardada aparece en el campo (oculta con puntos; «Mostrar» la revela)
   }
 
   function pintarModelos(lista, seleccionado) {
@@ -187,14 +188,14 @@ export async function render(container) {
     if (!guardarClave(valor, chkRecordar.checked)) {
       return aviso(msgConexion, "danger", "No se pudo guardar la clave en este navegador (¿almacenamiento bloqueado?).");
     }
-    fClave.value = "";
     pintarEstadoClave();
     aviso(msgConexion, "success", "Clave guardada. Pulsa «Probar conexión» para verificarla y «Actualizar lista» para cargar los modelos.");
   });
 
   $("#btn-borrar-clave").addEventListener("click", () => {
+    if (!obtenerClave()) return aviso(msgConexion, "info", "No hay una clave guardada en este navegador.");
+    if (!confirm("¿Borrar la clave guardada en este navegador? Tendrás que volver a pegarla para usarla en las funciones de IA.")) return;
     borrarClave();
-    fClave.value = "";
     pintarEstadoClave();
     aviso(msgConexion, "info", "Clave eliminada de este navegador.");
   });
