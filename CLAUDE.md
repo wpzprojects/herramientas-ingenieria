@@ -181,6 +181,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   AJUSTE POSTERIOR (commit anterior: `cca313f`): «Gestionar agentes» e «Historial» YA NO abren tarjetas nuevas ni están en la barra: la tarjeta «Agente» es UNA
   sola con pestañas `Agentes | Gestionar | Historial` (`.ia-pestanas`, `mostrarVista()`); «Abrir» en el historial vuelve solo a «Agentes» con el agente de esa conversación.
 
+- «Imprimir / PDF» del reporte de Análisis (2026-09-19): NO imprime la tarjeta de la pantalla sino un documento propio (`#doc-impresion`, armado en `armarDocumentoImpresion`, `ia-analisis.js`): Carta vertical (`@page reporte`, márgenes 20 mm, pie con «Página X de Y»), SIEMPRE en claro (clase `imprimiendo-reporte` también en `<html>` con `color-scheme: light`), encabezado en la primera página, «Conclusiones» en recuadro gris, tablas con cabecera que se repite y aviso final. Los `#`/`##` de la IA salen como h2/h3 (ver `markdown.js`). Para ver el resultado: `msedge --headless --no-pdf-header-footer --print-to-pdf` sobre una página de prueba con `window.print` anulado y convertir el PDF a PNG con pymupdf (`pip install pymupdf --target <carpeta>`).
 - Es la ÚNICA excepción a "100% offline": se conecta a Google Gemini con la clave del propio
   usuario (BYOK, guardada en el navegador; no hay backend). Detalle en el README.
 - Análisis con calculadoras tiene agentes (`js/ai/agentes-analisis.js`, botón «Agentes»): el predeterminado («Agente estándar») sale del
@@ -221,7 +222,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v201); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v202); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (menú lateral → «Perfil», `js/auth/*`, `firebase/firestore.rules`)

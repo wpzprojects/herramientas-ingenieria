@@ -789,9 +789,49 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 @media print {
   .topbar, .sidebar, .sidebar-backdrop, .btn-row, .no-print { display: none !important; }
   .content { max-width: none; padding: 0; }
-  /* al imprimir el reporte de IA se oculta todo lo demas de la pantalla */
-  body.imprimiendo-reporte #app > :not(.ia-reporte-card) { display: none !important; }
-  body.imprimiendo-reporte .ia-reporte-card { border: none; box-shadow: none; padding: 0; }
   .ia-escenarios .table-wrap { overflow: visible; }
   .ia-escenarios td, .ia-escenarios th { white-space: normal; }
+  /* Reporte de escenarios (Analisis): se imprime un DOCUMENTO propio (#doc-impresion, armado al pulsar «Imprimir / PDF») y se oculta todo lo demas */
+  body.imprimiendo-reporte > :not(#doc-impresion) { display: none !important; }
+  html.imprimiendo-reporte { color-scheme: light !important; }
+  html.imprimiendo-reporte, body.imprimiendo-reporte { background: #fff !important; color: #111 !important; }
+  body.imprimiendo-reporte #doc-impresion { display: block; }
 }
+
+/* ---- Documento de impresion del reporte: Carta vertical, SIEMPRE en claro (no depende del tema de la pantalla) ---- */
+@page reporte {
+  size: letter portrait;
+  margin: 20mm 20mm 22mm;
+  @bottom-left { content: "Herramientas de Ingeniería · Reporte de escenarios"; font: 8pt system-ui, "Segoe UI", Arial, sans-serif; color: #666; }
+  @bottom-right { content: "Página " counter(page) " de " counter(pages); font: 8pt system-ui, "Segoe UI", Arial, sans-serif; color: #666; }
+}
+#doc-impresion { display: none; }
+.doc-impresion { page: reporte; font: 10.5pt/1.5 system-ui, "Segoe UI", Arial, sans-serif; color: #111; background: #fff; }
+.doc-impresion .doc-cab { margin-bottom: 8mm; padding-bottom: 4mm; border-bottom: 1.5pt solid #333; }
+.doc-impresion .doc-app { font-size: 8.5pt; letter-spacing: .08em; text-transform: uppercase; color: #666; }
+.doc-impresion .doc-tipo { font-size: 9.5pt; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #333; margin-top: 1mm; }
+.doc-impresion .doc-meta { margin: 2mm 0 0; font-size: 9pt; color: #555; }
+.doc-impresion h1 { font-size: 20pt; line-height: 1.2; margin: 2mm 0 0; color: #111; }
+/* Markdown de la IA: «# » sale como h2 (titulo), «## » como h3 (secciones) y «### » como h4; en «Calculos ejecutados» h2 es la seccion y h3 cada tabla */
+.doc-impresion .doc-narrativa > h2:first-child { font-size: 18pt; line-height: 1.25; margin: 0 0 4mm; padding: 0; border: 0; color: #111; }
+.doc-impresion .doc-narrativa h3, .doc-impresion .doc-escenarios h2 { font-size: 13pt; margin: 7mm 0 2.5mm; padding-bottom: 1mm; border-bottom: .5pt solid #999; color: #111; break-after: avoid; }
+.doc-impresion .doc-narrativa h4, .doc-impresion .doc-escenarios h3 { font-size: 11pt; margin: 5mm 0 2mm; color: #222; break-after: avoid; }
+.doc-impresion .doc-escenarios h2.section-title { margin-top: 9mm !important; }
+.doc-impresion p { margin: 0 0 2.5mm; orphans: 3; widows: 3; }
+.doc-impresion ul, .doc-impresion ol { margin: 0 0 3mm; padding-left: 6mm; }
+.doc-impresion li { margin-bottom: 1mm; }
+.doc-impresion .table-wrap { border: 0; border-radius: 0; background: none; overflow: visible; margin: 0 0 2mm; }
+.doc-impresion table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+.doc-impresion thead { display: table-header-group; } /* la cabecera se repite en cada pagina */
+.doc-impresion thead th { position: static; background: #e9e9e9; color: #111; border: .5pt solid #999; padding: 1.5mm 2mm; font-size: 8pt; text-transform: none; letter-spacing: 0; white-space: normal; text-align: left; }
+.doc-impresion tbody td { border: .5pt solid #bbb; padding: 1.3mm 2mm; white-space: normal; color: #111; }
+.doc-impresion tbody tr { break-inside: avoid; }
+.doc-impresion tbody tr:nth-child(even) td { background: #f6f6f6; }
+.doc-impresion tbody tr:hover { background: none; }
+.doc-impresion td.num, .doc-impresion th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.doc-impresion .comunes { font-size: 8.5pt; color: #555; margin: 1.5mm 0 0; }
+.doc-impresion .doc-conclusiones { margin: 6mm 0; padding: 3mm 5mm; background: #f2f2f2; border-left: 2.5pt solid #333; break-inside: avoid; }
+.doc-impresion .doc-conclusiones > :first-child { margin-top: 0; border-bottom: 0; padding-bottom: 0; }
+.doc-impresion .doc-conclusiones > :last-child { margin-bottom: 0; }
+.doc-impresion blockquote { margin: 0 0 3mm; padding: 1mm 4mm; border-left: 2pt solid #999; color: #444; background: none; }
+.doc-impresion .doc-aviso { margin: 10mm 0 0; padding: 2.5mm 4mm; border: .5pt solid #999; font-size: 8.5pt; color: #555; break-inside: avoid; }

@@ -390,9 +390,48 @@ export async function render(container) {
     descargar(`reporte-escenarios-${new Date().toISOString().slice(0, 10)}.md`, reporteMd(datosReporte()), "text/markdown;charset=utf-8");
   });
 
+  // «Imprimir / PDF»: no se imprime la tarjeta de la pantalla sino un documento propio (Carta vertical, siempre en claro), armado aqui
+  function armarDocumentoImpresion() {
+    const d = datosReporte();
+    const conNarrativa = !!d.narrativa;
+    const doc = el("div", { id: "doc-impresion", class: "doc-impresion" });
+    doc.innerHTML =
+      `<header class="doc-cab"><div class="doc-app">Herramientas de Ingeniería</div>` +
+      (conNarrativa ? `<div class="doc-tipo">Reporte de escenarios</div>` : `<h1>Reporte de escenarios</h1>`) +
+      `<p class="doc-meta">${escapeHtml(d.fecha)} · Agente: ${escapeHtml(agenteActivo().nombre)} · Modelo: ${escapeHtml(d.modelo)}</p></header>` +
+      `<div class="doc-cuerpo"><div class="doc-narrativa">${conNarrativa ? markdownAHtml(d.narrativa) : ""}</div><div class="doc-escenarios">${escenariosHtml(d.log)}</div></div>` +
+      `<p class="doc-aviso">${escapeHtml(AVISO_REPORTE)}</p>`;
+    // «Conclusiones» (el titulo y lo que sigue hasta la proxima seccion) va resaltada en un recuadro
+    const narrativa = doc.querySelector(".doc-narrativa");
+    const titulo = [...narrativa.children].find((n) => /^H[2-4]$/.test(n.tagName) && /^conclusi/i.test(n.textContent.trim()));
+    if (titulo) {
+      const nivel = Number(titulo.tagName[1]);
+      const caja = el("section", { class: "doc-conclusiones" });
+      titulo.before(caja);
+      let n = titulo;
+      while (n && !(n !== titulo && /^H[1-6]$/.test(n.tagName) && Number(n.tagName[1]) <= nivel)) {
+        const sig = n.nextElementSibling;
+        caja.append(n);
+        n = sig;
+      }
+    }
+    return doc;
+  }
+
   $("#btn-imprimir").addEventListener("click", () => {
+    document.getElementById("doc-impresion")?.remove();
+    document.body.append(armarDocumentoImpresion());
     document.body.classList.add("imprimiendo-reporte");
-    window.addEventListener("afterprint", () => document.body.classList.remove("imprimiendo-reporte"), { once: true });
+    document.documentElement.classList.add("imprimiendo-reporte");
+    window.addEventListener(
+      "afterprint",
+      () => {
+        document.body.classList.remove("imprimiendo-reporte");
+        document.documentElement.classList.remove("imprimiendo-reporte");
+        document.getElementById("doc-impresion")?.remove();
+      },
+      { once: true }
+    );
     window.print();
   });
 

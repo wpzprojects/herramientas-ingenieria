@@ -442,6 +442,17 @@ await seccion("Análisis con calculadoras rediseñado", async () => {
   ok(rc.querySelector(".form-section-title").classList.contains("no-print") && rc.querySelector(".ia-reporte-acciones").classList.contains("no-print"), "la barra y los botones no se imprimen (el PDF sale como antes)");
   ok(qa("#card-reporte .ia-reporte-acciones .btn").map(texto).join("|") === "Generar reporte con IA|Copiar|Descargar .md|Imprimir / PDF" && !!q("#btn-reporte.btn-primary"), "los botones del reporte van en una fila bajo la barra: «Generar reporte con IA» es el principal");
   ok(!!rc.querySelector(".ia-escenarios table") && /cálculo/.test(texto(q("#reporte-meta"))), "las tablas de escenarios y la línea de resumen se conservan");
+  { // «Imprimir / PDF»: documento propio en Carta vertical
+    const printReal = window.print; let llamadas = 0; window.print = () => llamadas++;
+    q("#btn-imprimir").click();
+    const doc = document.getElementById("doc-impresion");
+    ok(llamadas === 1 && !!doc && document.body.classList.contains("imprimiendo-reporte") && doc.parentElement === document.body, "«Imprimir / PDF» arma un documento propio (#doc-impresion) y lo manda a imprimir");
+    ok(!!doc.querySelector(".doc-cab .doc-app") && /Agente: /.test(texto(doc.querySelector(".doc-meta"))) && !!doc.querySelector(".doc-escenarios table") && !!doc.querySelector(".doc-aviso"), "lleva encabezado (app, fecha, agente, modelo), las tablas de cálculos y el aviso de la IA");
+    ok(!doc.querySelector("button, .no-print, .form-section-title"), "sin botones ni barras de la pantalla");
+    document.body.classList.remove("imprimiendo-reporte"); document.documentElement.classList.remove("imprimiendo-reporte"); doc.remove(); window.print = printReal;
+    const cssApp = await (await fetch("../css/app.css")).text();
+    ok(/@page reporte\s*\{[^}]*size: letter portrait/.test(cssApp), "la hoja de impresión del reporte es Carta vertical (@page reporte)");
+  }
 
   // --- gestionar
   q('#tarjeta-agente .ia-pestanas .tab-btn[data-vista="gestionar"]').click();
