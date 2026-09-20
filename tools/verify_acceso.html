@@ -295,7 +295,8 @@ await seccion("pantalla de Perfil rediseñada", async () => {
   ok(tarjetas.length >= 3 && tarjetas.every((c) => c.classList.contains("tarjeta-borde")), "todas las tarjetas usan el relleno de 16 px (tarjeta-borde)");
   ok(qa(".form-section-title").length >= 3 && qa(".form-section-title .icon").length >= 3, "cada tarjeta lleva barra de título con icono");
   ok(texto(q(".form-section-title")) === "Mi cuenta" && /Administrador/.test(texto(q(".dev-role"))), "primera tarjeta «Mi cuenta» con el correo y la insignia de rol");
-  ok(/Confirmado por el servidor/.test(texto(q(".dev-header"))) && /hasta el/.test(texto(q(".dev-header"))), "muestra la última confirmación del servidor y hasta cuándo vale sin conexión");
+  ok(/Confirmado por el servidor el \d/.test(texto(q(".dev-header"))) && !/\d:\d\d/.test(texto(q(".dev-header"))), "muestra la fecha de la última confirmación del servidor (sin la hora)");
+  ok(/Tu acceso sin conexión va hasta el \d.* y se renueva cada vez que abres la app con internet\./.test(texto(q(".dev-header"))) && qa(".dev-header p.text-muted").length === 2, "y en otra línea hasta cuándo vale sin conexión, con la redacción nueva");
   const pest = qa(".ca-tabs .tab-btn").map(texto);
   ok(pest.join("|") === "Usuarios|Clave de Gemini", `el administrador ve dos pestañas: ${pest.join(", ")}`);
   ok(!q("#ca-tab-usuarios").hidden && q("#ca-tab-clave").hidden, "empieza en «Usuarios»");

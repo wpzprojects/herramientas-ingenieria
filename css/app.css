@@ -201,8 +201,9 @@ button { font-family: inherit; }
 .ca-avisos { margin: var(--space-3) 0 0; font-size: 0.85rem; }
 .ca-avisos ul { margin: var(--space-1) 0 0; padding-left: 1.1rem; }
 .ca-avisos li + li { margin-top: 2px; }
-.ca-fuentes { display: flex; flex-direction: column; gap: var(--space-2); }
-.ca-fuentes .checkbox-row { align-items: center; }
+.ca-fuentes { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-3); }
+#ca-detalle { margin-top: var(--space-5); }
+.ca-fuentes .checkbox-row { align-items: center; line-height: 1.6; }
 .select-sm { min-width: 0; height: 32px; padding: 2px 8px; font-size: 0.85rem; }
 .btn.btn-icono { padding: 6px; line-height: 0; }
 .btn.btn-icono .icon { width: 18px; height: 18px; }

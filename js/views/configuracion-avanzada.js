@@ -13,7 +13,6 @@ import { FUENTES, obtenerFuente, guardarFuente, olvidarClaveServidor } from "../
 import { estadoAcceso, venceLaCache, leerCache, revalidar } from "../auth/acceso.js";
 
 const fecha = (ms) => (ms ? new Date(ms).toLocaleDateString("es-CO", { dateStyle: "medium" }) : "—");
-const fechaHora = (ms) => (ms ? new Date(ms).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short", hour12: false }) : "—");
 const mensajeDe = (e) => (e instanceof ErrorAcceso ? e.message : `Error inesperado: ${e?.message || e}`);
 const ETIQUETA_ROL = { admin: "Administrador", usuario: "Usuario" };
 const insigniaRol = (rol) => `<span class="badge ${rol === "admin" ? "badge-success" : ""}">${escapeHtml(ETIQUETA_ROL[rol] || rol)}</span>`;
@@ -150,8 +149,8 @@ export async function render(container) {
     const esAdmin = perfil.rol === "admin";
     const cache = leerCache();
     const vigencia = cache
-      ? `Confirmado por el servidor el ${fechaHora(cache.validadoEn)}. Sin conexión, tu acceso completo vale hasta el ${fecha(venceLaCache(cache))} y se renueva cada vez que abres la app con internet.`
-      : "";
+      ? [`Confirmado por el servidor el ${fecha(cache.validadoEn)}.`, `Tu acceso sin conexión va hasta el ${fecha(venceLaCache(cache))} y se renueva cada vez que abres la app con internet.`]
+      : [];
     cuerpo.innerHTML = `
       <div class="card tarjeta-borde form-section">
         ${barra("user", "Mi cuenta")}
@@ -160,7 +159,7 @@ export async function render(container) {
           <div style="flex:1 1 auto;min-width:0">
             <p class="dev-name">${escapeHtml(u.nombre || u.email)}</p>
             <p class="dev-role">${escapeHtml(u.email)} · ${insigniaRol(perfil.rol)}</p>
-            ${vigencia ? `<p class="text-muted text-sm" style="margin:var(--space-1) 0 0">${escapeHtml(vigencia)}</p>` : ""}
+            ${vigencia.map((linea, i) => `<p class="text-muted text-sm" style="margin:${i === 0 ? "var(--space-2)" : "2px"} 0 0">${escapeHtml(linea)}</p>`).join("")}
           </div>
           <button type="button" class="btn btn-sm" data-salir style="flex:0 0 auto;white-space:nowrap">Cerrar sesión</button>
         </div>
