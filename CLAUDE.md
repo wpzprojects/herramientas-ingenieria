@@ -175,6 +175,9 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   (sin `ia-caja--al-borde`); tarjeta «Reporte de escenarios» con barra (no se imprime) y fila de botones `.ia-reporte-acciones` (Generar reporte con IA = principal).
   Los ids del reporte y de la conversación no cambiaron (`#btn-reporte`, `#f-pregunta`, `#btn-enviar`…) y la impresión sigue igual. Todas las pantallas de IA quedan rediseñadas.
   Pruebas: `tools/verify_ia_pantallas.html`.
+  AJUSTE POSTERIOR en Corrector y Análisis (commit anterior: `013f1e4`... ver `git log`): el HISTORIAL pasó de la tarjeta «Agente» a la tarjeta «Conversación»: «Agente» = `Agentes | Gestionar`;
+  «Conversación» = `Actual | Historial` (`mostrarVistaConv`; `#vista-actual` = chat + caja, `#panel-historial`). En el historial la fila de abajo deja SOLO «Nueva conversación»
+  (`.ia-acciones.solo-nueva`, que además vuelve a «Actual»); lo escrito en la caja se conserva; «Abrir» vuelve a «Actual» y arriba queda elegido el agente de esa conversación.
   AJUSTE POSTERIOR (commit anterior: `cca313f`): «Gestionar agentes» e «Historial» YA NO abren tarjetas nuevas ni están en la barra: la tarjeta «Agente» es UNA
   sola con pestañas `Agentes | Gestionar | Historial` (`.ia-pestanas`, `mostrarVista()`); «Abrir» en el historial vuelve solo a «Agentes» con el agente de esa conversación.
 
@@ -218,7 +221,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v182); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v183); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (menú lateral → «Perfil», `js/auth/*`, `firebase/firestore.rules`)

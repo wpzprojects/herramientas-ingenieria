@@ -109,24 +109,29 @@ export async function render(container) {
       <div class="tabs ia-pestanas" role="tablist">
         <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-vista="agentes">Agentes</button>
         <button type="button" class="tab-btn" role="tab" aria-selected="false" data-vista="gestionar">Gestionar</button>
-        <button type="button" class="tab-btn" role="tab" aria-selected="false" data-vista="historial">Historial</button>
       </div>
       <div id="vista-agentes">
         <div class="ia-agente-lista" id="lista-agentes" role="group" aria-label="Agentes de redacción"></div>
         <p class="ia-desc-agente" id="desc-agente"></p>
       </div>
       <div id="panel-gestor" hidden></div>
-      <div id="panel-historial" hidden></div>
     </div>
 
     <div class="card tarjeta-borde form-section ia-conv" id="conv">
       <div class="form-section-title">${icon("messageCircle")} Conversación</div>
-      <div class="ia-chat ia-chat--hilo" id="chat" aria-live="polite" hidden></div>
-      <div class="ia-caja">
-        <textarea id="f-texto" rows="1" placeholder="${PH_TEXTO}"></textarea>
+      <div class="tabs ia-pestanas" role="tablist">
+        <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-conv="actual">Actual</button>
+        <button type="button" class="tab-btn" role="tab" aria-selected="false" data-conv="historial">Historial</button>
       </div>
+      <div id="vista-actual">
+        <div class="ia-chat ia-chat--hilo" id="chat" aria-live="polite" hidden></div>
+        <div class="ia-caja">
+          <textarea id="f-texto" rows="1" placeholder="${PH_TEXTO}"></textarea>
+        </div>
+      </div>
+      <div id="panel-historial" hidden></div>
     </div>
-    <div class="ia-acciones">
+    <div class="ia-acciones" id="acciones">
       <button type="button" class="ia-accion" id="btn-nueva" title="Empezar una conversación nueva">${icon("plus")}<span>Nueva conversación</span></button>
       <button type="button" class="ia-accion ia-accion--enviar" id="btn-enviar" title="Enviar (Ctrl + Enter)">${icon("send")}<span>Enviar</span></button>
     </div>
@@ -344,6 +349,7 @@ export async function render(container) {
   });
 
   $("#btn-nueva").addEventListener("click", () => {
+    mostrarVistaConv("actual");
     reiniciarConversacion();
     fTexto.value = "";
     ajustarAlto();
@@ -381,7 +387,7 @@ export async function render(container) {
                   pintarAgentes();
                 }
                 pintarConversacion();
-                mostrarVista("agentes"); // al abrir una conversacion se vuelve a los agentes (con el de esa conversacion elegido)
+                mostrarVistaConv("actual"); // al abrir una conversacion se vuelve a «Actual» (y arriba queda elegido el agente de esa conversacion)
                 alFinal();
               },
             },
@@ -411,18 +417,33 @@ export async function render(container) {
   const panelGestor = $("#panel-gestor");
   // Las tres vistas de la tarjeta «Agente»: Agentes | Gestionar | Historial (cambian solo el contenido de la tarjeta)
   function mostrarVista(vista) {
-    for (const b of container.querySelectorAll(".ia-pestanas .tab-btn")) {
+    for (const b of container.querySelectorAll("#tarjeta-agente .ia-pestanas .tab-btn")) {
       const activa = b.dataset.vista === vista;
       b.classList.toggle("active", activa);
       b.setAttribute("aria-selected", String(activa));
     }
     $("#vista-agentes").hidden = vista !== "agentes";
     panelGestor.hidden = vista !== "gestionar";
-    panelHistorial.hidden = vista !== "historial";
     if (vista === "gestionar") pintarGestor();
-    if (vista === "historial") pintarHistorial();
   }
-  for (const b of container.querySelectorAll(".ia-pestanas .tab-btn")) b.addEventListener("click", () => mostrarVista(b.dataset.vista));
+  for (const b of container.querySelectorAll("#tarjeta-agente .ia-pestanas .tab-btn")) b.addEventListener("click", () => mostrarVista(b.dataset.vista));
+
+  // Las dos vistas de la tarjeta «Conversacion»: Actual | Historial. En el historial solo queda «Nueva conversacion» abajo
+  // (lo escrito en la caja se conserva: la vista «Actual» solo se oculta).
+  function mostrarVistaConv(vista) {
+    for (const b of container.querySelectorAll("#conv .ia-pestanas .tab-btn")) {
+      const activa = b.dataset.conv === vista;
+      b.classList.toggle("active", activa);
+      b.setAttribute("aria-selected", String(activa));
+    }
+    if (vista === "historial") mic?.detener();
+    $("#vista-actual").hidden = vista !== "actual";
+    panelHistorial.hidden = vista !== "historial";
+    $("#acciones").classList.toggle("solo-nueva", vista === "historial");
+    if (vista === "historial") pintarHistorial();
+    else ajustarAlto(); // la caja estaba oculta: se recalcula su alto
+  }
+  for (const b of container.querySelectorAll("#conv .ia-pestanas .tab-btn")) b.addEventListener("click", () => mostrarVistaConv(b.dataset.conv));
 
   let cerrarMenuMas = () => {};
 

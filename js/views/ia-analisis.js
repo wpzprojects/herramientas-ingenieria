@@ -73,7 +73,6 @@ export async function render(container) {
       <div class="tabs ia-pestanas" role="tablist">
         <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-vista="agentes">Agentes</button>
         <button type="button" class="tab-btn" role="tab" aria-selected="false" data-vista="gestionar">Gestionar</button>
-        <button type="button" class="tab-btn" role="tab" aria-selected="false" data-vista="historial">Historial</button>
       </div>
       <div id="vista-agentes">
         <div class="ia-agente-lista" id="lista-agentes" role="group" aria-label="Agentes de análisis"></div>
@@ -81,18 +80,24 @@ export async function render(container) {
         <p class="text-muted text-sm" id="linea-modelo" style="margin:var(--space-2) 0 0">Modelo: <span class="badge" id="badge-modelo">${escapeHtml(ajustes0.modelo)}</span> · <a href="#/ia/configuracion">Cambiar en Configuración</a></p>
       </div>
       <div id="panel-config" hidden></div>
-      <div id="panel-historial" hidden></div>
     </div>
 
     <div class="card tarjeta-borde form-section ia-conv" id="conv">
       <div class="form-section-title">${icon("messageCircle")} Conversación</div>
-      <div class="ia-chat ia-chat--hilo" id="chat" aria-live="polite"></div>
-      <div class="ia-chips" id="ejemplos" aria-label="Ejemplos de preguntas"></div>
-      <div class="ia-caja">
-        <textarea id="f-pregunta" rows="1" placeholder="Ej.: analiza pérdidas y regulación de una línea de 34.5 kV, 9.9 MW, fp 0.95, 5.2 km con ACSR 4/0 y compara con 336.4…"></textarea>
+      <div class="tabs ia-pestanas" role="tablist">
+        <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-conv="actual">Actual</button>
+        <button type="button" class="tab-btn" role="tab" aria-selected="false" data-conv="historial">Historial</button>
       </div>
+      <div id="vista-actual">
+        <div class="ia-chat ia-chat--hilo" id="chat" aria-live="polite"></div>
+        <div class="ia-chips" id="ejemplos" aria-label="Ejemplos de preguntas"></div>
+        <div class="ia-caja">
+          <textarea id="f-pregunta" rows="1" placeholder="Ej.: analiza pérdidas y regulación de una línea de 34.5 kV, 9.9 MW, fp 0.95, 5.2 km con ACSR 4/0 y compara con 336.4…"></textarea>
+        </div>
+      </div>
+      <div id="panel-historial" hidden></div>
     </div>
-    <div class="ia-acciones">
+    <div class="ia-acciones" id="acciones">
       <button type="button" class="ia-accion" id="btn-nueva" title="Empezar una conversación nueva">${icon("plus")}<span>Nueva conversación</span></button>
       <button type="button" class="ia-accion ia-accion--enviar" id="btn-enviar" title="Enviar (Ctrl + Enter)">${icon("send")}<span>Enviar</span></button>
     </div>
@@ -297,6 +302,7 @@ export async function render(container) {
   });
 
   $("#btn-nueva").addEventListener("click", () => {
+    mostrarVistaConv("actual");
     conv = null;
     ctx = crearContexto(obtenerAjustes().maxCalculos);
     pintarChat();
@@ -391,7 +397,7 @@ export async function render(container) {
                 conv.log = ctx.log;
                 pintarChat();
                 pintarReporte();
-                mostrarVista("agentes"); // al abrir una conversacion se vuelve a los agentes (con el de esa conversacion elegido)
+                mostrarVistaConv("actual"); // al abrir una conversacion se vuelve a «Actual» (y arriba queda elegido el agente de esa conversacion)
                 chat.scrollIntoView({ behavior: "smooth", block: "start" });
               },
             },
@@ -610,18 +616,32 @@ export async function render(container) {
 
   // Las tres vistas de la tarjeta «Agente»: Agentes | Gestionar | Historial (cambian solo el contenido de la tarjeta)
   function mostrarVista(vista) {
-    for (const b of container.querySelectorAll(".ia-pestanas .tab-btn")) {
+    for (const b of container.querySelectorAll("#tarjeta-agente .ia-pestanas .tab-btn")) {
       const activa = b.dataset.vista === vista;
       b.classList.toggle("active", activa);
       b.setAttribute("aria-selected", String(activa));
     }
     $("#vista-agentes").hidden = vista !== "agentes";
     panelConfig.hidden = vista !== "gestionar";
-    panelHistorial.hidden = vista !== "historial";
     if (vista === "gestionar") pintarConfig();
-    if (vista === "historial") pintarHistorial();
   }
-  for (const b of container.querySelectorAll(".ia-pestanas .tab-btn")) b.addEventListener("click", () => mostrarVista(b.dataset.vista));
+  for (const b of container.querySelectorAll("#tarjeta-agente .ia-pestanas .tab-btn")) b.addEventListener("click", () => mostrarVista(b.dataset.vista));
+
+  // Las dos vistas de la tarjeta «Conversacion»: Actual | Historial. En el historial solo queda «Nueva conversacion» abajo
+  // (lo escrito en la caja se conserva: la vista «Actual» solo se oculta).
+  function mostrarVistaConv(vista) {
+    for (const b of container.querySelectorAll("#conv .ia-pestanas .tab-btn")) {
+      const activa = b.dataset.conv === vista;
+      b.classList.toggle("active", activa);
+      b.setAttribute("aria-selected", String(activa));
+    }
+    $("#vista-actual").hidden = vista !== "actual";
+    panelHistorial.hidden = vista !== "historial";
+    $("#acciones").classList.toggle("solo-nueva", vista === "historial");
+    if (vista === "historial") pintarHistorial();
+    else ajustarAlto(); // la caja estaba oculta: se recalcula su alto
+  }
+  for (const b of container.querySelectorAll("#conv .ia-pestanas .tab-btn")) b.addEventListener("click", () => mostrarVistaConv(b.dataset.conv));
 
   pintarBadge();
   pintarEjemplos();
