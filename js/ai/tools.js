@@ -871,6 +871,363 @@ const T_BARRIDO = {
   ],
 };
 
+// ---------------------------------------------------------------- herramientas de diseno (opcionales)
+// Meta-herramientas: no traen formulas nuevas; combinan las calculadoras de arriba para responder preguntas de DISENO
+// (que conductor cumple, cumple este conductor, que valor deja el resultado justo en el limite). Son `opcional`: el agente
+// estandar NO las usa; solo un agente propio las activa. Para funcionar el agente necesita tambien habilitadas las
+// calculadoras que ellas usan (igual que el barrido).
+
+const DESC_LIMITES =
+  "Referencias de diseño de la aplicación (NO son límite normativo): pérdidas 1 % óptimo / 3 % aceptable; regulación 5 % óptimo / 10 % aceptable. " +
+  "Si el usuario no da un límite se usa el «aceptable» y hay que decirlo.";
+
+const CAMPOS_CASO = [
+  ...sinDefecto(CAMPOS_LINEA),
+  N("factor_carga", "Factor de carga Fc (necesario para evaluar las pérdidas)", { e: "Factor de carga", min: 0, max: 1 }),
+  I("conductores_por_fase", "Conductores por fase (haz); por defecto 1", { e: "Conductores por fase", min: 1, max: 6 }),
+  N("dab_m", "Distancia entre fases A-B (necesaria para evaluar la regulación)", { e: "Distancia A-B", u: "m", min: 0, minExcl: true }),
+  N("dac_m", "Distancia entre fases A-C (regulación)", { e: "Distancia A-C", u: "m", min: 0, minExcl: true }),
+  N("dbc_m", "Distancia entre fases B-C (regulación)", { e: "Distancia B-C", u: "m", min: 0, minExcl: true }),
+  N("perdidas_max_pct", `Límite de pérdidas (%). ${DESC_LIMITES}`, { e: "Pérdidas máximas", u: "%", min: 0, minExcl: true, max: 100 }),
+  N("regulacion_max_pct", "Límite de caída de tensión (%). Por defecto 10 (aceptable)", { e: "Caída de tensión máxima", u: "%", min: 0, minExcl: true, max: 100 }),
+  N("corriente_falla_ka", "Corriente de falla que el conductor debe soportar (activa el criterio de cortocircuito)", { e: "Corriente de falla a soportar", u: "kA", min: 0, minExcl: true }),
+  N("tiempo_s", "Tiempo de despeje de la falla (por defecto 0.3)", { e: "Tiempo de despeje", u: "s", min: 0, minExcl: true, max: 60 }),
+  N("temp_falla_c", "Temperatura máxima admisible en falla (por defecto 250)", { e: "Temperatura en falla", u: "°C", min: 0, max: 500 }),
+  N("ta_c", "Solo red Aerea, ampacidad: temperatura ambiente (por defecto 25)", { e: "Temperatura ambiente", u: "°C", min: -100, max: 1000 }),
+  N("vw_ms", "Solo red Aerea, ampacidad: velocidad del viento (por defecto 0.61)", { e: "Velocidad del viento", u: "m/s", min: 0, max: 100 }),
+];
+
+const CRITERIOS_TXT =
+  "Se evalúan SOLO los criterios para los que hay datos: pérdidas (tensión, factor de potencia, dato de partida, longitud y factor de carga), " +
+  "regulación (lo mismo, sin factor de carga, más las tres distancias entre fases), ampacidad (solo red Aerea; necesita el dato de partida para conocer la corriente de carga) " +
+  "y cortocircuito (con corriente_falla_ka). Hace falta al menos un criterio. Una línea de un solo tramo.";
+
+const calcDe = (nombre) => CALCULADORAS.find((c) => c.nombre === nombre);
+
+function exigirPermitida(ctx, nombre) {
+  if (ctx.permitidas && !ctx.permitidas.has(nombre)) {
+    throw new ErrorHerramienta(`Para esto el agente necesita también la calculadora "${nombre}", que no está habilitada. Disponibles: ${disponibles(ctx).join(", ")}.`);
+  }
+}
+
+const tomar = (v, claves) => Object.fromEntries(claves.filter((k) => v[k] !== undefined).map((k) => [k, v[k]]));
+
+/** Corriente de carga (A) a partir del dato de partida. */
+function corrienteCarga(v) {
+  if (v.corriente_a !== undefined) return v.corriente_a;
+  const { potenciaMw } = datoPartida(v);
+  return (potenciaMw * 1000) / (Math.sqrt(3) * v.tension_kv * v.factor_potencia);
+}
+
+/** Que criterios se pueden evaluar con los datos recibidos. */
+function criteriosActivos(v, red) {
+  const hayLinea = v.tension_kv !== undefined && v.factor_potencia !== undefined && ["potencia_mw", "potencia_mva", "corriente_a"].some((k) => v[k] !== undefined);
+  const c = { perdidas: false, regulacion: false, ampacidad: false, cortocircuito: false, faltantes: [] };
+  if (hayLinea && v.longitud_km !== undefined && v.factor_carga !== undefined) c.perdidas = true;
+  if (hayLinea && v.longitud_km !== undefined && v.dab_m !== undefined && v.dac_m !== undefined && v.dbc_m !== undefined) c.regulacion = true;
+  if (hayLinea && red === "Aerea") c.ampacidad = true;
+  if (v.corriente_falla_ka !== undefined) c.cortocircuito = true;
+  if (v.perdidas_max_pct !== undefined && !c.perdidas) c.faltantes.push('"perdidas_max_pct" se dio pero faltan datos para las pérdidas (tensión, factor de potencia, dato de partida, longitud_km y factor_carga)');
+  if (v.regulacion_max_pct !== undefined && !c.regulacion) c.faltantes.push('"regulacion_max_pct" se dio pero faltan datos para la regulación (tensión, factor de potencia, dato de partida, longitud_km y dab_m, dac_m, dbc_m)');
+  if (c.faltantes.length) throw new ErrorHerramienta(`Faltan datos: ${c.faltantes.join("; ")}.`);
+  if (!(c.perdidas || c.regulacion || c.ampacidad || c.cortocircuito)) {
+    throw new ErrorHerramienta(
+      "No hay datos para ningún criterio: da los de pérdidas o regulación (línea + longitud + factor_carga o distancias), el dato de partida (ampacidad, red Aerea) o corriente_falla_ka (cortocircuito)."
+    );
+  }
+  return c;
+}
+
+/** Evalua UN conductor del catalogo contra los criterios activos. Devuelve el valor y el cumplimiento de cada criterio. */
+async function evaluarConductor(v, red, material, calibre, referencia, act) {
+  const salida = { criterios: [] };
+  const linea = tomar(v, ["tension_kv", "factor_potencia", "potencia_mw", "potencia_mva", "corriente_a", "longitud_km", "conductores_por_fase"]);
+  const cond = { red, material, calibre, ...(referencia ? { referencia } : {}) };
+  const valor = (corrida, clave) => corrida.resultados.find((r) => r.clave === clave)?.valor;
+
+  if (act.perdidas) {
+    const c = await correrCalculo(calcDe("calcular_perdidas"), { ...linea, factor_carga: v.factor_carga, ...cond });
+    const limite = v.perdidas_max_pct ?? P_ACE;
+    const x = valor(c, "perdidas_pct");
+    salida.criterios.push({ clave: "perdidas_pct", nombre: "Pérdidas", valor: x, unidad: "%", dec: 2, limite, sentido: "max", cumple: x <= limite });
+  }
+  if (act.regulacion) {
+    const c = await correrCalculo(calcDe("calcular_regulacion"), { ...linea, ...tomar(v, ["dab_m", "dac_m", "dbc_m"]), ...cond });
+    const limite = v.regulacion_max_pct ?? R_ACE;
+    const x = valor(c, "caida_tension_pct");
+    salida.criterios.push({ clave: "caida_tension_pct", nombre: "Caída de tensión", valor: x, unidad: "%", dec: 2, limite, sentido: "max", cumple: x <= limite });
+  }
+  if (act.ampacidad) {
+    const c = await correrCalculo(calcDe("calcular_ampacidad_aerea"), { tipo: material, calibre, ...(referencia ? { referencia } : {}), ...tomar(v, ["ta_c", "vw_ms"]) });
+    const x = valor(c, "ampacidad_a");
+    const carga = corrienteCarga(v);
+    salida.criterios.push({ clave: "ampacidad_a", nombre: "Ampacidad", valor: x, unidad: "A", dec: 1, limite: carga, limiteEtiqueta: "corriente de carga", sentido: "min", cumple: x >= carga });
+  }
+  if (act.cortocircuito) {
+    const c = await correrCalculo(calcDe("calcular_cortocircuito"), { ...cond, ...tomar(v, ["tiempo_s", "temp_falla_c"]) });
+    const x = valor(c, "capacidad_cc_ka");
+    salida.criterios.push({ clave: "capacidad_cc_ka", nombre: "Corriente de cortocircuito admisible", valor: x, unidad: "kA", dec: 2, limite: v.corriente_falla_ka, limiteEtiqueta: "corriente de falla", sentido: "min", cumple: x >= v.corriente_falla_ka });
+  }
+  salida.cumple = salida.criterios.every((k) => k.cumple);
+  return salida;
+}
+
+/** Calculadoras que hay que tener habilitadas segun los criterios activos. */
+const CALCS_DE_CRITERIOS = { perdidas: "calcular_perdidas", regulacion: "calcular_regulacion", ampacidad: "calcular_ampacidad_aerea", cortocircuito: "calcular_cortocircuito" };
+function exigirCalculadoras(ctx, act) {
+  for (const [k, nombre] of Object.entries(CALCS_DE_CRITERIOS)) if (act[k]) exigirPermitida(ctx, nombre);
+}
+
+const resCriterio = (k) => [res(k.clave, k.nombre, k.valor, k.unidad, k.dec)];
+const textoCriterio = (k) => `${k.nombre} ${k.sentido === "max" ? "≤" : "≥"} ${redondear(k.limite)} ${k.unidad}`;
+
+/** Filas del catalogo de una red+material, una por calibre (la primera, como hacen las calculadoras), de menor a mayor area. */
+async function candidatosDe(red, material) {
+  if (red === "Aerea") {
+    const desnudos = await loadData("conductores-desnudos");
+    const tipos = distinct(desnudos, "tipo");
+    const tipo = tipos.find((t) => norm(t) === norm(material));
+    if (!tipo) throw new ErrorHerramienta(`El material/tipo "${material}" no existe en conductores desnudos. Opciones: ${tipos.join(", ")}.`);
+    const vistos = new Set();
+    const lista = desnudos.filter((c) => c.tipo === tipo && Number.isFinite(c.area_seccion_aluminio_mm2) && !vistos.has(c.calibre_awg_kcmil) && vistos.add(c.calibre_awg_kcmil));
+    return { material: tipo, filas: lista.map((f) => ({ calibre: f.calibre_awg_kcmil, area: f.area_seccion_aluminio_mm2, etiqueta: `${tipo} ${f.calibre_awg_kcmil} (${f.nombre_clave})` })).sort((a, b) => a.area - b.area) };
+  }
+  const xlpe = await loadData("conductores-xlpe");
+  const materiales = distinct(xlpe, "material_conductor");
+  const mat = materiales.find((m) => norm(m) === norm(material));
+  if (!mat) throw new ErrorHerramienta(`El material "${material}" no existe en el catálogo XLPE. Opciones: ${materiales.join(", ")}.`);
+  const vistos = new Set();
+  const lista = xlpe.filter((c) => c.material_conductor === mat && Number.isFinite(c.area_conductor_mm2) && !vistos.has(c.calibre_awg_kcmil) && vistos.add(c.calibre_awg_kcmil));
+  return { material: mat, filas: lista.map((f) => ({ calibre: f.calibre_awg_kcmil, area: f.area_conductor_mm2, etiqueta: `XLPE ${mat} ${f.calibre_awg_kcmil}` })).sort((a, b) => a.area - b.area) };
+}
+
+const CAMPOS_RED_MATERIAL = [
+  S("red", "Tipo de red: 'Aerea' (catálogo de conductores desnudos) o 'Subterranea' (catálogo XLPE)", { e: "Red", req: true, enum: ["Aerea", "Subterranea"] }),
+  S("material", "Aerea: familia (ACSR, AAAC, ACAR, AAC o ACSS). Subterranea: material (Cobre o Aluminio)", { e: "Material", req: true }),
+];
+
+const T_DIMENSIONAR = {
+  nombre: "dimensionar_conductor",
+  tipo: "diseno",
+  titulo: "Dimensionar conductor",
+  grupo: "Análisis",
+  opcional: true,
+  descripcion:
+    "Encuentra el conductor MÁS PEQUEÑO del catálogo (de una familia o material) que cumple TODOS los criterios pedidos, evaluando cada calibre con las calculadoras. " +
+    `${CRITERIOS_TXT} Devuelve el conductor recomendado, la tabla de todos los calibres evaluados y qué criterios incumple cada uno. ${DESC_LIMITES}`,
+  campos: [...CAMPOS_RED_MATERIAL, ...CAMPOS_CASO],
+  async ejecutar(args, ctx) {
+    const { v, entradas, supuestos } = normalizar(this.campos, args);
+    const act = criteriosActivos(v, v.red);
+    exigirCalculadoras(ctx, act);
+    consumir(ctx, 1);
+    const { material, filas } = await candidatosDe(v.red, v.material);
+    if (!filas.length) throw new ErrorHerramienta("No hay conductores con área en el catálogo para esa red y material.");
+
+    const evaluados = [];
+    const noEvaluables = [];
+    for (const f of filas) {
+      try {
+        evaluados.push({ f, r: await evaluarConductor(v, v.red, material, f.calibre, null, act) });
+      } catch (e) {
+        if (!(e instanceof ErrorHerramienta)) throw e;
+        noEvaluables.push(`${f.etiqueta}: ${e.message}`);
+      }
+    }
+    if (!evaluados.length) throw new ErrorHerramienta(`No se pudo evaluar ningún calibre. ${noEvaluables[0] || ""}`);
+
+    const criterios = evaluados[0].r.criterios.map(textoCriterio);
+    const notas = [`Se evaluaron ${evaluados.length} calibres de ${material} (${v.red === "Aerea" ? "conductores desnudos" : "cables XLPE"}), de menor a mayor área; criterios: ${criterios.join(" · ")}.`];
+    if (act.perdidas) notas.push(nota(P_OPT, P_ACE, "las pérdidas"));
+    if (act.regulacion) notas.push(nota(R_OPT, R_ACE, "la caída de tensión"));
+    if (act.ampacidad) notas.push("Ampacidad con las condiciones de la calculadora aérea (por defecto o las dadas), comparada con la corriente de carga.");
+    if (act.cortocircuito) notas.push("Cortocircuito: capacidad admisible del conductor comparada con la corriente de falla dada.");
+    if (noEvaluables.length) notas.push(`No evaluables (${noEvaluables.length}): ${noEvaluables.slice(0, 3).join(" | ")}${noEvaluables.length > 3 ? " …" : ""}`);
+    notas.push("De cada calibre se usó la primera referencia del catálogo, igual que las calculadoras.");
+
+    // una fila del reporte por calibre evaluado (la tabla del reporte sale de aqui, no de texto de la IA)
+    for (const { f, r } of evaluados) {
+      ctx.log.push({
+        id: ctx.siguienteId++,
+        herramienta: this.nombre,
+        titulo: this.titulo,
+        barrido: true,
+        entradas: [...entradas, ent("conductor", "Conductor", f.etiqueta)],
+        supuestos,
+        notas,
+        resultados: [...r.criterios.flatMap(resCriterio), res("cumple", "Cumple todos los criterios", r.cumple)],
+      });
+    }
+
+    const elegido = evaluados.find((e) => e.r.cumple);
+    const fila = ({ f, r }) => ({
+      conductor: f.etiqueta,
+      area_mm2: redondear(f.area),
+      cumple: r.cumple,
+      valores: Object.fromEntries(r.criterios.map((k) => [k.clave, redondear(k.valor)])),
+      ...(r.cumple ? {} : { incumple: r.criterios.filter((k) => !k.cumple).map(textoCriterio) }),
+    });
+    return {
+      ok: true,
+      criterios_usados: criterios,
+      conductor_recomendado: elegido ? fila(elegido) : null,
+      ...(elegido ? {} : { mensaje: "Ningún calibre del catálogo cumple todos los criterios juntos; ver los valores de cada uno (por ejemplo, considera más conductores por fase, otra familia o relajar un criterio)." }),
+      calibres_evaluados: evaluados.map(fila),
+      notas,
+    };
+  },
+};
+
+const T_VERIFICAR = {
+  nombre: "verificar_conductor",
+  tipo: "diseno",
+  titulo: "Verificar conductor",
+  grupo: "Análisis",
+  opcional: true,
+  descripcion:
+    "Verifica UN conductor concreto del catálogo contra todos los criterios para los que hay datos y dice, criterio por criterio, su valor, el límite, el margen y si cumple. " +
+    `${CRITERIOS_TXT} ${DESC_LIMITES}`,
+  campos: [
+    ...CAMPOS_RED_MATERIAL,
+    S("calibre", "Calibre del catálogo, por ejemplo '4/0', '336.4' o '500'. Usa buscar_conductor si dudas", { e: "Calibre", req: true }),
+    S("referencia", "Solo red Aerea (opcional): nombre clave de la referencia cuando el calibre tiene varias", { e: "Referencia" }),
+    ...CAMPOS_CASO,
+  ],
+  async ejecutar(args, ctx) {
+    const { v, entradas, supuestos } = normalizar(this.campos, args);
+    const act = criteriosActivos(v, v.red);
+    exigirCalculadoras(ctx, act);
+    consumir(ctx, 1);
+    const { material, filas } = await candidatosDe(v.red, v.material);
+    const fila = filas.find((f) => normCalibre(f.calibre) === normCalibre(v.calibre));
+    if (!fila) throw new ErrorHerramienta(`El calibre "${v.calibre}" no existe para ${material}. Calibres disponibles: ${filas.map((f) => f.calibre).join(", ")}.`);
+    const r = await evaluarConductor(v, v.red, material, fila.calibre, v.referencia, act);
+    const notas = [];
+    if (act.perdidas) notas.push(nota(P_OPT, P_ACE, "las pérdidas"));
+    if (act.regulacion) notas.push(nota(R_OPT, R_ACE, "la caída de tensión"));
+    ctx.log.push({
+      id: ctx.siguienteId++,
+      herramienta: this.nombre,
+      titulo: this.titulo,
+      entradas: [...entradas, ent("conductor", "Conductor", fila.etiqueta)],
+      supuestos,
+      notas,
+      resultados: [...r.criterios.flatMap(resCriterio), res("cumple", "Cumple todos los criterios", r.cumple)],
+    });
+    return {
+      ok: true,
+      conductor: fila.etiqueta,
+      cumple_todos: r.cumple,
+      criterios: r.criterios.map((k) => ({
+        criterio: k.nombre,
+        valor: redondear(k.valor),
+        unidad: k.unidad,
+        limite: `${k.sentido === "max" ? "≤" : "≥"} ${redondear(k.limite)} ${k.unidad}${k.limiteEtiqueta ? ` (${k.limiteEtiqueta})` : ""}`,
+        margen: redondear(k.sentido === "max" ? k.limite - k.valor : k.valor - k.limite),
+        cumple: k.cumple,
+      })),
+      ...(notas.length ? { notas } : {}),
+    };
+  },
+};
+
+const CALCS_LIMITE = ["calcular_perdidas", "calcular_regulacion", "calcular_cortocircuito", "calcular_ampacidad_aerea", "calcular_ampacidad_subterranea"];
+
+const T_LIMITE = {
+  nombre: "resolver_valor_limite",
+  tipo: "diseno",
+  titulo: "Buscar valor límite",
+  grupo: "Análisis",
+  opcional: true,
+  descripcion:
+    "Solucionador inverso: encuentra el valor de UN parámetro numérico de una calculadora con el que un resultado queda justo en un valor objetivo " +
+    "(por ejemplo la longitud máxima para una caída de tensión de 5 %, o la potencia máxima para un 3 % de pérdidas). " +
+    "Los demás parámetros van fijos en parametros_json (SIN el que se busca). Se busca dentro de [minimo, maximo] por bisección y se asume que el resultado crece o decrece de forma continua con el parámetro; " +
+    "si el objetivo no está entre los resultados de los dos extremos lo avisa.",
+  campos: [
+    S("herramienta", "Calculadora a usar", { req: true, enum: CALCS_LIMITE }),
+    S("parametros_json", "Objeto JSON, escrito como texto, con los parámetros fijos de esa calculadora (mismos nombres que en la calculadora)", { req: true }),
+    S("parametro", "Nombre del parámetro numérico que se busca (por ejemplo longitud_km o potencia_mw)", { req: true }),
+    S("resultado", "Clave del resultado que debe llegar al objetivo (por ejemplo caida_tension_pct, perdidas_pct, capacidad_cc_ka, ampacidad_a)", { req: true }),
+    N("valor_objetivo", "Valor que debe tener el resultado", { req: true }),
+    N("minimo", "Extremo inferior del rango de búsqueda del parámetro", { req: true }),
+    N("maximo", "Extremo superior del rango de búsqueda del parámetro", { req: true }),
+  ],
+  async ejecutar(args, ctx) {
+    const { v } = normalizar(this.campos, args);
+    const tool = calcDe(v.herramienta);
+    exigirPermitida(ctx, tool.nombre);
+    let base;
+    try {
+      base = JSON.parse(v.parametros_json);
+    } catch {
+      throw new ErrorHerramienta('"parametros_json" no es un JSON válido (debe ser un objeto escrito como texto).');
+    }
+    if (!base || typeof base !== "object" || Array.isArray(base)) throw new ErrorHerramienta('"parametros_json" debe ser un objeto JSON.');
+    const campo = tool.campos.find((c) => c.n === v.parametro);
+    if (!campo || (campo.t !== "number" && campo.t !== "integer")) {
+      throw new ErrorHerramienta(`"${v.parametro}" no es un parámetro numérico de ${tool.nombre}. Numéricos: ${tool.campos.filter((c) => c.t === "number" || c.t === "integer").map((c) => c.n).join(", ")}.`);
+    }
+    if (!(v.minimo < v.maximo)) throw new ErrorHerramienta('"minimo" debe ser menor que "maximo".');
+    delete base[v.parametro];
+    consumir(ctx, 1);
+
+    const evaluar = async (x) => {
+      let c;
+      try {
+        c = await correrCalculo(tool, { ...base, [v.parametro]: x });
+      } catch (e) {
+        if (e instanceof ErrorHerramienta) throw new ErrorHerramienta(`Con ${v.parametro} = ${redondear(x)}: ${e.message}`);
+        throw e;
+      }
+      const r = c.resultados.find((q) => q.clave === v.resultado);
+      if (!r) throw new ErrorHerramienta(`"${v.resultado}" no es un resultado de ${tool.nombre}. Resultados: ${c.resultados.map((q) => q.clave).join(", ")}.`);
+      if (typeof r.valor !== "number") throw new ErrorHerramienta(`"${v.resultado}" no es un resultado numérico.`);
+      return { corrida: c, y: r.valor };
+    };
+
+    let lo = v.minimo;
+    let hi = v.maximo;
+    const fLo = (await evaluar(lo)).y - v.valor_objetivo;
+    const fHi = (await evaluar(hi)).y - v.valor_objetivo;
+    if (fLo === 0 || fHi === 0) {
+      lo = hi = fLo === 0 ? lo : hi;
+    } else if (Math.sign(fLo) === Math.sign(fHi)) {
+      throw new ErrorHerramienta(
+        `El objetivo ${v.valor_objetivo} no está dentro del rango: con ${v.parametro} = ${redondear(v.minimo)} el resultado es ${redondear(fLo + v.valor_objetivo)} y con ${redondear(v.maximo)} es ${redondear(fHi + v.valor_objetivo)}. Amplía el rango o revisa el parámetro y el resultado elegidos.`
+      );
+    } else {
+      const signoLo = Math.sign(fLo);
+      for (let i = 0; i < 80 && hi - lo > 1e-12 * Math.max(1, Math.abs(hi)); i++) {
+        const mid = (lo + hi) / 2;
+        const f = (await evaluar(mid)).y - v.valor_objetivo;
+        if (f === 0) {
+          lo = hi = mid;
+          break;
+        }
+        if (Math.sign(f) === signoLo) lo = mid;
+        else hi = mid;
+      }
+    }
+    const x = redondear((lo + hi) / 2);
+    const fin = await evaluar(x); // la solucion redondeada a 6 cifras: lo que se muestra y se registra sale de este calculo
+    ctx.log.push({ id: ctx.siguienteId++, ...fin.corrida, barrido: true, parametroBarrido: v.parametro });
+    return {
+      ok: true,
+      herramienta: tool.nombre,
+      parametro_buscado: v.parametro,
+      valor_encontrado: x,
+      resultado: v.resultado,
+      resultado_en_ese_valor: redondear(fin.y),
+      valor_objetivo: v.valor_objetivo,
+      parametros_fijos: base,
+      nota: "Solución por bisección; el resultado en ese valor lo entrega la propia calculadora (parámetro redondeado a 6 cifras).",
+    };
+  },
+};
+
+const DISENO = [T_DIMENSIONAR, T_VERIFICAR, T_LIMITE];
+
 // ---------------------------------------------------------------- varios (opcionales)
 // Modulos de la seccion Varios. Son `opcional`: el agente estandar NO los usa; un agente propio los activa con su casilla.
 // Quedan fuera de CALCULADORAS, asi que el barrido de parametros tampoco los ofrece.
@@ -1090,7 +1447,7 @@ const VARIOS = [T_CONVERTIR_UNIDADES, T_CONVERTIR_COORDENADAS];
 
 // ---------------------------------------------------------------- registro y ejecucion
 
-const REGISTRO = Object.fromEntries([...CALCULADORAS, T_BUSCAR_CONDUCTOR, T_BUSCAR_TUBERIA, T_BARRIDO, ...VARIOS].map((t) => [t.nombre, t]));
+const REGISTRO = Object.fromEntries([...CALCULADORAS, T_BUSCAR_CONDUCTOR, T_BUSCAR_TUBERIA, T_BARRIDO, ...DISENO, ...VARIOS].map((t) => [t.nombre, t]));
 
 // Cada agente elige cuales herramientas puede usar. Una herramienta con `opcional: true` no forma parte de las del
 // agente estandar (queda desmarcada hasta que un agente propio la active); `grupo` la ubica en el formulario.
@@ -1120,10 +1477,11 @@ export function declaraciones(permitidas) {
   const ok = permitidas ? new Set(permitidas) : null;
   const calcs = CALCULADORAS.filter((t) => !ok || ok.has(t.nombre)).map((t) => t.nombre);
   return Object.values(REGISTRO)
-    .filter((t) => (!ok || ok.has(t.nombre)) && (t.tipo !== "barrido" || calcs.length))
+    .filter((t) => (!ok || ok.has(t.nombre)) && ((t.tipo !== "barrido" && t.tipo !== "diseno") || calcs.length))
     .map((t) => {
       const parameters = esquemaDe(t.campos);
       if (t.tipo === "barrido") parameters.properties.herramienta.enum = calcs;
+      if (t.nombre === "resolver_valor_limite") parameters.properties.herramienta.enum = CALCS_LIMITE.filter((n) => calcs.includes(n));
       return { name: t.nombre, description: t.descripcion, parameters };
     });
 }
@@ -1257,6 +1615,7 @@ export async function ejecutarLlamada(nombre, args, ctx) {
       ctx.log.push({ id: ctx.siguienteId++, herramienta: nombre, titulo: tool.titulo, consulta: true });
       return { ok: true, ...salida };
     }
+    if (tool.tipo === "diseno") return await tool.ejecutar(args, ctx);
     return await ejecutarBarrido(args, ctx);
   } catch (e) {
     if (!(e instanceof ErrorHerramienta)) {

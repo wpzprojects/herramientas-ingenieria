@@ -497,8 +497,8 @@ await seccion("Análisis con calculadoras rediseñado", async () => {
   ok(filas[0].classList.contains("editando") && !!ed.querySelector(".callout-info"), "la fila queda marcada y se avisa que el estándar es de solo lectura");
   ok(ed.querySelectorAll("label[data-info]").length === 3 && ed.querySelectorAll(".hint").length === 0, "las ayudas (temperatura, herramientas, reporte) son botones «i», sin textos .hint");
   const chipsH = [...ed.querySelectorAll(".ia-chip--herr")];
-  ok(chipsH.length === 11 && !ed.querySelector("input[data-h]") && chipsH.every((c) => c.tagName === "BUTTON" && c.disabled), "las herramientas son etiquetas (botones), ya no casillas, y en solo lectura están deshabilitadas");
-  ok(chipsH.filter((c) => c.getAttribute("aria-pressed") === "true").length === 9 && chipsH.filter((c) => c.getAttribute("aria-pressed") === "false").length === 2, "el agente estándar tiene 9 marcadas (las de siempre) y 2 sin marcar (Varios)");
+  ok(chipsH.length === 14 && !ed.querySelector("input[data-h]") && chipsH.every((c) => c.tagName === "BUTTON" && c.disabled), "las herramientas son etiquetas (botones), ya no casillas, y en solo lectura están deshabilitadas");
+  ok(chipsH.filter((c) => c.getAttribute("aria-pressed") === "true").length === 9 && chipsH.filter((c) => c.getAttribute("aria-pressed") === "false").length === 5, "el agente estándar tiene 9 marcadas (las de siempre) y 5 sin marcar (las 3 de diseño de Análisis y las 2 de Varios)");
   ok(["Calculadoras", "Catálogos", "Análisis", "Varios"].every((g) => ed.querySelector(`[role="group"][aria-label="${g}"]`)), "siguen agrupadas por categoría: Calculadoras, Catálogos, Análisis y Varios");
   ok(chipsH.every((c) => c.title.length > 10), "cada una conserva su descripción al pasar el cursor");
   ed.querySelector("#g-cerrar").click();
@@ -509,7 +509,7 @@ await seccion("Análisis con calculadoras rediseñado", async () => {
   await espera(150);
   ok(pc.querySelectorAll("#config-lista .ia-historial-item").length === 2 && /Editando:/.test(texto(pc.querySelector(".ia-editor-cabecera"))) && qa(".ia-editor label[data-info]").length === 4, "«Duplicar» crea la copia y abre su editor («Editando: …», con la ayuda de las instrucciones)");
   const chipsC = [...pc.querySelectorAll(".ia-chip--herr")];
-  ok(chipsC.length === 11 && chipsC.every((c) => !c.disabled), "en una copia editable las etiquetas de herramientas están activas");
+  ok(chipsC.length === 14 && chipsC.every((c) => !c.disabled), "en una copia editable las etiquetas de herramientas están activas");
   const unidades = chipsC.find((c) => /unidades/i.test(c.textContent));
   const perdidas = chipsC.find((c) => /Pérdidas/.test(c.textContent));
   ok(unidades.getAttribute("aria-pressed") === "false" && !unidades.querySelector(".ia-chip-check").checkVisibility() && perdidas.getAttribute("aria-pressed") === "true" && perdidas.querySelector(".ia-chip-check").checkVisibility(), "la ✓ solo se ve en las marcadas");

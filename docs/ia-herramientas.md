@@ -87,16 +87,24 @@ const T_OCUPACION = {
 
 **Campos con lista de objetos (2026-09-19).** Un campo puede ser una lista de objetos declarando `itemCampos` (los campos de cada elemento; `esquemaDe` lo convierte en un esquema anidado para Gemini y `normalizar` valida cada elemento, con errores del tipo `tramos[2]: "longitud_km" debe ser…`). Lo usan `tramos` (pérdidas y regulación), `grupos` (ocupación) y `puntos` (coordenadas). Regla común: lo que un tramo no indica se toma del nivel superior (así una línea de 3 tramos con el mismo conductor solo repite las longitudes). Helpers en `tools.js`: `campoTramos`, `listaTramos`, `volcarTramo` (antepone «Tramo N —» a entradas y notas), `datoPartida`. Los campos de nivel superior se conservan para el caso de un solo tramo/tipo/punto, de modo que las llamadas antiguas y `barrer_parametro` siguen funcionando.
 
-## 4. Herramientas actuales (11)
+## 4. Herramientas actuales (14)
 
 | Herramienta | Tipo | Grupo en Agentes | Agente estándar |
 |---|---|---|---|
 | `calcular_perdidas`, `calcular_regulacion`, `calcular_cortocircuito`, `calcular_ampacidad_aerea`, `calcular_ampacidad_subterranea`, `calcular_ocupacion_ductos` | calculo | Calculadoras | Sí |
 | `buscar_conductor`, `buscar_tuberia` | consulta | Catálogos | Sí |
 | `barrer_parametro` | barrido | Análisis | Sí |
+| `dimensionar_conductor`, `verificar_conductor`, `resolver_valor_limite` | diseno | Análisis | **No** (opcionales) |
 | `convertir_unidades`, `convertir_coordenadas` | calculo | Varios | **No** (opcionales) |
 
 Las de Varios no entran en el barrido de parámetros.
+
+**Herramientas de diseño (2026-09-20).** Son «meta-herramientas»: no traen fórmulas, combinan las calculadoras (como el barrido). Son `opcional`: el agente estándar NO las usa; solo un agente propio las activa con su etiqueta, y necesita además habilitadas las calculadoras que ellas usan (si falta una, la herramienta lo dice). Cada llamada cuenta como UN cálculo del presupuesto por pregunta.
+
+- `dimensionar_conductor`: recorre el catálogo de una familia/material (una fila por calibre, de menor a mayor área) y devuelve el MÁS PEQUEÑO que cumple todos los criterios, más la tabla de calibres evaluados y qué incumple cada uno. Los criterios se activan según los datos que lleguen: pérdidas (línea + longitud + `factor_carga`), regulación (más `dab_m/dac_m/dbc_m`), ampacidad (solo red Aérea, contra la corriente de carga) y cortocircuito (`corriente_falla_ka`). Límites por defecto = las referencias «Aceptable» (3 % pérdidas, 10 % regulación); una sola línea de un tramo.
+- `verificar_conductor`: lo mismo para UN calibre (y `referencia` opcional); devuelve valor, límite, margen y veredicto por criterio.
+- `resolver_valor_limite`: solucionador inverso por bisección: el valor de un parámetro numérico de una calculadora que deja un resultado justo en `valor_objetivo` dentro de `[minimo, maximo]` (p. ej. longitud máxima para 5 % de caída). Asume monotonía; si el objetivo no queda entre los extremos, lo avisa con los valores en ambos.
+- En el reporte: `dimensionar_conductor` deja una fila por calibre (tabla «Dimensionar conductor» con «Cumple todos los criterios» Sí/No), `verificar_conductor` una fila, y el solucionador deja la fila de la calculadora en la solución.
 
 **Qué acepta y qué devuelve cada una (además de lo básico).** Todas quedaron alineadas con las pantallas rediseñadas; los motores de `js/calc/` no cambiaron, se reutilizan los módulos de lógica de las pantallas:
 

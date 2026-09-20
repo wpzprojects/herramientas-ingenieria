@@ -139,7 +139,7 @@ const ACSR_4_0 = desnudos.find((c) => c.tipo === "ACSR" && c.calibre_awg_kcmil =
 
 await seccion("tools: esquema para Gemini", async () => {
   const decl = tools.declaraciones();
-  ok(decl.length === 11, `sin lista se declaran las 11 herramientas (${decl.length})`);
+  ok(decl.length === 14, `sin lista se declaran las 14 herramientas (${decl.length})`);
   ok(tools.declaraciones(tools.HERRAMIENTAS_ESTANDAR).length === 9, "con las del estándar se declaran 9");
   ok(decl.every((d) => d.name && d.description && d.parameters.type === "object" && Object.keys(d.parameters.properties).length > 0), "todas con descripcion y propiedades no vacias");
   ok(decl.every((d) => (d.parameters.required || []).every((r) => r in d.parameters.properties)), "required subconjunto de properties");
@@ -317,7 +317,7 @@ await seccion("tools: conversión de coordenadas con códigos EPSG, varios punto
 await seccion("tools: herramientas permitidas por agente", async () => {
   ok(tools.HERRAMIENTAS_ESTANDAR.length === 9 && Object.isFrozen(tools.HERRAMIENTAS_ESTANDAR), "el estándar habilita las 9 herramientas actuales");
   const cat = tools.catalogoHerramientas();
-  ok(cat.length === 11 && cat.every((h) => h.nombre && h.titulo && h.grupo && h.descripcion), "catálogo: 11 herramientas con título, grupo y descripción");
+  ok(cat.length === 14 && cat.every((h) => h.nombre && h.titulo && h.grupo && h.descripcion), "catálogo: 14 herramientas con título, grupo y descripción");
   ok([...new Set(cat.map((h) => h.grupo))].join() === "Calculadoras,Catálogos,Análisis,Varios", "cuatro grupos: Calculadoras, Catálogos, Análisis y Varios");
   ok(!tools.HERRAMIENTAS_ESTANDAR.includes("convertir_unidades") && !tools.HERRAMIENTAS_ESTANDAR.includes("convertir_coordenadas"), "las de Varios son opcionales: no están en el estándar");
   ok(tools.declaraciones(["calcular_perdidas", "buscar_tuberia"]).map((d) => d.name).join() === "calcular_perdidas,buscar_tuberia", "declaraciones(permitidas) solo declara esas");
@@ -643,6 +643,98 @@ await seccion("tools: ocupación de ductos con varios tipos de conductor y radio
   ok(e3.ok === false && e3.error.includes("Calibres disponibles"), "calibre XLPE inexistente: lista los disponibles");
   const dOcu = tools.declaraciones().find((d) => d.name === "calcular_ocupacion_ductos").parameters;
   ok(dOcu.properties.grupos.type === "array" && dOcu.properties.grupos.items.type === "object" && "numero_conductores" in dOcu.properties.grupos.items.properties && !(dOcu.required || []).length, "el esquema declara «grupos» y ya no hay campos obligatorios a nivel superior");
+});
+
+await seccion("herramientas de diseño: dimensionar, verificar y buscar valor límite", async () => {
+  const NUEVAS = ["dimensionar_conductor", "verificar_conductor", "resolver_valor_limite"];
+  const cat = tools.catalogoHerramientas();
+  ok(NUEVAS.every((n) => cat.find((h) => h.nombre === n)?.grupo === "Análisis"), "las tres aparecen en el catálogo de herramientas, en el grupo «Análisis»");
+  ok(NUEVAS.every((n) => !tools.HERRAMIENTAS_ESTANDAR.includes(n)) && tools.HERRAMIENTAS_ESTANDAR.length === 9, "son opcionales: NO están en el agente estándar (siguen sus 9 herramientas)");
+  ok(tools.declaraciones(tools.HERRAMIENTAS_ESTANDAR).length === 9 && NUEVAS.every((n) => tools.declaraciones().some((d) => d.name === n)), "el estándar no las declara; con todas habilitadas sí");
+  const soloNuevas = tools.declaraciones(NUEVAS);
+  ok(soloNuevas.length === 0, "sin calculadoras habilitadas no se ofrecen (necesitan las calculadoras que usan)");
+  const conCalc = tools.declaraciones([...NUEVAS, "calcular_perdidas", "calcular_regulacion"]);
+  ok(NUEVAS.every((n) => conCalc.some((d) => d.name === n)), "con al menos una calculadora habilitada sí se ofrecen");
+  const dl = conCalc.find((d) => d.name === "resolver_valor_limite").parameters.properties.herramienta.enum;
+  ok(dl.join() === "calcular_perdidas,calcular_regulacion", "el solucionador solo ofrece las calculadoras habilitadas");
+
+  const CASO = { ...LINEA, factor_carga: 0.56, dab_m: 1.5, dac_m: 1.5, dbc_m: 1.5 };
+
+  // --- dimensionar: se compara con un barrido calibre por calibre hecho aparte con la calculadora de pérdidas
+  const ctx = ctxNuevo();
+  const d = await tools.ejecutarLlamada("dimensionar_conductor", { red: "Aerea", material: "ACSR", ...CASO, perdidas_max_pct: 1 }, ctx);
+  ok(d.ok === true && !!d.conductor_recomendado && d.calibres_evaluados.length > 5, `dimensionar responde y evalúa varios calibres (${d.calibres_evaluados?.length})`);
+  const ordenados = d.calibres_evaluados;
+  const areas = ordenados.map((c) => c.area_mm2);
+  ok(areas.every((a, i) => i === 0 || a >= areas[i - 1]), "los calibres se evalúan de menor a mayor área");
+  // referencia independiente: el primero (menor área) cuyas pérdidas por la calculadora sean <= 1 %
+  const ctxRef = ctxNuevo();
+  let esperado = null;
+  for (const c of ordenados) {
+    const cal = c.conductor.split(" ")[1];
+    const r = await tools.ejecutarLlamada("calcular_perdidas", { ...LINEA, factor_carga: 0.56, red: "Aerea", material: "ACSR", calibre: cal }, ctxRef);
+    if (r.resultados.find((x) => x.nombre === "Pérdidas").valor <= 1) { esperado = c.conductor; break; }
+  }
+  ok(esperado && d.conductor_recomendado.conductor === esperado, `el conductor recomendado (${d.conductor_recomendado?.conductor}) es el primero que cumple según un barrido independiente (${esperado})`);
+  ok(d.calibres_evaluados.filter((c) => c.cumple).length >= 1 && d.calibres_evaluados.filter((c) => !c.cumple).every((c) => c.incumple.length >= 1), "los que no cumplen dicen qué criterio incumplen");
+  ok(ctx.log.length === d.calibres_evaluados.length && ctx.log.every((r) => r.herramienta === "dimensionar_conductor" && r.barrido), "el reporte recibe una fila por calibre evaluado");
+  ok(ctx.presupuesto.usado === 1, "cuenta como UN cálculo del presupuesto por pregunta");
+
+  // varios criterios a la vez (aérea): pérdidas + regulación + ampacidad + cortocircuito
+  const d2 = await tools.ejecutarLlamada("dimensionar_conductor", { red: "Aerea", material: "ACSR", ...CASO, corriente_falla_ka: 8 }, ctxNuevo());
+  ok(d2.ok && d2.criterios_usados.length === 4 && d2.calibres_evaluados.every((c) => "ampacidad_a" in c.valores && "capacidad_cc_ka" in c.valores && "caida_tension_pct" in c.valores), `con todos los datos usa 4 criterios (${d2.criterios_usados?.length})`);
+
+  // subterránea (XLPE): sin ampacidad
+  const d3 = await tools.ejecutarLlamada("dimensionar_conductor", { red: "Subterranea", material: "Cobre", ...CASO, perdidas_max_pct: 3 }, ctxNuevo());
+  ok(d3.ok && d3.criterios_usados.length >= 2 && d3.calibres_evaluados.length > 3, "también dimensiona cables XLPE");
+
+  // errores claros
+  const sinCriterio = await tools.ejecutarLlamada("dimensionar_conductor", { red: "Aerea", material: "ACSR" }, ctxNuevo());
+  ok(sinCriterio.ok === false && /criterio/.test(sinCriterio.error), "sin datos para ningún criterio: error claro");
+  const faltan = await tools.ejecutarLlamada("dimensionar_conductor", { red: "Aerea", material: "ACSR", ...LINEA, perdidas_max_pct: 1 }, ctxNuevo());
+  ok(faltan.ok === false && /factor_carga/.test(faltan.error), "límite de pérdidas sin factor de carga: dice qué falta");
+  const malMat = await tools.ejecutarLlamada("dimensionar_conductor", { red: "Aerea", material: "XYZ", ...CASO }, ctxNuevo());
+  ok(malMat.ok === false && /no existe/.test(malMat.error), "material inexistente: error con las opciones");
+  const ctxPerm = ctxNuevo();
+  ctxPerm.permitidas = new Set(["dimensionar_conductor", "calcular_perdidas"]);
+  const sinReg = await tools.ejecutarLlamada("dimensionar_conductor", { red: "Aerea", material: "ACSR", ...CASO }, ctxPerm);
+  ok(sinReg.ok === false && /calcular_regulacion/.test(sinReg.error) && /no está habilitada/.test(sinReg.error), "si falta habilitar una calculadora que necesita, lo dice");
+
+  // --- verificar
+  const ctxV = ctxNuevo();
+  const v = await tools.ejecutarLlamada("verificar_conductor", { red: "Aerea", material: "ACSR", calibre: "4/0", ...CASO, perdidas_max_pct: 1, corriente_falla_ka: 8 }, ctxV);
+  const pCalc = await tools.ejecutarLlamada("calcular_perdidas", { ...LINEA, factor_carga: 0.56, red: "Aerea", material: "ACSR", calibre: "4/0" }, ctxNuevo());
+  const perdidasRef = pCalc.resultados.find((x) => x.nombre === "Pérdidas").valor;
+  const kp = v.criterios?.find((k) => k.criterio === "Pérdidas");
+  ok(v.ok && kp && Math.abs(kp.valor - perdidasRef) < 1e-6 && kp.cumple === false && v.cumple_todos === false, `verificar 4/0: pérdidas ${kp?.valor} % (la calculadora dice ${perdidasRef}) no cumple el 1 %`);
+  ok(v.criterios.length === 4 && v.criterios.every((k) => typeof k.margen === "number" && /[≤≥]/.test(k.limite)), "entrega valor, límite, margen y veredicto de los 4 criterios");
+  ok(ctxV.log.length === 1 && ctxV.log[0].herramienta === "verificar_conductor", "queda UNA fila en el reporte");
+  const vNo = await tools.ejecutarLlamada("verificar_conductor", { red: "Aerea", material: "ACSR", calibre: "9999", ...CASO }, ctxNuevo());
+  ok(vNo.ok === false && /no existe/.test(vNo.error), "calibre inexistente: error con los disponibles");
+
+  // --- solucionador inverso: longitud máxima para una caída de tensión de 5 %
+  const base = { tension_kv: 34.5, potencia_mw: 9.9, factor_potencia: 0.95, red: "Aerea", material: "ACSR", calibre: "4/0", dab_m: 1.5, dac_m: 1.5, dbc_m: 1.5 };
+  const ctxS = ctxNuevo();
+  const s = await tools.ejecutarLlamada("resolver_valor_limite", { herramienta: "calcular_regulacion", parametros_json: JSON.stringify(base), parametro: "longitud_km", resultado: "caida_tension_pct", valor_objetivo: 5, minimo: 0.1, maximo: 500 }, ctxS);
+  ok(s.ok === true && s.valor_encontrado > 0.1 && s.valor_encontrado < 500, `encuentra una longitud máxima (${s.valor_encontrado} km)`);
+  const chk = await tools.ejecutarLlamada("calcular_regulacion", { ...base, longitud_km: s.valor_encontrado }, ctxNuevo());
+  const caida = chk.resultados.find((x) => x.nombre === "Caída de tensión").valor;
+  ok(Math.abs(caida - 5) < 0.005, `con esa longitud la calculadora da ${caida} % (objetivo 5 %)`);
+  ok(ctxS.log.length === 1 && ctxS.log[0].herramienta === "calcular_regulacion" && ctxS.presupuesto.usado === 1, "el resultado queda como una fila de la calculadora y cuenta como un cálculo");
+  const fuera = await tools.ejecutarLlamada("resolver_valor_limite", { herramienta: "calcular_regulacion", parametros_json: JSON.stringify(base), parametro: "longitud_km", resultado: "caida_tension_pct", valor_objetivo: 5, minimo: 0.1, maximo: 1 }, ctxNuevo());
+  ok(fuera.ok === false && /no está dentro del rango/.test(fuera.error), "si el objetivo no está entre los extremos del rango lo avisa (con los resultados en los extremos)");
+  const malRes = await tools.ejecutarLlamada("resolver_valor_limite", { herramienta: "calcular_regulacion", parametros_json: JSON.stringify(base), parametro: "longitud_km", resultado: "no_existe", valor_objetivo: 5, minimo: 0.1, maximo: 500 }, ctxNuevo());
+  ok(malRes.ok === false && /Resultados:/.test(malRes.error), "resultado inexistente: lista las claves válidas");
+  const malPar = await tools.ejecutarLlamada("resolver_valor_limite", { herramienta: "calcular_regulacion", parametros_json: JSON.stringify(base), parametro: "calibre", resultado: "caida_tension_pct", valor_objetivo: 5, minimo: 0.1, maximo: 500 }, ctxNuevo());
+  ok(malPar.ok === false && /numérico/.test(malPar.error), "un parámetro que no es numérico se rechaza");
+  // otra calculadora: potencia máxima para 3 % de pérdidas
+  const pm = await tools.ejecutarLlamada("resolver_valor_limite", { herramienta: "calcular_perdidas", parametros_json: JSON.stringify({ tension_kv: 34.5, factor_potencia: 0.95, factor_carga: 0.56, longitud_km: 5.2, red: "Aerea", material: "ACSR", calibre: "4/0" }), parametro: "potencia_mw", resultado: "perdidas_pct", valor_objetivo: 3, minimo: 0.5, maximo: 100 }, ctxNuevo());
+  ok(pm.ok && Math.abs(pm.resultado_en_ese_valor - 3) < 0.005, `potencia máxima para 3 % de pérdidas: ${pm.valor_encontrado} MW`);
+  // el reporte dibuja la tabla del dimensionamiento con las filas registradas
+  const reporte = await import("../js/ai/reporte.js");
+  const { tablas } = reporte.armarTablas(ctx.log);
+  const tb = tablas.find((x) => x.titulo === "Dimensionar conductor");
+  ok(tb && tb.colsVar.some((c) => c.etiqueta === "Conductor") && tb.colsRes.some((c) => c.etiqueta === "Cumple todos los criterios") && tb.filas.length === d.calibres_evaluados.length && tb.filas.some((f) => f.res.includes("Sí")) && tb.filas.some((f) => f.res.includes("No")), "en el reporte sale una tabla «Dimensionar conductor»: una fila por calibre, con «Sí / No» de cumplimiento");
 });
 
 await seccion("reporte en Word (.docx): paquete válido", async () => {
