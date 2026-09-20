@@ -293,6 +293,13 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas: `tools/verify_acceso.html` (reloj falso + backend simulado). Lo que NO se prueba en el arnés: el login real (se prueba a mano).
 - Fase posterior, NO implementada: «Solicitar acceso» (`docs/puerta-de-acceso-general.md`, ya sin la puerta al abrir la app).
 
+## Ideas APLAZADAS por el usuario (2026-09-20; analizadas, NO implementar sin que las pida)
+
+- **Plantilla de informe por agente** (memoria de cálculo): estructura + fuente de cada dato + formato Word; fases propuestas: Markdown por agente, campos con fuente (calculadora / usuario / IA), plantilla .docx corporativa. Pregunta abierta: ¿hay un formato de memoria de cálculo de Celsia?
+- **Adjuntos en los chats de IA** (imágenes y PDF; foto de placa, ficha técnica): viable con Gemini; reducir imágenes, máx. 3, guardar solo el texto en el historial, y regla «transcribe lo que leíste y confirma antes de calcular».
+- **Otro proveedor de IA (Claude de pago, con clave propia)**: viable con un traductor de formatos por proveedor; la clave de pago SIEMPRE personal (nunca la compartida del servidor); avisar del costo. Otras herramientas de IA posibles: barrido 2D, comparador, costo de pérdidas, consultar norma (requiere pasar las tablas de imagen a datos), ficha del caso.
+- Además siguen pendientes: fase 2 del acceso (login Microsoft), «Solicitar acceso», gráficos de resultado y el «reporte de la IA» (`js/ai/reporte.js`, lo rediseña el usuario).
+
 ## (Histórico) Puerta de acceso general con solicitud de acceso
 
 - Análisis del 2026-09-18 (la puerta al abrir la app NO se hizo: se optó por el modelo visitante/usuario de arriba; queda la idea de «Solicitar acceso»). **Todo el detalle está en

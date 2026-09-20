@@ -62,12 +62,15 @@ await seccion("menú de Catálogos: la tarjeta de Tuberías", async () => {
   ok(t.hash === "#/catalogos/tuberias" && t.icon === "underground", "la tarjeta de Tuberías lleva al catálogo y usa el mismo icono que Ampacidad subterránea");
   const sub = nav.sectionMenus.calculos.find((i) => i.title === "Ampacidad subterránea");
   ok(sub.icon === t.icon, "el icono de la tarjeta es el de «Ampacidad subterránea»");
-  ok(t.desc.includes(String(tuberias.length)), `la descripción indica la cantidad real de referencias (${tuberias.length})`);
+  ok(!/referencias/.test(t.desc) && !/\d/.test(t.desc) && items.every((i) => !/referencias/.test(i.desc)), "las descripciones de las fichas de Catálogos ya no llevan el número de referencias (el contador de filas está dentro de cada módulo)");
   ok(nav.sectionMeta.catalogos.subtitle.toLowerCase().includes("tuberías"), "el subtítulo de la sección Catálogos ya menciona las tuberías");
   const menu = await import("../js/views/catalogos.js");
   await menu.render(stage, {});
   const tiles = $$(".menu-tile");
-  ok(tiles.length === 4 && tiles.every((x) => x.classList.contains("menu-tile--row")) && texto(tiles[3]).startsWith("Tuberías") && tiles[3].getAttribute("href") === "#/catalogos/tuberias" && !!tiles[3].querySelector("svg"), "la pantalla Catálogos pinta 4 tarjetas con el mismo formato y la de Tuberías con su icono y enlace");
+  // un visitante ve la tarjeta apagada (sin enlace; los catálogos de tuberías no son libres); un usuario o administrador, con enlace
+  const { itemHabilitado } = await import("../js/auth/permisos.js");
+  ok(tiles.length === 4 && tiles.every((x) => x.classList.contains("menu-tile--row")) && texto(tiles[3]).startsWith("Tuberías") && !!tiles[3].querySelector("svg") && (tiles[3].getAttribute("href") === "#/catalogos/tuberias" || tiles[3].getAttribute("aria-disabled") === "true"), "la pantalla Catálogos pinta 4 tarjetas con el mismo formato y la de Tuberías con su icono (con enlace, o apagada si el visitante no tiene acceso)");
+  ok(itemHabilitado(t, "usuario") && itemHabilitado(t, "admin") && !itemHabilitado(t, "visitante"), "Tuberías está habilitada para usuario y administrador, no para el visitante");
   limpiar();
 });
 
@@ -195,7 +198,8 @@ await seccion("service worker y otros archivos", async () => {
   const sw = await (await fetch("../sw.js")).text();
   const listaSw = [...sw.matchAll(/^\s*"([^"]+)",\s*$/gm)].map((m) => m[1]);
   ok(["js/views/catalogo-conductores.js", "js/views/detalle-conductor.js", "js/views/catalogos.js", "data/tuberias.json"].every((f) => listaSw.includes(f)), "el service worker precachea las vistas y los datos de tuberías");
-  const existen = await Promise.all(listaSw.filter((f) => f !== "./").map((f) => fetch(`../${f}`, { method: "HEAD" }).then((r) => [f, r.ok])));
+  const existen = []; // en serie: con ~130 pedidos a la vez el servidor de pruebas (python) corta conexiones
+  for (const f of listaSw.filter((x) => x !== "./")) existen.push([f, (await fetch(`../${f}`, { method: "HEAD" })).ok]);
   const faltan = existen.filter(([, okk]) => !okk).map(([f]) => f);
   ok(faltan.length === 0, `todos los archivos del APP_SHELL existen${faltan.length ? ": " + faltan.join(", ") : ""}`);
   const router = await (await fetch("../js/router.js")).text();
