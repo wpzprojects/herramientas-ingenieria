@@ -36,7 +36,8 @@ const VISTA = { oscuro: "dark", claro: "light" };
 const AYUDA_COLOR =
   "Pulsa el cuadro de color para elegir un color personalizado, o usa una de las muestras. Los demás tonos se calculan solos. Si un color dificulta la lectura, se ajusta un poco.";
 
-export async function render(container) {
+// #/perfil abre la primera pestaña; #/perfil/clave, #/perfil/usuarios o #/perfil/apariencia abren esa pestaña (si la persona la tiene).
+export async function render(container, params = {}) {
   container.innerHTML = `
     <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <span>Perfil y configuración avanzada</span></div>
     <h1 class="page-title">Perfil y configuración avanzada</h1>
@@ -160,6 +161,7 @@ export async function render(container) {
     const esAdmin = perfil.rol === "admin";
     // el administrador ve Usuarios; todos los autorizados ven la clave de Gemini y la apariencia (color personal, por dispositivo)
     const pestanas = [...(esAdmin ? [["usuarios", "Usuarios"]] : []), ["clave", "Clave de Gemini"], ["apariencia", "Apariencia"]];
+    const inicial = pestanas.some(([id]) => id === params?.pestana) ? params.pestana : pestanas[0][0];
     const cache = leerCache();
     // un solo parrafo: se ajusta al ancho de la tarjeta (no se fuerza a dos lineas)
     const vigencia = cache
@@ -179,9 +181,9 @@ export async function render(container) {
         </div>
       </div>
       <div class="tabs ca-tabs" role="tablist">
-        ${pestanas.map(([id, rotulo], i) => `<button type="button" class="tab-btn${i === 0 ? " active" : ""}" role="tab" aria-selected="${i === 0}" data-tab="${id}">${rotulo}</button>`).join("")}
+        ${pestanas.map(([id, rotulo], i) => `<button type="button" class="tab-btn${id === inicial ? " active" : ""}" role="tab" aria-selected="${id === inicial}" data-tab="${id}">${rotulo}</button>`).join("")}
       </div>
-      ${pestanas.map(([id], i) => `<div class="tab-panel" id="ca-tab-${id}"${i === 0 ? "" : " hidden"}><div class="card tarjeta-borde form-section" id="ca-${id}"></div></div>`).join("")}`;
+      ${pestanas.map(([id]) => `<div class="tab-panel" id="ca-tab-${id}"${id === inicial ? "" : " hidden"}><div class="card tarjeta-borde form-section" id="ca-${id}"></div></div>`).join("")}`;
     cuerpo.querySelector("[data-salir]").addEventListener("click", cerrarSesion);
     for (const btn of cuerpo.querySelectorAll(".ca-tabs .tab-btn")) {
       btn.addEventListener("click", () => {

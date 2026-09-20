@@ -30,6 +30,6 @@ export function permitida(ruta, nivel) {
   const seg = segmentos(ruta);
   if (seg.length <= 1) return true; // Inicio, menus de seccion y Perfil
   const p = `/${seg.join("/")}`;
-  if (SIEMPRE.has(p)) return true;
+  if (SIEMPRE.has(p) || p.startsWith("/perfil/")) return true; // Perfil y sus pestañas (#/perfil/clave…)
   return RUTAS_LIBRES.some((libre) => p === libre || p.startsWith(`${libre}/`));
 }

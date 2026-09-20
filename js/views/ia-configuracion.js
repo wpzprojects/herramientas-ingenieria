@@ -165,7 +165,7 @@ export async function render(container) {
   // Origen de la clave que se esta usando (se elige en Perfil). Si no es «Este navegador», el campo de abajo no se usa.
   const fuente = obtenerFuente();
   $("#fuente-clave").innerHTML =
-    `Las funciones de IA están usando <span class="badge">${escapeHtml(NOMBRE_FUENTE[fuente])}</span> · ` + `<a href="#/perfil">Cambiar en Perfil</a>`;
+    `Las funciones de IA están usando <span class="badge">${escapeHtml(NOMBRE_FUENTE[fuente])}</span> · ` + `<a href="#/perfil/clave">Cambiar en Perfil</a>`;
   if (fuente !== "local") {
     $("#aviso-fuente").innerHTML = `<div class="callout callout-info" style="margin:0 0 var(--space-4)"><span>Estás usando una clave del servidor: la clave de este navegador solo se usa si eliges «Este navegador» en Perfil.</span></div>`;
   }

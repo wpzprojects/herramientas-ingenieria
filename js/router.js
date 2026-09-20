@@ -54,6 +54,7 @@ const routeTable = [
   ["/ia/configuracion", () => import("./views/ia-configuracion.js")],
   ["/ayuda", () => import("./views/ayuda.js")],
   ["/perfil", () => import("./views/configuracion-avanzada.js")],
+  ["/perfil/:pestana", () => import("./views/configuracion-avanzada.js")], // abre esa pestaña de Perfil (clave, usuarios, apariencia)
   // ruta anterior (Ayuda > Configuracion avanzada): redirige al Perfil por si alguien la tenia guardada
   ["/ayuda/configuracion", () => Promise.resolve({ render: () => location.replace("#/perfil") })],
 ].map(([pattern, load]) => ({ ...compile(pattern), pattern, load }));
