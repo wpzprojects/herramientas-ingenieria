@@ -366,7 +366,7 @@ await seccion("Análisis con calculadoras rediseñado", async () => {
   // --- tarjeta Agente
   const ta = q("#tarjeta-agente");
   ok(ta.classList.contains("tarjeta-borde") && /Agente/.test(texto(ta.querySelector(".form-section-title"))) && !!ta.querySelector(".form-section-title .icon g path[d^='M6 5h12a2 2 0 0 1 2 2v12']"), "la tarjeta «Agente» de Análisis lleva la cara de robot (robot-face), con relleno de 16 px y barra de título");
-  ok(Math.round(ta.querySelector(".form-section-title .icon").getBoundingClientRect().width) === 21, "el robot mide 21 px");
+  ok(Math.round(ta.querySelector(".form-section-title .icon").getBoundingClientRect().width) === 18 && !ta.querySelector(".icono-agente"), "en Análisis la cara de robot tiene el tamaño normal de los iconos de barra (18 px); el 21 px es solo del robot del Corrector");
   ok(qa(".ia-pestanas .tab-btn").map(texto).join("|") === "Agentes|Gestionar|Historial" && q(".ia-pestanas .tab-btn.active").textContent === "Agentes", "pestañas «Agentes | Gestionar | Historial» dentro de la tarjeta, como el Corrector");
   ok(qa("#lista-agentes .ia-chip").length === 1 && q("#lista-agentes .ia-chip").getAttribute("aria-pressed") === "true", "el agente se elige con píldoras (hoy solo el estándar, en uso)");
   ok(!q("#desc-agente").hidden && !q("#desc-agente").classList.contains("text-muted"), "la descripción del agente se ve");
