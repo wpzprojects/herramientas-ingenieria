@@ -201,7 +201,7 @@ await seccion("Corrector de redacción rediseñado", async () => {
   // --- tarjeta Agente
   const tarjeta = q(".card");
   ok(tarjeta.classList.contains("tarjeta-borde") && /Agente/.test(texto(tarjeta.querySelector(".form-section-title"))) && !!tarjeta.querySelector(".form-section-title .icon"), "la tarjeta «Agente» tiene relleno de 16 px y barra de título con icono");
-  ok(!!q("#tarjeta-agente .form-section-title .icon g path[d^='M6 6a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v4']"), "el icono de la tarjeta «Agente» es el robot y el de «Conversación» es «Message Chatbot» (burbuja con carita): los dos que le gustaron al usuario, sin repetir");
+  ok(!!q("#tarjeta-agente .form-section-title .icon g path[d^='M6 6a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v4']"), "el icono de la tarjeta «Agente» es el robot");
   ok(qa(".ia-pestanas .tab-btn").map(texto).join("|") === "Agentes|Gestionar|Historial" && q(".ia-pestanas .tab-btn.active").textContent === "Agentes", "debajo de la barra hay pestañas «Agentes | Gestionar | Historial» (empieza en «Agentes»)");
   ok(qa(".card").length === 2 || qa(".card").length === 1, "todo vive en UNA tarjeta (más la de la conversación): ya no se abren tarjetas nuevas debajo");
   ok(qa("#lista-agentes .ia-chip").length === 4 && q("#lista-agentes .ia-chip").getAttribute("aria-pressed") === "true", "los 4 agentes siguen como píldoras y el primero está activo");
@@ -210,7 +210,7 @@ await seccion("Corrector de redacción rediseñado", async () => {
 
   // --- tarjeta de la conversacion: ahora con su barra de titulo
   const tConv = q("#conv");
-  ok(tConv.classList.contains("tarjeta-borde") && texto(tConv.querySelector(".form-section-title")) === "Conversación" && !!tConv.querySelector(".form-section-title .icon g path[d^='M18 4a3 3 0 0 1 3 3v8']"), "la tarjeta donde se escribe también tiene barra de título con icono: «Conversación»");
+  ok(tConv.classList.contains("tarjeta-borde") && texto(tConv.querySelector(".form-section-title")) === "Conversación" && !!tConv.querySelector(".form-section-title .icon g path[d^='M3 20l1.3 -3.9']"), "la tarjeta donde se escribe también tiene barra de título con icono: «Conversación»");
   ok(tConv.querySelector(".form-section-title").nextElementSibling === q("#chat") || tConv.querySelector(".form-section-title").nextElementSibling === tConv.querySelector(".ia-caja"), "y el título va arriba de todo, antes del chat y de la caja de texto");
 
   // --- estado vacio: el ejemplo cambia con el agente
