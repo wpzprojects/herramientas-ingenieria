@@ -169,10 +169,19 @@ export async function render(container) {
     return chat.lastElementChild;
   }
 
+  // La caja cambia de sentido segun haya o no conversacion: con una en curso la IA recuerda todo lo dicho y calculado, asi que lo que se escriba la CONTINUA
+  const PH_INICIAL = fPregunta.placeholder;
+  const PH_SEGUIMIENTO = "Continúa este análisis: pide más detalle, cambia un dato o compara otra opción. Para un caso distinto, pulsa «Nueva conversación».";
+  function pintarPlaceholder() {
+    fPregunta.placeholder = conv?.mensajes?.length ? PH_SEGUIMIENTO : PH_INICIAL;
+    ajustarAlto();
+  }
+
   function pintarChat() {
     chat.innerHTML = "";
     for (const m of conv?.mensajes || []) pintarMensaje(m);
     $("#ejemplos").hidden = !!conv?.mensajes?.length;
+    pintarPlaceholder();
   }
 
   function pintarEjemplos() {
@@ -224,6 +233,7 @@ export async function render(container) {
     if (!conv) nuevaConversacion(visible);
     conv.mensajes.push({ rol: "user", texto: visible });
     $("#ejemplos").hidden = true;
+    pintarPlaceholder();
     pintarMensaje({ rol: "user", texto: visible });
 
     const chipsVivos = el("div", { class: "ia-tools", style: "margin-top:8px" });
