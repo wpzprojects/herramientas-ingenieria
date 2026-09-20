@@ -898,7 +898,7 @@ await seccion("acceso: gestión de usuarios (solo admin)", async () => {
   b._entrarComo(OTRO);
   ok(await falla(() => b.guardarUsuario("z@z.co", "usuario"), "permiso"), "un usuario normal NO puede agregar");
   ok(await falla(() => b.quitarUsuario("yo@gmail.com"), "permiso"), "un usuario normal NO puede quitar");
-  ok((await b.listarUsuarios()).length === 2, "un usuario normal sí puede ver la lista");
+  ok(await falla(() => b.listarUsuarios(), "permiso"), "un usuario normal NO puede ver la lista (solo un administrador)");
 });
 
 await seccion("acceso: claves de Gemini en el servidor", async () => {

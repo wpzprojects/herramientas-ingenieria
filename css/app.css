@@ -190,6 +190,21 @@ button { font-family: inherit; }
 .tile-candado { position: absolute; top: var(--space-3); right: var(--space-3); color: var(--text-muted); display: flex; }
 .tile-candado svg { width: 16px; height: 16px; }
 .enlace-bloqueado { color: var(--text-muted); cursor: default; }
+/* Perfil y configuracion avanzada */
+.ca-tabs { margin: var(--space-4) 0; }
+.ca-sola { margin-top: var(--space-4); }
+.ca-agregar { display: grid; grid-template-columns: minmax(0, 1fr) 190px auto; gap: var(--space-3); align-items: end; margin-bottom: var(--space-4); }
+.ca-agregar .field { margin-bottom: 0; }
+.ca-agregar :is(input, select), .ca-agregar .btn { height: 44px; box-sizing: border-box; } /* misma altura: la etiqueta y los controles quedan alineados */
+@media (max-width: 720px) { .ca-agregar { grid-template-columns: 1fr; } }
+.ca-rol { display: inline-flex; align-items: center; gap: var(--space-2); }
+.ca-fuentes { display: flex; flex-direction: column; gap: var(--space-2); }
+.ca-fuentes .checkbox-row { align-items: center; }
+.select-sm { min-width: 0; height: 32px; padding: 2px 8px; font-size: 0.85rem; }
+.btn.btn-icono { padding: 6px; line-height: 0; }
+.btn.btn-icono .icon { width: 18px; height: 18px; }
+.btn.btn-con-icono { display: inline-flex; align-items: center; gap: var(--space-2); }
+.btn.btn-con-icono .icon { width: 18px; height: 18px; }
 .candado-mini { display: inline-flex; vertical-align: -2px; margin-right: 4px; opacity: 0.8; }
 .candado-mini svg { width: 13px; height: 13px; }
 .menu-tile .tile-title { font-weight: 700; }

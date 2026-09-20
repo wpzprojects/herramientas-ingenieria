@@ -41,8 +41,9 @@ service cloud.firestore {
 
     match /usuarios/{id} {
       // Cualquiera con sesion puede leer SU PROPIO documento (asi se sabe si tiene acceso, sin error de permisos).
-      allow get: if autenticado() && (id == correo() || esUsuario());
-      allow list: if esUsuario();
+      // La lista completa y los documentos de otros correos solo los ve un administrador (privacidad de los correos).
+      allow get: if autenticado() && (id == correo() || esAdmin());
+      allow list: if esAdmin();
 
       // Solo un admin gestiona la lista. Un admin no puede quitarse ni bajarse el rol a si mismo:
       // asi siempre queda al menos un administrador.

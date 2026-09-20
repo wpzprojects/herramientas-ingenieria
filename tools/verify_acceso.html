@@ -274,6 +274,86 @@ await seccion("router: pantallas bloqueadas", async () => {
   location.hash = previo || "#/";
 });
 
+await seccion("pantalla de Perfil rediseñada", async () => {
+  const vista = await import("../js/views/configuracion-avanzada.js");
+  const marco = document.createElement("div");
+  stage.innerHTML = "";
+  stage.append(marco);
+  const dibujar = async (opciones) => {
+    await con(opciones);
+    marco.innerHTML = "";
+    await vista.render(marco, {});
+    await espera(150);
+  };
+  const q = (s) => marco.querySelector(s);
+  const qa = (s) => [...marco.querySelectorAll(s)];
+  const texto = (e) => (e ? e.textContent.replace(/\s+/g, " ").trim() : "");
+
+  // ---- administrador
+  await dibujar({ usuarios: semilla(), sesion: ADMIN });
+  const tarjetas = qa(".card");
+  ok(tarjetas.length >= 3 && tarjetas.every((c) => c.classList.contains("tarjeta-borde")), "todas las tarjetas usan el relleno de 16 px (tarjeta-borde)");
+  ok(qa(".form-section-title").length >= 3 && qa(".form-section-title .icon").length >= 3, "cada tarjeta lleva barra de título con icono");
+  ok(texto(q(".form-section-title")) === "Mi cuenta" && /Administrador/.test(texto(q(".dev-role"))), "primera tarjeta «Mi cuenta» con el correo y la insignia de rol");
+  ok(/Confirmado por el servidor/.test(texto(q(".dev-header"))) && /hasta el/.test(texto(q(".dev-header"))), "muestra la última confirmación del servidor y hasta cuándo vale sin conexión");
+  const pest = qa(".ca-tabs .tab-btn").map(texto);
+  ok(pest.join("|") === "Usuarios|Clave de Gemini", `el administrador ve dos pestañas: ${pest.join(", ")}`);
+  ok(!q("#ca-tab-usuarios").hidden && q("#ca-tab-clave").hidden, "empieza en «Usuarios»");
+  qa(".ca-tabs .tab-btn")[1].click();
+  ok(q("#ca-tab-usuarios").hidden && !q("#ca-tab-clave").hidden, "la pestaña «Clave de Gemini» cambia el panel");
+  qa(".ca-tabs .tab-btn")[0].click();
+  const filas = qa("#ca-filas tr");
+  ok(filas.length === 2, `la tabla lista los ${filas.length} usuarios`);
+  ok(filas.every((tr) => tr.querySelector(".badge")) && !q("#ca-filas select"), "el rol se ve como insignia (sin selectores pesados)");
+  ok(qa("#ca-filas button[aria-label^='Quitar']").length === 2 && !!q("#ca-filas button svg"), "«Quitar» es un icono de papelera con nombre accesible");
+  const yoFila = filas.find((tr) => /jefe@empresa.com/.test(tr.textContent));
+  ok(yoFila.querySelector("button[aria-label^='Quitar']").disabled && !yoFila.querySelector("button[aria-label^='Cambiar']"), "el propio administrador no puede quitarse ni cambiarse el rol");
+  const ana = filas.find((tr) => /ana@empresa.com/.test(tr.textContent));
+  ana.querySelector("button[aria-label^='Cambiar']").click();
+  ok(!!ana.querySelector("select.select-sm"), "«Cambiar rol» abre un selector compacto solo para esa fila");
+  // alineacion del formulario de agregar
+  const etiquetas = qa(".ca-agregar label").map((l) => l.getBoundingClientRect().top);
+  const controles = qa("#ca-nuevo, #ca-rol-nuevo, #ca-agregar").map((c) => Math.round(c.getBoundingClientRect().bottom));
+  const alturas = qa("#ca-nuevo, #ca-rol-nuevo, #ca-agregar").map((c) => Math.round(c.getBoundingClientRect().height));
+  ok(Math.abs(etiquetas[0] - etiquetas[1]) < 1 && new Set(controles).size === 1, `agregar correo: etiquetas alineadas (${etiquetas.map((x) => x.toFixed(1)).join(" / ")}) y controles con la misma base (${[...new Set(controles)].join(",")}); alturas ${alturas.join("/")}`);
+  const inp = q("#ca-nuevo");
+  inp.value = "nuevo@empresa.com";
+  q("#ca-agregar").click();
+  await espera(200);
+  ok(qa("#ca-filas tr").length === 3 && /Se agregó nuevo@empresa.com/.test(texto(q("#ca-msg-usuarios"))), "agregar un correo lo suma a la lista y avisa");
+  ok(!/\.hint/.test(marco.innerHTML) && qa(".info-btn, [data-info]").length >= 3, "la ayuda va en botones «i», no en textos fijos");
+
+  // ---- clave de Gemini: solo el campo de la fuente elegida
+  qa(".ca-tabs .tab-btn")[1].click();
+  const fuentes = qa("#ca-fuentes input");
+  ok(fuentes.length === 3, "tres orígenes de clave como opciones compactas");
+  fuentes.find((r) => r.value === "local").click();
+  fuentes.find((r) => r.value === "local").dispatchEvent(new Event("change"));
+  ok(!q("#ca-k-personal") && !q("#ca-k-compartida") && /Se usa la clave guardada en este navegador/.test(texto(q("#ca-detalle"))), "«Este navegador»: no muestra campos de clave del servidor");
+  fuentes.find((r) => r.value === "personal").click();
+  fuentes.find((r) => r.value === "personal").dispatchEvent(new Event("change"));
+  ok(!!q("#ca-k-personal") && !q("#ca-k-compartida"), "«Mi clave personal»: solo su campo");
+  fuentes.find((r) => r.value === "compartida").click();
+  fuentes.find((r) => r.value === "compartida").dispatchEvent(new Event("change"));
+  ok(!!q("#ca-k-compartida") && !q("#ca-k-personal") && !!q(".callout-warning"), "«Clave compartida» (admin): su campo y el aviso corto");
+  q("#ca-k-compartida").value = "AIzaPRUEBA";
+  q("#ca-g-compartida").click();
+  await espera(250);
+  ok(/Clave guardada en el servidor/.test(texto(q("#ca-msg-compartida"))) && /Configurada/.test(texto(q("#ca-detalle"))), "guardar la clave compartida funciona y queda «Configurada»");
+
+  // ---- usuario normal: solo la clave, sin lista
+  await dibujar({ usuarios: semilla(), sesion: YO });
+  ok(qa(".ca-tabs").length === 0 && !q("#ca-usuarios") && !!q("#ca-clave"), "un usuario normal ve solo la tarjeta de la clave (sin pestañas ni lista de correos)");
+  ok(!/jefe@empresa.com/.test(marco.textContent), "y no ve los correos de los demás");
+
+  // ---- sin autorizacion y sin sesion
+  await dibujar({ usuarios: semilla(), sesion: EXTRANO });
+  ok(/no está autorizada/.test(texto(q(".ia-gate"))) && /Contacta al administrador/.test(texto(q(".ia-gate"))) && !!q(".form-section-title .icon"), "cuenta fuera de la lista: mensaje de contacto al administrador");
+  await dibujar({ usuarios: semilla(), sesion: null });
+  ok(/Inicia sesión para habilitar todos los módulos/.test(texto(q(".ia-gate"))) && !!q("[data-login] svg") && /Iniciar sesión con Google/.test(texto(q("[data-login]"))), "sin sesión: texto nuevo y botón de Google con su icono");
+  ok(!/Acceso restringido/.test(marco.textContent), "ya no dice «Acceso restringido»");
+});
+
 await seccion("archivos y documentación", async () => {
   const sw = await (await fetch("../sw.js")).text();
   const listaSw = [...sw.matchAll(/^\s*"([^"]+)",\s*$/gm)].map((m) => m[1]);

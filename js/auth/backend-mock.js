@@ -72,7 +72,7 @@ export function crearBackendMock({ usuarios = [], sesion = null, cuentaAlIniciar
 
     async listarUsuarios() {
       await espera();
-      requerirUsuario();
+      requerirAdmin(); // como las reglas: solo un administrador ve la lista completa
       return [...lista].map(([email, d]) => ({ email, ...d })).sort((a, b) => a.email.localeCompare(b.email));
     },
     async guardarUsuario(email, rol) {

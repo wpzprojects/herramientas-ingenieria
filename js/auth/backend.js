@@ -8,7 +8,7 @@
 //   iniciarSesion()                    -> abre el login de Google; devuelve el usuario
 //   cerrarSesion()
 //   obtenerPerfil()                    -> { email, rol } si el correo esta en la lista, o null si no tiene acceso
-//   listarUsuarios()                   -> [{ email, rol, agregadoPor, fecha }]           (requiere estar autorizado)
+//   listarUsuarios()                   -> [{ email, rol, agregadoPor, fecha }]           (solo admin)
 //   guardarUsuario(email, rol)         -> agrega o cambia el rol                          (solo admin)
 //   quitarUsuario(email)               ->                                                 (solo admin)
 //   leerClaveCompartida()              -> string | null                                   (requiere estar autorizado)
