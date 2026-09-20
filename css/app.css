@@ -728,6 +728,12 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 }
 .ia-chip:hover { border-color: var(--accent); color: var(--accent-strong); }
 .ia-chip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-strong); font-weight: 700; }
+/* herramientas de un agente de analisis: etiquetas de seleccion MULTIPLE; la marcada lleva una ✓ (asi no se confunde con elegir un solo agente) */
+.ia-chip--herr .ia-chip-check { display: none; margin-right: 6px; font-weight: 700; }
+.ia-chip--herr[aria-pressed="true"] .ia-chip-check { display: inline; }
+.ia-chip:disabled { cursor: default; opacity: 0.65; }
+.ia-chip:disabled:hover { border-color: var(--border-strong); color: var(--text-muted); }
+.ia-chip[aria-pressed="true"]:disabled:hover { border-color: var(--accent); color: var(--accent-strong); }
 .ia-typing { display: inline-flex; gap: 4px; align-items: center; }
 .ia-typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--text-faint); animation: ia-pulso 1.2s infinite ease-in-out; }
 .ia-typing span:nth-child(2) { animation-delay: .2s; }

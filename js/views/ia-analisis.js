@@ -521,11 +521,11 @@ export async function render(container) {
       .map(
         ([grupo, lista]) => `
           <div style="margin-top:var(--space-2)"><strong class="text-sm">${escapeHtml(grupo)}</strong>
-            <div style="display:flex; flex-wrap:wrap; gap:var(--space-2) var(--space-5); margin-top:4px">
+            <div class="ia-agente-lista" role="group" aria-label="${escapeHtml(grupo)}" style="margin-top:6px">
               ${lista
                 .map(
                   (h) =>
-                    `<label class="checkbox-row" title="${escapeHtml(h.descripcion)}"><input type="checkbox" data-h="${h.nombre}"${habilitadas.has(h.nombre) ? " checked" : ""}${ver ? " disabled" : ""}> ${escapeHtml(h.titulo)}</label>`
+                    `<button type="button" class="ia-chip ia-chip--herr" data-h="${h.nombre}" aria-pressed="${habilitadas.has(h.nombre)}" title="${escapeHtml(h.descripcion)}"${ver ? " disabled" : ""}><span class="ia-chip-check" aria-hidden="true">✓</span>${escapeHtml(h.titulo)}</button>`
                 )
                 .join("")}
             </div>
@@ -568,6 +568,10 @@ export async function render(container) {
         </div>
       </div>`;
     activarInfos(cont);
+    // herramientas: cada etiqueta se marca o desmarca (seleccion multiple; la ✓ indica que esta marcada)
+    for (const chip of cont.querySelectorAll(".ia-chip--herr")) {
+      chip.addEventListener("click", () => chip.setAttribute("aria-pressed", String(chip.getAttribute("aria-pressed") !== "true")));
+    }
     const g = (s) => cont.querySelector(s);
     g("#g-nombre").value = a.nombre;
     g("#g-desc").value = a.descripcion || "";
@@ -590,7 +594,7 @@ export async function render(container) {
           alert("Escribe las instrucciones del agente.");
           return g("#g-instr").focus();
         }
-        const herramientas = [...cont.querySelectorAll("input[data-h]:checked")].map((c) => c.dataset.h);
+        const herramientas = [...cont.querySelectorAll('.ia-chip--herr[aria-pressed="true"]')].map((c) => c.dataset.h);
         if (!herramientas.length) return alert("Marca al menos una herramienta.");
         const t = parseFloat(String(g("#g-temp").value).replace(",", "."));
         const nuevo = {

@@ -428,7 +428,11 @@ await seccion("Análisis con calculadoras rediseñado", async () => {
   ok(!!ed && /Viendo:/.test(texto(ed.querySelector(".ia-editor-cabecera"))) && !!ed.querySelector(".ia-editor-cabecera .icon") && ed.querySelector("#g-nombre").readOnly, "«Ver» abre el editor de solo lectura con su barra «Viendo: …»");
   ok(filas[0].classList.contains("editando") && !!ed.querySelector(".callout-info"), "la fila queda marcada y se avisa que el estándar es de solo lectura");
   ok(ed.querySelectorAll("label[data-info]").length === 3 && ed.querySelectorAll(".hint").length === 0, "las ayudas (temperatura, herramientas, reporte) son botones «i», sin textos .hint");
-  ok(ed.querySelectorAll("input[data-h]").length >= 9 && ed.querySelectorAll("input[data-h]").length === ed.querySelectorAll("input[data-h]:disabled").length, "las herramientas se listan (deshabilitadas en solo lectura)");
+  const chipsH = [...ed.querySelectorAll(".ia-chip--herr")];
+  ok(chipsH.length === 11 && !ed.querySelector("input[data-h]") && chipsH.every((c) => c.tagName === "BUTTON" && c.disabled), "las herramientas son etiquetas (botones), ya no casillas, y en solo lectura están deshabilitadas");
+  ok(chipsH.filter((c) => c.getAttribute("aria-pressed") === "true").length === 9 && chipsH.filter((c) => c.getAttribute("aria-pressed") === "false").length === 2, "el agente estándar tiene 9 marcadas (las de siempre) y 2 sin marcar (Varios)");
+  ok(["Calculadoras", "Catálogos", "Análisis", "Varios"].every((g) => ed.querySelector(`[role="group"][aria-label="${g}"]`)), "siguen agrupadas por categoría: Calculadoras, Catálogos, Análisis y Varios");
+  ok(chipsH.every((c) => c.title.length > 10), "cada una conserva su descripción al pasar el cursor");
   ed.querySelector("#g-cerrar").click();
   ok(!pc.querySelector(".ia-editor") && !pc.querySelector(".editando"), "«Cerrar» quita el editor y la marca");
 
@@ -436,10 +440,32 @@ await seccion("Análisis con calculadoras rediseñado", async () => {
   filas[0].querySelectorAll("button")[2].click(); // Duplicar
   await espera(150);
   ok(pc.querySelectorAll("#config-lista .ia-historial-item").length === 2 && /Editando:/.test(texto(pc.querySelector(".ia-editor-cabecera"))) && qa(".ia-editor label[data-info]").length === 4, "«Duplicar» crea la copia y abre su editor («Editando: …», con la ayuda de las instrucciones)");
+  const chipsC = [...pc.querySelectorAll(".ia-chip--herr")];
+  ok(chipsC.length === 11 && chipsC.every((c) => !c.disabled), "en una copia editable las etiquetas de herramientas están activas");
+  const unidades = chipsC.find((c) => /unidades/i.test(c.textContent));
+  const perdidas = chipsC.find((c) => /Pérdidas/.test(c.textContent));
+  ok(unidades.getAttribute("aria-pressed") === "false" && !unidades.querySelector(".ia-chip-check").checkVisibility() && perdidas.getAttribute("aria-pressed") === "true" && perdidas.querySelector(".ia-chip-check").checkVisibility(), "la ✓ solo se ve en las marcadas");
+  unidades.click();
+  perdidas.click();
+  ok(unidades.getAttribute("aria-pressed") === "true" && unidades.querySelector(".ia-chip-check").checkVisibility() && perdidas.getAttribute("aria-pressed") === "false" && !perdidas.querySelector(".ia-chip-check").checkVisibility(), "pulsar marca o desmarca (selección múltiple) y la ✓ aparece o desaparece");
+  ok(chipsC.filter((c) => c.getAttribute("aria-pressed") === "true").length === 9, "se pueden tener varias marcadas a la vez");
+  // sin ninguna marcada no se guarda
+  const alertaReal = window.alert;
+  let avisos = [];
+  window.alert = (m) => avisos.push(m);
+  const marcadasAntes = chipsC.filter((c) => c.getAttribute("aria-pressed") === "true");
+  marcadasAntes.forEach((c) => c.click());
+  pc.querySelector("#g-guardar").click();
+  ok(avisos.some((m) => /al menos una herramienta/.test(m)), "sin ninguna herramienta marcada no deja guardar y avisa");
+  window.alert = alertaReal;
+  marcadasAntes.forEach((c) => c.click());
+  perdidas.click();
   pc.querySelector("#g-nombre").value = "Mi agente";
   pc.querySelector("#g-guardar").click();
   await espera(100);
   ok(/Cambios guardados/.test(texto(pc.querySelector("#config-msg"))) && /Mi agente/.test(texto(pc.querySelector("#config-lista"))), "guardar deja el mensaje y la lista actualizada");
+  const guardadoAg = agAn.cargarAgentes().find((a) => a.nombre === "Mi agente");
+  ok(guardadoAg.herramientas.includes("convertir_unidades") && guardadoAg.herramientas.includes("calcular_perdidas") && guardadoAg.herramientas.length === 10, `lo marcado se guarda como lista de herramientas del agente (${guardadoAg.herramientas.length}: incluye convertir_unidades)`);
   q('.ia-pestanas .tab-btn[data-vista="agentes"]').click();
   ok(!q("#vista-agentes").hidden && qa("#lista-agentes .ia-chip").map(texto).includes("Mi agente"), "el agente nuevo aparece como píldora en «Agentes»");
   qa("#lista-agentes .ia-chip").find((b) => b.textContent === "Mi agente").click();
