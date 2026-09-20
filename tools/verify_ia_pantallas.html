@@ -201,6 +201,7 @@ await seccion("Corrector de redacción rediseñado", async () => {
   // --- tarjeta Agente
   const tarjeta = q(".card");
   ok(tarjeta.classList.contains("tarjeta-borde") && /Agente/.test(texto(tarjeta.querySelector(".form-section-title"))) && !!tarjeta.querySelector(".form-section-title .icon"), "la tarjeta «Agente» tiene relleno de 16 px y barra de título con icono");
+  ok(!!q("#tarjeta-agente .form-section-title .icon g path[d^='M4 14v-3a8 8']"), "el icono de la tarjeta «Agente» es el de un asistente con auriculares (headset), ya no un lápiz");
   ok(qa(".ia-pestanas .tab-btn").map(texto).join("|") === "Agentes|Gestionar|Historial" && q(".ia-pestanas .tab-btn.active").textContent === "Agentes", "debajo de la barra hay pestañas «Agentes | Gestionar | Historial» (empieza en «Agentes»)");
   ok(qa(".card").length === 2 || qa(".card").length === 1, "todo vive en UNA tarjeta (más la de la conversación): ya no se abren tarjetas nuevas debajo");
   ok(qa("#lista-agentes .ia-chip").length === 4 && q("#lista-agentes .ia-chip").getAttribute("aria-pressed") === "true", "los 4 agentes siguen como píldoras y el primero está activo");
