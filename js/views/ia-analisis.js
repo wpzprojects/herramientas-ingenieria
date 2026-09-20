@@ -581,26 +581,42 @@ export async function render(container) {
             a.predefinido ? el("span", { class: "badge", style: "margin-left:8px" }, "predeterminado") : null,
             enUso ? el("span", { class: "badge", style: "margin-left:8px" }, "en uso") : null,
           ]),
-          botonFila("Ver", () => pintarFormulario(a, "ver")),
-          botonFila("Editar", () => pintarFormulario(structuredClone(a), "editar"), { disabled: a.predefinido }),
-          botonFila("Duplicar", () => duplicar(a)),
-          botonFila(
-            "Eliminar",
-            () => {
-              const eraActivo = a.id === activoId;
-              const aviso = eraActivo ? " Es el agente en uso: se volverá al predeterminado y se iniciará una conversación nueva." : "";
-              if (!confirm(`¿Eliminar el agente "${a.nombre}"?${aviso}`)) return;
-              agentes = agentes.filter((x) => x.id !== a.id);
-              persistir();
-              if (eraActivo && conv) $("#btn-nueva").click();
-              pintarConfig();
-            },
-            { disabled: a.predefinido }
-          ),
+          el("div", { class: "ia-historial-acciones" }, [
+            botonFila("Ver", () => pintarFormulario(a, "ver")),
+            botonFila("Editar", () => pintarFormulario(structuredClone(a), "editar"), { disabled: a.predefinido }),
+            botonFila("Duplicar", () => duplicar(a)),
+            botonFila(
+              "Eliminar",
+              () => {
+                const eraActivo = a.id === activoId;
+                const aviso = eraActivo ? " Es el agente en uso: se volverá al predeterminado y se iniciará una conversación nueva." : "";
+                if (!confirm(`¿Eliminar el agente "${a.nombre}"?${aviso}`)) return;
+                agentes = agentes.filter((x) => x.id !== a.id);
+                persistir();
+                if (eraActivo && conv) $("#btn-nueva").click();
+                pintarConfig();
+              },
+              { disabled: a.predefinido }
+            ),
+          ]),
           a.predefinido ? el("div", { class: "info-popover", id: "info-agente-estandar", hidden: true }, INFO_ESTANDAR) : null,
         ])
       );
     }
+    // si en alguna fila los botones ya no caben junto al nombre, todas los bajan (que ninguna quede distinta)
+    const alinearAcciones = () => {
+      if (!lista.offsetWidth) return;
+      lista.classList.remove("acciones-abajo");
+      const partida = [...lista.children].some((fila) => {
+        const t = fila.querySelector(".titulo");
+        const b = fila.querySelector(".ia-historial-acciones");
+        return t && b && b.offsetTop >= t.offsetTop + t.offsetHeight;
+      });
+      lista.classList.toggle("acciones-abajo", partida);
+    };
+    new ResizeObserver(alinearAcciones).observe(lista);
+    lista.addEventListener("alinear-acciones", alinearAcciones); // lo usan las pruebas (el navegador sin ventana no avisa cambios de tamaño)
+    document.fonts?.ready.then(alinearAcciones);
     activarInfos(panelConfig); // instala los eventos del cuadro «i» (no hay etiquetas con data-info aqui)
     panelConfig.querySelector('[data-a="nuevo"]').addEventListener("click", () => pintarFormulario(nuevoAgente(), "nuevo"));
   }

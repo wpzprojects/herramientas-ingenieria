@@ -508,6 +508,18 @@ await seccion("Análisis con calculadoras rediseñado", async () => {
   filas[0].querySelectorAll("button.btn")[2].click(); // Duplicar
   await espera(150);
   ok(pc.querySelectorAll("#config-lista .ia-historial-item").length === 2 && /Editando:/.test(texto(pc.querySelector(".ia-editor-cabecera"))) && qa(".ia-editor label[data-info]").length === 4, "«Duplicar» crea la copia y abre su editor («Editando: …», con la ayuda de las instrucciones)");
+  { // si los botones de UNA fila no caben junto al nombre, bajan en TODAS las filas
+    const lista = pc.querySelector("#config-lista"), fs = [...lista.querySelectorAll(".ia-historial-item")];
+    const abajo = (f) => { const t = f.querySelector(".titulo"), b = f.querySelector(".ia-historial-acciones"); return b.offsetTop >= t.offsetTop + t.offsetHeight; };
+    const largo = document.createElement("span"); largo.style.cssText = "display:inline-block;width:320px"; fs[0].querySelector(".titulo").append(largo);
+    const cuadro = async () => lista.dispatchEvent(new Event("alinear-acciones")); // el ResizeObserver real no avisa sin ventana visible
+    lista.style.width = "560px"; await cuadro();
+    ok(lista.classList.contains("acciones-abajo") && fs.every(abajo), "si en una fila los botones no caben junto al nombre, bajan los cuatro en todas las filas (aunque en las otras sí cupieran)");
+    ok(fs.every((f) => { const b = f.querySelector(".ia-historial-acciones"); return b.getBoundingClientRect().left - f.getBoundingClientRect().left < 40; }), "los cuatro botones bajados quedan alineados a la izquierda de su fila");
+    largo.remove(); lista.style.width = "800px"; await cuadro();
+    ok(!lista.classList.contains("acciones-abajo") && fs.every((f) => !abajo(f)), "si en ninguna fila hace falta, todas vuelven a llevar los botones junto al nombre");
+    lista.style.width = "";
+  }
   const chipsC = [...pc.querySelectorAll(".ia-chip--herr")];
   ok(chipsC.length === 14 && chipsC.every((c) => !c.disabled), "en una copia editable las etiquetas de herramientas están activas");
   const unidades = chipsC.find((c) => /unidades/i.test(c.textContent));
