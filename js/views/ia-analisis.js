@@ -483,8 +483,8 @@ export async function render(container) {
         el("div", { class: "ia-historial-item", "data-agente": a.id }, [
           el("span", { class: "titulo", title: a.descripcion }, [
             a.nombre,
-            a.predefinido ? el("span", { class: "badge", style: "margin-left:8px" }, "predeterminado") : null,
             a.predefinido ? botonInfoEstandar() : null,
+            a.predefinido ? el("span", { class: "badge", style: "margin-left:8px" }, "predeterminado") : null,
             enUso ? el("span", { class: "badge", style: "margin-left:8px" }, "en uso") : null,
           ]),
           botonFila("Ver", () => pintarFormulario(a, "ver")),

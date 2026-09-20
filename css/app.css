@@ -371,7 +371,7 @@ input[type="text"], input[type="number"], input[type="search"], input[type="emai
 }
 textarea { resize: vertical; }
 /* cajas de instrucciones del editor de agentes: letra mas pequeña que la del resto de campos (0.95rem, mayor que la etiqueta), sin negrita y mas tenue */
-.ia-editor textarea { font-size: 0.85rem; font-weight: 400; line-height: 1.5; color: color-mix(in srgb, var(--text) 82%, var(--text-muted)); }
+.ia-editor textarea { font-size: 0.85rem; font-weight: 400; line-height: 1.5; color: color-mix(in srgb, var(--text) 40%, var(--text-muted)); }
 input:disabled, select:disabled { opacity: 0.55; }
 .input-group { display: flex; align-items: stretch; gap: var(--space-2); }
 .input-group > * { flex: 1 1 auto; }

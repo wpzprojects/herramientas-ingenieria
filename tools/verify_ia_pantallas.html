@@ -424,8 +424,9 @@ await seccion("Análisis con calculadoras rediseñado", async () => {
   const infoEst = filas[0].querySelector(".titulo .info-btn");
   const cuadroEst = pc.querySelector("#info-agente-estandar");
   ok(!!infoEst && !pc.querySelector(".ia-nota-estandar") && cuadroEst.hidden && /^El agente estándar no se puede modificar, duplícalo para editar una copia\.$/.test(cuadroEst.textContent), "la nota del agente estándar ya no es un texto fijo: va en un botón «i» junto al nombre (con coma)");
-  const rTit = filas[0].querySelector(".titulo .badge").getBoundingClientRect();
-  ok(infoEst.getBoundingClientRect().left >= rTit.right - 1, "el botón «i» va después de la etiqueta «predeterminado»");
+  const rBadge = filas[0].querySelector(".titulo .badge").getBoundingClientRect();
+  const rInfo = infoEst.getBoundingClientRect();
+  ok(rInfo.right <= rBadge.left + 1 && filas[0].querySelector(".titulo").firstChild.textContent === "Agente estándar", "el botón «i» va justo después del nombre y antes de las etiquetas («predeterminado», «en uso»)");
   infoEst.click();
   const abiertoEst = !cuadroEst.hidden && infoEst.getAttribute("aria-expanded") === "true" && cuadroEst.checkVisibility();
   document.body.click();
