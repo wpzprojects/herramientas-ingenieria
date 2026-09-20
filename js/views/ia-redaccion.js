@@ -560,9 +560,11 @@ export async function render(container) {
           <textarea id="g-instr" rows="7" placeholder="Describe cómo debe trabajar: rol, estructura del resultado, qué conservar, qué evitar…"></textarea>
         </div>
         <div>
-          <label style="font-size:.82rem;font-weight:600;color:var(--text-muted)">Ejemplos "antes / después" (opcional, máx. 5)</label>
-          <div id="g-ejemplos" style="margin-top:var(--space-2)"></div>
-          <button type="button" class="btn btn-sm" id="g-add-ej">Agregar ejemplo</button>
+          <div class="ia-ejemplos-cab">
+            <label style="font-size:.82rem;font-weight:600;color:var(--text-muted)">Ejemplos "antes / después" (opcional, máx. 5)</label>
+            <button type="button" class="btn btn-sm" id="g-add-ej">Agregar ejemplo</button>
+          </div>
+          <div id="g-ejemplos"></div>
         </div>
         <div class="btn-row">
           <button type="button" class="btn btn-primary" id="g-guardar">Guardar agente</button>
