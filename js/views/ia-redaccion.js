@@ -434,8 +434,10 @@ export async function render(container) {
   }
 
   function pintarGestor() {
+    // Primero la lista de agentes (como el historial muestra primero la lista de chats) y debajo, a la izquierda, «Nuevo agente» y «Más»
     panelGestor.innerHTML = `
-      <div class="ia-gestor-cabecera">
+      <div class="ia-historial" id="gestor-lista"></div>
+      <div class="ia-gestor-acciones">
         <div class="barra-acciones">
           <button type="button" class="btn btn-sm btn-primary btn-con-icono" data-a="nuevo">${icon("plus")} Nuevo agente</button>
           <details class="menu-mas">
@@ -449,7 +451,6 @@ export async function render(container) {
           <input type="file" accept="application/json,.json" hidden id="f-importar">
         </div>
       </div>
-      <div class="ia-historial" id="gestor-lista"></div>
       <div id="gestor-form"></div>
       <div id="gestor-msg"></div>`;
     const lista = panelGestor.querySelector("#gestor-lista");

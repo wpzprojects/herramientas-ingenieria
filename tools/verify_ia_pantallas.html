@@ -272,13 +272,18 @@ await seccion("Corrector de redacción rediseñado", async () => {
   const cssApp = await (await fetch("../css/app.css")).text();
   ok(!/\.ia-historial-item:hover/.test(cssApp), "las filas no se resaltan al pasar el cursor");
   ok(filas.slice(1).every((f, i) => Math.abs(f.getBoundingClientRect().top - filas[i].getBoundingClientRect().bottom) < 1), "y las filas quedan pegadas (sin espacio que duplique la línea)");
-  ok(!!pg.querySelector('.ia-gestor-cabecera [data-a="nuevo"].btn-primary') && !!pg.querySelector(".ia-gestor-cabecera .menu-mas") && pg.querySelectorAll("#gestor-lista .ia-historial-item").length === 4, "«Nuevo agente» es el único botón principal, hay un menú «Más» y la lista de los 4 agentes");
+  ok(!!pg.querySelector('.ia-gestor-acciones [data-a="nuevo"].btn-primary') && !!pg.querySelector(".ia-gestor-acciones .menu-mas") && pg.querySelectorAll("#gestor-lista .ia-historial-item").length === 4, "«Nuevo agente» es el único botón principal, hay un menú «Más» y la lista de los 4 agentes");
+  const rLista = pg.querySelector("#gestor-lista").getBoundingClientRect();
+  const rNuevo = pg.querySelector('[data-a="nuevo"]').getBoundingClientRect();
+  const rPrimera = pg.querySelector("#gestor-lista .ia-historial-item").getBoundingClientRect();
+  ok(rNuevo.top >= rLista.bottom && Math.abs(rNuevo.left - rPrimera.left) < 12, `«Nuevo agente» y «Más» van DEBAJO de la lista de agentes y alineados a la izquierda (la lista abre primero, como el historial)`);
+  ok(pg.querySelector(".ia-historial") === pg.firstElementChild, "lo primero que se ve en «Gestionar» es la lista de agentes");
   const menu = pg.querySelector(".menu-mas");
   ok(!menu.open && !pg.querySelector(".menu-mas-lista").checkVisibility(), "el menú «Más» empieza cerrado (Exportar, Importar y Restaurar no se ven)");
   menu.querySelector("summary").click();
   await espera(50);
   ok(menu.open && pg.querySelectorAll(".menu-mas-lista button").length === 3 && pg.querySelector(".menu-mas-lista").checkVisibility(), "al abrirlo muestra Exportar JSON, Importar JSON y Restaurar predeterminados");
-  ok(pg.querySelector(".menu-mas-lista").getBoundingClientRect().right <= tarjetaAgente.getBoundingClientRect().right + 1, "y el menú cabe dentro de la tarjeta");
+  ok(pg.querySelector(".menu-mas-lista").getBoundingClientRect().right <= tarjetaAgente.getBoundingClientRect().right + 1 && pg.querySelector(".menu-mas-lista").getBoundingClientRect().left >= tarjetaAgente.getBoundingClientRect().left, "y el menú cabe dentro de la tarjeta (se abre hacia la derecha, desde el botón)");
   document.body.click();
   ok(!menu.open, "se cierra al pulsar fuera");
 
