@@ -193,7 +193,7 @@ export async function render(container) {
         </div>
         <div class="grid-2">
           <div class="field">
-            <label for="f-n-${id}" data-info="Cuántos conductores de este tipo van dentro del ducto (una terna son 3).">Número de conductores</label>
+            <label for="f-n-${id}" data-info="Cuántos conductores de este tipo van dentro del ducto.">Número de conductores</label>
             <select id="f-n-${id}" required>
               ${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<option value="${n}" ${n === 3 ? "selected" : ""}>${n}</option>`).join("")}
             </select>

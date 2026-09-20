@@ -480,7 +480,7 @@ await seccion("vista: ayuda de los campos con botón de información", async () 
   b0.click();
   const abierto = { oculto: pop.hidden, texto: texto(pop), abajo: pop.classList.contains("info-popover--abajo"), rp: pop.getBoundingClientRect(), rl: campo.querySelector("label").getBoundingClientRect(), card: card.getBoundingClientRect().height };
   b0.click();
-  ok(!abierto.oculto && abierto.texto === "Cuántos conductores de este tipo van dentro del ducto (una terna son 3).", `al pulsar el botón se abre el cuadro: «${abierto.texto}»`);
+  ok(!abierto.oculto && abierto.texto === "Cuántos conductores de este tipo van dentro del ducto.", `al pulsar el botón se abre el cuadro: «${abierto.texto}»`);
   ok(!abierto.abajo && abierto.rp.bottom <= abierto.rl.top + 0.5, "el cuadro se abre arriba de la etiqueta");
   ok(Math.abs(abierto.card - antes) < 0.5 && pop.hidden, "abrir el cuadro no mueve el formulario y un segundo clic lo cierra");
 });
