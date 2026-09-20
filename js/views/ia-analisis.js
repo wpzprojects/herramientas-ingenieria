@@ -459,10 +459,10 @@ export async function render(container) {
   function pintarConfig(mensaje = "") {
     panelConfig.innerHTML = `
       <div class="ia-historial" id="config-lista" style="margin-top:0"></div>
-      <div class="ia-gestor-acciones">
+      <p class="text-sm ia-nota-estandar" style="margin:var(--space-3) 0 0">El agente estándar no se puede modificar, duplícalo para editar una copia.</p>
+      <div class="ia-gestor-acciones" style="margin-top:var(--space-3)">
         <div class="barra-acciones"><button type="button" class="btn btn-sm btn-primary btn-con-icono" data-a="nuevo">${icon("plus")} Nuevo agente</button></div>
       </div>
-      <p class="text-muted text-sm" style="margin:var(--space-3) 0 0">El agente predeterminado no se puede modificar: duplícalo para editar una copia.</p>
       <div id="config-msg"></div>
       <div id="config-form"></div>`;
     if (mensaje) {
