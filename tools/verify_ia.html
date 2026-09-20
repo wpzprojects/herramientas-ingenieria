@@ -645,6 +645,13 @@ await seccion("tools: ocupación de ductos con varios tipos de conductor y radio
   ok(dOcu.properties.grupos.type === "array" && dOcu.properties.grupos.items.type === "object" && "numero_conductores" in dOcu.properties.grupos.items.properties && !(dOcu.required || []).length, "el esquema declara «grupos» y ya no hay campos obligatorios a nivel superior");
 });
 
+await seccion("tools: etiqueta del barrido dice sobre qué calculadora corre", async () => {
+  ok(tools.tituloDe("barrer_parametro", { herramienta: "calcular_perdidas" }) === "Barrido de parámetro · Pérdidas", "«Barrido de parámetro · Pérdidas»");
+  ok(tools.tituloDe("barrer_parametro", { herramienta: "calcular_regulacion" }).startsWith("Barrido de parámetro · "), "también con otra calculadora");
+  ok(tools.tituloDe("barrer_parametro") === "Barrido de parámetro" && tools.tituloDe("barrer_parametro", { herramienta: "x" }) === "Barrido de parámetro", "sin calculadora conocida queda el título de siempre");
+  ok(tools.tituloDe("calcular_perdidas", { herramienta: "calcular_regulacion" }) === "Pérdidas", "las demás herramientas no cambian");
+});
+
 await seccion("tools: etiquetas cortas en el reporte (dato de partida y longitud)", async () => {
   const ctx = ctxNuevo();
   await tools.ejecutarLlamada("calcular_perdidas", { ...LINEA, factor_carga: 0.5, resistencia_ohm_km: 0.3 }, ctx);

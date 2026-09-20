@@ -1128,8 +1128,14 @@ export function declaraciones(permitidas) {
     });
 }
 
-export function tituloDe(nombre) {
-  return REGISTRO[nombre]?.titulo || nombre;
+/** Titulo corto de una llamada para las etiquetas del chat. El barrido dice ademas SOBRE QUE calculadora corre («Barrido de parámetro · Pérdidas»). */
+export function tituloDe(nombre, args = null) {
+  const base = REGISTRO[nombre]?.titulo || nombre;
+  if (nombre === "barrer_parametro") {
+    const sobre = REGISTRO[args?.herramienta]?.titulo;
+    if (sobre) return `${base} · ${sobre}`;
+  }
+  return base;
 }
 
 /** Ejecuta una calculadora y devuelve una "corrida" auditable. Lanza ErrorHerramienta si hay datos invalidos. */

@@ -68,7 +68,7 @@ export async function ejecutarTurno({ conv, texto, clave, ajustes, ctx, onEvento
 
       const respuestas = [];
       for (const ll of r.llamadas) {
-        const titulo = tituloDe(ll.name);
+        const titulo = tituloDe(ll.name, ll.args);
         onEvento?.({ tipo: "herramienta", nombre: ll.name, titulo });
         const salida = await ejecutarLlamada(ll.name, ll.args, ctx);
         herramientas.push({ titulo, ok: !!salida.ok });
