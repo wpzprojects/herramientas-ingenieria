@@ -392,6 +392,10 @@ await seccion("Análisis con calculadoras rediseñado", async () => {
   const tabsC = q("#conv .ia-pestanas").getBoundingClientRect();
   const distEj = q("#ejemplos .ia-chip").getBoundingClientRect().top - tabsC.bottom;
   ok(Math.abs(distEj - 28.8) < 0.6, `los ejemplos quedan a 28.8 px de las pestañas (20 % menos que los 36 px de antes; medido ${distEj.toFixed(1)})`);
+  { const b = document.createElement("button"); b.className = "ia-chip"; b.setAttribute("aria-pressed", "false"); q("#tarjeta-agente").append(b);
+    const cE = getComputedStyle(b), cD = getComputedStyle(q("#desc-agente"));
+    ok(cD.fontSize === cE.fontSize && cD.color === cE.color, `la descripción del agente tiene la letra de los ejemplos de pregunta (${cD.fontSize}, ${cD.color})`);
+    b.remove(); }
   ok(!q("#desc-agente").hidden && !q("#desc-agente").classList.contains("text-muted"), "la descripción del agente se ve");
   ok(!q("#linea-modelo") && !q("#badge-modelo") && !/Cambiar en Configuración/.test(texto(q("#tarjeta-agente"))) && q("#vista-agentes").lastElementChild === q("#desc-agente"), "la tarjeta «Agente» ya no tiene la línea «Modelo … Cambiar en Configuración»: queda igual que en el Corrector (píldoras y descripción); el modelo sigue en el resumen del reporte");
   ok(/Modelo: /.test(texto(q("#reporte-meta"))) || q("#card-reporte").hidden, "(el reporte conserva su línea con el modelo cuando aparece)");

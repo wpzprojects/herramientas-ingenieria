@@ -257,7 +257,7 @@ button { font-family: inherit; }
 .ia-reporte-acciones { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-3); }
 .ia-gestor-acciones { display: flex; justify-content: flex-start; margin-top: var(--space-4); }
 .ia-gestor-acciones .barra-acciones { display: flex; align-items: center; gap: var(--space-2); }
-.ia-desc-agente { margin: var(--space-3) 0 0; font-size: 0.9rem; color: var(--text); }
+.ia-desc-agente { margin: var(--space-3) 0 0; font-size: 0.82rem; color: var(--text-muted); } /* misma letra que los ejemplos de pregunta */
 .ia-msg-etiqueta { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent-strong); margin-bottom: var(--space-2); }
 .ia-ajustes { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-3) 0 0; }
 .menu-mas { position: relative; }
