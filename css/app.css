@@ -729,8 +729,8 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
   border-radius: 999px; padding: 6px 12px; font-size: 0.82rem; cursor: pointer; text-align: left;
 }
 .ia-chip:hover { border-color: var(--accent); color: var(--accent-strong); }
-.ia-chip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-strong); font-weight: 700; }
-.ia-chip--herr, .ia-chip--herr[aria-pressed="true"] { font-weight: 400; font-size: 0.7rem; } /* en el editor de agentes basta el azul y la ✓: sin negrita */
+.ia-chip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-strong); }
+.ia-chip--herr { font-size: 0.7rem; } /* en el editor de agentes basta el azul y la ✓: sin negrita */
 /* herramientas de un agente de analisis: etiquetas de seleccion MULTIPLE; la marcada lleva una ✓ (asi no se confunde con elegir un solo agente) */
 .ia-chip--herr .ia-chip-check { display: none; margin-right: 6px; }
 .ia-chip--herr[aria-pressed="true"] .ia-chip-check { display: inline; }
