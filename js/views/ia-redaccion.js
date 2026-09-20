@@ -105,7 +105,7 @@ export async function render(container) {
     "beforeend",
     `
     <div class="card tarjeta-borde form-section" id="tarjeta-agente">
-      <div class="form-section-title">${icon("messageChatbot")} Agente</div>
+      <div class="form-section-title">${icon("robot")} Agente</div>
       <div class="tabs ia-pestanas" role="tablist">
         <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-vista="agentes">Agentes</button>
         <button type="button" class="tab-btn" role="tab" aria-selected="false" data-vista="gestionar">Gestionar</button>
@@ -120,7 +120,7 @@ export async function render(container) {
     </div>
 
     <div class="card tarjeta-borde form-section ia-conv" id="conv">
-      <div class="form-section-title">${icon("messageCircle")} Conversación</div>
+      <div class="form-section-title">${icon("messageChatbot")} Conversación</div>
       <div class="ia-chat ia-chat--hilo" id="chat" aria-live="polite" hidden></div>
       <div class="ia-caja">
         <textarea id="f-texto" rows="1" placeholder="${PH_TEXTO}"></textarea>
