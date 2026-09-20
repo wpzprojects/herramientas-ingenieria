@@ -456,11 +456,19 @@ export async function render(container) {
   const botonFila = (texto, onclick, { disabled = false, ghost = false } = {}) =>
     el("button", { type: "button", class: "btn btn-sm", onclick, disabled }, texto);
 
+  // «i» junto al agente estándar (mismo cuadro que las ayudas de los campos; el cuadro va en la fila y no dentro del titulo, que recorta lo que sobra)
+  const INFO_ESTANDAR = "El agente estándar no se puede modificar, duplícalo para editar una copia.";
+  function botonInfoEstandar() {
+    return el("button", {
+      type: "button", class: "info-btn", "aria-label": "Más información sobre el agente estándar",
+      "aria-expanded": "false", "aria-controls": "info-agente-estandar", html: icon("infoCircle"),
+    });
+  }
+
   function pintarConfig(mensaje = "") {
     panelConfig.innerHTML = `
       <div class="ia-historial" id="config-lista" style="margin-top:0"></div>
-      <p class="text-sm ia-nota-estandar" style="margin:var(--space-3) 0 0">El agente estándar no se puede modificar, duplícalo para editar una copia.</p>
-      <div class="ia-gestor-acciones" style="margin-top:var(--space-3)">
+      <div class="ia-gestor-acciones">
         <div class="barra-acciones"><button type="button" class="btn btn-sm btn-primary btn-con-icono" data-a="nuevo">${icon("plus")} Nuevo agente</button></div>
       </div>
       <div id="config-msg"></div>
@@ -476,6 +484,7 @@ export async function render(container) {
           el("span", { class: "titulo", title: a.descripcion }, [
             a.nombre,
             a.predefinido ? el("span", { class: "badge", style: "margin-left:8px" }, "predeterminado") : null,
+            a.predefinido ? botonInfoEstandar() : null,
             enUso ? el("span", { class: "badge", style: "margin-left:8px" }, "en uso") : null,
           ]),
           botonFila("Ver", () => pintarFormulario(a, "ver")),
@@ -494,9 +503,11 @@ export async function render(container) {
             },
             { disabled: a.predefinido }
           ),
+          a.predefinido ? el("div", { class: "info-popover", id: "info-agente-estandar", hidden: true }, INFO_ESTANDAR) : null,
         ])
       );
     }
+    activarInfos(panelConfig); // instala los eventos del cuadro «i» (no hay etiquetas con data-info aqui)
     panelConfig.querySelector('[data-a="nuevo"]').addEventListener("click", () => pintarFormulario(nuevoAgente(), "nuevo"));
   }
 

@@ -414,16 +414,22 @@ await seccion("Análisis con calculadoras rediseñado", async () => {
   ok(!pc.hidden && q("#vista-agentes").hidden && ta.contains(pc), "«Gestionar» muestra los agentes en la misma tarjeta");
   const filas = [...pc.querySelectorAll("#config-lista .ia-historial-item")];
   ok(pc.firstElementChild === pc.querySelector("#config-lista") && filas.length === 1, "lo primero es la lista de agentes (el estándar)");
-  const botonesFila = [...filas[0].querySelectorAll("button")];
+  const botonesFila = [...filas[0].querySelectorAll("button.btn")];
   ok(botonesFila.map(texto).join("|") === "Ver|Editar|Duplicar|Eliminar" && botonesFila.every((b) => getComputedStyle(b).borderTopWidth !== "0px" && !b.classList.contains("btn-ghost")), "cada fila: Ver, Editar, Duplicar y Eliminar, todos con contorno (ya no hay «Usar»: se elige en «Agentes»)");
   ok(botonesFila[1].disabled && botonesFila[3].disabled, "el agente estándar no se puede editar ni eliminar");
   const rl = pc.querySelector("#config-lista").getBoundingClientRect();
   const rn = pc.querySelector('[data-a="nuevo"]').getBoundingClientRect();
   ok(rn.top >= rl.bottom && Math.abs(rn.left - filas[0].getBoundingClientRect().left) < 12 && pc.querySelector('[data-a="nuevo"]').classList.contains("btn-primary"), "«Nuevo agente» va debajo de la lista, a la izquierda");
 
-  const notaEst = pc.querySelector(".ia-nota-estandar");
-  ok(/^El agente estándar no se puede modificar, duplícalo para editar una copia\.$/.test(texto(notaEst)) && notaEst.getBoundingClientRect().bottom <= pc.querySelector('[data-a="nuevo"]').getBoundingClientRect().top && notaEst.getBoundingClientRect().top >= pc.querySelector("#config-lista").getBoundingClientRect().bottom, `la nota del agente estándar (con coma) va ENTRE la lista y «Nuevo agente»`);
-  ok(getComputedStyle(notaEst).color !== getComputedStyle(pc.querySelector(".ia-historial-item .titulo")).color, "la nota va en un gris distinto al de los nombres de agentes");
+  const infoEst = filas[0].querySelector(".titulo .info-btn");
+  const cuadroEst = pc.querySelector("#info-agente-estandar");
+  ok(!!infoEst && !pc.querySelector(".ia-nota-estandar") && cuadroEst.hidden && /^El agente estándar no se puede modificar, duplícalo para editar una copia\.$/.test(cuadroEst.textContent), "la nota del agente estándar ya no es un texto fijo: va en un botón «i» junto al nombre (con coma)");
+  const rTit = filas[0].querySelector(".titulo .badge").getBoundingClientRect();
+  ok(infoEst.getBoundingClientRect().left >= rTit.right - 1, "el botón «i» va después de la etiqueta «predeterminado»");
+  infoEst.click();
+  const abiertoEst = !cuadroEst.hidden && infoEst.getAttribute("aria-expanded") === "true" && cuadroEst.checkVisibility();
+  document.body.click();
+  ok(abiertoEst && cuadroEst.hidden, "el «i» abre el cuadro y tocar fuera lo cierra");
   // --- ver el estandar
   botonesFila[0].click();
   await espera(100);
@@ -440,7 +446,7 @@ await seccion("Análisis con calculadoras rediseñado", async () => {
   ok(!pc.querySelector(".ia-editor") && !pc.querySelector(".editando"), "«Cerrar» quita el editor y la marca");
 
   // --- duplicar, editar y usar
-  filas[0].querySelectorAll("button")[2].click(); // Duplicar
+  filas[0].querySelectorAll("button.btn")[2].click(); // Duplicar
   await espera(150);
   ok(pc.querySelectorAll("#config-lista .ia-historial-item").length === 2 && /Editando:/.test(texto(pc.querySelector(".ia-editor-cabecera"))) && qa(".ia-editor label[data-info]").length === 4, "«Duplicar» crea la copia y abre su editor («Editando: …», con la ayuda de las instrucciones)");
   const chipsC = [...pc.querySelectorAll(".ia-chip--herr")];

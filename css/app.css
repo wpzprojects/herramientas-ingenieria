@@ -255,8 +255,6 @@ button { font-family: inherit; }
 .ia-pestanas { margin-bottom: var(--space-4); }
 .ia-acciones.solo-nueva > :not(#btn-nueva) { display: none !important; } /* viendo el historial: solo «Nueva conversacion» */
 .ia-reporte-acciones { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-3); }
-/* nota bajo la lista de agentes: gris mas tenue que el texto de las filas para que no parezca otra fila */
-.ia-nota-estandar { color: color-mix(in srgb, var(--text-muted) 50%, var(--text-faint)); }
 .ia-gestor-acciones { display: flex; justify-content: flex-start; margin-top: var(--space-4); }
 .ia-gestor-acciones .barra-acciones { display: flex; align-items: center; gap: var(--space-2); }
 .ia-desc-agente { margin: var(--space-3) 0 0; font-size: 0.9rem; color: var(--text); }
@@ -372,6 +370,8 @@ input[type="text"], input[type="number"], input[type="search"], input[type="emai
   width: 100%;
 }
 textarea { resize: vertical; }
+/* cajas de instrucciones del editor de agentes: letra mas pequeña que la del resto de campos (0.95rem, mayor que la etiqueta), sin negrita y mas tenue */
+.ia-editor textarea { font-size: 0.85rem; font-weight: 400; line-height: 1.5; color: color-mix(in srgb, var(--text) 82%, var(--text-muted)); }
 input:disabled, select:disabled { opacity: 0.55; }
 .input-group { display: flex; align-items: stretch; gap: var(--space-2); }
 .input-group > * { flex: 1 1 auto; }
@@ -730,8 +730,9 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 }
 .ia-chip:hover { border-color: var(--accent); color: var(--accent-strong); }
 .ia-chip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-strong); font-weight: 700; }
+.ia-chip--herr, .ia-chip--herr[aria-pressed="true"] { font-weight: 400; } /* en el editor de agentes basta el azul y la ✓: sin negrita */
 /* herramientas de un agente de analisis: etiquetas de seleccion MULTIPLE; la marcada lleva una ✓ (asi no se confunde con elegir un solo agente) */
-.ia-chip--herr .ia-chip-check { display: none; margin-right: 6px; font-weight: 700; }
+.ia-chip--herr .ia-chip-check { display: none; margin-right: 6px; }
 .ia-chip--herr[aria-pressed="true"] .ia-chip-check { display: inline; }
 .ia-chip:disabled { cursor: default; opacity: 0.65; }
 .ia-chip:disabled:hover { border-color: var(--border-strong); color: var(--text-muted); }
@@ -745,7 +746,7 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 
 /* lista (historial, agentes): filas sin caja, separadas por UNA sola linea fina (sin resalte al pasar el cursor: lo pidio asi el usuario) */
 .ia-historial { display: flex; flex-direction: column; gap: 0; margin-top: var(--space-2); }
-.ia-historial-item { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-2); border: 0; border-bottom: 1px solid var(--border); border-radius: 0; }
+.ia-historial-item { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-2); border: 0; border-bottom: 1px solid var(--border); border-radius: 0; }
 .ia-historial-item:last-child { border-bottom: 0; }
 .ia-historial-item .titulo { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 400; font-size: 0.9rem; color: color-mix(in srgb, var(--text) 82%, var(--text-muted)); } /* mas suave que el texto principal */
 .ia-historial-item .fecha { color: var(--text-faint); font-size: 0.78rem; white-space: nowrap; }

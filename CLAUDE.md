@@ -186,7 +186,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Análisis con calculadoras tiene agentes (`js/ai/agentes-analisis.js`, botón «Agentes»): el predeterminado («Agente estándar») sale del
   código (`SISTEMA_ANALISIS`/`PROMPT_REPORTE` en `analisis.js`), es de solo lectura y nunca se escribe en `localStorage`; los
   propios se guardan ahí y siempre llevan `REGLA_FIJA` al final. Si cambia el prompt estándar, el predeterminado se actualiza
-  solo. Cada agente elige las herramientas que puede usar (campo `herramientas`; en el editor son etiquetas de selección múltiple `.ia-chip--herr` con ✓ al marcarse, agrupadas por categoría, ya no casillas): el filtro real es
+  solo. Cada agente elige las herramientas que puede usar (campo `herramientas`; en el editor son etiquetas de selección múltiple `.ia-chip--herr` con ✓ al marcarse, agrupadas por categoría, ya no casillas, y SIN negrita: basta el azul y la ✓; las cajas de instrucciones del editor usan letra de 0.85rem más tenue; la nota «el agente estándar no se puede modificar…» va en un botón «i» junto a su nombre, no como texto fijo): el filtro real es
   `declaraciones(permitidas)` + `ctx.permitidas` en `tools.js` (no solo el prompt); un agente guardado sin lista usa las del
   estándar (`HERRAMIENTAS_ESTANDAR`; una herramienta con `opcional: true` queda fuera de ellas: hoy `convertir_unidades` y
   `convertir_coordenadas`, grupo «Varios»). Para exponer otro módulo a la IA: ficha nueva en `tools.js` (campos, `calcular`,
@@ -221,7 +221,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v186); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v187); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (menú lateral → «Perfil», `js/auth/*`, `firebase/firestore.rules`)
