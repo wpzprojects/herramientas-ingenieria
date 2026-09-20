@@ -34,7 +34,7 @@ const MUESTRAS = {
 const NOMBRE_TEMA = { oscuro: "Tema oscuro", claro: "Tema claro" };
 const VISTA = { oscuro: "dark", claro: "light" };
 const AYUDA_COLOR =
-  "Elige el color principal; los demás tonos (botones, fondos suaves, encabezados de tabla…) se calculan solos. Con el color predeterminado la paleta queda exactamente como está. Si el color dificulta la lectura, se ajusta un poco.";
+  "Pulsa el cuadro de color para elegir un color personalizado, o usa una de las muestras. Los demás tonos (botones, fondos suaves, encabezados de tabla…) se calculan solos. Con el color predeterminado la paleta queda como está; si un color dificulta la lectura, se ajusta un poco.";
 
 export async function render(container) {
   container.innerHTML = `
@@ -226,9 +226,7 @@ export async function render(container) {
         </div>
         </div>
       </div>`;
-    box.innerHTML = `${barra("palette", "Apariencia")}
-      <p class="text-muted text-sm" style="margin:0">Elige el color principal de cada tema; los demás tonos se calculan a partir de él. Se guarda solo en este dispositivo.</p>
-      ${bloque("oscuro")}${bloque("claro")}`;
+    box.innerHTML = `${barra("palette", "Apariencia")}${bloque("oscuro")}${bloque("claro")}`;
     activarInfos(box);
 
     const refrescar = (tema) => {

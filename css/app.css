@@ -227,11 +227,10 @@ button { font-family: inherit; }
 .ap-muestra { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--border-strong); cursor: pointer; padding: 0; }
 .ap-muestra[aria-pressed="true"] { outline: 2px solid var(--text); outline-offset: 2px; }
 /* vista previa: usa la paleta del tema mostrado (tokens.css) aunque la pagina este en el otro */
-/* controles a la izquierda y una vista previa compacta a la derecha (en celular, una debajo de la otra) */
-.ap-cuerpo { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: var(--space-4); align-items: start; }
+/* los controles y, debajo a la izquierda, una vista previa compacta */
 .ap-cuerpo .field { margin-bottom: 0; }
-@media (max-width: 720px) { .ap-cuerpo { grid-template-columns: 1fr; } }
-.vista-tema { margin-top: 0; background: var(--bg); color: var(--text); border: 1px solid var(--border-strong); border-radius: var(--radius-md); overflow: hidden; font-size: 0.85rem; }
+.ap-tema:first-of-type { margin-top: 0; }
+.vista-tema { margin-top: var(--space-3); max-width: 300px; background: var(--bg); color: var(--text); border: 1px solid var(--border-strong); border-radius: var(--radius-md); overflow: hidden; font-size: 0.85rem; }
 .vt-barra { display: flex; align-items: center; gap: var(--space-2); background: var(--topbar-bg); color: var(--topbar-text); border-bottom: 1px solid var(--topbar-border); padding: 6px 10px; font-weight: 700; font-size: 0.8rem; }
 .vt-logo { width: 18px; height: 18px; border-radius: 5px; background: var(--topbar-badge-bg); }
 .vt-cuerpo { padding: 10px; display: flex; flex-direction: column; gap: 8px; }

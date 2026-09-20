@@ -194,6 +194,10 @@ await seccion("pestaña Apariencia en Perfil", async () => {
   ok(bloques.map((b) => texto(b.querySelector("h3"))).join("|") === "Tema oscuro|Tema claro", "hay un bloque por tema: oscuro y claro");
   ok(bloques.every((b) => !!b.querySelector('input[type="color"]') && b.querySelectorAll(".ap-muestra").length === 6 && !!b.querySelector("[data-restablecer]") && !!b.querySelector(".vista-tema") && !!b.querySelector("label[data-info]")), "cada uno con selector de color, 6 muestras, «Restablecer», vista previa y ayuda «i»");
   ok(bloques[0].querySelector("[data-hex]").textContent === "#4C9EFF" && bloques[1].querySelector("[data-hex]").textContent === "#0E7C7B", "por defecto muestran los colores actuales: azul #4C9EFF (oscuro) y verde azulado #0E7C7B (claro)");
+  ok(!q("#ca-apariencia > p") && /cuadro de color para elegir un color personalizado/.test(bloques[0].querySelector("label[data-info]").dataset.info), "sin texto introductorio sobre la paleta; y la ayuda «i» de «Color principal» dice que el cuadro de color abre un color personalizado");
+  const posSel = bloques[0].querySelector(".ap-selector").getBoundingClientRect();
+  const posPrev = bloques[0].querySelector(".vista-tema").getBoundingClientRect();
+  ok(posPrev.top >= posSel.bottom - 1 && Math.abs(posPrev.left - posSel.left) < 2 && posPrev.width <= 301, `la vista previa queda DEBAJO de la paleta, alineada a la izquierda y compacta (${Math.round(posPrev.width)} px de ancho)`);
   ok(bloques[0].querySelector('.ap-muestra[aria-pressed="true"]').dataset.color === "#4c9eff" && bloques[1].querySelector('.ap-muestra[aria-pressed="true"]').dataset.color === "#0e7c7b", "y la muestra predeterminada aparece marcada");
 
   // la vista previa oscura muestra la paleta oscura aunque la pagina este en claro
