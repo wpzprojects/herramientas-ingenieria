@@ -365,7 +365,7 @@ await seccion("Análisis con calculadoras rediseñado", async () => {
 
   // --- tarjeta Agente
   const ta = q("#tarjeta-agente");
-  ok(ta.classList.contains("tarjeta-borde") && /Agente/.test(texto(ta.querySelector(".form-section-title"))) && !!ta.querySelector(".form-section-title .icon g path[d^='M6 6a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v4']"), "la tarjeta «Agente» (robot) tiene relleno de 16 px y barra de título con icono, igual que en el Corrector");
+  ok(ta.classList.contains("tarjeta-borde") && /Agente/.test(texto(ta.querySelector(".form-section-title"))) && !!ta.querySelector(".form-section-title .icon g path[d^='M6 5h12a2 2 0 0 1 2 2v12']"), "la tarjeta «Agente» de Análisis lleva la cara de robot (robot-face), con relleno de 16 px y barra de título");
   ok(Math.round(ta.querySelector(".form-section-title .icon").getBoundingClientRect().width) === 21, "el robot mide 21 px");
   ok(qa(".ia-pestanas .tab-btn").map(texto).join("|") === "Agentes|Gestionar|Historial" && q(".ia-pestanas .tab-btn.active").textContent === "Agentes", "pestañas «Agentes | Gestionar | Historial» dentro de la tarjeta, como el Corrector");
   ok(qa("#lista-agentes .ia-chip").length === 1 && q("#lista-agentes .ia-chip").getAttribute("aria-pressed") === "true", "el agente se elige con píldoras (hoy solo el estándar, en uso)");
@@ -376,6 +376,10 @@ await seccion("Análisis con calculadoras rediseñado", async () => {
   // --- tarjeta Conversacion
   const tc = q("#conv");
   ok(tc.classList.contains("tarjeta-borde") && texto(tc.querySelector(".form-section-title")) === "Conversación" && !!tc.querySelector(".form-section-title .icon g path[d^='M3 20l1.3 -3.9']"), "la tarjeta de consulta se llama «Conversación» y lleva su barra de título (burbuja), como en el Corrector");
+  const chipsEj = qa("#ejemplos .ia-chip").map((c) => c.getBoundingClientRect());
+  const entreChips = chipsEj.slice(1).map((r, i) => r.top - chipsEj[i].bottom).filter((d) => d >= 0);
+  const hastaCaja = q(".ia-caja").getBoundingClientRect().top - chipsEj.at(-1).bottom;
+  ok(entreChips.length > 0 && Math.abs(hastaCaja - Math.min(...entreChips)) < 1.5, `el último ejemplo queda a la misma distancia de la caja de texto que los ejemplos entre sí (${hastaCaja.toFixed(1)} px frente a ${Math.min(...entreChips).toFixed(1)} px)`);
   ok(qa("#ejemplos .ia-chip").length === 4 && !q("#ejemplos").hidden && !q(".ia-caja--al-borde"), "los 4 ejemplos de pregunta siguen ahí y la caja de texto ya no usa márgenes negativos");
   ok(q("#card-reporte").hidden, "el reporte no aparece hasta que hay cálculos");
 

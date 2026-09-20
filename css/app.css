@@ -720,6 +720,7 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 @keyframes ia-mic-pulso { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
 @media (prefers-reduced-motion: reduce) { .ia-mic[aria-pressed="true"] .icon { animation: none; } }
 .ia-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
+.ia-chips:not([hidden]) + .ia-caja { margin-top: var(--space-2); } /* la caja de texto queda a la misma distancia de los ejemplos que estos entre si */
 .ia-chip {
   border: 1px solid var(--border-strong); background: var(--bg-elevated); color: var(--text-muted);
   border-radius: 999px; padding: 6px 12px; font-size: 0.82rem; cursor: pointer; text-align: left;
