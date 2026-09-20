@@ -730,6 +730,8 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 }
 .ia-chip:hover { border-color: var(--accent); color: var(--accent-strong); }
 .ia-chip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-strong); }
+/* la pildora del agente elegido (Analisis y Corrector) tambien lleva la ✓, igual que las herramientas */
+.ia-chip[aria-pressed="true"]:not(.ia-chip--herr)::before { content: "✓"; margin-right: 6px; }
 .ia-chip--herr { font-size: 0.7rem; } /* en el editor de agentes basta el azul y la ✓: sin negrita */
 /* herramientas de un agente de analisis: etiquetas de seleccion MULTIPLE; la marcada lleva una ✓ (asi no se confunde con elegir un solo agente) */
 .ia-chip--herr .ia-chip-check { display: none; margin-right: 6px; }
