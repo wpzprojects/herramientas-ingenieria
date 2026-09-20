@@ -29,7 +29,7 @@ export async function render(container) {
   const reintentar = () => render(container);
 
   const tarjeta = (html) => {
-    cuerpo.innerHTML = `<div class="card ia-gate">${html}</div>`;
+    cuerpo.innerHTML = `<div class="card tarjeta-borde ia-gate">${html}</div>`;
     return cuerpo.firstElementChild;
   };
   const aviso = (nodo, tipo, texto) => {
@@ -136,7 +136,7 @@ export async function render(container) {
   function pintarPanel(u, perfil) {
     const esAdmin = perfil.rol === "admin";
     cuerpo.innerHTML = `
-      <div class="card">
+      <div class="card tarjeta-borde">
         <div class="dev-header">
           <span class="dev-avatar">${escapeHtml((u.nombre || u.email || "?").trim().charAt(0).toUpperCase())}</span>
           <div style="flex:1 1 auto;min-width:0">
@@ -146,8 +146,8 @@ export async function render(container) {
           <button type="button" class="btn btn-sm" data-salir>Cerrar sesión</button>
         </div>
       </div>
-      <div class="card" id="ca-usuarios"></div>
-      <div class="card" id="ca-clave"></div>`;
+      <div class="card tarjeta-borde" id="ca-usuarios"></div>
+      <div class="card tarjeta-borde" id="ca-clave"></div>`;
     cuerpo.querySelector("[data-salir]").addEventListener("click", cerrarSesion);
     pintarUsuarios(perfil, esAdmin);
     pintarClave(esAdmin);
