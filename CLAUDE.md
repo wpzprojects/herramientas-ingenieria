@@ -199,7 +199,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v136); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v137); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (menú lateral → «Perfil», `js/auth/*`, `firebase/firestore.rules`)
@@ -224,9 +224,9 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 
 ## Niveles de acceso: visitante / usuario / administrador (FASE 1 implementada 2026-09-19)
 
-- Decidido con el usuario: la app se abre SIN login. Un **visitante** (sin sesión, o con sesión de un correo fuera de la lista) solo tiene el PRIMER
-  módulo de cada grupo: Ocupación de ductos, Conductores desnudos, Distancias de seguridad y Codificación de entregables (marcados
-  `libre: true` en `sectionMenus`, `nav.js`); Funciones de IA no tiene ninguno. El **usuario** (en `usuarios` con rol `usuario`) y el
+- Decidido con el usuario: la app se abre SIN login. Un **visitante** (sin sesión, o con sesión de un correo fuera de la lista) solo tiene 3
+  módulos: Ocupación de ductos, Conductores desnudos y Distancias de seguridad (marcados `libre: true` en `sectionMenus`, `nav.js`);
+  Varios y Funciones de IA no tienen ninguno (Codificación de entregables se quitó de los libres el 2026-09-19). El **usuario** (en `usuarios` con rol `usuario`) y el
   **administrador** (`admin`, además gestiona la lista y la clave compartida en Perfil) lo tienen todo. Solo se implementó Google; el
   inicio con Microsoft es la FASE 2 (falta que el usuario registre la app en Microsoft Entra y probar `email_verified`/tenant de Celsia;
   ver el análisis: cuidar «nOAuth», y el error de cuenta existente con otro proveedor).
