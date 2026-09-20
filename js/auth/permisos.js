@@ -7,7 +7,7 @@
 import { sectionMenus } from "../nav.js";
 
 export const NIVELES = ["visitante", "usuario", "admin"];
-export const TEXTO_BLOQUEADO = "Disponible al iniciar sesión en Perfil";
+export const TEXTO_BLOQUEADO = "Disponible al iniciar sesión";
 
 const segmentos = (ruta) => String(ruta).split("/").filter(Boolean);
 const rutaDeHash = (hash) => `/${segmentos(String(hash).replace(/^#/, "")).join("/")}`;

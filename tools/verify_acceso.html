@@ -219,7 +219,7 @@ await seccion("menús: módulos bloqueados sin hipervínculo", async () => {
   ok(b.getAttribute("title") === perm.TEXTO_BLOQUEADO && b.getAttribute("aria-disabled") === "true" && !b.querySelector("a") && /Pérdidas/.test(b.textContent), "la tarjeta bloqueada conserva su texto, no lleva enlace y avisa al pasar el cursor");
   ok(getComputedStyle(b.querySelector(".tile-icon")).color !== getComputedStyle($$("a.menu-tile")[0].querySelector(".tile-icon")).color && parseFloat(getComputedStyle(b.querySelector(".tile-icon")).opacity) < 1, "se ve apagada: icono en gris (no azul) y más tenue que el de un módulo habilitado");
   ok(!!b.querySelector(".tile-candado svg") && $$("a.menu-tile .tile-candado").length === 0, "la tarjeta bloqueada lleva un candado y las habilitadas no");
-  ok(perm.TEXTO_BLOQUEADO === "Disponible al iniciar sesión en Perfil", "la ayuda al pasar el cursor dice «Disponible al iniciar sesión en Perfil»");
+  ok(perm.TEXTO_BLOQUEADO === "Disponible al iniciar sesión", "la ayuda al pasar el cursor dice «Disponible al iniciar sesión»");
   await dibujar(ayuda);
   const enlacesAyuda = $$("ul.ayuda-lista a").map((a) => a.textContent);
   const bloqueadosAyuda = $$("ul.ayuda-lista .enlace-bloqueado");

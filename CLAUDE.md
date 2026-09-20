@@ -199,7 +199,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v135); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v136); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (menú lateral → «Perfil», `js/auth/*`, `firebase/firestore.rules`)
@@ -235,7 +235,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   «Contenido para usuarios autorizados» + botón a Perfil; también bloquea escribir la dirección a mano) y `alCambiarAcceso` → `router.refresh()`
   (salvo en `/perfil`). Los módulos bloqueados se ven APAGADOS (decidido con el usuario): tarjeta más tenue (55 %), icono y título en gris y un candado
   (Tabler `lock`) arriba a la derecha; en Ayuda el título en gris con candado pequeño (los libres siguen azules y subrayados); sin
-  hipervínculo y con la ayuda «Disponible al iniciar sesión en Perfil» (`TEXTO_BLOQUEADO`); Perfil no se bloquea y muestra «Tu cuenta … no está autorizada. Contacta al administrador…».
+  hipervínculo y con la ayuda «Disponible al iniciar sesión» (`TEXTO_BLOQUEADO`); Perfil no se bloquea y muestra «Tu cuenta … no está autorizada. Contacta al administrador…».
 - Vigencia sin conexión: 15 días contados desde la ÚLTIMA confirmación del servidor (no desde el login). `localStorage["acceso.cache"]` =
   `{email, rol, validadoEn}`. Con internet se revalida al abrir, al recuperar la conexión y al volver a la app tras 6 h (renueva los 15
   días); si el servidor dice que ya no está en la lista, pierde el acceso al instante; si hay error de red, se conserva la cache; sin
