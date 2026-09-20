@@ -198,6 +198,9 @@ button { font-family: inherit; }
 .ca-agregar :is(input, select), .ca-agregar .btn { height: 44px; box-sizing: border-box; } /* misma altura: la etiqueta y los controles quedan alineados */
 @media (max-width: 720px) { .ca-agregar { grid-template-columns: 1fr; } }
 .ca-rol { display: inline-flex; align-items: center; gap: var(--space-2); }
+.ca-avisos { margin: var(--space-3) 0 0; font-size: 0.85rem; }
+.ca-avisos ul { margin: var(--space-1) 0 0; padding-left: 1.1rem; }
+.ca-avisos li + li { margin-top: 2px; }
 .ca-fuentes { display: flex; flex-direction: column; gap: var(--space-2); }
 .ca-fuentes .checkbox-row { align-items: center; }
 .select-sm { min-width: 0; height: 32px; padding: 2px 8px; font-size: 0.85rem; }

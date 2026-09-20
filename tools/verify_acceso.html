@@ -329,13 +329,19 @@ await seccion("pantalla de Perfil rediseñada", async () => {
   ok(fuentes.length === 3, "tres orígenes de clave como opciones compactas");
   fuentes.find((r) => r.value === "local").click();
   fuentes.find((r) => r.value === "local").dispatchEvent(new Event("change"));
-  ok(!q("#ca-k-personal") && !q("#ca-k-compartida") && /Se usa la clave guardada en este navegador/.test(texto(q("#ca-detalle"))), "«Este navegador»: no muestra campos de clave del servidor");
+  ok(!q("#ca-k-personal") && !q("#ca-k-compartida") && /Se usa la clave guardada en este navegador/.test(texto(q("#ca-detalle"))) && qa("#ca-clave .callout").length === 0, "«Este navegador»: no muestra campos de clave del servidor ni avisos");
   fuentes.find((r) => r.value === "personal").click();
   fuentes.find((r) => r.value === "personal").dispatchEvent(new Event("change"));
   ok(!!q("#ca-k-personal") && !q("#ca-k-compartida"), "«Mi clave personal»: solo su campo");
   fuentes.find((r) => r.value === "compartida").click();
   fuentes.find((r) => r.value === "compartida").dispatchEvent(new Event("change"));
-  ok(!!q("#ca-k-compartida") && !q("#ca-k-personal") && !!q(".callout-warning"), "«Clave compartida» (admin): su campo y el aviso corto");
+  ok(!!q("#ca-k-compartida") && !q("#ca-k-personal") && qa(".ca-avisos li").length >= 3 && qa(".callout-warning").length === 1, "«Clave compartida» (admin): su campo y UN solo recuadro de avisos con viñetas");
+  ok(/Ten presente/.test(texto(q(".ca-avisos"))) && /cualquier usuario autorizado/.test(texto(q(".ca-avisos"))) && /Todavía no has configurado la clave compartida/.test(texto(q(".ca-avisos"))), "el recuadro une lo pendiente de la clave con la advertencia de quién puede leerla");
+  fuentes.find((r) => r.value === "local").click();
+  fuentes.find((r) => r.value === "local").dispatchEvent(new Event("change"));
+  ok(qa("#ca-clave .callout").length === 0, "con «Este navegador» no hay avisos");
+  fuentes.find((r) => r.value === "compartida").click();
+  fuentes.find((r) => r.value === "compartida").dispatchEvent(new Event("change"));
   q("#ca-k-compartida").value = "AIzaPRUEBA";
   q("#ca-g-compartida").click();
   await espera(250);
@@ -345,6 +351,17 @@ await seccion("pantalla de Perfil rediseñada", async () => {
   await dibujar({ usuarios: semilla(), sesion: YO });
   ok(qa(".ca-tabs").length === 0 && !q("#ca-usuarios") && !!q("#ca-clave"), "un usuario normal ve solo la tarjeta de la clave (sin pestañas ni lista de correos)");
   ok(!/jefe@empresa.com/.test(marco.textContent), "y no ve los correos de los demás");
+  const opNormal = qa("#ca-fuentes input").find((r) => r.value === "compartida");
+  ok(!!opNormal, "el usuario normal conserva la opción «Clave compartida» (la puede usar)");
+  opNormal.click();
+  opNormal.dispatchEvent(new Event("change"));
+  ok(/aún no configurada por el administrador/.test(texto(q("#ca-detalle"))) && !/Solo los administradores pueden cambiarla/.test(marco.textContent) && !q("#ca-k-compartida"), "usuario normal + clave compartida sin configurar: «aún no configurada por el administrador», sin campo ni la frase de quién puede cambiarla");
+  ok(qa(".ca-avisos li").length === 1 && !/cualquier usuario autorizado/.test(marco.textContent), "y el recuadro trae solo la viñeta de lo pendiente (sin la advertencia que es solo para el administrador)");
+  await dibujar({ usuarios: semilla(), sesion: YO, claveCompartida: "AIzaADMIN" });
+  const opNormal2 = qa("#ca-fuentes input").find((r) => r.value === "compartida");
+  opNormal2.click();
+  opNormal2.dispatchEvent(new Event("change"));
+  ok(/Clave compartida configurada por el administrador/.test(texto(q("#ca-detalle"))) && qa("#ca-clave .callout").length === 0, "con la clave compartida ya configurada: «configurada por el administrador» y ningún aviso");
 
   // ---- sin autorizacion y sin sesion
   await dibujar({ usuarios: semilla(), sesion: EXTRANO });

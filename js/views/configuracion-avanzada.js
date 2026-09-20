@@ -309,12 +309,12 @@ export async function render(container) {
         <label data-info="${escapeHtml(AYUDA_FUENTE)}">Clave que usarán las funciones de IA</label>
         <div class="ca-fuentes" id="ca-fuentes"></div>
       </div>
-      <div id="ca-msg-fuente"></div>
-      <div id="ca-detalle"></div>`;
+      <div id="ca-detalle"></div>
+      <div id="ca-avisos"></div>`;
 
     const contFuentes = box.querySelector("#ca-fuentes");
-    const msgFuente = box.querySelector("#ca-msg-fuente");
     const detalle = box.querySelector("#ca-detalle");
+    const avisos = box.querySelector("#ca-avisos");
 
     for (const f of FUENTES) {
       const id = `ca-f-${f}`;
@@ -322,8 +322,6 @@ export async function render(container) {
       radio.addEventListener("change", () => {
         guardarFuente(f);
         pintarDetalle();
-        if (!disponible[f]) aviso(msgFuente, "warning", `Elegiste ${OPCIONES_FUENTE[f].titulo.toLowerCase()}, pero todavía no la has configurado: las funciones de IA te la pedirán.`);
-        else aviso(msgFuente, "success", "Listo: las funciones de IA usarán esa clave.");
       });
       contFuentes.append(
         el("label", { for: id, class: "checkbox-row", style: "color:var(--text)" }, [
@@ -349,14 +347,13 @@ export async function render(container) {
       if (fuente === "personal") {
         detalle.innerHTML = campoClave("personal", "Mi clave personal", "Solo tú puedes leerla; ni siquiera los administradores.", hayPersonal);
       } else if (fuente === "compartida") {
-        detalle.innerHTML =
-          (esAdmin
-            ? campoClave("compartida", "Clave compartida", "Una sola clave para todos los usuarios autorizados; solo los administradores la cambian.", hayCompartida)
-            : `<p class="text-muted text-sm">Clave compartida ${estado(hayCompartida)} — solo los administradores pueden cambiarla.</p>`) +
-          `<div class="callout callout-warning" style="margin:var(--space-3) 0 0"><span>La clave compartida la puede leer cualquier usuario autorizado: compártela solo con personas de confianza y cámbiala si sospechas que se filtró. Todos consumen el mismo cupo gratuito.</span></div>`;
+        detalle.innerHTML = esAdmin
+          ? campoClave("compartida", "Clave compartida", "Una sola clave para todos los usuarios autorizados; solo los administradores la cambian.", hayCompartida)
+          : `<p class="text-muted text-sm" style="margin:0">${hayCompartida ? "Clave compartida configurada por el administrador" : "Clave compartida aún no configurada por el administrador"} ${estado(hayCompartida)}</p>`;
       } else {
         detalle.innerHTML = `<p class="text-muted text-sm" style="margin:0">Se usa la clave guardada en este navegador. Para cambiarla ve a <a href="#/ia/configuracion">Funciones de IA → Configuración</a>.</p>`;
       }
+      pintarAvisos(fuente);
       activarInfos(box);
       const g = (t) => box.querySelector(`#ca-g-${t}`);
       const bo = (t) => box.querySelector(`#ca-b-${t}`);
@@ -368,6 +365,29 @@ export async function render(container) {
         g("compartida").addEventListener("click", guardarClave("compartida"));
         bo("compartida").addEventListener("click", borrarClave("compartida"));
       }
+    }
+
+    // Un solo recuadro de avisos (formal, con viñetas), debajo del detalle: lo pendiente de la clave elegida y, solo para el
+    // administrador con la clave compartida, la advertencia sobre quien puede leerla.
+    function pintarAvisos(fuente) {
+      const puntos = [];
+      if (!disponible[fuente]) {
+        puntos.push(
+          fuente === "compartida" && !esAdmin
+            ? "El administrador aún no ha configurado la clave compartida: las funciones de IA te pedirán una clave."
+            : `Todavía no has configurado ${fuente === "compartida" ? "la clave compartida" : "esta clave"}: las funciones de IA te la pedirán.`
+        );
+      }
+      if (esAdmin && fuente === "compartida") {
+        puntos.push(
+          "La clave compartida la puede leer cualquier usuario autorizado (técnicamente, con las herramientas del navegador): compártela solo con personas de confianza.",
+          "Si alguien sale de la lista pierde el acceso, pero cambia la clave si sospechas que se filtró.",
+          "Todos los usuarios consumen el mismo cupo gratuito."
+        );
+      }
+      avisos.innerHTML = puntos.length
+        ? `<div class="callout callout-warning ca-avisos"><div><strong>Ten presente</strong><ul>${puntos.map((p) => `<li>${escapeHtml(p)}</li>`).join("")}</ul></div></div>`
+        : "";
     }
 
     const guardarClave = (tipo) => async () => {

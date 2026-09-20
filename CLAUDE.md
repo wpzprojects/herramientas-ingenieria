@@ -199,7 +199,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v140); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v141); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (menú lateral → «Perfil», `js/auth/*`, `firebase/firestore.rules`)
@@ -234,7 +234,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   `tarjeta-borde` (16 px) con barra de título e icono (`user`, `users`, `key`), «Mi cuenta» (insignia de rol + última confirmación del servidor
   y hasta cuándo vale sin conexión), pestañas «Usuarios | Clave de Gemini» solo para el administrador (el usuario normal ve solo la tarjeta de
   la clave), tabla con rol como insignia (lápiz → selector compacto) y papelera para quitar, «Agregar correo» arriba con controles de 44 px
-  alineados, clave de Gemini con solo el campo de la fuente elegida y ayudas en botones «i». PRIVACIDAD: `firebase/firestore.rules` ahora
+  alineados, clave de Gemini con solo el campo de la fuente elegida y ayudas en botones «i». Avisos de la clave: UN solo recuadro «Ten presente» con viñetas (lo pendiente de la clave elegida; y, solo para el ADMIN con la clave compartida, quién puede leerla y el cupo común). El usuario normal conserva la opción «Clave compartida» (la usa, no la cambia; decidido con el usuario, opción A) y ve «configurada / aún no configurada por el administrador». PRIVACIDAD: `firebase/firestore.rules` ahora
   deja `list` y `get` de OTROS correos solo al admin (`mock.listarUsuarios` también): hay que PUBLICAR las reglas en la consola de Firebase
   (Firestore → Reglas) o un usuario normal seguiría viendo la lista; la pantalla ya no la pide a los no-admin. Pruebas: sección «pantalla de Perfil
   rediseñada» de `verify_acceso.html`.
