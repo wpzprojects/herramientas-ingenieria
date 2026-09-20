@@ -148,9 +148,10 @@ export async function render(container) {
   function pintarPanel(u, perfil) {
     const esAdmin = perfil.rol === "admin";
     const cache = leerCache();
+    // un solo parrafo: se ajusta al ancho de la tarjeta (no se fuerza a dos lineas)
     const vigencia = cache
-      ? [`Confirmado por el servidor el ${fecha(cache.validadoEn)}.`, `Tu acceso sin conexión va hasta el ${fecha(venceLaCache(cache))} y se renueva cada vez que abres la app con internet.`]
-      : [];
+      ? `Confirmado por el servidor el ${fecha(cache.validadoEn)}. Tu acceso sin conexión va hasta el ${fecha(venceLaCache(cache))} y se renueva cada vez que abres la app con internet.`
+      : "";
     cuerpo.innerHTML = `
       <div class="card tarjeta-borde form-section">
         ${barra("user", "Mi cuenta")}
@@ -159,7 +160,7 @@ export async function render(container) {
           <div style="flex:1 1 auto;min-width:0">
             <p class="dev-name">${escapeHtml(u.nombre || u.email)}</p>
             <p class="dev-role">${escapeHtml(u.email)} · ${insigniaRol(perfil.rol)}</p>
-            ${vigencia.map((linea, i) => `<p class="text-muted text-sm" style="margin:${i === 0 ? "var(--space-2)" : "2px"} 0 0">${escapeHtml(linea)}</p>`).join("")}
+            ${vigencia ? `<p class="text-muted text-sm" style="margin:var(--space-2) 0 0">${escapeHtml(vigencia)}</p>` : ""}
           </div>
           <button type="button" class="btn btn-sm" data-salir style="flex:0 0 auto;white-space:nowrap">Cerrar sesión</button>
         </div>
