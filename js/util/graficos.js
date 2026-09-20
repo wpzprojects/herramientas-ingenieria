@@ -40,11 +40,12 @@ export function donaOcupacionSvg({ pct, limite, cumple }) {
 /**
  * Los conductores «se asientan» en el fondo del ducto: relajacion simple con gravedad y choques (posiciones en mm, origen en el
  * centro del ducto, y hacia abajo). Devuelve [{ r, tipo, x, y }]. Si no caben, quedan encimados (se nota en el dibujo).
+ * Un conductor MAS GRUESO que el ducto se dibuja como uno de (diametro del ducto − 1 mm): llena el ducto por completo.
  */
 export function asentarConductores(diametroTuboMm, tipos) {
   const cs = [];
   tipos.forEach((t, k) => {
-    for (let i = 0; i < t.cantidad; i++) cs.push({ r: t.diametroMm / 2, tipo: k, x: 0, y: 0 });
+    for (let i = 0; i < t.cantidad; i++) cs.push({ r: Math.max(Math.min(t.diametroMm, diametroTuboMm - 1) / 2, 0.1), tipo: k, x: 0, y: 0 });
   });
   const R = diametroTuboMm / 2;
   cs.forEach((c, i) => {
