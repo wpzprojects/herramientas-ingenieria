@@ -375,6 +375,7 @@ await seccion("pantalla de Perfil rediseñada", async () => {
   await dibujar({ usuarios: semilla(), sesion: null });
   ok(/Inicia sesión para habilitar todos los módulos/.test(texto(q(".ia-gate"))) && !!q("[data-login] svg") && /Iniciar sesión con Google/.test(texto(q("[data-login]"))), "sin sesión: texto nuevo y botón de Google con su icono");
   ok(!/Acceso restringido/.test(marco.textContent), "ya no dice «Acceso restringido»");
+  ok(/Sin iniciar sesión puedes usar algunos módulos\. Con una cuenta autorizada se habilitan todos los módulos\./.test(texto(q(".ia-gate"))), "la explicación es corta: «Sin iniciar sesión puedes usar algunos módulos. Con una cuenta autorizada se habilitan todos los módulos.»");
 });
 
 await seccion("archivos y documentación", async () => {
