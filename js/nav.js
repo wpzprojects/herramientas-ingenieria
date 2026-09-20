@@ -32,10 +32,10 @@ export const sectionMenus = {
     { title: "Ampacidad subterránea", desc: "Corriente admisible de cables en banco de ductos (IEC 60287-1-1).", icon: "underground", hash: "#/calculos/ampacidad-subterranea" },
   ],
   catalogos: [
-    { title: "Conductores desnudos", desc: "ACSR, AAAC, ACAR, AAC, ACSS — 342 referencias.", icon: "conductorBare", hash: "#/catalogos/desnudos", libre: true },
-    { title: "Conductores semiaislados", desc: "Bicapa / Tricapa AAAC-ACSR — 70 referencias.", icon: "conductorSemi", hash: "#/catalogos/semiaislados" },
-    { title: "Conductores XLPE (MT)", desc: "Cables aislados de media tensión — 195 referencias.", icon: "conductorXlpe", hash: "#/catalogos/xlpe" },
-    { title: "Tuberías", desc: "PVC y metálicas (EMT, IMC, RIGID) — 43 referencias.", icon: "underground", hash: "#/catalogos/tuberias" },
+    { title: "Conductores desnudos", desc: "ACSR, AAAC, ACAR, AAC, ACSS.", icon: "conductorBare", hash: "#/catalogos/desnudos", libre: true },
+    { title: "Conductores semiaislados", desc: "Bicapa / Tricapa AAAC-ACSR.", icon: "conductorSemi", hash: "#/catalogos/semiaislados" },
+    { title: "Conductores XLPE (MT)", desc: "Cables aislados de media tensión.", icon: "conductorXlpe", hash: "#/catalogos/xlpe" },
+    { title: "Tuberías", desc: "PVC y metálicas (EMT, IMC, RIGID).", icon: "underground", hash: "#/catalogos/tuberias" },
   ],
   normatividad: [
     { title: "Distancias de seguridad", desc: "Tablas RETIE 3.10.x de distancias mínimas de seguridad.", icon: "ruler", hash: "#/normatividad/distancias-seguridad", libre: true },
