@@ -81,7 +81,7 @@ export async function render(container) {
   function pintarLogin(mensaje) {
     const t = tarjeta(`${barra("user", "Iniciar sesión")}
       <p style="margin:0 0 var(--space-2)">Inicia sesión para habilitar todos los módulos de la aplicación.</p>
-      <p class="text-muted text-sm">Sin iniciar sesión puedes usar algunos módulos. Con una cuenta autorizada se habilitan todos los módulos.</p>
+      <p class="text-muted text-sm">Sin iniciar sesión puedes usar algunas funcionalidades. Con una cuenta autorizada se habilitan todos los módulos.</p>
       <div class="btn-row"><button type="button" class="btn btn-primary btn-con-icono" data-login>${icon("brandGoogle")} Iniciar sesión con Google</button></div>
       <div data-msg></div>`);
     if (mensaje) aviso(t.querySelector("[data-msg]"), "warning", mensaje);
