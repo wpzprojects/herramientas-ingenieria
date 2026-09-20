@@ -5,6 +5,7 @@
 
 import { el, escapeHtml } from "../util/format.js";
 import { activarInfos } from "../util/info-campo.js";
+import { copiarTexto } from "../util/portapapeles.js";
 import { obtenerAjustes } from "../ai/config.js";
 import { claveEnUso } from "../ai/clave.js";
 import { generar, ErrorGemini } from "../ai/gemini.js";
@@ -41,25 +42,6 @@ function guardarActivo(id) {
   }
 }
 
-async function copiarTexto(texto) {
-  try {
-    await navigator.clipboard.writeText(texto);
-    return true;
-  } catch {
-    const ta = el("textarea", { style: "position:fixed;opacity:0;" });
-    ta.value = texto;
-    document.body.append(ta);
-    ta.select();
-    let ok = false;
-    try {
-      ok = document.execCommand("copy");
-    } catch {
-      ok = false;
-    }
-    ta.remove();
-    return ok;
-  }
-}
 
 function descargar(nombre, contenido, tipo) {
   const url = URL.createObjectURL(new Blob([contenido], { type: tipo }));

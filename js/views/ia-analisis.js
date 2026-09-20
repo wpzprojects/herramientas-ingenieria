@@ -30,6 +30,7 @@ import { escenariosHtml, reporteMd, reporteHtmlExportable, armarTablas, AVISO_RE
 import * as historial from "../ai/historial.js";
 import { agregarMicrofono } from "../ai/voz.js";
 import { icon } from "../icons.js";
+import { copiarTexto } from "../util/portapapeles.js";
 
 const EJEMPLOS = [
   "Compara las pérdidas de una línea de 34.5 kV, 9.9 MW, factor de potencia 0.95 y 5.2 km con ACSR 4/0, 266.8 y 477, con factor de carga 0.56.",
@@ -164,7 +165,27 @@ export async function render(container) {
     else {
       const chips = chipsHerramientas(m.herramientas);
       if (chips) chat.append(chips);
-      chat.append(el("div", { class: "ia-msg ia-msg--model md", html: markdownAHtml(m.texto) }));
+      const burbuja = el("div", { class: "ia-msg ia-msg--model md", html: markdownAHtml(m.texto) });
+      // «Copiar» dentro de cada respuesta (como en el Corrector): copia el texto de la respuesta; el aviso «Reporte generado…» no lleva
+      if (!m.sinCopia) {
+        burbuja.append(
+          el("div", { class: "ia-msg-acciones" }, [
+            el("button", {
+              type: "button",
+              class: "ia-accion",
+              title: "Copiar la respuesta",
+              html: `${icon("copy")}<span>Copiar</span>`,
+              onclick: async (e) => {
+                const etiqueta = e.currentTarget.querySelector("span"); // antes del await: luego currentTarget es null
+                const ok = await copiarTexto(m.texto, markdownAHtml(m.texto));
+                etiqueta.textContent = ok ? "¡Copiado!" : "No se pudo copiar";
+                setTimeout(() => (etiqueta.textContent = "Copiar"), 1500);
+              },
+            }),
+          ])
+        );
+      }
+      chat.append(burbuja);
     }
     return chat.lastElementChild;
   }
@@ -283,7 +304,7 @@ export async function render(container) {
       } else if (r.truncado) {
         textoVisible += "\n\n> Se alcanzó el límite de rondas de cálculo; puedes continuar con una nueva pregunta.";
       }
-      const msg = { rol: "model", texto: textoVisible, herramientas: r.herramientas };
+      const msg = { rol: "model", texto: textoVisible, herramientas: r.herramientas, ...(esReporte ? { sinCopia: true } : {}) };
       conv.mensajes.push(msg);
       pintarMensaje(msg).scrollIntoView({ behavior: "smooth", block: "start" }); // se lee desde el inicio de la respuesta
       historial.guardar(conv); // en segundo plano

@@ -427,6 +427,15 @@ await seccion("Análisis con calculadoras rediseñado", async () => {
   q("#btn-enviar").click();
   await espera(700);
   ok(qa(".ia-msg--model").some((m) => /Las pérdidas resultan bajas/.test(m.textContent)) && qa(".ia-toolchip").length >= 1, "la respuesta llega con las etiquetas de las calculadoras usadas");
+  { const resp = qa(".ia-msg--model").at(-1), btnC = resp.querySelector(":scope > .ia-msg-acciones button.ia-accion");
+    ok(!!btnC && /Copiar/.test(btnC.textContent) && resp.lastElementChild.classList.contains("ia-msg-acciones"), "cada respuesta de la IA lleva su botón «Copiar» al final (como en el Corrector)");
+    const copiados = [], previo = Object.getOwnPropertyDescriptor(Navigator.prototype, "clipboard");
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { write: async (items) => copiados.push(items), writeText: async (t) => copiados.push(t) } });
+    btnC.click();
+    await espera(50);
+    ok(copiados.length === 1 && /¡Copiado!/.test(btnC.textContent), "«Copiar» copia la respuesta y avisa «¡Copiado!»");
+    delete navigator.clipboard;
+    ok(qa(".ia-msg--user .ia-msg-acciones").length === 0, "los mensajes del usuario no llevan «Copiar»"); }
   const rc = q("#card-reporte");
   ok(/Continúa este análisis/.test(q("#f-pregunta").placeholder) && /Nueva conversación/.test(q("#f-pregunta").placeholder), "con una conversación en curso, la caja explica que continúa el análisis (y que para un caso distinto se usa «Nueva conversación»)");
   ok(!rc.hidden && rc.classList.contains("tarjeta-borde") && /Reporte de escenarios/.test(texto(rc.querySelector(".form-section-title"))) && !!rc.querySelector(".form-section-title .icon"), "aparece la tarjeta «Reporte de escenarios» con barra de título e icono");
