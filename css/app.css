@@ -191,6 +191,21 @@ button { font-family: inherit; }
 .tile-candado svg { width: 16px; height: 16px; }
 .enlace-bloqueado { color: var(--text-muted); cursor: default; }
 /* Perfil y configuracion avanzada */
+/* Mi cuenta: en pantalla ancha, avatar | nombre, correo y vigencia | boton; en celular todo en filas:
+   avatar + nombre y correo, luego el texto de vigencia a todo el ancho y debajo «Cerrar sesión» */
+.dev-header.ca-cuenta { /* mas especifico que .dev-header, que se define mas abajo */
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "av datos btn" "av vig btn";
+  column-gap: var(--space-3); row-gap: var(--space-2); align-items: center;
+}
+.ca-cuenta .dev-avatar { grid-area: av; }
+.ca-cuenta-datos { grid-area: datos; min-width: 0; }
+.ca-cuenta-vigencia { grid-area: vig; margin: 0; }
+.ca-cuenta-salir { grid-area: btn; white-space: nowrap; }
+@media (max-width: 720px) {
+  .dev-header.ca-cuenta { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "av datos" "vig vig" "btn btn"; row-gap: var(--space-3); }
+  .ca-cuenta-salir { justify-self: start; }
+}
 .ca-tabs { margin: var(--space-4) 0; }
 .ca-sola { margin-top: var(--space-4); }
 .ca-agregar { display: grid; grid-template-columns: minmax(0, 1fr) 190px auto; gap: var(--space-3); align-items: end; margin-bottom: var(--space-4); }

@@ -155,14 +155,14 @@ export async function render(container) {
     cuerpo.innerHTML = `
       <div class="card tarjeta-borde form-section">
         ${barra("user", "Mi cuenta")}
-        <div class="dev-header">
+        <div class="dev-header ca-cuenta">
           <span class="dev-avatar">${escapeHtml((u.nombre || u.email || "?").trim().charAt(0).toUpperCase())}</span>
-          <div style="flex:1 1 auto;min-width:0">
+          <div class="ca-cuenta-datos">
             <p class="dev-name">${escapeHtml(u.nombre || u.email)}</p>
             <p class="dev-role">${escapeHtml(u.email)} · ${insigniaRol(perfil.rol)}</p>
-            ${vigencia ? `<p class="text-muted text-sm" style="margin:var(--space-2) 0 0">${escapeHtml(vigencia)}</p>` : ""}
           </div>
-          <button type="button" class="btn btn-sm" data-salir style="flex:0 0 auto;white-space:nowrap">Cerrar sesión</button>
+          ${vigencia ? `<p class="text-muted text-sm ca-cuenta-vigencia">${escapeHtml(vigencia)}</p>` : ""}
+          <button type="button" class="btn btn-sm ca-cuenta-salir" data-salir>Cerrar sesión</button>
         </div>
       </div>
       ${
