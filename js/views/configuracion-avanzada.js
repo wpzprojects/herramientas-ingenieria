@@ -28,13 +28,13 @@ const AYUDA_FUENTE = "Las funciones de IA necesitan una clave de Gemini. Elige d
 
 // Apariencia (Perfil): muestras de color y textos
 const MUESTRAS = {
-  oscuro: [["#4c9eff", "Azul (predeterminado)"], ["#2dd4bf", "Turquesa"], ["#4ade80", "Verde"], ["#a78bfa", "Violeta"], ["#fb923c", "Naranja"], ["#f472b6", "Rosa"]],
-  claro: [["#0e7c7b", "Verde azulado (predeterminado)"], ["#2563eb", "Azul"], ["#15803d", "Verde"], ["#7c3aed", "Violeta"], ["#c2410c", "Naranja"], ["#be185d", "Rosa"]],
+  oscuro: [["#4c9eff", "Azul (predeterminado)"], ["#22d3ee", "Cian"], ["#2dd4bf", "Turquesa"], ["#4ade80", "Verde"], ["#fbbf24", "Ámbar"], ["#fb923c", "Naranja"], ["#f87171", "Rojo"], ["#f472b6", "Rosa"], ["#a78bfa", "Violeta"], ["#94a3b8", "Gris azulado"]],
+  claro: [["#0e7c7b", "Verde azulado (predeterminado)"], ["#2563eb", "Azul"], ["#0e7490", "Cian"], ["#15803d", "Verde"], ["#b45309", "Ámbar"], ["#c2410c", "Naranja"], ["#b91c1c", "Rojo"], ["#be185d", "Rosa"], ["#7c3aed", "Violeta"], ["#475569", "Gris azulado"]],
 };
 const NOMBRE_TEMA = { oscuro: "Tema oscuro", claro: "Tema claro" };
 const VISTA = { oscuro: "dark", claro: "light" };
 const AYUDA_COLOR =
-  "Pulsa el cuadro de color para elegir un color personalizado, o usa una de las muestras. Los demás tonos (botones, fondos suaves, encabezados de tabla…) se calculan solos. Con el color predeterminado la paleta queda como está; si un color dificulta la lectura, se ajusta un poco.";
+  "Pulsa el cuadro de color para elegir un color personalizado, o usa una de las muestras. Los demás tonos (botones, fondos suaves, encabezados de tabla…) se calculan solos. Si un color dificulta la lectura, se ajusta un poco.";
 
 export async function render(container) {
   container.innerHTML = `
@@ -203,6 +203,7 @@ export async function render(container) {
     const box = cuerpo.querySelector("#ca-apariencia");
     const bloque = (tema) => `
       <div class="ap-tema" data-tema="${tema}">
+        <div class="ap-rejilla">
         <div class="ap-cabecera">
           <h3>${NOMBRE_TEMA[tema]}</h3>
           <button type="button" class="btn btn-sm" data-restablecer>Restablecer</button>
@@ -223,6 +224,7 @@ export async function render(container) {
             <div class="vt-fila"><span class="vt-activo">Cálculos</span><button type="button" class="btn btn-primary btn-sm" tabindex="-1">Botón</button><a href="#/perfil" tabindex="-1" onclick="return false">Enlace</a><span class="badge badge-success">Estado</span></div>
             <div class="vt-tabla"><span>Encabezado</span><span>Valor</span><span class="vt-sugerida">Sugerida</span><span class="vt-sugerida">12,3</span></div>
           </div>
+        </div>
         </div>
         </div>
       </div>`;

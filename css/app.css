@@ -228,10 +228,17 @@ button { font-family: inherit; }
 .ap-muestra[aria-pressed="true"] { outline: 2px solid var(--text); outline-offset: 2px; }
 /* vista previa: usa la paleta del tema mostrado (tokens.css) aunque la pagina este en el otro */
 /* los controles y, a su derecha, una vista previa compacta (si no cabe al lado, pasa debajo) */
-.ap-cuerpo { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-4) var(--space-6); }
-.ap-cuerpo .field { margin-bottom: 0; flex: 0 0 auto; max-width: 100%; }
+.ap-tema { container-type: inline-size; }
+.ap-rejilla { display: grid; grid-template-columns: max-content 300px; grid-template-rows: auto 1fr; grid-template-areas: "cab prev" "campo prev"; column-gap: var(--space-6); justify-content: start; align-items: start; }
+.ap-cabecera { grid-area: cab; }
+.ap-cuerpo { display: contents; }
+.ap-cuerpo .field { margin-bottom: 0; grid-area: campo; max-width: 100%; }
+@container (max-width: 860px) { /* si no cabe al lado, la vista previa pasa debajo */
+  .ap-rejilla { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; grid-template-areas: "cab" "campo" "prev"; }
+  .ap-rejilla .vista-tema { margin-top: var(--space-4); }
+}
 .ap-tema:first-of-type { margin-top: 0; }
-.vista-tema { margin-top: 0; flex: 0 0 300px; width: 300px; max-width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border-strong); border-radius: var(--radius-md); overflow: hidden; font-size: 0.85rem; }
+.vista-tema { margin-top: 0; grid-area: prev; align-self: start; width: 300px; max-width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border-strong); border-radius: var(--radius-md); overflow: hidden; font-size: 0.85rem; }
 .vt-barra { display: flex; align-items: center; gap: var(--space-2); background: var(--topbar-bg); color: var(--topbar-text); border-bottom: 1px solid var(--topbar-border); padding: 6px 10px; font-weight: 700; font-size: 0.8rem; }
 .vt-logo { width: 18px; height: 18px; border-radius: 5px; background: var(--topbar-badge-bg); }
 .vt-cuerpo { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
