@@ -199,16 +199,18 @@ await seccion("vista: un tipo de conductor, cálculo y resultados", async () => 
   const sC = cols[0].querySelector("svg").getBoundingClientRect(), sD = cols[1].querySelector("svg").getBoundingClientRect();
   ok(Math.abs(sD.width - sC.width) < 1 && Math.abs(sD.height - sC.height) < 1, `la dona y el corte miden lo mismo (${sD.width.toFixed(0)} × ${sD.height.toFixed(0)} px)`);
   if (ancha) ok(rD.left - rC.right < 100 && rM.left - rD.right < 100, `las tres columnas quedan juntas, a la izquierda (${(rD.left - rC.right).toFixed(0)} y ${(rM.left - rD.right).toFixed(0)} px de separación)`);
-  { // un conductor mas grueso que el ducto se dibuja «lleno» (ducto − 1 mm), no desaparece ni se sale
+  { // un conductor mas grueso que el ducto se dibuja «lleno» (con el diametro del ducto), no desaparece ni se sale
     const { asentarConductores, corteDuctoSvg } = await import("../js/util/graficos.js");
     const gordo = asentarConductores(102.3, [{ cantidad: 1, diametroMm: 200 }]);
-    ok(gordo.length === 1 && Math.abs(gordo[0].r * 2 - 101.3) < 1e-9 && Math.hypot(gordo[0].x, gordo[0].y) + gordo[0].r <= 102.3 / 2 + 0.01, "un conductor de Ø200 en un ducto de Ø102.3 se dibuja de Ø101.3 (ducto − 1 mm), dentro del ducto");
+    ok(gordo.length === 1 && Math.abs(gordo[0].r * 2 - 102.3) < 1e-9 && Math.hypot(gordo[0].x, gordo[0].y) + gordo[0].r <= 102.3 / 2 + 0.01, "un conductor de Ø200 en un ducto de Ø102.3 se dibuja de Ø102.3 (el del ducto), dentro del ducto y centrado");
     const varios = asentarConductores(102.3, [{ cantidad: 3, diametroMm: 150 }]);
-    ok(varios.length === 3 && varios.every((c) => Math.abs(c.r * 2 - 101.3) < 1e-9 && Math.hypot(c.x, c.y) + c.r <= 102.3 / 2 + 0.01 && Number.isFinite(c.x) && Number.isFinite(c.y)), "con varios conductores más gruesos que el ducto todos se dibujan llenos y dentro del ducto");
+    ok(varios.length === 3 && varios.every((c) => Math.abs(c.r * 2 - 102.3) < 1e-9 && Math.hypot(c.x, c.y) + c.r <= 102.3 / 2 + 0.01 && Number.isFinite(c.x) && Number.isFinite(c.y)), "con varios conductores más gruesos que el ducto todos se dibujan llenos y dentro del ducto");
     const svg = corteDuctoSvg({ diametroTuboMm: 102.3, tipos: [{ cantidad: 3, diametroMm: 150 }] });
     ok((svg.match(/oc-aparece/g) || []).length === 3 && !/NaN/.test(svg), "el dibujo tiene los 3 conductores y ningún valor inválido");
-    const igual = asentarConductores(102.3, [{ cantidad: 1, diametroMm: 101.3 }]);
-    ok(Math.abs(igual[0].r - gordo[0].r) < 1e-9, "un conductor más grueso se ve igual que uno de ducto − 1 mm");
+    const igual = asentarConductores(102.3, [{ cantidad: 1, diametroMm: 102.3 }]);
+    ok(Math.abs(igual[0].r - gordo[0].r) < 1e-9, "un conductor más grueso se ve igual que uno del mismo diámetro que el ducto");
+    const chico = asentarConductores(3, [{ cantidad: 1, diametroMm: 10 }]);
+    ok(Math.abs(chico[0].r * 2 - 3) < 1e-9 && Number.isFinite(chico[0].x) && Number.isFinite(chico[0].y), "con un ducto muy pequeño (Ø3 mm) sigue dando un dibujo coherente (Ø3 mm)");
   }
   ok($$(".oc-corte svg .oc-aparece").length === 3 && /3 conductores/.test($(".oc-corte svg").getAttribute("aria-label")), "el corte transversal dibuja los 3 conductores");
   ok(!$$(".tabla-resultado").length, "con un solo tipo no hay tabla por tipo");
