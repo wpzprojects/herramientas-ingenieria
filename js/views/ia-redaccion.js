@@ -561,7 +561,7 @@ export async function render(container) {
         </div>
         <div>
           <div class="ia-ejemplos-cab">
-            <label style="font-size:.82rem;font-weight:600;color:var(--text-muted)">Ejemplos "antes / después" (opcional, máx. 5)</label>
+            <label style="font-size:.82rem;font-weight:600;color:var(--text-muted)">Ejemplos (opcional, máx. 5)</label>
             <button type="button" class="btn btn-sm" id="g-add-ej">Agregar ejemplo</button>
           </div>
           <div id="g-ejemplos"></div>

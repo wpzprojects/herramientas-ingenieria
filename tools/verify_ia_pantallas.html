@@ -285,7 +285,8 @@ await seccion("Corrector de redacción rediseñado", async () => {
   ok(marcadas.length === 1 && /Correos/.test(marcadas[0].textContent) && getComputedStyle(marcadas[0]).boxShadow !== "none", "en la lista queda marcada solo la fila del agente que se edita («Correos»)");
   const rEt = [...ed.querySelectorAll("label")].find((l) => /Ejemplos/.test(l.textContent)).getBoundingClientRect();
   const rBt = ed.querySelector("#g-add-ej").getBoundingClientRect();
-  ok(rBt.left >= rEt.right && Math.abs((rBt.top + rBt.bottom) / 2 - (rEt.top + rEt.bottom) / 2) < 8 && rBt.left - rEt.right < 40, `«Ejemplos "antes / después" (opcional, máx. 5)» queda al frente de «Agregar ejemplo», en la misma línea (a ${Math.round(rBt.left - rEt.right)} px)`);
+  ok(rBt.left >= rEt.right && Math.abs((rBt.top + rBt.bottom) / 2 - (rEt.top + rEt.bottom) / 2) < 8 && rBt.left - rEt.right < 40, `«Ejemplos (opcional, máx. 5)» queda al frente de «Agregar ejemplo», en la misma línea (a ${Math.round(rBt.left - rEt.right)} px)`);
+  ok(texto([...ed.querySelectorAll("label")].find((l) => /Ejemplos/.test(l.textContent))) === "Ejemplos (opcional, máx. 5)", "el título dice solo «Ejemplos (opcional, máx. 5)», sin «antes / después» (esos campos aparecen al agregar un ejemplo)");
   ok(ed.querySelectorAll("label[data-info]").length === 3 && ed.querySelectorAll(".hint").length === 0, "las ayudas del formulario (tono, temperatura, instrucciones) son botones «i», sin textos .hint");
   ok(ed.querySelectorAll("label[data-info] button, label[data-info] .info-btn").length >= 3, "cada una con su botón «i»");
   pg.querySelector("#g-cancelar").click();
