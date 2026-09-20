@@ -182,7 +182,7 @@ await seccion("vista: un tipo de conductor, cálculo y resultados", async () => 
   const ancha = window.innerWidth > 900; // con la ventana angosta (celular) las tres pasan a una sola columna
   ok(ancha ? rD.right <= rM.left + 1 && rM.right <= rC.left + 1 && Math.abs(rD.top - rC.top) < 200 : rD.bottom <= rM.top + 1 && rM.bottom <= rC.top + 1, ancha ? "quedan una junto a otra (la dona a la izquierda, el corte a la derecha)" : "en ventana angosta se apilan en una columna (dona, cifras, corte)");
   const cssApp = await (await fetch("../css/app.css")).text();
-  ok(/\.oc-resumen\s*\{[^}]*grid-template-columns:\s*210px minmax\(200px, 1fr\) 250px/.test(cssApp) && /@media \(max-width: 900px\)\s*\{\s*\.oc-resumen\s*\{\s*grid-template-columns: 1fr/.test(cssApp), "el CSS define tres columnas y una sola por debajo de 900 px");
+  ok(/\.oc-resumen\s*\{[^}]*grid-template-columns:\s*230px auto 230px/.test(cssApp) && /@media \(max-width: 900px\)\s*\{\s*\.oc-resumen\s*\{\s*grid-template-columns: 1fr/.test(cssApp), "el CSS define tres columnas y una sola por debajo de 900 px");
   ok(texto($(".oc-dona svg text")).length > 0 && /25\.8 %|%/.test($(".oc-dona").textContent) && $(".oc-dona").textContent.includes("40 %"), "la dona muestra la ocupación y el límite (40 %)");
   { // los conductores dibujados no se encimaban ni salen del ducto (para 3 × Ø30 y para dos tipos)
     const { asentarConductores } = await import("../js/util/graficos.js");
@@ -196,6 +196,9 @@ await seccion("vista: un tipo de conductor, cálculo y resultados", async () => 
       ok(dentro && minHolgura > -0.05, `corte: ${cs.length} conductores dentro del ducto y sin encimarse (holgura mínima ${minHolgura.toFixed(3)} mm)`);
     }
   }
+  const sD = cols[0].querySelector("svg").getBoundingClientRect(), sC = cols[2].querySelector("svg").getBoundingClientRect();
+  ok(Math.abs(sD.width - sC.width) < 1 && Math.abs(sD.height - sC.height) < 1, `la dona y el corte miden lo mismo (${sD.width.toFixed(0)} × ${sD.height.toFixed(0)} px)`);
+  if (ancha) ok(rC.left - rM.right < 100, `el corte queda pegado a las cifras, no al borde derecho (${(rC.left - rM.right).toFixed(0)} px de separación)`);
   ok($$(".oc-corte svg .oc-aparece").length === 3 && /3 conductores/.test($(".oc-corte svg").getAttribute("aria-label")), "el corte transversal dibuja los 3 conductores");
   ok(!$$(".tabla-resultado").length, "con un solo tipo no hay tabla por tipo");
   const rc = metrica("Radio de curvatura (12D)");

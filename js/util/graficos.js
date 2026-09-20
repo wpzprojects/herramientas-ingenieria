@@ -12,24 +12,26 @@ const polar = (cx, cy, r, grados) => [cx + r * Math.cos((grados * Math.PI) / 180
 
 /** Dona de ocupacion: `pct` (0-100+), `limite` (%) y `cumple`. Con pct > 100 el arco se llena y la cifra sigue diciendo el valor real. */
 export function donaOcupacionSvg({ pct, limite, cumple }) {
-  const r = 82, cx = 130, cy = 120, L = 2 * Math.PI * r;
+  // mismo lienzo (380 x 450) y mismo centro que el corte transversal: las dos columnas miden lo mismo y el aro iguala al ducto
+  const r = 150, cx = 190, cy = 190, ancho = 38, L = 2 * Math.PI * r;
   const lleno = (L * Math.min(Math.max(pct, 0), 100)) / 100;
   const col = cumple ? ["var(--accent)", "var(--accent-strong)"] : ["var(--danger)", "var(--danger)"];
   const grados = -90 + Math.min(limite, 100) * 3.6;
-  const [tx1, ty1] = polar(cx, cy, r - 17, grados);
-  const [tx2, ty2] = polar(cx, cy, r + 17, grados);
-  const [lx, ly] = polar(cx, cy, r + 31, grados);
-  return `<svg viewBox="0 0 260 240" role="img" aria-label="Ocupación ${f1(pct)} % con límite de ${limite} %: ${cumple ? "cumple" : "no cumple"}">
+  const [tx1, ty1] = polar(cx, cy, r - ancho / 2 - 3, grados);
+  const [tx2, ty2] = polar(cx, cy, r + ancho / 2 + 3, grados);
+  const [lx, ly] = polar(cx, cy, r + ancho / 2 + 20, grados);
+  return `<svg viewBox="0 0 380 450" role="img" aria-label="Ocupación ${f1(pct)} % con límite de ${limite} %: ${cumple ? "cumple" : "no cumple"}">
     <defs>
       <linearGradient id="oc-dona-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:${col[0]}"/><stop offset="1" style="stop-color:${col[1]}"/></linearGradient>
       <filter id="oc-dona-sombra" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="3" stdDeviation="4" flood-opacity=".25"/></filter>
     </defs>
-    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" style="stroke:var(--border-strong)" stroke-width="22" opacity=".55"/>
-    <circle class="oc-trazo" cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="url(#oc-dona-g)" stroke-width="22" stroke-linecap="round" stroke-dasharray="${lleno} ${L}" transform="rotate(-90 ${cx} ${cy})" filter="url(#oc-dona-sombra)" style="--largo:${lleno}"/>
-    <line x1="${tx1}" y1="${ty1}" x2="${tx2}" y2="${ty2}" style="stroke:var(--text)" stroke-width="2.5" stroke-linecap="round"/>
-    <text x="${lx}" y="${ly + 4}" text-anchor="middle" font-size="12" font-weight="700" style="fill:var(--text)">${limite} %</text>
-    <text x="${cx}" y="${cy + 4}" text-anchor="middle" font-size="36" font-weight="800" style="fill:var(--text)">${f1(pct)}<tspan font-size="18" dy="-10">%</tspan></text>
-    <text x="${cx}" y="${cy + 26}" text-anchor="middle" font-size="12.5" style="fill:var(--text-muted)">de ocupación</text>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" style="stroke:var(--border-strong)" stroke-width="${ancho}" opacity=".55"/>
+    <circle class="oc-trazo" cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="url(#oc-dona-g)" stroke-width="${ancho}" stroke-linecap="round" stroke-dasharray="${lleno} ${L}" transform="rotate(-90 ${cx} ${cy})" filter="url(#oc-dona-sombra)" style="--largo:${lleno}"/>
+    <line x1="${tx1}" y1="${ty1}" x2="${tx2}" y2="${ty2}" style="stroke:var(--text)" stroke-width="3.5" stroke-linecap="round"/>
+    <text x="${lx}" y="${ly + 6}" text-anchor="middle" font-size="19" font-weight="700" style="fill:var(--text)">${limite} %</text>
+    <text x="${cx}" y="${cy + 14}" text-anchor="middle" font-size="64" font-weight="800" style="fill:var(--text)">${f1(pct)}<tspan font-size="30" dy="-20">%</tspan></text>
+    <text x="${cx}" y="${cy + 50}" text-anchor="middle" font-size="19" style="fill:var(--text-muted)">de ocupación</text>
+    <text x="${cx}" y="${cy + 170 + 24 + 27}" text-anchor="middle" font-size="17" style="fill:var(--text-muted)">Límite NTC-2050: ${limite} %</text>
   </svg>`;
 }
 
