@@ -77,7 +77,6 @@ export async function render(container) {
       <div id="vista-agentes">
         <div class="ia-agente-lista" id="lista-agentes" role="group" aria-label="Agentes de análisis"></div>
         <p class="ia-desc-agente" id="desc-agente"></p>
-        <p class="text-muted text-sm" id="linea-modelo" style="margin:var(--space-2) 0 0">Modelo: <span class="badge" id="badge-modelo">${escapeHtml(ajustes0.modelo)}</span> · <a href="#/ia/configuracion">Cambiar en Configuración</a></p>
       </div>
       <div id="panel-config" hidden></div>
     </div>

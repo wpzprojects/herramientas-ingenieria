@@ -382,7 +382,8 @@ await seccion("Análisis con calculadoras rediseñado", async () => {
   ok(qa("#tarjeta-agente .ia-pestanas .tab-btn").map(texto).join("|") === "Agentes|Gestionar" && qa("#conv .ia-pestanas .tab-btn").map(texto).join("|") === "Actual|Historial", "pestañas «Agentes | Gestionar» en la tarjeta «Agente» y «Actual | Historial» en «Conversación», como el Corrector");
   ok(qa("#lista-agentes .ia-chip").length === 1 && q("#lista-agentes .ia-chip").getAttribute("aria-pressed") === "true", "el agente se elige con píldoras (hoy solo el estándar, en uso)");
   ok(!q("#desc-agente").hidden && !q("#desc-agente").classList.contains("text-muted"), "la descripción del agente se ve");
-  ok(/Modelo:/.test(texto(q("#linea-modelo"))) && !!q("#badge-modelo") && !!q('#linea-modelo a[href="#/ia/configuracion"]'), "el modelo activo se muestra en una línea con enlace a Configuración");
+  ok(!q("#linea-modelo") && !q("#badge-modelo") && !/Cambiar en Configuración/.test(texto(q("#tarjeta-agente"))) && q("#vista-agentes").lastElementChild === q("#desc-agente"), "la tarjeta «Agente» ya no tiene la línea «Modelo … Cambiar en Configuración»: queda igual que en el Corrector (píldoras y descripción); el modelo sigue en el resumen del reporte");
+  ok(/Modelo: /.test(texto(q("#reporte-meta"))) || q("#card-reporte").hidden, "(el reporte conserva su línea con el modelo cuando aparece)");
   ok(!q(".ia-toolbar") && !q("#btn-config") && !q("#btn-historial"), "ya no hay la barra suelta con badges y botones «Historial» / «Agentes»");
 
   // --- tarjeta Conversacion
