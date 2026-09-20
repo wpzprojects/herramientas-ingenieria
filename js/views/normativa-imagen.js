@@ -31,9 +31,9 @@ const TEMAS = {
   "enterramiento-ductos": {
     titulo: "Enterramiento de ductos",
     selector: true,
-    // El numeral 3.20.6.3.g del RETIE 2024 era una imagen de texto que solo remite a estas dos tablas: ahora es la nota al pie.
+    // El numeral 3.20.6.3.g del RETIE 2026 era una imagen de texto que solo remite a estas dos tablas: ahora es la nota al pie.
     nota: {
-      titulo: "RETIE 2024, numeral 3.20.6.3.g:",
+      titulo: "RETIE 2026, numeral 3.20.6.3.g:",
       texto:
         "La profundidad de enterramiento de ductos para redes de distribución exteriores, internas de un edificio, urbanización cerrada, planta industrial o propiedad privada, deben estar acorde a lo establecido en la Tabla 300.5 de la NTC 2050 segunda actualización para tensiones hasta 1 000 V y la Tabla 300.50 para tensiones mayores a 1 000 V nominales. Excepción: cuando existan conflictos con otras instalaciones subterráneas existentes en áreas peatonales para menos de 150 V a tierra, pueden ser enterradas a una profundidad no menor a 0,45 m.",
     },

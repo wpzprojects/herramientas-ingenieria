@@ -5,7 +5,7 @@
 <title>verify_normatividad</title>
 <!--
   Pruebas del visor de imagenes normativas (js/views/normativa-imagen.js), sobre todo del tema «Enterramiento de ductos», donde
-  el numeral 3.20.6.3.g del RETIE 2024 pasó de imagen a nota al pie debajo del visor. Se ejecuta en el navegador, sin internet:
+  el numeral 3.20.6.3.g del RETIE 2026 pasó de imagen a nota al pie debajo del visor. Se ejecuta en el navegador, sin internet:
   la vista real se renderiza en un contenedor oculto y se maneja como lo haria una persona.
 
   Uso (desde la raiz del proyecto):
@@ -60,7 +60,7 @@ await seccion("Enterramiento de ductos: nota al pie", async () => {
   ok($("#frame-imagen img").getAttribute("src").endsWith("assets/normativa/tabla-300-5.jpg"), "al entrar se muestra la Tabla 300.5");
 
   const nota = $(".nota-pie");
-  ok(!!nota && nota.tagName === "P" && texto($("strong", nota)) === "RETIE 2024, numeral 3.20.6.3.g:", "hay una nota con «RETIE 2024, numeral 3.20.6.3.g:» en negrita al inicio");
+  ok(!!nota && nota.tagName === "P" && texto($("strong", nota)) === "RETIE 2026, numeral 3.20.6.3.g:", "hay una nota con «RETIE 2026, numeral 3.20.6.3.g:» en negrita al inicio");
   const t = texto(nota);
   ok(t.includes("La profundidad de enterramiento de ductos para redes de distribución exteriores") && t.includes("Tabla 300.5 de la NTC 2050 segunda actualización para tensiones hasta 1 000 V") && t.includes("Tabla 300.50 para tensiones mayores a 1 000 V nominales") && t.includes("Excepción: cuando existan conflictos") && t.includes("menos de 150 V a tierra") && t.endsWith("no menor a 0,45 m."), "la nota trae el texto completo del numeral, con la excepción de 0,45 m");
   const frame = $("#frame-imagen").getBoundingClientRect();
