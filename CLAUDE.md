@@ -170,6 +170,8 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   lo pidió); atajos de ajuste «Más corto / Más formal / Más cordial / Explica los cambios» bajo la ÚLTIMA respuesta (`.ia-ajustes`, `AJUSTES_RAPIDOS`);
   panel de agentes con «Nuevo agente» como único botón principal y menú «Más» (`details.menu-mas`: Exportar, Importar, Restaurar); editor sin tarjeta
   anidada (`.ia-editor`) y ayudas «i». Historial con barra de título. Pendiente: Análisis con calculadoras. Pruebas: `tools/verify_ia_pantallas.html`.
+  AJUSTE POSTERIOR (commit anterior: `cca313f`): «Gestionar agentes» e «Historial» YA NO abren tarjetas nuevas ni están en la barra: la tarjeta «Agente» es UNA
+  sola con pestañas `Agentes | Gestionar | Historial` (`.ia-pestanas`, `mostrarVista()`); «Abrir» en el historial vuelve solo a «Agentes» con el agente de esa conversación.
 
 - Es la ÚNICA excepción a "100% offline": se conecta a Google Gemini con la clave del propio
   usuario (BYOK, guardada en el navegador; no hay backend). Detalle en el README.
@@ -211,7 +213,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v161); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v162); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (menú lateral → «Perfil», `js/auth/*`, `firebase/firestore.rules`)

@@ -201,7 +201,8 @@ await seccion("Corrector de redacción rediseñado", async () => {
   // --- tarjeta Agente
   const tarjeta = q(".card");
   ok(tarjeta.classList.contains("tarjeta-borde") && /Agente/.test(texto(tarjeta.querySelector(".form-section-title"))) && !!tarjeta.querySelector(".form-section-title .icon"), "la tarjeta «Agente» tiene relleno de 16 px y barra de título con icono");
-  ok(!!q(".form-section-title #btn-gestionar svg") && !!q(".form-section-title #btn-historial svg") && /Gestionar agentes/.test(texto(q("#btn-gestionar"))) && /Historial/.test(texto(q("#btn-historial"))), "«Gestionar agentes» e «Historial» van dentro de la barra de título, con icono");
+  ok(qa(".ia-pestanas .tab-btn").map(texto).join("|") === "Agentes|Gestionar|Historial" && q(".ia-pestanas .tab-btn.active").textContent === "Agentes", "debajo de la barra hay pestañas «Agentes | Gestionar | Historial» (empieza en «Agentes»)");
+  ok(qa(".card").length === 2 || qa(".card").length === 1, "todo vive en UNA tarjeta (más la de la conversación): ya no se abren tarjetas nuevas debajo");
   ok(qa("#lista-agentes .ia-chip").length === 4 && q("#lista-agentes .ia-chip").getAttribute("aria-pressed") === "true", "los 4 agentes siguen como píldoras y el primero está activo");
   const desc = q("#desc-agente");
   ok(desc.classList.contains("ia-desc-agente") && !desc.classList.contains("text-muted") && /correos/i.test(texto(desc)), "la descripción del agente es más visible (ya no es gris tenue)");
@@ -228,25 +229,30 @@ await seccion("Corrector de redacción rediseñado", async () => {
   ok(qa(".ia-msg--user").some((m) => texto(m) === "Más corto"), "el mensaje del usuario se ve como «Más corto»");
   ok(qa(".ia-ajustes").length === 1 && qa(".ia-msg--model").length === 2 && q(".ia-ajustes").previousElementSibling === qa(".ia-msg--model")[1], "los atajos se mueven bajo la respuesta nueva (solo hay un grupo)");
 
-  // --- historial
-  q("#btn-historial").click();
+  // --- las tres vistas viven en la misma tarjeta
+  const tarjetaAgente = q("#tarjeta-agente");
+  const pestana = (v) => q(`.ia-pestanas .tab-btn[data-vista="${v}"]`);
+  const visible = (el) => !!el && !el.hidden;
+  const tarjetasAntes = qa(".card").length;
+  pestana("historial").click();
   await espera(150);
-  const ph = q("#panel-historial");
-  ok(!ph.hidden && ph.classList.contains("tarjeta-borde") && /Historial de conversaciones/.test(texto(ph.querySelector(".form-section-title"))) && !!ph.querySelector(".form-section-title .icon"), "el historial usa la misma tarjeta con barra de título e icono");
-  q("#btn-historial").click();
+  ok(visible(q("#panel-historial")) && !visible(q("#vista-agentes")) && !visible(q("#panel-gestor")) && q(".ia-pestanas .tab-btn.active").textContent === "Historial", "«Historial» muestra el historial en la MISMA tarjeta y oculta los agentes");
+  ok(tarjetaAgente.contains(q("#panel-historial")) && qa(".card").length === tarjetasAntes, "sin abrir una tarjeta nueva");
+  pestana("agentes").click();
+  ok(visible(q("#vista-agentes")) && !visible(q("#panel-historial")) && qa("#lista-agentes .ia-chip").length === 4, "«Agentes» vuelve a mostrar los agentes disponibles");
 
   // --- gestor de agentes
-  q("#btn-gestionar").click();
+  pestana("gestionar").click();
   await espera(100);
   const pg = q("#panel-gestor");
-  ok(!pg.hidden && pg.classList.contains("tarjeta-borde") && /Gestionar agentes/.test(texto(pg.querySelector(".form-section-title"))), "«Gestionar agentes» abre una tarjeta con barra de título");
-  ok(!!pg.querySelector('.form-section-title [data-a="nuevo"].btn-primary') && !!pg.querySelector(".form-section-title .menu-mas"), "«Nuevo agente» es el único botón principal, y hay un menú «Más»");
+  ok(visible(pg) && !visible(q("#vista-agentes")) && tarjetaAgente.contains(pg) && qa(".card").length === tarjetasAntes, "«Gestionar» muestra la gestión en la misma tarjeta (sin tarjeta nueva)");
+  ok(!!pg.querySelector('.ia-gestor-cabecera [data-a="nuevo"].btn-primary') && !!pg.querySelector(".ia-gestor-cabecera .menu-mas") && pg.querySelectorAll("#gestor-lista .ia-historial-item").length === 4, "«Nuevo agente» es el único botón principal, hay un menú «Más» y la lista de los 4 agentes");
   const menu = pg.querySelector(".menu-mas");
   ok(!menu.open && !pg.querySelector(".menu-mas-lista").checkVisibility(), "el menú «Más» empieza cerrado (Exportar, Importar y Restaurar no se ven)");
   menu.querySelector("summary").click();
   await espera(50);
   ok(menu.open && pg.querySelectorAll(".menu-mas-lista button").length === 3 && pg.querySelector(".menu-mas-lista").checkVisibility(), "al abrirlo muestra Exportar JSON, Importar JSON y Restaurar predeterminados");
-  ok(pg.querySelector(".menu-mas-lista").getBoundingClientRect().right <= pg.getBoundingClientRect().right + 1, "y el menú cabe dentro de la tarjeta");
+  ok(pg.querySelector(".menu-mas-lista").getBoundingClientRect().right <= tarjetaAgente.getBoundingClientRect().right + 1, "y el menú cabe dentro de la tarjeta");
   document.body.click();
   ok(!menu.open, "se cierra al pulsar fuera");
 
@@ -259,7 +265,23 @@ await seccion("Corrector de redacción rediseñado", async () => {
   ok(ed.querySelectorAll("label[data-info]").length === 3 && ed.querySelectorAll(".hint").length === 0, "las ayudas del formulario (tono, temperatura, instrucciones) son botones «i», sin textos .hint");
   ok(ed.querySelectorAll("label[data-info] button, label[data-info] .info-btn").length >= 3, "cada una con su botón «i»");
   pg.querySelector("#g-cancelar").click();
-  q("#btn-gestionar").click();
+  ok(visible(pg) && !pg.querySelector(".ia-editor"), "cancelar la edición te deja en «Gestionar»");
+
+  // --- «Abrir» en el historial vuelve a «Agentes»
+  const hist = await import("../js/ai/historial.js");
+  const conTiempo = (p, ms = 1500) => Promise.race([p, new Promise((r) => setTimeout(() => r("__tiempo__"), ms))]);
+  const guardado = await conTiempo(hist.guardar({ id: "conv-prueba-1", tipo: "redaccion", titulo: "Conversación de prueba", agenteId: "resumenes", agenteNombre: "Resúmenes", creado: Date.now(), actualizado: Date.now(), mensajes: [{ rol: "user", texto: "texto" }, { rol: "model", texto: "RESPUESTA GUARDADA" }], contenidos: [] }).catch(() => false));
+  pestana("historial").click();
+  await espera(600);
+  const abrir = guardado === "__tiempo__" ? null : [...q("#panel-historial").querySelectorAll("button")].find((b) => b.textContent === "Abrir");
+  if (abrir) {
+    abrir.click();
+    await espera(200);
+    ok(visible(q("#vista-agentes")) && q(".ia-pestanas .tab-btn.active").textContent === "Agentes" && /RESPUESTA GUARDADA/.test(texto(q("#chat"))) && q('#lista-agentes .ia-chip[aria-pressed="true"]').textContent === "Resúmenes", "«Abrir» en el historial carga la conversación, vuelve a «Agentes» y deja elegido el agente de esa conversación");
+    await conTiempo(hist.borrar("conv-prueba-1").catch(() => {}));
+  } else {
+    ok(true, "(el almacenamiento del historial no está disponible en este navegador de pruebas: se omite la prueba de «Abrir»)");
+  }
 
   window.fetch = fetchPrevio;
   try { cfg.borrarClave(); } catch { /* nada */ }

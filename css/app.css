@@ -252,6 +252,9 @@ button { font-family: inherit; }
 /* Corrector de redaccion: acciones dentro de la barra de titulo, respuesta con etiqueta, atajos de ajuste y menu «Mas» */
 .form-section-title .barra-acciones { margin-left: auto; display: flex; align-items: center; gap: var(--space-2); text-transform: none; letter-spacing: normal; font-weight: 600; }
 .form-section-title .barra-acciones .icon { color: currentColor; width: 16px; height: 16px; } /* los iconos de los botones de la barra toman el color del boton (el acento del titulo los volveria invisibles en «Nuevo agente») */
+.ia-pestanas { margin-bottom: var(--space-4); }
+.ia-gestor-cabecera { display: flex; justify-content: flex-end; margin-bottom: var(--space-3); }
+.ia-gestor-cabecera .barra-acciones { display: flex; align-items: center; gap: var(--space-2); }
 .ia-desc-agente { margin: var(--space-3) 0 0; font-size: 0.9rem; color: var(--text); }
 .ia-msg-etiqueta { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent-strong); margin-bottom: var(--space-2); }
 .ia-ajustes { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-3) 0 0; }

@@ -88,7 +88,6 @@ const AJUSTES_RAPIDOS = [
   ["Más cordial", "Hazlo más cordial y cercano, sin perder claridad."],
   ["Explica los cambios", "Explica brevemente qué cambios hiciste y por qué."],
 ];
-const btnBarra = (id, ico, texto, extra = "") => `<button type="button" class="btn btn-sm btn-con-icono ${extra}" id="${id}">${icon(ico)} ${texto}</button>`;
 
 export async function render(container) {
   container.innerHTML = `
@@ -105,16 +104,20 @@ export async function render(container) {
   container.insertAdjacentHTML(
     "beforeend",
     `
-    <div class="card tarjeta-borde form-section">
-      <div class="form-section-title">${icon("pencil")} Agente
-        <div class="barra-acciones">${btnBarra("btn-gestionar", "settings", "Gestionar agentes")}${btnBarra("btn-historial", "history", "Historial")}</div>
+    <div class="card tarjeta-borde form-section" id="tarjeta-agente">
+      <div class="form-section-title">${icon("pencil")} Agente</div>
+      <div class="tabs ia-pestanas" role="tablist">
+        <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-vista="agentes">Agentes</button>
+        <button type="button" class="tab-btn" role="tab" aria-selected="false" data-vista="gestionar">Gestionar</button>
+        <button type="button" class="tab-btn" role="tab" aria-selected="false" data-vista="historial">Historial</button>
       </div>
-      <div class="ia-agente-lista" id="lista-agentes" role="group" aria-label="Agentes de redacción"></div>
-      <p class="ia-desc-agente" id="desc-agente"></p>
+      <div id="vista-agentes">
+        <div class="ia-agente-lista" id="lista-agentes" role="group" aria-label="Agentes de redacción"></div>
+        <p class="ia-desc-agente" id="desc-agente"></p>
+      </div>
+      <div id="panel-gestor" hidden></div>
+      <div id="panel-historial" hidden></div>
     </div>
-
-    <div id="panel-historial" class="card tarjeta-borde form-section" hidden></div>
-    <div id="panel-gestor" class="card tarjeta-borde form-section" hidden></div>
 
     <div class="card ia-conv" id="conv">
       <div class="ia-chat ia-chat--hilo" id="chat" aria-live="polite" hidden></div>
@@ -351,10 +354,9 @@ export async function render(container) {
   // ---------- historial ----------
   const panelHistorial = $("#panel-historial");
   async function pintarHistorial() {
-    const barra = `<div class="form-section-title">${icon("history")} Historial de conversaciones</div>`;
-    panelHistorial.innerHTML = barra; // la barra aparece de inmediato; la lista llega cuando se lee el almacenamiento
+    panelHistorial.innerHTML = `<p class="text-muted" style="margin:0">Cargando…</p>`; // la lista llega cuando se lee el almacenamiento
     const lista = await historial.listar("redaccion");
-    panelHistorial.innerHTML = barra;
+    panelHistorial.innerHTML = "";
     if (!lista.length) {
       panelHistorial.insertAdjacentHTML("beforeend", `<p class="text-muted" style="margin:0">Aún no hay conversaciones guardadas.</p>`);
       return;
@@ -378,7 +380,7 @@ export async function render(container) {
                   pintarAgentes();
                 }
                 pintarConversacion();
-                panelHistorial.hidden = true;
+                mostrarVista("agentes"); // al abrir una conversacion se vuelve a los agentes (con el de esa conversacion elegido)
                 alFinal();
               },
             },
@@ -402,17 +404,23 @@ export async function render(container) {
     }
     panelHistorial.append(cont);
   }
-  $("#btn-historial").addEventListener("click", async () => {
-    panelHistorial.hidden = !panelHistorial.hidden;
-    if (!panelHistorial.hidden) await pintarHistorial();
-  });
 
   // ---------- gestor de agentes ----------
   const panelGestor = $("#panel-gestor");
-  $("#btn-gestionar").addEventListener("click", () => {
-    panelGestor.hidden = !panelGestor.hidden;
-    if (!panelGestor.hidden) pintarGestor();
-  });
+  // Las tres vistas de la tarjeta «Agente»: Agentes | Gestionar | Historial (cambian solo el contenido de la tarjeta)
+  function mostrarVista(vista) {
+    for (const b of container.querySelectorAll(".ia-pestanas .tab-btn")) {
+      const activa = b.dataset.vista === vista;
+      b.classList.toggle("active", activa);
+      b.setAttribute("aria-selected", String(activa));
+    }
+    $("#vista-agentes").hidden = vista !== "agentes";
+    panelGestor.hidden = vista !== "gestionar";
+    panelHistorial.hidden = vista !== "historial";
+    if (vista === "gestionar") pintarGestor();
+    if (vista === "historial") pintarHistorial();
+  }
+  for (const b of container.querySelectorAll(".ia-pestanas .tab-btn")) b.addEventListener("click", () => mostrarVista(b.dataset.vista));
 
   let cerrarMenuMas = () => {};
 
@@ -425,7 +433,7 @@ export async function render(container) {
 
   function pintarGestor() {
     panelGestor.innerHTML = `
-      <div class="form-section-title">${icon("settings")} Gestionar agentes
+      <div class="ia-gestor-cabecera">
         <div class="barra-acciones">
           <button type="button" class="btn btn-sm btn-primary btn-con-icono" data-a="nuevo">${icon("plus")} Nuevo agente</button>
           <details class="menu-mas">
