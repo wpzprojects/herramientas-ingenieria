@@ -250,7 +250,16 @@ await seccion("Corrector de redacción rediseñado", async () => {
   const est = (f) => getComputedStyle(f);
   ok(filas.length === 4 && filas.every((f, i) => est(f).borderTopWidth === "0px" && est(f).borderLeftWidth === "0px" && est(f).borderRightWidth === "0px" && est(f).borderBottomWidth === (i < filas.length - 1 ? "1px" : "0px")), "la lista no son cajas: entre cada fila hay UNA sola línea fina (sin borde arriba, a los lados ni en la última fila)");
   const tit = getComputedStyle(filas[0].querySelector(".titulo"));
-  ok(parseFloat(tit.fontSize) <= 14.5 && parseInt(tit.fontWeight) <= 500, `el nombre de cada fila es más pequeño y suave (${tit.fontSize}, peso ${tit.fontWeight})`);
+  ok(parseFloat(tit.fontSize) <= 14.5 && parseInt(tit.fontWeight) <= 500, `el nombre de cada fila es más pequeño y suave (${tit.fontSize}, peso ${tit.fontWeight}, color ${tit.color})`);
+  ok(parseInt(tit.fontWeight) === 400 && tit.color !== getComputedStyle(q("#tarjeta-agente .form-section-title")).color, "sin negrita y con un color menos blanco que el texto principal");
+  const eliminar = [...pg.querySelectorAll("#gestor-lista button")].filter((b) => b.textContent === "Eliminar");
+  ok(eliminar.length === 4 && eliminar.every((b) => !b.classList.contains("btn-ghost") && getComputedStyle(b).borderTopWidth === getComputedStyle(pg.querySelector("#gestor-lista button")).borderTopWidth && getComputedStyle(b).borderTopWidth !== "0px"), "«Eliminar» tiene contorno igual que «Editar» y «Duplicar»");
+  for (const arch of ["ia-redaccion", "ia-analisis"]) {
+    const fuente = await (await fetch(`../js/views/${arch}.js`)).text();
+    const i = fuente.indexOf("historial.borrar(c.id)");
+    const antes = fuente.slice(Math.max(0, i - 400), i);
+    ok(i > 0 && /¿Borrar esta conversación del historial\?/.test(antes) && /class: "btn btn-sm",\s*onclick: async/.test(antes), `${arch}: «Borrar» del historial pide confirmación antes de borrar y es un botón con contorno como «Abrir»`);
+  }
   const cssApp = await (await fetch("../css/app.css")).text();
   ok(!/\.ia-historial-item:hover/.test(cssApp), "las filas no se resaltan al pasar el cursor");
   ok(filas.slice(1).every((f, i) => Math.abs(f.getBoundingClientRect().top - filas[i].getBoundingClientRect().bottom) < 1), "y las filas quedan pegadas (sin espacio que duplique la línea)");

@@ -396,8 +396,9 @@ export async function render(container) {
             "button",
             {
               type: "button",
-              class: "btn btn-sm btn-ghost",
+              class: "btn btn-sm",
               onclick: async () => {
+                if (!confirm("¿Borrar esta conversación del historial? No se puede deshacer.")) return;
                 await historial.borrar(c.id);
                 if (conv?.id === c.id) $("#btn-nueva").click();
                 pintarHistorial();
