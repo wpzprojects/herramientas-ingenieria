@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prueba de iconos del agente</title>
+<!-- TEMPORAL: compara candidatos para el icono de la tarjeta «Agente» del Corrector de redacción. Se borra al elegir. -->
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/app.css">
+<style>
+  body { padding: 16px; background: var(--bg); color: var(--text); font-family: var(--font-sans); }
+  h1 { font-size: 1.2rem; margin: 0 0 var(--space-4); }
+  .fila { display: grid; grid-template-columns: 170px 1fr 1fr; gap: var(--space-3); align-items: center; margin-bottom: var(--space-3); }
+  .fila .nombre { font-weight: 700; }
+  .fila .nombre small { display: block; font-weight: 400; color: var(--text-muted); }
+  .vista-tema { grid-area: auto !important; align-self: stretch !important; width: auto !important; max-width: none !important; padding: 12px; margin: 0 !important; }
+  .grande { display: flex; align-items: center; gap: 14px; margin-top: 10px; }
+  .grande svg { width: 44px; height: 44px; color: var(--accent); }
+  @media (max-width: 720px) { .fila { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<h1>Icono de la tarjeta «Agente»: comparación</h1>
+<p class="text-muted" style="margin-top:0">Cada opción se ve como quedaría en la barra de título (tema oscuro y claro) y en grande.</p>
+<div id="lista"></div>
+<script type="module">
+import { icon } from "../js/icons.js";
+const OPCIONES = [
+  ["robot", "Robot (el actual)", "cuerpo completo"],
+  ["messageChatbot", "Message Chatbot", "burbuja de chat con carita"],
+  ["sparkles", "Sparkles", "destellos: el símbolo de IA de la app"],
+  ["robotFace", "Robot Face", "solo la cabeza, estilo Android"],
+  ["headset", "Auriculares (anterior)", "asistente / call center"],
+];
+const barra = (nombre, tema) => `
+  <div class="vista-tema" data-vista="${tema}">
+    <div class="card tarjeta-borde form-section" style="margin:0">
+      <div class="form-section-title">${icon(nombre)} Agente</div>
+      <div class="ia-agente-lista"><span class="ia-chip" aria-pressed="true">Correos</span><span class="ia-chip" aria-pressed="false">Resúmenes</span></div>
+    </div>
+  </div>`;
+document.getElementById("lista").innerHTML = OPCIONES.map(([nombre, titulo, nota]) => `
+  <div class="fila">
+    <div class="nombre">${titulo}<small>${nota}</small><div class="grande">${icon(nombre)}</div></div>
+    ${barra(nombre, "dark")}
+    ${barra(nombre, "light")}
+  </div>`).join("");
+</script>
+</body>
+</html>
