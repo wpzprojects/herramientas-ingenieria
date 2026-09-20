@@ -18,18 +18,13 @@ const mensajeDe = (e) => (e instanceof ErrorAcceso ? e.message : `Error inespera
 const ETIQUETA_ROL = { admin: "Administrador", usuario: "Usuario" };
 const insigniaRol = (rol) => `<span class="badge ${rol === "admin" ? "badge-success" : ""}">${escapeHtml(ETIQUETA_ROL[rol] || rol)}</span>`;
 
+// Cada opcion dice DONDE esta guardada la clave que van a usar las funciones de IA
 const OPCIONES_FUENTE = {
-  local: { titulo: "Este navegador" },
-  personal: { titulo: "Mi clave personal (servidor)" },
-  compartida: { titulo: "Clave compartida (servidor)" },
+  local: { titulo: "Este navegador", donde: "mi clave, guardada solo en este equipo" },
+  personal: { titulo: "Mi clave personal (servidor)", donde: "mi clave, guardada en el servidor y disponible en cualquier dispositivo" },
+  compartida: { titulo: "Clave compartida (servidor)", donde: "la clave del administrador, para todos los usuarios" },
 };
-// Ayuda «i» (se muestra con saltos de linea: el cuadro usa white-space: pre-line)
-const AYUDA_FUENTE = [
-  "Elige de dónde toman la clave las funciones de IA:",
-  "• Este navegador: la que pegaste en Configuración de IA.",
-  "• Mi clave personal: la tuya, guardada en el servidor.",
-  "• Clave compartida: la común para todos, definida por el administrador.",
-].join("\n");
+const AYUDA_FUENTE = "Las funciones de IA necesitan una clave de Gemini. Elige dónde está guardada la que vas a usar.";
 
 export async function render(container) {
   container.innerHTML = `
@@ -308,7 +303,7 @@ export async function render(container) {
     box.innerHTML = `
       ${barra("key", "Clave de Gemini")}
       <div class="field">
-        <label data-info="${escapeHtml(AYUDA_FUENTE)}">Clave que usarán las funciones de IA</label>
+        <label data-info="${escapeHtml(AYUDA_FUENTE)}">¿Dónde está la clave de Gemini que se usará?</label>
         <div class="ca-fuentes" id="ca-fuentes"></div>
       </div>
       <div id="ca-detalle"></div>
@@ -328,7 +323,7 @@ export async function render(container) {
       contFuentes.append(
         el("label", { for: id, class: "checkbox-row", style: "color:var(--text)" }, [
           radio,
-          el("span", { html: `<strong>${OPCIONES_FUENTE[f].titulo}</strong>${f === "local" ? "" : ` ${estado(disponible[f])}`}` }),
+          el("span", { html: `<strong>${OPCIONES_FUENTE[f].titulo}</strong> <span class="text-muted text-sm">— ${OPCIONES_FUENTE[f].donde}</span>${f === "local" ? "" : ` ${estado(disponible[f])}`}` }),
         ])
       );
     }
