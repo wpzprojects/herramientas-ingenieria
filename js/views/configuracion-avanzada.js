@@ -28,13 +28,13 @@ const AYUDA_FUENTE = "Las funciones de IA necesitan una clave de Gemini. Elige d
 
 // Apariencia (Perfil): muestras de color y textos
 const MUESTRAS = {
-  oscuro: [["#4c9eff", "Azul (predeterminado)"], ["#22d3ee", "Cian"], ["#2dd4bf", "Turquesa"], ["#4ade80", "Verde"], ["#fbbf24", "Ámbar"], ["#fb923c", "Naranja"], ["#f87171", "Rojo"], ["#f472b6", "Rosa"], ["#a78bfa", "Violeta"], ["#94a3b8", "Gris azulado"]],
-  claro: [["#0e7c7b", "Verde azulado (predeterminado)"], ["#2563eb", "Azul"], ["#0e7490", "Cian"], ["#15803d", "Verde"], ["#b45309", "Ámbar"], ["#c2410c", "Naranja"], ["#b91c1c", "Rojo"], ["#be185d", "Rosa"], ["#7c3aed", "Violeta"], ["#475569", "Gris azulado"]],
+  oscuro: [["#4c9eff", "Azul (predeterminado)"], ["#22d3ee", "Cian"], ["#2dd4bf", "Turquesa"], ["#4ade80", "Verde"], ["#fbbf24", "Ámbar"], ["#fb923c", "Naranja"], ["#f87171", "Rojo"], ["#a78bfa", "Violeta"], ["#94a3b8", "Gris azulado"]],
+  claro: [["#0e7c7b", "Verde azulado (predeterminado)"], ["#2563eb", "Azul"], ["#0e7490", "Cian"], ["#15803d", "Verde"], ["#b45309", "Ámbar"], ["#c2410c", "Naranja"], ["#b91c1c", "Rojo"], ["#be185d", "Rosa"], ["#475569", "Gris azulado"]],
 };
 const NOMBRE_TEMA = { oscuro: "Tema oscuro", claro: "Tema claro" };
 const VISTA = { oscuro: "dark", claro: "light" };
 const AYUDA_COLOR =
-  "Pulsa el cuadro de color para elegir un color personalizado, o usa una de las muestras. Los demás tonos (botones, fondos suaves, encabezados de tabla…) se calculan solos. Si un color dificulta la lectura, se ajusta un poco.";
+  "Pulsa el cuadro de color para elegir un color personalizado, o usa una de las muestras. Los demás tonos se calculan solos. Si un color dificulta la lectura, se ajusta un poco.";
 
 export async function render(container) {
   container.innerHTML = `

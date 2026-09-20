@@ -192,7 +192,7 @@ await seccion("pestaña Apariencia en Perfil", async () => {
   ok(!q("#ca-tab-apariencia").hidden && q("#ca-tab-usuarios").hidden && !!q("#ca-apariencia .form-section-title .icon"), "la pestaña abre su tarjeta con barra de título e icono");
   const bloques = qa(".ap-tema");
   ok(bloques.map((b) => texto(b.querySelector("h3"))).join("|") === "Tema oscuro|Tema claro", "hay un bloque por tema: oscuro y claro");
-  ok(bloques.every((b) => !!b.querySelector('input[type="color"]') && b.querySelectorAll(".ap-muestra").length === 10 && !!b.querySelector("[data-restablecer]") && !!b.querySelector(".vista-tema") && !!b.querySelector("label[data-info]")), "cada uno con selector de color, 10 muestras, «Restablecer», vista previa y ayuda «i»");
+  ok(bloques.every((b) => !!b.querySelector('input[type="color"]') && b.querySelectorAll(".ap-muestra").length === 9 && !!b.querySelector("[data-restablecer]") && !!b.querySelector(".vista-tema") && !!b.querySelector("label[data-info]")), "cada uno con selector de color, 9 muestras, «Restablecer», vista previa y ayuda «i»");
   ok(bloques[0].querySelector("[data-hex]").textContent === "#4C9EFF" && bloques[1].querySelector("[data-hex]").textContent === "#0E7C7B", "por defecto muestran los colores actuales: azul #4C9EFF (oscuro) y verde azulado #0E7C7B (claro)");
   ok(!q("#ca-apariencia > p") && /cuadro de color para elegir un color personalizado/.test(bloques[0].querySelector("label[data-info]").dataset.info), "sin texto introductorio sobre la paleta; y la ayuda «i» de «Color principal» dice que el cuadro de color abre un color personalizado");
   const rect = (el) => el.getBoundingClientRect();
@@ -205,7 +205,7 @@ await seccion("pestaña Apariencia en Perfil", async () => {
     for (const m of bloques[i].querySelectorAll(".ap-muestra")) if (tema.ajustarBase(tm, m.dataset.color).ajustado) muestrasMal.push(`${tm} ${m.dataset.color}`);
   }
   const cianRojoAmbar = ["Cian", "Rojo", "Ámbar", "Gris azulado"].every((n) => bloques.every((b) => [...b.querySelectorAll(".ap-muestra")].some((m) => m.title === n)));
-  ok(muestrasMal.length === 0 && cianRojoAmbar, `las 10 muestras de cada tema son legibles sin ajuste (incluye cian, rojo, ámbar y gris azulado)${muestrasMal.length ? " — se ajustan: " + muestrasMal.join(", ") : ""}`);
+  ok(muestrasMal.length === 0 && cianRojoAmbar, `las 9 muestras de cada tema son legibles sin ajuste (incluye cian, rojo, ámbar y gris azulado)${muestrasMal.length ? " — se ajustan: " + muestrasMal.join(", ") : ""}`);
   const cab = rect(bloques[0].querySelector(".ap-cabecera h3"));
   const rest = rect(bloques[0].querySelector("[data-restablecer]"));
   ok(rest.left >= cab.right && rest.left - cab.right < 40 && Math.abs((rest.top + rest.bottom) / 2 - (cab.top + cab.bottom) / 2) < 6, `«Restablecer» está al frente del título «Tema oscuro» (a ${Math.round(rest.left - cab.right)} px)`);
