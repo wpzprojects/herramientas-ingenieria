@@ -207,6 +207,11 @@ await seccion("Corrector de redacción rediseñado", async () => {
   const desc = q("#desc-agente");
   ok(desc.classList.contains("ia-desc-agente") && !desc.classList.contains("text-muted") && /correos/i.test(texto(desc)), "la descripción del agente es más visible (ya no es gris tenue)");
 
+  // --- tarjeta de la conversacion: ahora con su barra de titulo
+  const tConv = q("#conv");
+  ok(tConv.classList.contains("tarjeta-borde") && texto(tConv.querySelector(".form-section-title")) === "Conversación" && !!tConv.querySelector(".form-section-title .icon"), "la tarjeta donde se escribe también tiene barra de título con icono: «Conversación»");
+  ok(tConv.querySelector(".form-section-title").nextElementSibling === q("#chat") || tConv.querySelector(".form-section-title").nextElementSibling === tConv.querySelector(".ia-caja"), "y el título va arriba de todo, antes del chat y de la caja de texto");
+
   // --- estado vacio: el ejemplo cambia con el agente
   ok(/borrador del correo/.test(q("#f-texto").placeholder), `el ejemplo de la caja habla del agente activo: «${q("#f-texto").placeholder}»`);
   qa("#lista-agentes .ia-chip")[3].click();
