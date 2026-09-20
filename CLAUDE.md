@@ -182,6 +182,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   sola con pestañas `Agentes | Gestionar | Historial` (`.ia-pestanas`, `mostrarVista()`); «Abrir» en el historial vuelve solo a «Agentes» con el agente de esa conversación.
 
 - «Imprimir / PDF» del reporte de Análisis (2026-09-19): NO imprime la tarjeta de la pantalla sino un documento propio (`#doc-impresion`, armado en `armarDocumentoImpresion`, `ia-analisis.js`): Carta vertical (`@page reporte`, márgenes 20 mm, pie con «Página X de Y»), SIEMPRE en claro (clase `imprimiendo-reporte` también en `<html>` con `color-scheme: light`), encabezado en la primera página, «Conclusiones» en recuadro gris, tablas con cabecera que se repite y aviso final. Los `#`/`##` de la IA salen como h2/h3 (ver `markdown.js`). Para ver el resultado: `msedge --headless --no-pdf-header-footer --print-to-pdf` sobre una página de prueba con `window.print` anulado y convertir el PDF a PNG con pymupdf (`pip install pymupdf --target <carpeta>`).
+- «Descargar» del reporte de Análisis (2026-09-20): es un MENÚ (`details.menu-mas`, `#menu-descargar`) con «Documento de Word (.docx)» y «Markdown (.md)»; el usuario NO quiere un botón aparte por formato. El .docx se genera sin librerías: `js/ai/docx.js` (HTML de la IA + tablas → XML de Word, mismo diseño del PDF: Carta, estilos Title/Heading, «Conclusiones» sombreada, tablas con cabecera repetida, pie «Página X de Y») y `js/util/zip.js` (ZIP sin compresión). Verificado: XML bien formado, `python-docx` lo lee y Word (COM) lo abre con 2 páginas; NO se pudo ver renderizado (la exportación a PDF por COM se cuelga). Pruebas: sección «reporte en Word (.docx)» de `verify_ia.html`.
 - Es la ÚNICA excepción a "100% offline": se conecta a Google Gemini con la clave del propio
   usuario (BYOK, guardada en el navegador; no hay backend). Detalle en el README.
 - Análisis con calculadoras tiene agentes (`js/ai/agentes-analisis.js`, botón «Agentes»): el predeterminado («Agente estándar») sale del
@@ -222,7 +223,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v202); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v203); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (menú lateral → «Perfil», `js/auth/*`, `firebase/firestore.rules`)

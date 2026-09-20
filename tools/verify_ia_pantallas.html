@@ -440,8 +440,19 @@ await seccion("Análisis con calculadoras rediseñado", async () => {
   ok(/Continúa este análisis/.test(q("#f-pregunta").placeholder) && /Nueva conversación/.test(q("#f-pregunta").placeholder), "con una conversación en curso, la caja explica que continúa el análisis (y que para un caso distinto se usa «Nueva conversación»)");
   ok(!rc.hidden && rc.classList.contains("tarjeta-borde") && /Reporte de escenarios/.test(texto(rc.querySelector(".form-section-title"))) && !!rc.querySelector(".form-section-title .icon"), "aparece la tarjeta «Reporte de escenarios» con barra de título e icono");
   ok(rc.querySelector(".form-section-title").classList.contains("no-print") && rc.querySelector(".ia-reporte-acciones").classList.contains("no-print"), "la barra y los botones no se imprimen (el PDF sale como antes)");
-  ok(qa("#card-reporte .ia-reporte-acciones .btn").map(texto).join("|") === "Generar reporte con IA|Copiar|Descargar .md|Imprimir / PDF" && !!q("#btn-reporte.btn-primary"), "los botones del reporte van en una fila bajo la barra: «Generar reporte con IA» es el principal");
+  ok(qa("#card-reporte .ia-reporte-acciones .btn").map(texto).join("|") === "Generar reporte con IA|Copiar|Descargar|Imprimir / PDF" && !!q("#btn-reporte.btn-primary"), "los botones del reporte van en una fila bajo la barra: «Generar reporte con IA» es el principal");
   ok(!!rc.querySelector(".ia-escenarios table") && /cálculo/.test(texto(q("#reporte-meta"))), "las tablas de escenarios y la línea de resumen se conservan");
+  { // «Descargar» abre un menu con los dos formatos
+    const menu = q("#menu-descargar"), lista = menu.querySelector(".menu-mas-lista");
+    ok(!menu.open && [...lista.querySelectorAll("button")].map(texto).join("|") === "Documento de Word (.docx)|Markdown (.md)", "«Descargar» es un menú con dos opciones: Word (.docx) y Markdown (.md)");
+    menu.open = true;
+    ok(lista.checkVisibility() && lista.getBoundingClientRect().height > 40, "al abrirlo se ve la lista");
+    const descargados = [], previo = URL.createObjectURL;
+    URL.createObjectURL = (b) => (descargados.push(b), "blob:prueba");
+    q("#btn-docx").click();
+    URL.createObjectURL = previo;
+    ok(!menu.open && descargados.length === 1 && descargados[0].type.includes("wordprocessingml.document") && descargados[0].size > 1000, "elegir Word descarga un .docx y cierra el menú");
+  }
   { // «Imprimir / PDF»: documento propio en Carta vertical
     const printReal = window.print; let llamadas = 0; window.print = () => llamadas++;
     q("#btn-imprimir").click();

@@ -3,7 +3,7 @@
 // sirve cache-first con relleno en segundo plano (stale-while-revalidate)
 // para lo que no estuviera precacheado.
 
-const CACHE_VERSION = "v202";
+const CACHE_VERSION = "v203";
 const CACHE_NAME = `herramientas-ingenieria-${CACHE_VERSION}`;
 
 const SCOPE = self.registration.scope;
@@ -26,6 +26,7 @@ const APP_SHELL = [
   "js/util/resultados-ui.js",
   "js/util/info-campo.js",
   "js/util/portapapeles.js",
+  "js/util/zip.js",
   "js/calc/ampacidad-aerea.js",
   "js/calc/ampacidad-subterranea.js",
   "js/calc/ampacidad-subterranea-pantalla.js",
@@ -52,6 +53,7 @@ const APP_SHELL = [
   "js/ai/tools.js",
   "js/ai/analisis.js",
   "js/ai/reporte.js",
+  "js/ai/docx.js",
   "js/ai/clave.js",
   "js/ai/voz.js",
   "js/auth/backend.js",

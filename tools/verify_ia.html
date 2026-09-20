@@ -645,6 +645,48 @@ await seccion("tools: ocupación de ductos con varios tipos de conductor y radio
   ok(dOcu.properties.grupos.type === "array" && dOcu.properties.grupos.items.type === "object" && "numero_conductores" in dOcu.properties.grupos.items.properties && !(dOcu.required || []).length, "el esquema declara «grupos» y ya no hay campos obligatorios a nivel superior");
 });
 
+await seccion("reporte en Word (.docx): paquete válido", async () => {
+  const { crc32, crearZip } = await import("../js/util/zip.js");
+  ok(crc32(new TextEncoder().encode("123456789")) === 0xcbf43926, "el CRC-32 de «123456789» es el valor de referencia 0xCBF43926");
+  const { crearDocx } = await import("../js/ai/docx.js");
+  const ctx = ctxNuevo();
+  await tools.ejecutarLlamada("barrer_parametro", { herramienta: "calcular_perdidas", parametros_json: JSON.stringify({ ...LINEA, factor_carga: 0.56 }), parametro: "calibre", valores_texto: ["4/0", "266.8"] }, ctx);
+  const narrativa = [
+    "# Título & <prueba>", "## Objetivo", "Texto con **negrita**, *cursiva* y `código`.", "",
+    "| A | B |", "|---|---|", "| 1 | 2 |", "",
+    "- uno", "  - anidado", "", "1. primero", "2. segundo", "",
+    "## Conclusiones", "El conductor adecuado es **ACSR 266.8**.", "## Recomendaciones", "Verificar.",
+  ].join(String.fromCharCode(10));
+  const bytes = crearDocx({ narrativa, log: ctx.log, fecha: "20 de septiembre de 2026", modelo: "m", agente: "Agente estándar" });
+  ok(bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 3 && bytes[3] === 4, "empieza con la firma de un ZIP (PK)");
+  // se lee el directorio central del ZIP: nombres, tamaños y CRC de cada archivo
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const n = dv.getUint16(bytes.length - 22 + 10, true);
+  let pos = dv.getUint32(bytes.length - 22 + 16, true);
+  const partes = {};
+  for (let i = 0; i < n; i++) {
+    const tam = dv.getUint32(pos + 24, true), crc = dv.getUint32(pos + 16, true), ln = dv.getUint16(pos + 28, true), off = dv.getUint32(pos + 42, true);
+    const nombre = new TextDecoder().decode(bytes.subarray(pos + 46, pos + 46 + ln));
+    const dat = bytes.subarray(off + 30 + dv.getUint16(off + 26, true), off + 30 + dv.getUint16(off + 26, true) + tam);
+    partes[nombre] = { dat, crcOk: crc32(dat) === crc, texto: new TextDecoder().decode(dat) };
+    pos += 46 + ln;
+  }
+  const esperados = ["[Content_Types].xml", "_rels/.rels", "docProps/core.xml", "word/document.xml", "word/_rels/document.xml.rels", "word/styles.xml", "word/numbering.xml", "word/footer1.xml"];
+  ok(esperados.every((p) => partes[p]) && Object.keys(partes).length === esperados.length, "trae las 8 partes del documento");
+  ok(Object.values(partes).every((p) => p.crcOk), "el CRC de cada parte coincide con el del directorio (contenido íntegro)");
+  const malas = Object.entries(partes).filter(([, p]) => new DOMParser().parseFromString(p.texto, "application/xml").querySelector("parsererror"));
+  ok(!malas.length, `todo el XML está bien formado${malas.length ? ": " + malas.map((m) => m[0]).join(", ") : ""}`);
+  const doc = partes["word/document.xml"].texto;
+  ok(doc.includes('w:w="12240" w:h="15840"') && doc.includes("w:footerReference"), "hoja Carta vertical (12240 x 15840) y pie de página");
+  ok(doc.includes('w:val="Title"') && doc.includes('w:val="Heading1"') && doc.includes("<w:tbl>") && doc.includes("<w:tblHeader/>"), "usa estilos de Título y Encabezado, tablas y cabecera repetida");
+  ok(doc.includes("Título &amp; &lt;prueba&gt;") && !doc.includes("<prueba>"), "los caracteres especiales quedan escapados");
+  ok(doc.includes('w:fill="F2F2F2"') && /Conclusiones/.test(doc), "«Conclusiones» va sombreada");
+  ok(partes["word/footer1.xml"].texto.includes("PAGE") && partes["word/footer1.xml"].texto.includes("NUMPAGES"), "el pie tiene «Página X de Y»");
+  ok(doc.includes("Cálculos ejecutados") && doc.includes("Agente estándar"), "trae las tablas de cálculos y el agente en el encabezado");
+  const sinTabla = crearDocx({ narrativa: "", log: [], fecha: "f", modelo: "m", agente: "a" });
+  ok(sinTabla.length > 500, "sin reporte de la IA ni cálculos también genera un documento");
+});
+
 await seccion("reporte estándar: incluye «Conclusiones» entre los hallazgos y las recomendaciones", async () => {
   const { PROMPT_REPORTE } = await import("../js/ai/analisis.js");
   const orden = ["## Resultados y hallazgos", "## Conclusiones", "## Recomendaciones", "## Advertencias y limitaciones"].map((x) => PROMPT_REPORTE.indexOf(x));

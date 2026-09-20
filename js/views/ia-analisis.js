@@ -31,6 +31,7 @@ import * as historial from "../ai/historial.js";
 import { agregarMicrofono } from "../ai/voz.js";
 import { icon } from "../icons.js";
 import { copiarTexto } from "../util/portapapeles.js";
+import { crearDocx, MIME_DOCX } from "../ai/docx.js";
 
 const EJEMPLOS = [
   "Compara las pérdidas de una línea de 34.5 kV, 9.9 MW, factor de potencia 0.95 y 5.2 km con ACSR 4/0, 266.8 y 477, con factor de carga 0.56.",
@@ -107,7 +108,13 @@ export async function render(container) {
       <div class="ia-reporte-acciones no-print">
         <button type="button" class="btn btn-sm btn-primary" id="btn-reporte">Generar reporte con IA</button>
         <button type="button" class="btn btn-sm" id="btn-copiar">Copiar</button>
-        <button type="button" class="btn btn-sm" id="btn-md">Descargar .md</button>
+        <details class="menu-mas" id="menu-descargar">
+          <summary class="btn btn-sm btn-con-icono" aria-label="Descargar el reporte">Descargar ${icon("chevronDown")}</summary>
+          <div class="menu-mas-lista">
+            <button type="button" id="btn-docx">Documento de Word (.docx)</button>
+            <button type="button" id="btn-md">Markdown (.md)</button>
+          </div>
+        </details>
         <button type="button" class="btn btn-sm" id="btn-imprimir">Imprimir / PDF</button>
       </div>
       <p class="text-muted text-sm" id="reporte-meta" style="margin-top:0"></p>
@@ -386,8 +393,22 @@ export async function render(container) {
     setTimeout(() => (e.target.textContent = "Copiar"), 1600);
   });
 
+  // «Descargar» abre un menu con dos formatos; se cierra al elegir uno o al pulsar fuera
+  const menuDescargar = $("#menu-descargar");
+  menuDescargar.addEventListener("click", (e) => e.target.closest("button") && (menuDescargar.open = false));
+  document.addEventListener("click", (e) => {
+    if (!menuDescargar.isConnected) return;
+    if (!menuDescargar.contains(e.target)) menuDescargar.open = false;
+  });
+  const fechaArchivo = () => new Date().toISOString().slice(0, 10);
+
   $("#btn-md").addEventListener("click", () => {
-    descargar(`reporte-escenarios-${new Date().toISOString().slice(0, 10)}.md`, reporteMd(datosReporte()), "text/markdown;charset=utf-8");
+    descargar(`reporte-escenarios-${fechaArchivo()}.md`, reporteMd(datosReporte()), "text/markdown;charset=utf-8");
+  });
+
+  $("#btn-docx").addEventListener("click", () => {
+    const d = datosReporte();
+    descargar(`reporte-escenarios-${fechaArchivo()}.docx`, crearDocx({ ...d, agente: agenteActivo().nombre }), MIME_DOCX);
   });
 
   // «Imprimir / PDF»: no se imprime la tarjeta de la pantalla sino un documento propio (Carta vertical, siempre en claro), armado aqui
