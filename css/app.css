@@ -744,8 +744,8 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .ia-chip:disabled { cursor: default; opacity: 0.65; }
 .ia-chip:disabled:hover { border-color: var(--border-strong); color: var(--text-muted); }
 .ia-chip[aria-pressed="true"]:disabled:hover { border-color: var(--accent); color: var(--accent-strong); }
-/* Ocupacion de ductos: resultado en TRES columnas (dona | cifras | corte transversal a escala); en pantalla angosta pasan a una columna */
-.oc-resumen { display: grid; grid-template-columns: 230px auto 230px; justify-content: start; column-gap: 40px; align-items: center; } /* dona y corte del mismo tamaño; el corte va justo despues de las cifras */
+/* Ocupacion de ductos: resultado en TRES columnas (corte transversal a escala | dona | cifras); en pantalla angosta pasan a una columna */
+.oc-resumen { display: grid; grid-template-columns: 230px 230px auto; justify-content: start; column-gap: 40px; align-items: center; } /* corte y dona del mismo tamaño, y a continuacion las cifras */
 .oc-grafico svg { display: block; width: 100%; height: auto; overflow: visible; }
 @media (max-width: 900px) {
   .oc-resumen { grid-template-columns: 1fr; justify-items: center; gap: var(--space-5); }

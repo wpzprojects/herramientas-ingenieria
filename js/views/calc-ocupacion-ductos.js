@@ -444,6 +444,7 @@ export async function render(container) {
     const resultado = `
           <div class="result-panel">
             <div class="oc-resumen">
+              <div class="oc-grafico oc-corte">${corteDuctoSvg({ diametroTuboMm: ctx.diametroTuboMm, tipos: ctx.estados.map((e) => ({ cantidad: e.cantidad, diametroMm: e.diametroMm })) })}</div>
               <div class="oc-grafico oc-dona">${donaOcupacionSvg({ pct: data.ocupacionPct, limite: data.limitePct, cumple: data.cumple })}</div>
               <div class="oc-metricas">
                 <div class="result-metric">
@@ -463,7 +464,6 @@ export async function render(container) {
                     : ""
                 }
               </div>
-              <div class="oc-grafico oc-corte">${corteDuctoSvg({ diametroTuboMm: ctx.diametroTuboMm, tipos: ctx.estados.map((e) => ({ cantidad: e.cantidad, diametroMm: e.diametroMm })) })}</div>
             </div>
             ${data.grupos.length > 1 ? tablaGruposHtml(data, ctx) : ""}
             ${jammingHtml}
