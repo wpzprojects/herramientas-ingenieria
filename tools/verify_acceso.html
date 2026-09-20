@@ -327,6 +327,10 @@ await seccion("pantalla de Perfil rediseñada", async () => {
   qa(".ca-tabs .tab-btn")[1].click();
   const fuentes = qa("#ca-fuentes input");
   ok(fuentes.length === 3, "tres orígenes de clave como opciones compactas");
+  const ayudaFuente = q("#ca-clave label[data-info]").dataset.info;
+  ok(ayudaFuente.length < 260 && ayudaFuente.split("\n").length === 4 && ayudaFuente.split("•").length === 4, `la ayuda «i» de la clave es corta y con viñetas (${ayudaFuente.length} caracteres)`);
+  const pop = q("#ca-clave .info-popover");
+  ok(!!pop && getComputedStyle(pop).whiteSpace === "pre-line", "el cuadro de ayuda respeta los saltos de línea de las viñetas");
   fuentes.find((r) => r.value === "local").click();
   fuentes.find((r) => r.value === "local").dispatchEvent(new Event("change"));
   ok(!q("#ca-k-personal") && !q("#ca-k-compartida") && /Se usa la clave guardada en este navegador/.test(texto(q("#ca-detalle"))) && qa("#ca-clave .callout").length === 0, "«Este navegador»: no muestra campos de clave del servidor ni avisos");

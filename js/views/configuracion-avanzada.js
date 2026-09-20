@@ -23,11 +23,13 @@ const OPCIONES_FUENTE = {
   personal: { titulo: "Mi clave personal (servidor)" },
   compartida: { titulo: "Clave compartida (servidor)" },
 };
-const AYUDA_FUENTE =
-  "Este navegador: la clave que pegaste en Funciones de IA → Configuración (se guarda en este equipo). " +
-  "Mi clave personal: tu propia clave, guardada en el servidor; solo tú puedes leerla y la tienes en cualquier dispositivo. " +
-  "Clave compartida: una clave común para todos los usuarios autorizados, administrada por los administradores. " +
-  "Con las del servidor, la clave se descarga y se mantiene solo en memoria mientras la app está abierta; no se copia a este navegador.";
+// Ayuda «i» (se muestra con saltos de linea: el cuadro usa white-space: pre-line)
+const AYUDA_FUENTE = [
+  "Elige de dónde toman la clave las funciones de IA:",
+  "• Este navegador: la que pegaste en Configuración de IA.",
+  "• Mi clave personal: la tuya, guardada en el servidor.",
+  "• Clave compartida: la común para todos, definida por el administrador.",
+].join("\n");
 
 export async function render(container) {
   container.innerHTML = `

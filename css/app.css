@@ -344,6 +344,7 @@ input:disabled, select:disabled { opacity: 0.55; }
   background: var(--bg-elevated); color: var(--text); border: 1px solid var(--border-strong); box-shadow: var(--shadow-md);
   font-size: 0.8rem; font-weight: 400; line-height: 1.45; text-transform: none; letter-spacing: normal;
 }
+.info-popover { white-space: pre-line; } /* respeta los saltos de linea de las ayudas con viñetas */
 .info-popover--abajo { bottom: auto; top: 22px; } /* si arriba no cabe: justo bajo la etiqueta (17px + 4px de separacion) */
 .tabla-resultado th.num, .tabla-resultado td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .tabla-resultado tr.match-row { background: var(--fila-sugerida); } /* verde suave en el tema claro; azul del tema (mas claro que el panel) en el oscuro */
