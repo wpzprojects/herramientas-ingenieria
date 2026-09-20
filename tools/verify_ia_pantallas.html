@@ -246,6 +246,10 @@ await seccion("Corrector de redacción rediseñado", async () => {
   await espera(100);
   const pg = q("#panel-gestor");
   ok(visible(pg) && !visible(q("#vista-agentes")) && tarjetaAgente.contains(pg) && qa(".card").length === tarjetasAntes, "«Gestionar» muestra la gestión en la misma tarjeta (sin tarjeta nueva)");
+  const filas = [...pg.querySelectorAll("#gestor-lista .ia-historial-item")];
+  const est = (f) => getComputedStyle(f);
+  ok(filas.length === 4 && filas.every((f, i) => est(f).borderTopWidth === "0px" && est(f).borderLeftWidth === "0px" && est(f).borderRightWidth === "0px" && est(f).borderBottomWidth === (i < filas.length - 1 ? "1px" : "0px")), "la lista no son cajas: entre cada fila hay UNA sola línea fina (sin borde arriba, a los lados ni en la última fila)");
+  ok(filas.slice(1).every((f, i) => Math.abs(f.getBoundingClientRect().top - filas[i].getBoundingClientRect().bottom) < 1), "y las filas quedan pegadas (sin espacio que duplique la línea)");
   ok(!!pg.querySelector('.ia-gestor-cabecera [data-a="nuevo"].btn-primary') && !!pg.querySelector(".ia-gestor-cabecera .menu-mas") && pg.querySelectorAll("#gestor-lista .ia-historial-item").length === 4, "«Nuevo agente» es el único botón principal, hay un menú «Más» y la lista de los 4 agentes");
   const menu = pg.querySelector(".menu-mas");
   ok(!menu.open && !pg.querySelector(".menu-mas-lista").checkVisibility(), "el menú «Más» empieza cerrado (Exportar, Importar y Restaurar no se ven)");
