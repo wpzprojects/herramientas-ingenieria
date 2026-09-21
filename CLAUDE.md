@@ -219,7 +219,10 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   líneas y se reajusta con ResizeObserver + rAF; queda a 12px del borde de la tarjeta); Nueva conversación / Dictar / Enviar
   van en una fila `.ia-acciones` DEBAJO de la tarjeta, con botones `.ia-accion` (icono + palabra, sin recuadro hasta pasar el
   cursor). La respuesta de la IA (`.ia-msg--model`) lleva fondo transparente y una línea clara. No poner contador de caracteres
-  ni avisos de privacidad en estas pantallas (la privacidad vive en Configuración de IA). Análisis es UNA sola tarjeta
+  ni avisos de privacidad en estas pantallas (la privacidad vive en Configuración de IA). SIN desplazamiento automático (2026-09-21, pedido
+  del usuario): ni al enviar/pensar (los tres puntitos, cada etiqueta de herramienta) ni al llegar la respuesta ni en un error; antes
+  `alFinal` bajaba al final de TODA la página (hasta «Reporte de escenarios») y la respuesta quedaba arriba. No volver a ponerlo. Solo
+  se conserva el desplazamiento al «Abrir» una conversación del historial. Análisis es UNA sola tarjeta
   «Consulta» cuyas sugerencias desaparecen al iniciar el chat: el usuario rechazó dividirla en dos tarjetas.
 - Dictado por voz (`js/ai/voz.js`): el pitido lo pone Android al iniciar el reconocimiento y la web no puede silenciarlo; por eso
   NO se reinicia el reconocimiento en las pausas (cada reinicio pita) y en Android los resultados se fusionan con
@@ -230,7 +233,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v225); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v226); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (menú lateral → «Perfil», `js/auth/*`, `firebase/firestore.rules`)

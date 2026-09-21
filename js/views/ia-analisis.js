@@ -145,8 +145,8 @@ export async function render(container) {
       requestAnimationFrame(ajustarAlto); // fuera del callback: cambiar el alto aqui provoca "ResizeObserver loop"
     }
   }).observe(fPregunta);
-  // El chat crece con la conversacion (sin barra propia) y el desplazamiento lo hace la pagina.
-  const alFinal = () => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
+  // El chat crece con la conversacion (sin barra propia). NO se desplaza la pagina al enviar, al pensar ni al llegar la respuesta
+  // (pedido del usuario 2026-09-21: bajaba hasta el «Reporte de escenarios» y la respuesta quedaba arriba, fuera de vista).
 
   // ---------- chat ----------
   function chipsHerramientas(lista) {
@@ -270,7 +270,6 @@ export async function render(container) {
       chipsVivos,
     ]);
     chat.append(espera);
-    alFinal();
     bloquear(true);
 
     const activos = new Map();
@@ -300,7 +299,6 @@ export async function render(container) {
               }
             }
           }
-          alFinal();
         },
       });
       espera.remove();
@@ -313,14 +311,13 @@ export async function render(container) {
       }
       const msg = { rol: "model", texto: textoVisible, herramientas: r.herramientas, ...(esReporte ? { sinCopia: true } : {}) };
       conv.mensajes.push(msg);
-      pintarMensaje(msg).scrollIntoView({ behavior: "smooth", block: "start" }); // se lee desde el inicio de la respuesta
+      pintarMensaje(msg);
       historial.guardar(conv); // en segundo plano
     } catch (err) {
       espera.remove();
       conv.mensajes.pop(); // el turno del usuario se revirtio en el motor
       const texto = err instanceof ErrorGemini ? err.message : `Error inesperado: ${err?.message || err}`;
       pintarMensaje({ rol: "error", texto });
-      alFinal();
     } finally {
       bloquear(false);
       pintarReporte();

@@ -147,7 +147,7 @@ export async function render(container) {
       requestAnimationFrame(ajustarAlto); // fuera del callback: cambiar el alto aqui provoca "ResizeObserver loop"
     }
   }).observe(fTexto);
-  // La tarjeta crece con la conversacion y el desplazamiento lo hace la pagina.
+  // La tarjeta crece con la conversacion. Al enviar/pensar/responder NO se desplaza la pagina (pedido del usuario 2026-09-21); solo al abrir del historial.
   const alFinal = () => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
 
   const agenteActivo = () => agentes.find((a) => a.id === activoId) || agentes[0];
@@ -264,7 +264,6 @@ export async function render(container) {
     burbuja("user", textoVisible || textoUsuario);
     const espera = el("div", { class: "ia-msg ia-msg--model" }, [el("span", { class: "ia-typing", "aria-label": "Generando respuesta" }, [el("span"), el("span"), el("span")])]);
     chat.append(espera);
-    alFinal();
     bloquear(true);
 
     try {
@@ -281,9 +280,8 @@ export async function render(container) {
       conv.mensajes.push({ rol: "model", texto });
       espera.remove();
       ocupado = false;
-      const nodoRespuesta = burbuja("model", texto);
+      burbuja("model", texto);
       pintarAjustes();
-      nodoRespuesta.scrollIntoView({ behavior: "smooth", block: "start" }); // se lee desde el inicio de la respuesta
       historial.guardar(conv); // en segundo plano: un guardado lento no debe bloquear la interfaz
     } catch (err) {
       // se revierte el turno del usuario para no dejar el historial desbalanceado
@@ -292,7 +290,6 @@ export async function render(container) {
       espera.remove();
       // la burbuja del usuario queda visible junto al error para que sea claro que no se envio
       burbuja("error", err instanceof ErrorGemini ? err.message : `Error inesperado: ${err.message || err}`);
-      alFinal();
       if (!fTexto.value) {
         // se devuelve lo escrito a la caja para poder reintentar sin volver a pegarlo
         fTexto.value = textoVisible || textoUsuario;
