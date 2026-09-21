@@ -446,7 +446,7 @@ input:disabled, select:disabled { opacity: 0.55; }
   border-radius: var(--radius-md);
   padding: var(--space-4);
 }
-.formula-caja .result-subhead { margin-top: var(--space-4); border-top-color: var(--table-border); } /* la linea entre secciones: con --border casi no se veia en el tema claro (#d8e0eb sobre #dce1e8); --table-border es mas marcado en claro y igual a --border en oscuro */
+.formula-caja .result-subhead { margin-top: var(--space-6); border-top-color: var(--table-border); } /* la linea entre secciones: con --border casi no se veia en el tema claro (#d8e0eb sobre #dce1e8); --table-border es mas marcado en claro y igual a --border en oscuro */
 .formula-caja > .result-subhead:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
 .formula-caja > :last-child { margin-bottom: 0; }
 /* Descripcion de las etiquetas: lista con viñetas; el simbolo (KaTeX) ocupa un ancho fijo para que los textos queden alineados */
@@ -455,8 +455,9 @@ input:disabled, select:disabled { opacity: 0.55; }
 .formula-etiquetas li { margin-bottom: var(--space-1); padding-left: var(--space-1); }
 .formula-etiquetas li::marker { color: var(--text-faint); }
 .formula-etiquetas .formula-simbolo { display: inline-block; min-width: var(--ancho-simbolo, 4.2em); margin-right: var(--space-2); } /* --ancho-simbolo lo mide resultados-ui.js */
-.formula-katex { overflow-x: auto; overflow-y: hidden; text-align: center; margin: 0 0 var(--space-3); padding: var(--space-1) 0; }
-.formula-katex .katex-display { margin: 0; }
+.formula-katex { overflow-x: auto; overflow-y: hidden; text-align: left; margin: 0 0 var(--space-3); padding: var(--space-1) 0; }
+.formula-katex .katex-display { margin: 0; text-align: left; }
+.formula-katex .katex-display > .katex { text-align: left; } /* katex.css los centra (0,2,0): esta regla (0,3,0) las deja pegadas a la izquierda, como el titulo de la seccion */
 .formula-vars { white-space: pre-line; margin: var(--space-4) 0 0; }
 
 .btn {
