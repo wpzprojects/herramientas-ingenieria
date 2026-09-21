@@ -452,9 +452,9 @@ input:disabled, select:disabled { opacity: 0.55; }
 /* Descripcion de las etiquetas: lista con viñetas; el simbolo (KaTeX) ocupa un ancho fijo para que los textos queden alineados */
 .formula-caja .result-subhead + .formula-vars { margin-top: 0; } /* la nota va pegada a su subtitulo (el subtitulo ya deja el espacio) */
 .formula-etiquetas { margin: 0; padding-left: 1.3em; font-size: 0.88rem; }
-.formula-etiquetas li { margin-bottom: var(--space-1); padding-left: var(--space-1); }
+.formula-etiquetas li { margin-bottom: var(--space-1); padding-left: calc(var(--space-1) + var(--ancho-simbolo, 4.2em) + var(--space-2)); text-indent: calc(-1 * (var(--ancho-simbolo, 4.2em) + var(--space-2))); } /* sangria francesa: si el texto pasa de linea, la 2.ª linea arranca bajo el texto y no bajo el simbolo */
 .formula-etiquetas li::marker { color: var(--text-faint); }
-.formula-etiquetas .formula-simbolo { display: inline-block; min-width: var(--ancho-simbolo, 4.2em); margin-right: var(--space-2); } /* --ancho-simbolo lo mide resultados-ui.js */
+.formula-etiquetas .formula-simbolo { display: inline-block; text-indent: 0; min-width: var(--ancho-simbolo, 4.2em); margin-right: var(--space-2); } /* --ancho-simbolo lo mide resultados-ui.js */
 .formula-katex { overflow-x: auto; overflow-y: hidden; text-align: left; margin: 0 0 var(--space-3); padding: var(--space-1) 0; }
 .formula-katex .katex-display { margin: 0; text-align: left; }
 .formula-katex .katex-display > .katex { text-align: left; } /* katex.css los centra (0,2,0): esta regla (0,3,0) las deja pegadas a la izquierda, como el titulo de la seccion */
