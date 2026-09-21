@@ -1,4 +1,4 @@
-// Analisis economico de una linea NUEVA: compara de 2 a 5 opciones de conductor por su COSTO TOTAL ACTUALIZADO
+// Conductor economico de una linea NUEVA: compara de 2 a 5 opciones de conductor por su COSTO TOTAL ACTUALIZADO
 // (inversion inicial + valor presente del costo de las perdidas durante N años). Gana la de menor costo total.
 // Sin DOM, para poder probarlo aparte. Las perdidas salen del motor de Pérdidas (perdidas.js), sin modificarlo, asi que
 // usan el mismo factor de pérdidas y las mismas formulas que esa pantalla.

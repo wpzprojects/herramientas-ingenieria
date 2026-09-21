@@ -30,7 +30,7 @@ export const sectionMenus = {
     { title: "Cortocircuito", desc: "Capacidad de corriente de cortocircuito admisible.", icon: "bolt", hash: "#/calculos/cortocircuito" },
     { title: "Ampacidad aérea", desc: "Corriente admisible de conductores aéreos (IEEE Std 738).", icon: "powerTower", hash: "#/calculos/ampacidad-aerea" },
     { title: "Ampacidad subterránea", desc: "Corriente admisible de cables en banco de ductos (IEC 60287-1-1).", icon: "underground", hash: "#/calculos/ampacidad-subterranea" },
-    { title: "Análisis económico", desc: "Compara conductores por costo de instalación y de pérdidas a varios años.", icon: "coin", hash: "#/calculos/analisis-economico" },
+    { title: "Conductor económico", desc: "Compara conductores por costo de instalación y de pérdidas a varios años.", icon: "coin", hash: "#/calculos/conductor-economico" },
   ],
   catalogos: [
     { title: "Conductores desnudos", desc: "ACSR, AAAC, ACAR, AAC, ACSS.", icon: "conductorBare", hash: "#/catalogos/desnudos", libre: true },

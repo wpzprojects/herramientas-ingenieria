@@ -1,12 +1,12 @@
-// Analisis economico de una linea nueva: compara de 2 a 5 opciones de conductor por su costo total actualizado
+// Conductor economico de una linea nueva: compara de 2 a 5 opciones de conductor por su costo total actualizado
 // (inversion + valor presente del costo de las perdidas en N años). Sigue el patron de Pérdidas: una tarjeta «Datos de la
 // línea», una de «Supuestos económicos» y una tarjeta por opcion (agregar/quitar). Los precios los escribe el usuario: los
-// catalogos no traen precios ni deben traerlos (el repositorio es publico). La logica vive en ../calc/analisis-economico.js.
+// catalogos no traen precios ni deben traerlos (el repositorio es publico). La logica vive en ../calc/conductor-economico.js.
 
 import { fmt, fmtPercent, loadData, distinct, escapeHtml } from "../util/format.js";
 import { icon } from "../icons.js";
 import { potenciaActivaMw } from "../calc/circuito.js";
-import { compararOpciones, sensibilidad } from "../calc/analisis-economico.js";
+import { compararOpciones, sensibilidad } from "../calc/conductor-economico.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 import { activarInfos } from "../util/info-campo.js";
 
@@ -105,7 +105,7 @@ t_eq = primer t con Cacum_i(t) ≤ Cacum_base(t)
 
 ${FORMULAS_NOTA}`;
 
-const ETIQUETAS_REPORTE = ["ANÁLISIS ECONÓMICO DE CONDUCTORES", "PARÁMETROS DE ENTRADA:", "RESULTADOS:"];
+const ETIQUETAS_REPORTE = ["CÁLCULO DE CONDUCTOR ECONÓMICO", "PARÁMETROS DE ENTRADA:", "RESULTADOS:"];
 
 const MODOS = { potencia: "Potencia activa", aparente: "Potencia aparente", corriente: "Corriente" };
 
@@ -119,8 +119,8 @@ export async function render(container) {
   const xlpe = await loadData("conductores-xlpe");
 
   container.innerHTML = `
-    <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/calculos">Cálculos</a> <span>/</span> <span>Análisis económico</span></div>
-    <h1 class="page-title">Análisis económico</h1>
+    <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/calculos">Cálculos</a> <span>/</span> <span>Conductor económico</span></div>
+    <h1 class="page-title">Conductor económico</h1>
 
     <form id="form-calc" novalidate>
       <div class="card tarjeta-borde form-section">
@@ -540,7 +540,7 @@ export async function render(container) {
     });
     const sens = s.filas.map((f) => `  ${f.etiqueta}: Opción ${f.ganador + 1}`);
     return [
-      `ANÁLISIS ECONÓMICO DE CONDUCTORES`,
+      `CÁLCULO DE CONDUCTOR ECONÓMICO`,
       ``,
       `PARÁMETROS DE ENTRADA:`,
       LINEA_REPORTE,

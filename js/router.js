@@ -29,7 +29,7 @@ function compile(pattern) {
 const routeTable = [
   ["/", () => import("./views/inicio.js")],
   ["/calculos", () => import("./views/calculos.js")],
-  ["/calculos/analisis-economico", () => import("./views/calc-analisis-economico.js")],
+  ["/calculos/conductor-economico", () => import("./views/calc-conductor-economico.js")],
   ["/calculos/ampacidad-aerea", () => import("./views/calc-ampacidad-aerea.js")],
   ["/calculos/ampacidad-subterranea", () => import("./views/calc-ampacidad-subterranea.js")],
   ["/calculos/cortocircuito", () => import("./views/calc-cortocircuito.js")],
