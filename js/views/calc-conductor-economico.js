@@ -9,6 +9,7 @@ import { potenciaActivaMw } from "../calc/circuito.js";
 import { compararOpciones, sensibilidad } from "../calc/conductor-economico.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 import { activarInfos } from "../util/info-campo.js";
+import { activarPlegables } from "../util/tarjetas-plegables.js";
 
 const MIN_OPCIONES = 2;
 const MAX_OPCIONES = 5;
@@ -220,6 +221,8 @@ export async function render(container) {
   `;
 
   activarInfos(container);
+
+  activarPlegables(container);
   const form = container.querySelector("#form-calc");
   const q = (s) => container.querySelector(s);
   const fTension = q("#f-tension");
@@ -312,6 +315,7 @@ export async function render(container) {
       </div>`;
     const card = cont.firstElementChild;
     activarInfos(card);
+    activarPlegables(card);
     const c = (s) => card.querySelector(s);
     const selRed = c(`#f-red-${id}`);
     const selMaterial = c(`#f-material-${id}`);

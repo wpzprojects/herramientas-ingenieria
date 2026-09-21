@@ -10,6 +10,7 @@ import { calcularCortocircuito } from "../calc/cortocircuito.js";
 import { compararCalibres } from "../calc/cortocircuito-calibre.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 import { activarInfos } from "../util/info-campo.js";
+import { activarPlegables } from "../util/tarjetas-plegables.js";
 
 // Ecuaciones (LaTeX) de la pestaña Fórmulas: las del motor, con las mismas unidades (mm², °C, s y kA).
 const FORMULAS_TEX = [
@@ -148,6 +149,8 @@ export async function render(container) {
   `;
 
   activarInfos(container);
+
+  activarPlegables(container);
   const form = container.querySelector("#form-calc");
   const selRed = container.querySelector("#f-red");
   const selMaterial = container.querySelector("#f-material");

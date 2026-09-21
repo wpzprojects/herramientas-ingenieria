@@ -16,6 +16,7 @@ import {
 } from "../calc/regulacion-tramos.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 import { activarInfos } from "../util/info-campo.js";
+import { activarPlegables } from "../util/tarjetas-plegables.js";
 
 // Ecuaciones (LaTeX) de la pestaña Fórmulas: replican lo que hace el motor, con las mismas unidades
 // (MW, kV, Ω/km, km, mm para el radio medio geométrico y m para las distancias).
@@ -172,6 +173,8 @@ export async function render(container) {
   `;
 
   activarInfos(container);
+
+  activarPlegables(container);
   const form = container.querySelector("#form-calc");
   const fTension = container.querySelector("#f-tension");
   const selModo = container.querySelector("#f-modo");
@@ -277,6 +280,7 @@ export async function render(container) {
       </div>`;
     const card = cont.firstElementChild;
     activarInfos(card);
+    activarPlegables(card);
     const q = (s) => card.querySelector(s);
     const selRed = q(`#f-red-${id}`);
     const selMaterial = q(`#f-material-${id}`);

@@ -200,7 +200,7 @@ await seccion("vista: tarjetas y campos", async () => {
   const titulos = $$(".form-section-title").map(texto);
   ok($$(".card.form-section").length === 3 && titulos[0].includes("Cable") && titulos[1].includes("Condiciones de operación") && titulos[2].includes("Instalación"), `tres tarjetas: «${titulos.join("», «")}»`);
   ok($$(".form-section-title").every((t) => t.querySelector("svg.icon") && t.parentElement.classList.contains("card")), "cada título lleva su icono y va dentro de su tarjeta");
-  ok(new Set($$(".form-section-title svg").map((s) => s.innerHTML)).size === 3, "las tres tarjetas tienen iconos distintos");
+  ok(new Set($$(".form-section-title > svg").map((s) => s.innerHTML)).size === 3, "las tres tarjetas tienen iconos distintos");
   ok($$(".card").every((c) => c.classList.contains("tarjeta-borde")), "las tarjetas llevan el borde marcado");
   ok($$(".hint").length === 0, "no quedan textos de ayuda fijos (.hint) debajo de los campos");
   const tarjetas = $$(".form-section").map((c) => c.getBoundingClientRect());

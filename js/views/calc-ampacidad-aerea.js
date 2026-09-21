@@ -8,6 +8,7 @@ import { icon } from "../icons.js";
 import { calcularAmpacidadAerea } from "../calc/ampacidad-aerea.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 import { activarInfos } from "../util/info-campo.js";
+import { activarPlegables } from "../util/tarjetas-plegables.js";
 
 // Ecuaciones (LaTeX) de la pestaña Fórmulas: las del motor, con las mismas unidades (D en m, temperaturas en °C, R en Ω/m).
 const FORMULAS_TEX = [
@@ -244,6 +245,8 @@ export async function render(container) {
   `;
 
   activarInfos(container);
+
+  activarPlegables(container);
   const form = container.querySelector("#form-calc");
   const selTipo = container.querySelector("#f-tipo");
   const selCalibre = container.querySelector("#f-calibre");

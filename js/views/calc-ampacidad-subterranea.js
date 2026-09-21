@@ -10,6 +10,7 @@ import { calcularAmpacidadSubterranea } from "../calc/ampacidad-subterranea.js";
 import { calcularPantalla } from "../calc/ampacidad-subterranea-pantalla.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 import { activarInfos } from "../util/info-campo.js";
+import { activarPlegables } from "../util/tarjetas-plegables.js";
 
 const ORDEN_CALIBRES = ["1/0 AWG", "2/0 AWG", "3/0 AWG", "4/0 AWG", "250 kcmil", "350 kcmil", "500 kcmil", "750 kcmil", "1000 kcmil"];
 
@@ -296,6 +297,8 @@ export async function render(container) {
   `;
 
   activarInfos(container);
+
+  activarPlegables(container);
   const form = container.querySelector("#form-calc");
   const selTipoCable = container.querySelector("#f-tipocable");
   const selMaterial = container.querySelector("#f-material");

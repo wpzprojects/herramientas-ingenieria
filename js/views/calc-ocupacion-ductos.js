@@ -9,6 +9,7 @@ import { icon } from "../icons.js";
 import { calcularOcupacionGrupos, getLimiteOcupacion } from "../calc/ocupacion-grupos.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 import { activarInfos } from "../util/info-campo.js";
+import { activarPlegables } from "../util/tarjetas-plegables.js";
 import { donaOcupacionSvg, corteDuctoSvg } from "../util/graficos.js";
 
 // Ecuaciones (LaTeX) de la pestaña Fórmulas.
@@ -149,6 +150,8 @@ export async function render(container) {
   `;
 
   activarInfos(container);
+
+  activarPlegables(container);
   const form = container.querySelector("#form-calc");
   const selTipo = container.querySelector("#f-tipo");
   const selNominal = container.querySelector("#f-nominal");
@@ -238,6 +241,7 @@ export async function render(container) {
       </div>`;
     const card = cont.firstElementChild;
     activarInfos(card);
+    activarPlegables(card);
     const q = (s) => card.querySelector(s);
     const fN = q(`#f-n-${id}`);
     const fDiametro = q(`#f-diametro-${id}`);

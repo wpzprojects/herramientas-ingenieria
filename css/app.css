@@ -443,6 +443,24 @@ input:disabled, select:disabled { opacity: 0.55; }
    (que casi se pierde contra el fondo) y en el oscuro es el mismo --border de siempre. Se mantiene en 1px: mas grueso se veria pesado. */
 .card.tarjeta-borde { border-color: var(--table-border); --pad-tarjeta: var(--space-4); padding: var(--pad-tarjeta); }
 .card.tarjeta-borde.form-section { padding-bottom: 12px; } /* las tarjetas de datos: un poco menos abajo (ver .grid-2.ultima) */
+/* Plegar tarjetas (js/util/tarjetas-plegables.js). El boton va al extremo derecho de la barra de titulo; el chevron apunta arriba con la tarjeta
+   abierta y gira hacia abajo al plegarla. Su area de toque (32 px + 4 px por lado) es mayor que el dibujo, para no exigir punteria. */
+.form-section-title .btn-plegar {
+  position: relative; flex: 0 0 auto; margin-left: auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: transparent; cursor: pointer;
+}
+.form-section-title .btn-tramo-quitar:not([hidden]) + .btn-plegar { margin-left: 0; } /* con «Quitar» a la vista, este ya empuja a la derecha */
+.form-section-title .btn-plegar::before { content: ""; position: absolute; inset: -4px; }
+.form-section-title .btn-plegar .icon { color: var(--text-muted); transition: transform 0.18s ease, color 0.18s ease; }
+.form-section-title .btn-plegar:hover .icon, .form-section-title .btn-plegar:focus-visible .icon { color: var(--accent); }
+.form-section.plegada > .form-section-title .btn-plegar .icon { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .form-section-title .btn-plegar .icon { transition: none; } }
+/* Tarjeta plegada: solo queda la barra. La fila «Agregar tramo/opcion» (dentro de la ultima tarjeta) sigue a la vista para no perder esa accion. */
+.form-section.plegada > :not(.form-section-title, .fila-agregar) { display: none; }
+.form-section.plegada > .form-section-title { margin-bottom: 0; }
+.form-section.plegada:not(:has(> .fila-agregar:not([hidden]))) { padding-bottom: 0; }
+.form-section.plegada:not(:has(> .fila-agregar:not([hidden]))) > .form-section-title { border-bottom-color: transparent; border-radius: calc(var(--radius-lg) - 1px); }
 .tarjeta-borde .result-panel, .result-panel.compacto { padding: var(--space-4); }  /* panel azul de resultados: tambien 16px (en otras calculadoras sigue en 24px) */
 /* Subtarjeta de las formulas (KaTeX): mismo aspecto que la caja de «Reporte» (fondo hundido, borde y esquinas), sin su letra monoespaciada */
 .formula-caja {

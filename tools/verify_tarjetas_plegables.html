@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>verify_tarjetas_plegables</title>
+<!--
+  Pruebas de las tarjetas plegables de las calculadoras (js/util/tarjetas-plegables.js): las siete pantallas reales se renderizan
+  en un contenedor oculto y se manejan como lo haria una persona (clic en el chevron, escribir, calcular).
+
+  Uso (desde la raiz del proyecto):
+    python -m http.server 8000
+    abrir http://localhost:8000/tools/verify_tarjetas_plegables.html   -> lista PASS/FAIL
+  o en modo consola:
+    msedge --headless --dump-dom --virtual-time-budget=30000 http://localhost:8000/tools/verify_tarjetas_plegables.html
+-->
+<style>body{font-family:ui-monospace,Consolas,monospace;font-size:13px;padding:12px}#stage{position:absolute;left:-9999px;width:1000px}</style>
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+<pre id="out"></pre>
+<div id="stage"></div>
+<script type="module">
+window.__BASE_PATH__ = "../";
+const out = document.getElementById("out");
+let fallos = 0;
+let total = 0;
+function ok(cond, msg) {
+  total++;
+  if (!cond) fallos++;
+  out.textContent += `${cond ? "PASS" : "FAIL"} ${msg}\n`;
+}
+async function seccion(nombre, fn) {
+  out.textContent += `\n== ${nombre}\n`;
+  try {
+    await fn();
+  } catch (err) {
+    fallos++;
+    total++;
+    out.textContent += `FAIL excepcion en "${nombre}": ${err && err.stack ? err.stack : err}\n`;
+  }
+}
+const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+const stage = document.getElementById("stage");
+const $ = (s, r = stage) => r.querySelector(s);
+const $$ = (s, r = stage) => [...r.querySelectorAll(s)];
+const poner = (sel, v, ev = "input") => { const e = $(sel); e.value = v; e.dispatchEvent(new Event(ev, { bubbles: true })); };
+const elegir = (sel, v) => poner(sel, v, "change");
+const texto = (e) => (e ? e.textContent.replace(/\s+/g, " ").trim() : "");
+const boton = (card) => $(":scope > .form-section-title > .btn-plegar", card);
+const cerrada = (card) => card.classList.contains("plegada");
+
+const VISTAS = [
+  ["Pérdidas", "calc-perdidas"],
+  ["Regulación", "calc-regulacion"],
+  ["Ocupación de ductos", "calc-ocupacion-ductos"],
+  ["Cortocircuito", "calc-cortocircuito"],
+  ["Ampacidad aérea", "calc-ampacidad-aerea"],
+  ["Ampacidad subterránea", "calc-ampacidad-subterranea"],
+  ["Conductor económico", "calc-conductor-economico"],
+];
+
+for (const [nombre, modulo] of VISTAS) {
+  await seccion(`${nombre}: cada tarjeta se puede plegar`, async () => {
+    stage.innerHTML = "";
+    const { render } = await import(`../js/views/${modulo}.js`);
+    await render(stage, {});
+    const tarjetas = $$(".form-section");
+    ok(tarjetas.length >= 2, `${tarjetas.length} tarjetas de datos`);
+    ok(tarjetas.every((t) => boton(t)), "todas las tarjetas tienen su botón de plegar en la barra de título");
+    ok(tarjetas.every((t) => boton(t) === t.querySelector(".form-section-title").lastElementChild), "el botón es lo último de la barra (extremo derecho)");
+    ok(tarjetas.every((t) => !cerrada(t) && boton(t).getAttribute("aria-expanded") === "true" && boton(t).getAttribute("aria-label").startsWith("Plegar la tarjeta")), "por defecto todas están abiertas (aria-expanded=true)");
+    ok(tarjetas.every((t) => boton(t).getAttribute("aria-label").length > "Plegar la tarjeta ".length), `el nombre accesible incluye el título: «${boton(tarjetas[0]).getAttribute("aria-label")}»`);
+
+    const t = tarjetas[0];
+    const b = boton(t);
+    const rb = b.getBoundingClientRect();
+    const rt = t.querySelector(".form-section-title").getBoundingClientRect();
+    ok(Math.round(rb.width) === 32 && Math.round(rb.height) === 32, `área de toque del botón de 32×32 px (${Math.round(rb.width)}×${Math.round(rb.height)})`);
+    ok(getComputedStyle(b, "::before").top === "-4px" && getComputedStyle(b, "::before").bottom === "-4px", "el área de toque se extiende 4 px más allá del botón (no exige puntería)");
+    ok(rt.right - rb.right >= 8 && rt.right - rb.right <= 24, `el botón queda al extremo derecho de la barra (${Math.round(rt.right - rb.right)} px del borde)`);
+    ok(Math.abs(rb.top + rb.height / 2 - (rt.top + (rt.height - 1) / 2)) <= 1.5, "el botón está centrado verticalmente en la barra");
+    const altoAbierta = t.getBoundingClientRect().height;
+    $(".icon", b).style.transition = "none"; // el giro se comprueba en su estado final, sin depender del tiempo de la animacion
+
+    // el clic en el TITULO no pliega (solo el icono)
+    t.querySelector(".form-section-title").click();
+    ok(!cerrada(t), "un clic en la barra de título NO pliega la tarjeta (solo el botón)");
+
+    // guardar un valor escrito, plegar
+    const campo = $("input:not([type=checkbox])", t);
+    const antes = campo.value;
+    b.click();
+    await espera(320);
+    const contenido = [...t.children].filter((h) => !h.classList.contains("form-section-title") && !h.classList.contains("fila-agregar"));
+    const rp = t.getBoundingClientRect();
+    ok(cerrada(t) && b.getAttribute("aria-expanded") === "false" && b.getAttribute("aria-label").startsWith("Desplegar la tarjeta"), "al hacer clic en el botón se pliega (aria-expanded=false, nombre «Desplegar…»)");
+    ok(contenido.every((h) => getComputedStyle(h).display === "none"), "el contenido de la tarjeta queda oculto");
+    ok($(".form-section-title", t).getBoundingClientRect().height > 40 && rp.height < 60, `solo queda la barra de título (alto ${Math.round(rp.height)} px, antes ${Math.round(altoAbierta)} px)`);
+    ok(getComputedStyle($(".icon", b)).transform !== "none" && /matrix\(-1/.test(getComputedStyle($(".icon", b)).transform), "el chevron gira hacia abajo al plegar");
+    ok(texto($(".form-section-title", t)).length > 0, "el título sigue visible");
+
+    b.click();
+    await espera(320);
+    const giro = getComputedStyle($(".icon", b)).transform;
+    ok(!cerrada(t) && b.getAttribute("aria-expanded") === "true" && (giro === "none" || /^matrix\(1,/.test(giro)), `al hacer clic otra vez se despliega y el chevron vuelve a apuntar arriba (${giro})`);
+    ok(Math.abs(t.getBoundingClientRect().height - altoAbierta) <= 1, "la tarjeta recupera su alto");
+    ok(campo.value === antes, "lo escrito en los campos se conserva al plegar y desplegar");
+    // teclado: Enter sobre un boton es un clic nativo; se comprueba que es un <button> enfocable
+    ok(b.tagName === "BUTTON" && b.type === "button" && b.tabIndex === 0, "es un <button type=button> enfocable con teclado");
+  });
+}
+
+await seccion("Conductor económico: sigue plegada al calcular y se despliega si falta un dato", async () => {
+  stage.innerHTML = "";
+  const { render } = await import("../js/views/calc-conductor-economico.js");
+  await render(stage, {});
+  const [datos, supuestos, op1, op2] = $$(".form-section");
+  boton(datos).click();
+  ok(cerrada(datos), "se pliega «Datos de la línea»");
+  // llenar todo lo obligatorio
+  poner("#f-precio", 350);
+  [op1, op2].forEach((c, i) => {
+    const id = c.querySelector("select").id.replace("f-red-", "");
+    elegir(`#f-material-${id}`, "ACSR");
+    elegir(`#f-calibre-${id}`, i ? "4/0" : "1/0");
+    poner(`#f-costo-cond-${id}`, 9e6);
+  });
+  $("#form-calc").requestSubmit();
+  ok($$(".result-metric").length === 2, "con «Datos de la línea» plegada el cálculo usa igual sus valores y muestra el resultado");
+  ok(cerrada(datos), "tras calcular, la tarjeta sigue plegada");
+  const primero = $(".result-metric .value");
+  $("#form-calc").requestSubmit();
+  ok(cerrada(datos) && $$(".result-metric").length === 2 && texto($(".result-metric .value")) === texto(primero), "al recalcular sigue plegada y el resultado es el mismo");
+  boton(datos).click();
+  ok(!cerrada(datos), "se puede volver a desplegar");
+
+  // un campo obligatorio vacio dentro de una tarjeta plegada: la tarjeta se despliega sola y el cálculo no corre
+  $("#resultado-wrap").innerHTML = "";
+  const id1 = op1.querySelector("select").id.replace("f-red-", "");
+  poner(`#f-costo-cond-${id1}`, "");
+  boton(op1).click();
+  boton(supuestos).click();
+  ok(cerrada(op1) && cerrada(supuestos), "se pliegan «Supuestos económicos» y «Opción 1»");
+  $("#form-calc").requestSubmit();
+  ok($("#resultado-wrap").children.length === 0, "faltando el costo del conductor no se calcula");
+  ok(!cerrada(op1), "la tarjeta plegada con el dato faltante (Opción 1) se despliega sola");
+  ok(cerrada(supuestos), "las plegadas que no tienen problemas se quedan como estaban");
+  ok(getComputedStyle($(`#f-costo-cond-${id1}`)).display !== "none" && $(`#f-costo-cond-${id1}`).getBoundingClientRect().height > 0, "el campo que faltaba queda a la vista");
+});
+
+await seccion("Pérdidas: tramos nuevos, «Quitar» y «Agregar tramo»", async () => {
+  stage.innerHTML = "";
+  const { render } = await import("../js/views/calc-perdidas.js");
+  await render(stage, {});
+  $(".btn-agregar-tramo").click();
+  const tarjetas = $$(".form-section");
+  ok(tarjetas.length === 3 && tarjetas.every((t) => boton(t)), "la tarjeta creada después también tiene su botón de plegar");
+  ok(!cerrada(tarjetas[2]), "la tarjeta nueva nace abierta");
+  const tramo1 = tarjetas[1], tramo2 = tarjetas[2];
+  const quitar = $(".btn-tramo-quitar", tramo2);
+  const rq = quitar.getBoundingClientRect(), rb = boton(tramo2).getBoundingClientRect();
+  ok(!quitar.hidden && rq.right <= rb.left && rb.left - rq.right <= 10, `«Quitar» y el botón de plegar quedan juntos, sin encimarse (${Math.round(rb.left - rq.right)} px entre ellos)`);
+  ok(getComputedStyle(boton(tramo2).parentElement).height === getComputedStyle($(".form-section-title", tarjetas[0])).height, "la barra con «Quitar» y botón mide lo mismo que las demás (no crece)");
+
+  // la ultima tarjeta plegada mantiene a la vista «Agregar tramo»
+  boton(tramo2).click();
+  const fila = $(".fila-agregar", tramo2);
+  ok(cerrada(tramo2) && fila.getBoundingClientRect().height > 0, "con la última tarjeta plegada, «Agregar tramo» sigue a la vista");
+  fila.querySelector("button").click();
+  ok($$(".form-section").length === 4 && $$(".form-section").every((t) => boton(t)), "y se puede agregar otro tramo desde ahí (con su botón)");
+  ok(cerrada(tramo2) && !cerrada($$(".form-section")[3]), "el nuevo nace abierto y el plegado se queda plegado");
+  ok($(".fila-agregar", $$(".form-section")[3]).getBoundingClientRect().height > 0 && !$(".fila-agregar", tramo2), "«Agregar tramo» pasa a la nueva última tarjeta");
+  // quitar un tramo plegado
+  $(".btn-tramo-quitar", tramo2).click();
+  ok($$(".form-section").length === 3, "se puede quitar un tramo plegado");
+  // tarjeta plegada sin fila de agregar: sin hueco debajo de la barra
+  boton(tarjetas[0]).click();
+  const r = tarjetas[0].getBoundingClientRect(), rt = $(".form-section-title", tarjetas[0]).getBoundingClientRect();
+  ok(r.bottom - rt.bottom <= 1.5, `una tarjeta plegada no deja espacio vacío bajo la barra (${(r.bottom - rt.bottom).toFixed(1)} px)`);
+});
+
+await seccion("Ocupación de ductos: tipos de conductor nuevos", async () => {
+  stage.innerHTML = "";
+  const { render } = await import("../js/views/calc-ocupacion-ductos.js");
+  await render(stage, {});
+  const antes = $$(".form-section").length;
+  $(".btn-agregar-tramo").click();
+  const t = $$(".form-section");
+  ok(t.length === antes + 1 && t.every((c) => boton(c)), "el tipo de conductor agregado después también se puede plegar");
+});
+
+await seccion("archivos: icono, service worker y colores", async () => {
+  const { icon } = await import("../js/icons.js");
+  ok(icon("chevronUp").includes("m6 15 6-6 6 6") && icon("chevronDown").includes("m6 9 6 6 6-6"), "existen los chevrones hacia arriba y hacia abajo");
+  const sw = await (await fetch("../sw.js")).text();
+  const lista = [...sw.matchAll(/^\s*"([^"]+)",\s*$/gm)].map((m) => m[1]);
+  ok(lista.includes("js/util/tarjetas-plegables.js"), "el service worker precachea el módulo");
+  const css = await (await fetch("../css/app.css")).text();
+  const bloque = css.split("\n").filter((l) => l.includes("btn-plegar") || l.includes(".plegada")).join("\n");
+  ok(bloque.length > 100 && !/#[0-9a-fA-F]{3,8}\b/.test(bloque), "el CSS de plegar usa solo variables del tema");
+  for (const [, modulo] of VISTAS) {
+    const src = await (await fetch(`../js/views/${modulo}.js`)).text();
+    ok(src.includes("activarPlegables"), `${modulo}.js activa las tarjetas plegables`);
+  }
+});
+
+out.textContent += `\nRESULT: ${fallos ? "FAIL" : "OK"} (${total - fallos}/${total})\n`;
+</script>
+</body>
+</html>
