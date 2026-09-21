@@ -5,7 +5,7 @@ export const sidebarLinks = [
   { key: "calculos", title: "Cálculos", icon: "calculator", hash: "#/calculos" },
   { key: "catalogos", title: "Catálogos", icon: "book", hash: "#/catalogos" },
   { key: "normatividad", title: "Normatividad", icon: "archive", hash: "#/normatividad" },
-  { key: "ia", title: "Funciones de IA", icon: "sparkles", hash: "#/ia" },
+  { key: "ia", title: "Funciones con IA", icon: "sparkles", hash: "#/ia" },
   { key: "varios", title: "Varios", icon: "grid", hash: "#/varios" },
   { key: "ayuda", title: "Ayuda", icon: "help", hash: "#/ayuda" },
 ];
@@ -18,10 +18,10 @@ export const sectionMeta = {
   catalogos: { title: "Catálogos", subtitle: "Consulta técnica de conductores por familia y de tuberías, con filtros y ficha de detalle." },
   normatividad: { title: "Normatividad", subtitle: "Referencia normativa RETIE / NTC 2050 y resoluciones del sector eléctrico." },
   varios: { title: "Varios", subtitle: "Herramientas de apoyo: conversión de unidades, coordenadas y codificación." },
-  ia: { title: "Funciones de IA", subtitle: "Análisis de escenarios con calculadoras locales y herramientas de redacción." },
+  ia: { title: "Funciones con IA", subtitle: "Análisis de escenarios con calculadoras locales y herramientas de redacción." },
 };
 
-// `libre: true` = modulo que puede abrir un visitante (Ocupación de ductos, Conductores desnudos y Distancias de seguridad; Varios y Funciones de IA no tienen ninguno). Ver js/auth/permisos.js.
+// `libre: true` = modulo que puede abrir un visitante (Ocupación de ductos, Conductores desnudos y Distancias de seguridad; Varios y Funciones con IA no tienen ninguno). Ver js/auth/permisos.js.
 export const sectionMenus = {
   calculos: [
     { title: "Ocupación de ductos", desc: "Porcentaje de ocupación de ductos según NTC-2050.", icon: "ductoTerna", hash: "#/calculos/ocupacion-ductos", libre: true },

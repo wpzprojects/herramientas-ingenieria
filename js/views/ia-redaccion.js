@@ -73,7 +73,7 @@ const AJUSTES_RAPIDOS = [
 
 export async function render(container) {
   container.innerHTML = `
-    <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/ia">Funciones de IA</a> <span>/</span> <span>Corrector de redacción</span></div>
+    <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/ia">Funciones con IA</a> <span>/</span> <span>Corrector de redacción</span></div>
     <h1 class="page-title">Corrector de redacción</h1>
   `;
   if (!(await verificarAcceso(container, { reintentar: () => render(container) }))) return;

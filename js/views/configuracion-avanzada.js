@@ -18,13 +18,13 @@ const mensajeDe = (e) => (e instanceof ErrorAcceso ? e.message : `Error inespera
 const ETIQUETA_ROL = { admin: "Administrador", usuario: "Usuario" };
 const insigniaRol = (rol) => `<span class="badge ${rol === "admin" ? "badge-success" : ""}">${escapeHtml(ETIQUETA_ROL[rol] || rol)}</span>`;
 
-// Cada opcion dice DONDE esta guardada la clave que van a usar las funciones de IA
+// Cada opcion dice DONDE esta guardada la clave que van a usar las funciones con IA
 const OPCIONES_FUENTE = {
   local: { titulo: "Este navegador", donde: "mi clave, guardada solo en este equipo" },
   personal: { titulo: "Mi clave personal (servidor)", donde: "mi clave, guardada en el servidor y disponible en cualquier dispositivo" },
   compartida: { titulo: "Clave compartida (servidor)", donde: "la clave del administrador, para todos los usuarios" },
 };
-const AYUDA_FUENTE = "Las funciones de IA necesitan una clave de Gemini. Elige dónde está guardada la que vas a usar.";
+const AYUDA_FUENTE = "Las funciones con IA necesitan una clave de Gemini. Elige dónde está guardada la que vas a usar.";
 
 // Apariencia (Perfil): muestras de color y textos
 const MUESTRAS = {
@@ -426,7 +426,7 @@ export async function render(container, params = {}) {
           ? campoClave("compartida", "Clave compartida", "Una sola clave para todos los usuarios autorizados; solo los administradores la cambian.", hayCompartida)
           : `<p class="text-muted text-sm" style="margin:0">${hayCompartida ? "Clave compartida configurada por el administrador" : "Clave compartida aún no configurada por el administrador"} ${estado(hayCompartida)}</p>`;
       } else {
-        detalle.innerHTML = `<p class="text-muted text-sm" style="margin:0">Se usa la clave guardada en este navegador. Para cambiarla ve a <a href="#/ia/configuracion">Funciones de IA → Configuración</a>.</p>`;
+        detalle.innerHTML = `<p class="text-muted text-sm" style="margin:0">Se usa la clave guardada en este navegador. Para cambiarla ve a <a href="#/ia/configuracion">Funciones con IA → Configuración</a>.</p>`;
       }
       pintarAvisos(fuente);
       activarInfos(box);
@@ -449,8 +449,8 @@ export async function render(container, params = {}) {
       if (!disponible[fuente]) {
         puntos.push(
           fuente === "compartida" && !esAdmin
-            ? "El administrador aún no ha configurado la clave compartida: las funciones de IA te pedirán una clave."
-            : `Todavía no has configurado ${fuente === "compartida" ? "la clave compartida" : "esta clave"}: las funciones de IA te la pedirán.`
+            ? "El administrador aún no ha configurado la clave compartida: las funciones con IA te pedirán una clave."
+            : `Todavía no has configurado ${fuente === "compartida" ? "la clave compartida" : "esta clave"}: las funciones con IA te la pedirán.`
         );
       }
       if (esAdmin && fuente === "compartida") {

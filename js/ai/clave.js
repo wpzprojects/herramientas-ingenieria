@@ -1,4 +1,4 @@
-// Fuente de la clave de Gemini que usan las funciones de IA:
+// Fuente de la clave de Gemini que usan las funciones con IA:
 //   "local"      -> la clave guardada en este navegador (por defecto; ver ai/config.js)
 //   "personal"   -> la clave personal del usuario, guardada en el servidor
 //   "compartida" -> la clave compartida por los usuarios autorizados, guardada en el servidor

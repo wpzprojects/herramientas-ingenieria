@@ -1,6 +1,6 @@
 # Cómo usa la IA las calculadoras (herramientas, agentes y filtro)
 
-Guía de la pantalla **Funciones de IA → Análisis con calculadoras**. Explica qué pasa desde que el usuario escribe hasta que aparece la respuesta, cómo se "presenta" cada calculadora a la IA, cómo se decide qué puede usar cada agente y qué hacer para agregar una herramienta nueva. Estado a 2026-09-19.
+Guía de la pantalla **Funciones con IA → Análisis con calculadoras**. Explica qué pasa desde que el usuario escribe hasta que aparece la respuesta, cómo se "presenta" cada calculadora a la IA, cómo se decide qué puede usar cada agente y qué hacer para agregar una herramienta nueva. Estado a 2026-09-19.
 
 ## 1. La idea en una frase
 
@@ -37,7 +37,7 @@ Gemini                     js/ai/gemini.js            generar()
 Detalles que importan:
 
 - **Errores que la IA puede corregir.** Si los datos son inválidos, `ejecutarLlamada` **no lanza excepción**: devuelve `{ ok:false, error }` con un mensaje claro (qué falta, qué rango se permite, qué opciones existen) y Gemini reintenta con datos corregidos.
-- **Límites por pregunta** (Funciones de IA → Configuración): `maxRondas` (idas y vueltas con Gemini, por defecto 8) y `maxCalculos` (cálculos individuales, por defecto 60). Un barrido de 10 puntos gasta 10. Si se agotan las rondas, se le pide un cierre sin más herramientas.
+- **Límites por pregunta** (Funciones con IA → Configuración): `maxRondas` (idas y vueltas con Gemini, por defecto 8) y `maxCalculos` (cálculos individuales, por defecto 60). Un barrido de 10 puntos gasta 10. Si se agotan las rondas, se le pide un cierre sin más herramientas.
 - **Progreso en pantalla.** `ejecutarTurno` emite eventos (`herramienta` al empezar, `herramienta-fin` con `ok` al terminar) y la vista dibuja las etiquetas `⚙ Regulación…` → `✓ Regulación`. Los títulos salen del campo `titulo` de cada herramienta.
 - **Las tablas no las escribe la IA.** La sección "Cálculos ejecutados" y el reporte se dibujan con las *corridas* de `ctx.log` (`js/ai/reporte.js`). La IA solo aporta la narrativa. Por eso la IA no repite las tablas completas (regla 7 del prompt).
 

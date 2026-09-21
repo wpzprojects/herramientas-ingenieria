@@ -2,7 +2,7 @@
 
 PWA (Progressive Web App) instalable con calculadoras y catálogos de ingeniería para líneas y redes de distribución eléctrica: ampacidad (IEEE Std 738 / IEC 60287-1-1), cortocircuito, pérdidas, regulación, ocupación de ductos, catálogos de conductores, normatividad RETIE/NTC-2050/CREG, conversión de unidades y de coordenadas.
 
-Migración a HTML/CSS/JS (vanilla, sin build step) de la app original de Power Apps "Herramientas (offline)" (el `.msapp` original se retiró del repositorio el 2026-09-19 y sigue en el historial de git). 100% estática y offline: no requiere backend ni conexión a internet salvo un enlace externo opcional en Conversión de coordenadas y la sección **Funciones de IA** (ver más abajo), que se conecta a Google Gemini con la clave de API del propio usuario.
+Migración a HTML/CSS/JS (vanilla, sin build step) de la app original de Power Apps "Herramientas (offline)" (el `.msapp` original se retiró del repositorio el 2026-09-19 y sigue en el historial de git). 100% estática y offline: no requiere backend ni conexión a internet salvo un enlace externo opcional en Conversión de coordenadas y la sección **Funciones con IA** (ver más abajo), que se conecta a Google Gemini con la clave de API del propio usuario.
 
 ## Ejecutar localmente
 
@@ -28,7 +28,7 @@ js/util/resultados-ui.js                   # tarjeta de resultados con pestañas
 js/util/info-campo.js                       # boton «i» junto al nombre de un campo con su cuadro de ayuda (reemplaza los textos .hint)
 vendor/katex/                              # copia local de KaTeX 0.16.11 (MIT): js, css y fuentes woff2; precacheada por el service worker
 js/calc/*.js                               # motores de calculo PUROS (sin DOM), 1:1 con las formulas originales
-js/ai/*.js                                 # capa de IA (Gemini): cliente, herramientas, agentes, reporte (ver "Funciones de IA")
+js/ai/*.js                                 # capa de IA (Gemini): cliente, herramientas, agentes, reporte (ver "Funciones con IA")
 js/auth/*.js, firebase/firestore.rules     # acceso con Google (Firebase): login, lista de usuarios, claves en el servidor
 js/views/*.js                              # 1 modulo por pantalla: export async function render(container, params)
 data/*.json                                # catalogos (conductores, tuberias, resoluciones, codificacion, factores de conversion)
@@ -67,7 +67,7 @@ Los `data/*.json` son la **fuente de verdad** de los catálogos y se editan dire
 
 `tools/verify_perdidas.html` (arnés en el navegador, sin internet) prueba la pantalla de Pérdidas: la lógica de varios tramos (`js/calc/perdidas-tramos.js`) contra fórmulas escritas de forma independiente, y la vista real manejada como lo haría una persona (dato de partida, agregar/quitar tramos, resultados, fórmulas con KaTeX, archivos del service worker). Se ejecuta igual que `verify_ia.html` (ver su encabezado).
 
-## Funciones de IA (Gemini)
+## Funciones con IA (Gemini)
 
 Sección nueva (no existía en la app original) con tres pantallas: **Análisis con calculadoras**, **Corrector de redacción** y **Configuración de IA**. Es la única parte de la app que necesita internet; sin conexión se muestra un aviso y el resto sigue funcionando.
 
@@ -89,7 +89,7 @@ En Perfil → Apariencia, cada persona autorizada puede elegir el color principa
 
 ## Niveles de acceso
 
-Sin iniciar sesión (o con un correo que no esté en la lista) la app funciona como **visitante**: solo tres módulos (Ocupación de ductos, Conductores desnudos y Distancias de seguridad); el resto se ve pero sin enlace, y Varios y Funciones de IA quedan bloqueadas. Con un correo autorizado (**usuario**) se habilitan todos los módulos, y el **administrador** además gestiona la lista de usuarios y la clave compartida de Gemini (Perfil). Sin internet, el acceso completo dura 15 días desde la última vez que el servidor lo confirmó (`js/auth/acceso.js`; se renueva solo al abrir con conexión). Reglas por ruta en `js/auth/permisos.js`; pruebas en `tools/verify_acceso.html`. Es un control de uso de la interfaz, no de confidencialidad (los archivos del sitio son públicos).
+Sin iniciar sesión (o con un correo que no esté en la lista) la app funciona como **visitante**: solo tres módulos (Ocupación de ductos, Conductores desnudos y Distancias de seguridad); el resto se ve pero sin enlace, y Varios y Funciones con IA quedan bloqueadas. Con un correo autorizado (**usuario**) se habilitan todos los módulos, y el **administrador** además gestiona la lista de usuarios y la clave compartida de Gemini (Perfil). Sin internet, el acceso completo dura 15 días desde la última vez que el servidor lo confirmó (`js/auth/acceso.js`; se renueva solo al abrir con conexión). Reglas por ruta en `js/auth/permisos.js`; pruebas en `tools/verify_acceso.html`. Es un control de uso de la interfaz, no de confidencialidad (los archivos del sitio son públicos).
 
 ## Acceso con Google y Firebase (menú lateral → Perfil)
 
@@ -98,7 +98,7 @@ Pantalla de acceso restringido (`#/perfil`, «Perfil y configuración avanzada»
 **Cómo funciona y por qué así.** La app es estática y su código lo puede leer cualquiera, por lo que un login "solo en pantalla" no protege nada. La seguridad la aplica el servidor: **Firebase** (Authentication con Google + Firestore) con reglas (`firebase/firestore.rules`) que corren en los servidores de Google; no hay servidor propio que mantener. El SDK se carga por CDN (gstatic) solo al entrar a esa pantalla o al usar una clave del servidor, sin build step.
 
 - **Roles**: `admin` (gestiona la lista y la clave compartida) y `usuario` (entra, ve la lista y usa las claves). Un admin no puede quitarse ni bajarse el rol a sí mismo, así siempre queda al menos uno.
-- **Claves de Gemini en el servidor**: `ajustes/gemini` (compartida: la leen los autorizados y la cambian los admins) y `usuarios/{correo}/secretos/gemini` (personal: solo su dueño, ni los admins). En Funciones de IA se elige cuál usar (`js/ai/clave.js`): la clave del servidor solo vive en memoria, nunca en `localStorage`. **La clave compartida la puede leer, técnicamente, cualquier usuario autorizado**; compártela solo con gente de confianza. Ocultarla del todo exigiría un intermediario en el servidor (Cloud Functions requiere plan Blaze, o un Cloudflare Worker).
+- **Claves de Gemini en el servidor**: `ajustes/gemini` (compartida: la leen los autorizados y la cambian los admins) y `usuarios/{correo}/secretos/gemini` (personal: solo su dueño, ni los admins). En Funciones con IA se elige cuál usar (`js/ai/clave.js`): la clave del servidor solo vive en memoria, nunca en `localStorage`. **La clave compartida la puede leer, técnicamente, cualquier usuario autorizado**; compártela solo con gente de confianza. Ocultarla del todo exigiría un intermediario en el servidor (Cloud Functions requiere plan Blaze, o un Cloudflare Worker).
 - **Estado actual**: `js/auth/firebase-config.js` ya trae la configuración del proyecto `herramientas-ingenieria` (si estuviera en `null`, la pantalla mostraría "Servicio de acceso no configurado"). El backend simulado (`js/auth/backend-mock.js`) existe solo para pruebas y jamás se elige solo.
 
 **Activarlo (una vez, con tu cuenta de Google):**

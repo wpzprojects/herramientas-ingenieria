@@ -1,4 +1,4 @@
-// Menu de la seccion "Funciones de IA". Mismo patron que varios.js.
+// Menu de la seccion "Funciones con IA". Mismo patron que varios.js.
 
 import { icon } from "../icons.js";
 import { tileMenu } from "../util/tiles.js";

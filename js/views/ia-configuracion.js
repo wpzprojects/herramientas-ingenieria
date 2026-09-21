@@ -42,7 +42,7 @@ export async function render(container) {
   const barra = (ico, titulo) => `<div class="form-section-title">${icon(ico)} ${titulo}</div>`;
 
   container.innerHTML = `
-    <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/ia">Funciones de IA</a> <span>/</span> <span>Configuración</span></div>
+    <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/ia">Funciones con IA</a> <span>/</span> <span>Configuración</span></div>
     <h1 class="page-title">Configuración de IA</h1>
 
     <div class="card tarjeta-borde form-section" id="ia-conexion">
@@ -165,7 +165,7 @@ export async function render(container) {
   // Origen de la clave que se esta usando (se elige en Perfil). Si no es «Este navegador», el campo de abajo no se usa.
   const fuente = obtenerFuente();
   $("#fuente-clave").innerHTML =
-    `Las funciones de IA están usando <span class="badge">${escapeHtml(NOMBRE_FUENTE[fuente])}</span> · ` + `<a href="#/perfil/clave">Cambiar en Perfil</a>`;
+    `Las funciones con IA están usando <span class="badge">${escapeHtml(NOMBRE_FUENTE[fuente])}</span> · ` + `<a href="#/perfil/clave">Cambiar en Perfil</a>`;
   if (fuente !== "local") {
     $("#aviso-fuente").innerHTML = `<div class="callout callout-info" style="margin:0 0 var(--space-4)"><span>Estás usando una clave del servidor: la clave de este navegador solo se usa si eliges «Este navegador» en Perfil.</span></div>`;
   }
@@ -194,7 +194,7 @@ export async function render(container) {
 
   $("#btn-borrar-clave").addEventListener("click", () => {
     if (!obtenerClave()) return aviso(msgConexion, "info", "No hay una clave guardada en este navegador.");
-    if (!confirm("¿Borrar la clave guardada en este navegador? Tendrás que volver a pegarla para usarla en las funciones de IA.")) return;
+    if (!confirm("¿Borrar la clave guardada en este navegador? Tendrás que volver a pegarla para usarla en las funciones con IA.")) return;
     borrarClave();
     pintarEstadoClave();
     aviso(msgConexion, "info", "Clave eliminada de este navegador.");

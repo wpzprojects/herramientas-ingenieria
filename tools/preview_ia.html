@@ -91,7 +91,7 @@ if (vista === "avanzada") {
   else simularSinBackend();
 }
 
-// ---- funciones de IA usando la clave del servidor (paso=srv-sinsesion | srv-ok) ----
+// ---- funciones con IA usando la clave del servidor (paso=srv-sinsesion | srv-ok) ----
 if ((vista === "analisis" || vista === "redaccion") && paso.startsWith("srv-")) {
   const { usarBackend } = await import("../js/auth/backend.js");
   const { crearBackendMock } = await import("../js/auth/backend-mock.js");

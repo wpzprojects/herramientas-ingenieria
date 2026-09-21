@@ -158,7 +158,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Resultado del modo completo: 6 cifras significativas (`fmtSig`, sin recortar enteros; científica si <1e-4 o ≥1e9); el modo normal
   sigue con 4 decimales. Pruebas: `tools/verify_unidades.html`.
 
-## Sección "Funciones de IA" (`js/ai/*`, `js/views/ia*.js`)
+## Sección "Funciones con IA" (`js/ai/*`, `js/views/ia*.js`)
 
 - Rediseño de las pantallas de IA (2026-09-19, el usuario dijo «cualquier cosa nos devolvemos al commit anterior»): en curso, una por una.
   **Configuración de IA** HECHA (commit anterior al rediseño: `c5d9379`): tarjetas `tarjeta-borde` con barra de título e icono («Conexión con
@@ -228,7 +228,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v213); en el celular hay que cerrar la app y
+- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v214); en el celular hay que cerrar la app y
   abrirla dos veces para ver la versión nueva.
 
 ## Acceso con Google (menú lateral → «Perfil», `js/auth/*`, `firebase/firestore.rules`)
@@ -270,7 +270,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 
 - Decidido con el usuario: la app se abre SIN login. Un **visitante** (sin sesión, o con sesión de un correo fuera de la lista) solo tiene 3
   módulos: Ocupación de ductos, Conductores desnudos y Distancias de seguridad (marcados `libre: true` en `sectionMenus`, `nav.js`);
-  Varios y Funciones de IA no tienen ninguno (Codificación de entregables se quitó de los libres el 2026-09-19). El **usuario** (en `usuarios` con rol `usuario`) y el
+  Varios y Funciones con IA no tienen ninguno (Codificación de entregables se quitó de los libres el 2026-09-19). El **usuario** (en `usuarios` con rol `usuario`) y el
   **administrador** (`admin`, además gestiona la lista y la clave compartida en Perfil) lo tienen todo. Solo se implementó Google; el
   inicio con Microsoft es la FASE 2 (falta que el usuario registre la app en Microsoft Entra y probar `email_verified`/tenant de Celsia;
   ver el análisis: cuidar «nOAuth», y el error de cuenta existente con otro proveedor).
@@ -328,7 +328,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - `.content` (`css/app.css`) ya NO tiene `max-width`/centrado: ocupa todo el ancho
   disponible junto al sidebar en todas las vistas (se quitó el `max-width:1100px` el
   2026-09-17 porque dejaba un espacio vacío grande a la derecha en pantallas anchas).
-- Todas las tarjetas de menú (Home y los submenús Cálculos/Catálogos/Normatividad/Funciones de IA/Varios)
+- Todas las tarjetas de menú (Home y los submenús Cálculos/Catálogos/Normatividad/Funciones con IA/Varios)
   usan el layout horizontal (icono circular a la izquierda, texto a la derecha) vía las
   clases modificadoras `.menu-grid--row` / `.menu-tile--row` (renombradas desde `--home`
   el 2026-09-17 al dejar de ser exclusivas del Home). El título+descripción van envueltos
@@ -387,7 +387,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   `sb-collapsed` en `<html>`). La barra es `sticky` con el alto de la ventana para que el botón
   quede siempre en el borde inferior visible sin scroll propio. En móvil se ignora y se usa el
   cajón emergente. Medir posiciones/espaciados con un iframe temporal, no a ojo. El orden
-  del menú (`sidebarLinks` en `js/nav.js`) es Cálculos, Catálogos, Normatividad, Funciones de IA,
+  del menú (`sidebarLinks` en `js/nav.js`) es Cálculos, Catálogos, Normatividad, Funciones con IA,
   Varios, Ayuda; el Home y Ayuda siguen el mismo orden.
 - Las pantallas NO llevan descripción bajo el título (decidido el 2026-09-18: ya la dicen las
   tarjetas de menú); no volver a agregarla, ni tampoco el texto de bienvenida del Home (también

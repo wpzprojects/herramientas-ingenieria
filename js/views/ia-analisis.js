@@ -54,7 +54,7 @@ function descargar(nombre, contenido, tipo) {
 
 export async function render(container) {
   container.innerHTML = `
-    <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/ia">Funciones de IA</a> <span>/</span> <span>Análisis con calculadoras</span></div>
+    <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/ia">Funciones con IA</a> <span>/</span> <span>Análisis con calculadoras</span></div>
     <h1 class="page-title">Análisis con calculadoras</h1>
   `;
   if (!(await verificarAcceso(container, { reintentar: () => render(container) }))) return;

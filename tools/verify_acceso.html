@@ -77,7 +77,7 @@ const nivel = () => acc.estadoAcceso().nivel;
 
 await seccion("permisos por ruta", async () => {
   ok(perm.RUTAS_LIBRES.join() === "/calculos/ocupacion-ductos,/catalogos/desnudos,/normatividad/distancias-seguridad", `los módulos libres son solo 3 (Ocupación de ductos, Conductores desnudos y Distancias de seguridad): ${perm.RUTAS_LIBRES.join(", ")}`);
-  ok(nav.sectionMenus.ia.every((i) => !i.libre), "Funciones de IA no tiene ningún módulo libre");
+  ok(nav.sectionMenus.ia.every((i) => !i.libre), "Funciones con IA no tiene ningún módulo libre");
   const libresPorGrupo = Object.fromEntries(Object.entries(nav.sectionMenus).map(([g, items]) => [g, items.filter((i) => i.libre).map((i) => i.title)]));
   ok(libresPorGrupo.calculos.join() === "Ocupación de ductos" && libresPorGrupo.catalogos.join() === "Conductores desnudos" && libresPorGrupo.normatividad.join() === "Distancias de seguridad" && libresPorGrupo.varios.length === 0, "un solo módulo libre en Cálculos, Catálogos y Normatividad, y ninguno en Varios");
   const v = (r) => perm.permitida(r, "visitante");
@@ -86,7 +86,7 @@ await seccion("permisos por ruta", async () => {
   ok(!v("/calculos/perdidas") && !v("/calculos/regulacion") && !v("/calculos/cortocircuito") && !v("/calculos/ampacidad-aerea") && !v("/calculos/ampacidad-subterranea"), "no puede abrir las otras 5 calculadoras");
   ok(!v("/catalogos/semiaislados") && !v("/catalogos/xlpe") && !v("/catalogos/tuberias") && !v("/catalogos/xlpe/3"), "ni los otros catálogos");
   ok(!v("/normatividad/zona-servidumbre") && !v("/normatividad/enterramiento-ductos") && !v("/normatividad/corriente-ntc") && !v("/normatividad/resoluciones") && !v("/normatividad/resoluciones/5"), "ni las otras normas");
-  ok(!v("/ia/analisis") && !v("/ia/redaccion") && !v("/ia/configuracion"), "ninguna pantalla de Funciones de IA");
+  ok(!v("/ia/analisis") && !v("/ia/redaccion") && !v("/ia/configuracion"), "ninguna pantalla de Funciones con IA");
   ok(!v("/varios/codificacion") && !v("/varios/conversion-coordenadas") && !v("/varios/conversion-unidades"), "ni ningún módulo de Varios (Codificación de entregables incluida)");
   ok(v("/ayuda/configuracion"), "la ruta anterior del Perfil (solo redirige) queda permitida");
   ok(v("/perfil/clave") && v("/perfil/usuarios") && v("/perfil/apariencia") && !v("/perfilx/clave"), "las pestañas de Perfil (#/perfil/clave…) también quedan permitidas");
@@ -255,7 +255,7 @@ await seccion("router: pantallas bloqueadas", async () => {
   await ir("#/calculos/perdidas");
   ok(/Contenido para usuarios autorizados/.test(mount.textContent) && !!mount.querySelector('a[href="#/perfil"]'), "un visitante que escribe la dirección de una calculadora bloqueada ve el aviso con el enlace a Perfil");
   await ir("#/ia/analisis");
-  ok(/Contenido para usuarios autorizados/.test(mount.textContent), "Funciones de IA: bloqueada por dirección");
+  ok(/Contenido para usuarios autorizados/.test(mount.textContent), "Funciones con IA: bloqueada por dirección");
   await ir("#/catalogos/xlpe/3");
   ok(/Contenido para usuarios autorizados/.test(mount.textContent), "la ficha de un catálogo bloqueado también");
   await ir("#/calculos/ocupacion-ductos");

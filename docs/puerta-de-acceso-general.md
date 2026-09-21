@@ -110,7 +110,7 @@ Por agregar:
 
 ## 10. Alternativa intermedia (menos fricción)
 
-Puerta **solo para los módulos sensibles** (Funciones de IA y Configuración avanzada), dejando calculadoras, catálogos y normatividad abiertos y 100 % offline. No rompe el uso sin internet y suele bastar si el objetivo es controlar quién usa la IA.
+Puerta **solo para los módulos sensibles** (Funciones con IA y Configuración avanzada), dejando calculadoras, catálogos y normatividad abiertos y 100 % offline. No rompe el uso sin internet y suele bastar si el objetivo es controlar quién usa la IA.
 
 ## 11. Preguntas abiertas (el usuario aún no las respondió)
 

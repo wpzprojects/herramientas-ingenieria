@@ -1,4 +1,4 @@
-// Dictado por voz para los cuadros de texto de las funciones de IA.
+// Dictado por voz para los cuadros de texto de las funciones con IA.
 // Usa la Web Speech API del navegador (sin dependencias ni clave). OJO: en Chrome/Edge el
 // reconocimiento lo hace un servicio en la nube del navegador, asi que requiere internet y el
 // audio sale del equipo (ver AVISO_PRIVACIDAD). El texto dictado se escribe en el mismo cuadro,
