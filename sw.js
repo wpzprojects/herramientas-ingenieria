@@ -1,4 +1,4 @@
-﻿// Service worker: cachea toda la app (shell + datos + imagenes normativas)
+// Service worker: cachea toda la app (shell + datos + imagenes normativas)
 // en la instalacion para que funcione 100% offline desde el primer uso, y
 // sirve cache-first con relleno en segundo plano (stale-while-revalidate)
 // para lo que no estuviera precacheado.

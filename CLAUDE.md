@@ -1,4 +1,4 @@
-﻿# Herramientas de IngenierÃ­a â€” instrucciones para Claude
+# Herramientas de IngenierÃ­a â€” instrucciones para Claude
 
 PWA vanilla (HTML/CSS/JS, sin build step) con calculadoras y catÃ¡logos de ingenierÃ­a
 para lÃ­neas y redes de distribuciÃ³n elÃ©ctrica. MigraciÃ³n de la app Power Apps
