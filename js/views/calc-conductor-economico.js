@@ -107,6 +107,16 @@ ${FORMULAS_NOTA}`;
 
 const ETIQUETAS_REPORTE = ["CÁLCULO DE CONDUCTOR ECONÓMICO", "PARÁMETROS DE ENTRADA:", "RESULTADOS:"];
 
+// Ayuda de la tasa de descuento (cuadro «i»). Los valores de referencia son ORIENTATIVOS: no son una tasa de Celsia ni un dato normativo.
+const INFO_TASA = [
+  "Sirve para comparar dinero de hoy con dinero futuro: un peso que se gasta dentro de varios años vale menos que un peso de hoy. Con esta tasa se traen a valor de hoy las pérdidas de cada año; la inversión inicial no se descuenta.",
+  "• Tasa alta: los ahorros futuros valen poco y se favorece el conductor más delgado y barato.",
+  "• Tasa baja: los ahorros futuros valen más y se favorece el conductor más grueso.",
+  "• 0 %: se suman todos los años sin descontar.",
+  "Debe ser nominal (en pesos corrientes), igual que los precios y costos que escribas.",
+  "Referencia orientativa: entre 8 % y 14 % anual (el 10 % es solo un valor de partida). Usa la tasa oficial de evaluación de proyectos de tu empresa. Para ver si la decisión depende de ella, mira la tabla de sensibilidad (±2 puntos).",
+].join("\n");
+
 const MODOS = { potencia: "Potencia activa", aparente: "Potencia aparente", corriente: "Corriente" };
 
 // Los numeros del resto de la app usan punto decimal (en-US): las cifras de dinero llevan coma de miles para leerse bien.
@@ -183,7 +193,7 @@ export async function render(container) {
             <input type="number" id="f-anios" min="1" max="60" step="1" value="25" required>
           </div>
           <div class="field">
-            <label for="f-tasa" data-info="Tasa nominal anual, en pesos corrientes (la misma moneda de los precios y costos que escribas). Con ella cada gasto futuro se trae a valor de hoy.">Tasa de descuento (%)</label>
+            <label for="f-tasa" data-info="${escapeHtml(INFO_TASA)}">Tasa de descuento (%)</label>
             <input type="number" id="f-tasa" min="0" max="100" step="any" value="10" required>
           </div>
         </div>

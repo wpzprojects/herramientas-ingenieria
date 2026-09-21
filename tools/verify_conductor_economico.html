@@ -373,6 +373,12 @@ await seccion("vista: aspecto de las tarjetas", async () => {
   const tarjetas = $$(".card.form-section").map((c) => c.getBoundingClientRect());
   ok(tarjetas.slice(1).every((r, i) => r.top - tarjetas[i].bottom >= 8 && r.top - tarjetas[i].bottom <= 24), `separación entre tarjetas de 8 a 24 px (${tarjetas.slice(1).map((r, i) => Math.round(r.top - tarjetas[i].bottom)).join(", ")})`);
   ok($$(".info-btn").length >= 8, `hay botones «i» de ayuda en los campos que la necesitan (${$$(".info-btn").length})`);
+  const infoTasa = $("label[for='f-tasa']").dataset.info;
+  ok(infoTasa.includes("nominal") && infoTasa.includes("Tasa alta") && infoTasa.includes("Tasa baja") && infoTasa.includes("Referencia orientativa: entre 8 % y 14 %") && infoTasa.split("\n").length >= 5, "la ayuda de la tasa de descuento explica qué es, cómo afecta, que es nominal y da valores de referencia");
+  $("label[for='f-tasa'] .info-btn").click();
+  const popTasa = $("label[for='f-tasa'] + .info-popover");
+  ok(popTasa && !popTasa.hidden && getComputedStyle(popTasa).whiteSpace === "pre-line" && popTasa.textContent.includes("• Tasa alta"), "el cuadro de la tasa se abre y respeta los saltos de línea y las viñetas");
+  $("label[for='f-tasa'] .info-btn").click();
   ok($$(".hint").length === 0, "sin textos .hint bajo los campos (la ayuda va en botones «i»)");
 });
 
