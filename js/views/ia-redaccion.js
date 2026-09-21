@@ -5,6 +5,7 @@
 
 import { el, escapeHtml } from "../util/format.js";
 import { activarInfos } from "../util/info-campo.js";
+import { activarPlegables } from "../util/tarjetas-plegables.js";
 import { copiarTexto } from "../util/portapapeles.js";
 import { obtenerAjustes } from "../ai/config.js";
 import { claveEnUso } from "../ai/clave.js";
@@ -122,6 +123,7 @@ export async function render(container) {
 
   const $ = (s) => container.querySelector(s);
   const chat = $("#chat");
+  activarPlegables($("#tarjeta-agente")); // solo «Agente» se pliega; «Conversación» queda fija (sus botones viven fuera de ella)
   const fTexto = $("#f-texto");
   const mic = agregarMicrofono(fTexto, $("#btn-enviar"), { clase: "ia-accion" });
 

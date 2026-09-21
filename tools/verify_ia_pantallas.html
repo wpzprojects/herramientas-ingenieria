@@ -600,6 +600,89 @@ await seccion("Análisis con calculadoras rediseñado", async () => {
   try { cfg.borrarClave(); } catch { /* nada */ }
 });
 
+await seccion("tarjetas plegables en las pantallas de IA", async () => {
+  // Decidido con el usuario (2026-09-21): se pliegan «Agente» (Corrector y Análisis) y «Reporte de escenarios» (Análisis); «Conversación» queda fija.
+  const fetchPrevio = window.fetch;
+  window.fetch = async (url, opciones) => {
+    if (String(url).includes(":generateContent")) {
+      const ult = JSON.parse(opciones.body).contents.at(-1);
+      const yaHayResultado = (ult.parts || []).some((p) => p.functionResponse);
+      const parts = yaHayResultado || !/pérdidas/.test(ult.parts?.[0]?.text || "")
+        ? [{ text: "TEXTO DE LA IA" }]
+        : [{ functionCall: { name: "calcular_perdidas", args: { tension_kv: 34.5, potencia_mw: 9.9, factor_potencia: 0.95, factor_carga: 0.56, longitud_km: 5.2, red: "Aerea", material: "ACSR", calibre: "4/0" } } }];
+      return new Response(JSON.stringify({ candidates: [{ content: { role: "model", parts }, finishReason: "STOP" }] }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    return fetchPrevio(url, opciones);
+  };
+  cfg.guardarClave("AIzaSyPRUEBA1234567890", false);
+  clave.guardarFuente("local");
+  const agAn = await import("../js/ai/agentes-analisis.js");
+  agAn.guardarPropios([]);
+  agAn.guardarActivo(agAn.ID_PREDETERMINADO);
+  try { localStorage.removeItem("ia.agentesRedaccion"); localStorage.removeItem("ia.agenteRedaccionActivo"); } catch { /* nada */ }
+  const conBoton = (t) => t?.querySelector(":scope > .form-section-title > .btn-plegar");
+  const visible = (e) => !!e && e.checkVisibility();
+
+  // --- Corrector de redacción: solo «Agente»
+  {
+    const vista = await import("../js/views/ia-redaccion.js");
+    const marco = document.createElement("div");
+    stage.innerHTML = "";
+    stage.append(marco);
+    const q = (s) => marco.querySelector(s);
+    await vista.render(marco, {});
+    await espera(150);
+    const ag = q("#tarjeta-agente"), cv = q("#conv");
+    const btn = conBoton(ag);
+    ok(!!btn && btn.getAttribute("aria-expanded") === "true" && !ag.classList.contains("plegada") && visible(q("#vista-agentes")), "Corrector: la tarjeta «Agente» tiene botón de plegar y nace abierta");
+    ok(!conBoton(cv) && !cv.querySelector(".btn-plegar"), "Corrector: «Conversación» NO se puede plegar");
+    btn.click();
+    ok(ag.classList.contains("plegada") && btn.getAttribute("aria-expanded") === "false" && !visible(q("#vista-agentes")) && !visible(q("#tarjeta-agente .ia-pestanas")) && visible(ag.querySelector(".form-section-title")), "Corrector: al plegar «Agente» solo queda su barra");
+    ok(visible(q("#f-texto") || q("#vista-actual textarea")) && visible(q("#btn-enviar")), "Corrector: la caja de texto y «Enviar» siguen a la vista");
+    q("#vista-actual textarea").value = "Hola equipo, envio el informe.";
+    q("#btn-enviar").click();
+    await espera(500);
+    ok([...marco.querySelectorAll(".ia-msg--model")].some((m) => /TEXTO DE LA IA/.test(m.textContent)) && ag.classList.contains("plegada"), "Corrector: con «Agente» plegado se puede enviar y responde; sigue plegado");
+    btn.click();
+    ok(!ag.classList.contains("plegada") && visible(q("#vista-agentes")), "Corrector: al desplegar vuelve el contenido");
+  }
+
+  // --- Análisis: «Agente» y «Reporte de escenarios»
+  {
+    const vista = await import("../js/views/ia-analisis.js");
+    const marco = document.createElement("div");
+    stage.innerHTML = "";
+    stage.append(marco);
+    const q = (s) => marco.querySelector(s);
+    await vista.render(marco, {});
+    await espera(150);
+    const ag = q("#tarjeta-agente"), cv = q("#conv"), rc = q("#card-reporte");
+    ok(!!conBoton(ag) && !!conBoton(rc) && !conBoton(cv), "Análisis: «Agente» y «Reporte de escenarios» tienen botón de plegar; «Conversación» no");
+    ok(!ag.classList.contains("plegada") && !rc.classList.contains("plegada"), "Análisis: ambas nacen abiertas");
+    conBoton(ag).click();
+    ok(ag.classList.contains("plegada") && !visible(q("#vista-agentes")) && !visible(q("#lista-agentes")) && visible(q("#f-pregunta")), "Análisis: al plegar «Agente» solo queda su barra y la conversación sigue a la vista");
+    conBoton(rc).click(); // se pliega con la tarjeta aun oculta (sin cálculos): el estado se conserva
+    ok(rc.hidden && rc.classList.contains("plegada"), "Análisis: el reporte puede quedar plegado de antemano (la tarjeta sigue oculta hasta que haya cálculos)");
+    q("#f-pregunta").value = "Analiza las pérdidas de la línea de 34.5 kV con ACSR 4/0.";
+    q("#btn-enviar").click();
+    await espera(800);
+    ok(!rc.hidden && rc.classList.contains("plegada") && !visible(q("#reporte-cuerpo")) && !visible(q("#btn-reporte")) && visible(rc.querySelector(".form-section-title")), "Análisis: tras un cálculo el reporte aparece PLEGADO (solo la barra) y «Generar reporte con IA» queda oculto");
+    ok(ag.classList.contains("plegada") && [...marco.querySelectorAll(".ia-msg--model")].some((m) => /TEXTO DE LA IA/.test(m.textContent)), "Análisis: con «Agente» plegado se pudo consultar y responder");
+    conBoton(rc).click();
+    ok(!rc.classList.contains("plegada") && visible(q("#reporte-cuerpo")) && visible(q("#btn-reporte")) && !!q("#card-reporte .ia-escenarios table"), "Análisis: al desplegar el reporte se ven sus botones y las tablas");
+    // Si se pliega el reporte MIENTRAS la IA lo genera, al terminar se despliega solo (el aviso del chat remite a él)
+    q("#btn-reporte").click();
+    conBoton(rc).click();
+    ok(rc.classList.contains("plegada"), "Análisis: (preparación) el reporte se pliega mientras la IA lo genera");
+    await espera(800);
+    ok(!rc.classList.contains("plegada") && visible(q("#reporte-cuerpo")), "Análisis: al terminar de generar el reporte, la tarjeta se despliega sola");
+  }
+  window.fetch = fetchPrevio;
+  agAn.guardarPropios([]);
+  agAn.guardarActivo(agAn.ID_PREDETERMINADO);
+  try { cfg.borrarClave(); } catch { /* nada */ }
+});
+
 await seccion("archivos", async () => {
   const sw = await (await fetch("../sw.js")).text();
   ok(sw.includes("js/views/ia-configuracion.js"), "el service worker precachea la pantalla");

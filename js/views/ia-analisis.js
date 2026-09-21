@@ -5,6 +5,7 @@
 
 import { el, escapeHtml } from "../util/format.js";
 import { activarInfos } from "../util/info-campo.js";
+import { activarPlegables, plegarTarjeta } from "../util/tarjetas-plegables.js";
 import { obtenerAjustes } from "../ai/config.js";
 import { claveEnUso } from "../ai/clave.js";
 import { ErrorGemini } from "../ai/gemini.js";
@@ -126,6 +127,9 @@ export async function render(container) {
   const $ = (s) => container.querySelector(s);
   const chat = $("#chat");
   const fPregunta = $("#f-pregunta");
+  // Solo «Agente» y «Reporte de escenarios» se pliegan (decidido con el usuario 2026-09-21): «Conversación» queda fija porque sus botones (Nueva, Enviar) viven fuera de ella.
+  activarPlegables($("#tarjeta-agente"));
+  activarPlegables($("#card-reporte"));
   agregarMicrofono(fPregunta, $("#btn-enviar"), { clase: "ia-accion" });
 
   // Caja de texto como la del corrector de redaccion: una linea que crece al escribir (hasta el 40 % de la pantalla).
@@ -321,6 +325,7 @@ export async function render(container) {
     } finally {
       bloquear(false);
       pintarReporte();
+      if (esReporte && conv?.reporte) plegarTarjeta($("#card-reporte"), false); // el aviso del chat remite al reporte: si estaba plegado, se despliega
     }
   }
 
