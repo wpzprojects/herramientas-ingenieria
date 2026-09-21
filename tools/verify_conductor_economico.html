@@ -192,7 +192,7 @@ function llenarOpcion(id, { calibre, costoCond, costoInst, n = 1, material = "AC
   elegir(`#f-calibre-${id}`, calibre);
   poner(`#f-n-${id}`, n);
   poner(`#f-costo-cond-${id}`, costoCond);
-  poner(`#f-costo-inst-${id}`, costoInst);
+  if (costoInst !== undefined) poner(`#f-costo-inst-${id}`, costoInst);
 }
 const enviar = () => $("#form-calc").requestSubmit();
 const ids = () => $$(".tramo-block").map((c) => c.querySelector("select").id.replace("f-red-", ""));
@@ -233,7 +233,8 @@ await seccion("vista: dato de partida y validación", async () => {
   enviar();
   ok($("#resultado-wrap").children.length === 0, "sin precio de la energía, calibres ni costos no se calcula (campos obligatorios)");
   ok($("#f-precio").required && !$("#f-precio").value, "el precio de la energía no trae valor inventado: hay que escribirlo");
-  ok(ids().every((id) => $(`#f-costo-cond-${id}`).required && !$(`#f-costo-cond-${id}`).value && $(`#f-costo-inst-${id}`).required && !$(`#f-costo-inst-${id}`).value), "los costos de cada opción tampoco traen valor: los escribe el usuario");
+  ok(ids().every((id) => $(`#f-costo-cond-${id}`).required && !$(`#f-costo-cond-${id}`).value && !$(`#f-costo-inst-${id}`).required && !$(`#f-costo-inst-${id}`).value), "el costo del conductor es obligatorio y el de instalación opcional; ninguno trae valor: los escribe el usuario");
+  ok(ids().every((id) => $(`#f-costo-inst-${id}`).closest(".field").querySelector("label").dataset.info.includes("Es opcional: si lo dejas vacío, el cálculo solo considera el costo del conductor")), "la nota del costo de instalación explica que es opcional y qué pasa si se deja vacío");
   ok($("#f-tasa").value === "10" && $("#f-anios").value === "25" && $("#f-escalada").value === "2.5" && $("#f-crecimiento").value === "0", "valores de partida editables: 25 años, 10 %, 2.5 %, crecimiento 0");
 });
 
@@ -259,12 +260,34 @@ await seccion("vista: resultado de dos opciones", async () => {
   ok(et.join("|") === "Conductor|Conductores ($)|Instalación ($)|Inversión inicial ($)|Pérdidas del año 1 (%)|Pérdidas del año 1 (MWh)|Costo de las pérdidas, valor presente ($)|Costo total actualizado ($)|Diferencia frente al menor costo ($)|Compensa su mayor inversión", `filas de la tabla comparativa: ${et.length}`);
   const totalFila = [...filas].find((f) => texto(f.firstElementChild).startsWith("Costo total"));
   ok(totalFila.classList.contains("total-row") && numDe(texto(totalFila.children[1])) === Math.round(r.opciones[0].costoTotal), "la fila del costo total va en negrita y coincide con el motor");
-  ok($$("td.col-mejor").length > 0 && $$("td.col-mejor").every((td) => td.cellIndex === r.mejor + 1), "la columna de la mejor opción va resaltada");
+  // énfasis solo en el título de la mejor opción: ninguna casilla lleva el relleno azul
+  const sonda = document.createElement("div");
+  stage.append(sonda);
+  sonda.style.color = "var(--accent-strong)";
+  const colorEnfasis = getComputedStyle(sonda).color;
+  sonda.remove();
+  const matriz = $$(".tabla-resultado")[0];
+  const thMejor = $$("th.col-mejor", matriz);
+  ok($$(".col-mejor").length === 1 && thMejor.length === 1 && thMejor[0].cellIndex === r.mejor + 1, "solo el título de la mejor opción lleva el énfasis (ninguna casilla)");
+  const csTh = getComputedStyle(thMejor[0]);
+  ok(csTh.color === colorEnfasis && csTh.boxShadow !== "none", `el título de la mejor opción va en el color del tema y con una barra inferior (${csTh.color})`);
+  const fondos = new Set($$("tbody td", matriz).map((td) => getComputedStyle(td).backgroundColor));
+  ok(fondos.size === 1, `todas las casillas de la tabla tienen el mismo fondo (${[...fondos].join(" / ")})`);
+  // líneas verticales entre todas las columnas, incluida la de etiquetas
+  const lineas = (tabla) => {
+    const filas = [...tabla.querySelectorAll("tr")];
+    return filas.map((tr) => [...tr.children].map((c) => parseFloat(getComputedStyle(c).borderLeftWidth)));
+  };
+  const lm = lineas(matriz);
+  ok(lm.every((f) => f[0] === 0 && f.slice(1).every((w) => w === 1)), `matriz: línea vertical de 1 px entre todas las columnas, también entre etiquetas y Opción 1 (${lm[1].join(",")})`);
   const equilibrio = [...filas].find((f) => texto(f.firstElementChild).startsWith("Compensa"));
   ok(texto(equilibrio.children[1]) === "Base" && /^Año \d+$/.test(texto(equilibrio.children[2])), `«Compensa su mayor inversión»: la base dice «Base» y la otra «${texto(equilibrio.children[2])}»`);
   ok(numDe(texto(equilibrio.children[2])) === r.opciones[1].puntoEquilibrio, "el año de equilibrio coincide con el motor");
   const sens = $$(".tabla-resultado")[1];
   ok(sens && sens.querySelectorAll("tbody tr").length === 7, "tabla de sensibilidad con 7 filas");
+  const ls = [...sens.querySelectorAll("tr")].map((tr) => [...tr.children].map((c) => parseFloat(getComputedStyle(c).borderLeftWidth)));
+  ok(ls.every((f) => f[0] === 0 && f.slice(1).every((w) => w === 1)), "sensibilidad: también con líneas verticales entre todas las columnas");
+  ok(!sens.querySelector(".col-mejor"), "sensibilidad: sin casillas resaltadas (la columna «Menor costo» dice cuál gana)");
   ok(!/norma/i.test(texto($("#resultado-wrap"))), "el resultado no dice «norma»");
 });
 
@@ -382,6 +405,30 @@ await seccion("vista: aspecto de las tarjetas", async () => {
   ok($$(".hint").length === 0, "sin textos .hint bajo los campos (la ayuda va en botones «i»)");
 });
 
+await seccion("vista: costo de instalación opcional", async () => {
+  ids().forEach((id) => poner(`#f-costo-inst-${id}`, ""));
+  enviar();
+  ok($$(".result-metric").length === 3, "con el costo de instalación vacío se calcula igual (3 opciones)");
+  const base = { ...BASE, potenciaActivaMw: 5, crecimientoDemandaPct: 0 };
+  const r = eco.compararOpciones(base, [{ ...OP_A, costoInstalacionKm: 0 }, { ...OP_B, costoInstalacionKm: 0 }, { ...OP_C, numConductoresPorFase: 2, costoInstalacionKm: 0 }]);
+  [0, 1, 2].forEach((i) => cerca(numDe(texto($(".value", $$(".result-metric")[i]))), r.opciones[i].costoTotal / 1e6, 1e-3, `opción ${i + 1}: sin instalación, el costo total solo considera el conductor`));
+  const filaInst = [...$$(".tabla-resultado")[0].querySelectorAll("tbody tr")].find((f) => texto(f.firstElementChild).startsWith("Instalación"));
+  ok([...filaInst.children].slice(1).every((td) => texto(td) === "0"), "la fila «Instalación ($)» muestra 0 cuando no se indicó");
+  const rep = $('[data-panel="reporte"] .report-block').textContent;
+  ok(rep.split("Costo de instalación: no indicado (solo se considera el conductor)").length === 4, "el reporte dice «no indicado (solo se considera el conductor)» en las 3 opciones");
+  // con un valor escrito vuelve a contarse y el reporte lo muestra
+  poner(`#f-costo-inst-${ids()[0]}`, 5e6);
+  enviar();
+  const rep2 = $('[data-panel="reporte"] .report-block').textContent;
+  ok(rep2.includes("Costo de instalación: $ 5,000,000/km") && rep2.split("no indicado").length === 3, "al escribir un valor en una opción, esa deja de decir «no indicado»");
+  const r2 = eco.calcularOpcion(base, { ...OP_A, costoInstalacionKm: 5e6 });
+  cerca(numDe(texto($(".value", $$(".result-metric")[0]))), r2.costoTotal / 1e6, 1e-3, "y su costo total suma esa instalación");
+  // un 0 escrito a propósito no se confunde con «no indicado»
+  poner(`#f-costo-inst-${ids()[0]}`, 0);
+  enviar();
+  ok($('[data-panel="reporte"] .report-block').textContent.includes("Costo de instalación: $ 0/km"), "un 0 escrito a propósito se muestra como $ 0/km");
+});
+
 await seccion("menú, ruta, acceso y service worker", async () => {
   const nav = await import("../js/nav.js");
   const item = nav.sectionMenus.calculos.find((x) => x.title === "Conductor económico");
@@ -395,7 +442,16 @@ await seccion("menú, ruta, acceso y service worker", async () => {
   const sw = await (await fetch("../sw.js")).text();
   const lista = [...sw.matchAll(/^\s*"([^"]+)",\s*$/gm)].map((m) => m[1]);
   ok(lista.includes("js/calc/conductor-economico.js") && lista.includes("js/views/calc-conductor-economico.js"), "el service worker precachea el motor y la vista");
-  const existen = await Promise.all(lista.filter((f) => f !== "./").map((f) => fetch(`../${f}`, { method: "HEAD" }).then((r) => [f, r.ok])));
+  // en lotes de 10 y con un reintento: el servidor de prueba de Python a veces suelta alguna de las ~90 peticiones si van todas a la vez
+  const existeArchivo = async (f) => {
+    for (let intento = 0; intento < 3; intento++) {
+      try { return [f, (await fetch(`../${f}`, { method: "HEAD" })).ok]; } catch { await espera(100); }
+    }
+    return [f, false];
+  };
+  const archivos = lista.filter((f) => f !== "./");
+  const existen = [];
+  for (let i = 0; i < archivos.length; i += 10) existen.push(...(await Promise.all(archivos.slice(i, i + 10).map(existeArchivo))));
   const faltan = existen.filter(([, okk]) => !okk).map(([f]) => f);
   ok(faltan.length === 0, `todos los archivos del APP_SHELL existen${faltan.length ? ": " + faltan.join(", ") : ""}`);
   const css = await (await fetch("../css/app.css")).text();

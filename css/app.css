@@ -434,7 +434,10 @@ input:disabled, select:disabled { opacity: 0.55; }
 .tabla-resultado th.num, .tabla-resultado td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .tabla-resultado tr.match-row { background: var(--fila-sugerida); } /* verde suave en el tema claro; azul del tema (mas claro que el panel) en el oscuro */
 .tabla-resultado tr.current-row td, .tabla-resultado tr.total-row td { font-weight: 700; }
-.tabla-resultado td.col-mejor { background: var(--fila-sugerida); } /* columna de la opcion de menor costo (Análisis económico) */
+/* Tablas comparativas (Conductor económico): el énfasis de la opción de menor costo va solo en su título (color del tema y barra inferior);
+   líneas verticales entre TODAS las columnas, incluida la de etiquetas. */
+.tabla-resultado th.col-mejor { color: var(--accent-strong); box-shadow: inset 0 -3px 0 var(--accent); }
+.tabla-matriz :is(th, td) + :is(th, td) { border-left: 1px solid var(--table-border); }
 .tabla-resultado td.etiqueta-fila { font-weight: 600; white-space: normal; }
 /* Borde de las tarjetas de esta pantalla: el color del borde de las tablas (--table-border): en el tema claro es mas marcado que --border
    (que casi se pierde contra el fondo) y en el oscuro es el mismo --border de siempre. Se mantiene en 1px: mas grueso se veria pesado. */

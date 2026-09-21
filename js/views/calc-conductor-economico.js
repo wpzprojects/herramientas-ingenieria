@@ -305,8 +305,8 @@ export async function render(container) {
         </div>
         <div class="grid-2 ultima">
           <div class="field">
-            <label for="f-costo-inst-${id}" data-info="Todo lo demás por km de línea: postes, aisladores, herrajes, mano de obra, transporte. Si es igual en todas las opciones, no cambia cuál gana; si depende del calibre, escríbelo por opción.">Costo de instalación ($/km)</label>
-            <input type="number" id="f-costo-inst-${id}" min="0" step="any" required>
+            <label for="f-costo-inst-${id}" data-info="Todo lo demás por km de línea: postes, aisladores, herrajes, mano de obra, transporte. Si es igual en todas las opciones, no cambia cuál gana; si depende del calibre, escríbelo por opción. Es opcional: si lo dejas vacío, el cálculo solo considera el costo del conductor.">Costo de instalación ($/km)</label>
+            <input type="number" id="f-costo-inst-${id}" min="0" step="any">
           </div>
         </div>
       </div>`;
@@ -373,7 +373,8 @@ export async function render(container) {
         resistenciaOhmKm: parseFloat(fResistencia.value),
         numConductoresPorFase: parseInt(fN.value, 10) || 1,
         costoConductorKm: parseFloat(fCostoCond.value),
-        costoInstalacionKm: parseFloat(fCostoInst.value),
+        costoInstalacionKm: parseFloat(fCostoInst.value) || 0,
+        instalacionIndicada: fCostoInst.value.trim() !== "",
         ampacidadA: selRed.value === "Aerea" && fila ? fila.corriente_75c_a ?? null : null,
       }),
     };
@@ -465,11 +466,11 @@ export async function render(container) {
 
   function matrizHtml(r, estados, base) {
     const cab = r.opciones
-      .map((o, i) => `<th class="num">Opción ${i + 1}${i === r.mejor ? ' <span class="badge badge-success">Menor costo</span>' : ""}</th>`)
+      .map((o, i) => `<th class="num${i === r.mejor ? " col-mejor" : ""}">Opción ${i + 1}${i === r.mejor ? ' <span class="badge badge-success">Menor costo</span>' : ""}</th>`)
       .join("");
     const fila = (etiqueta, valor, { total = false } = {}) =>
       `<tr${total ? ' class="total-row"' : ""}><td class="etiqueta-fila">${etiqueta}</td>${r.opciones
-        .map((o, i) => `<td class="num${i === r.mejor ? " col-mejor" : ""}">${valor(o, i)}</td>`)
+        .map((o, i) => `<td class="num">${valor(o, i)}</td>`)
         .join("")}</tr>`;
     const equilibrio = (o, i) => {
       if (i === r.indiceBase) return "Base";
@@ -478,7 +479,7 @@ export async function render(container) {
     };
     return `
       <div class="result-subhead">Comparación de costos</div>
-      <div class="table-wrap tabla-resultado"><table>
+      <div class="table-wrap tabla-resultado tabla-matriz"><table>
         <thead><tr><th></th>${cab}</tr></thead>
         <tbody>
           ${fila("Conductor", (o, i) => escapeHtml(conductorTexto(estados[i])))}
@@ -500,7 +501,7 @@ export async function render(container) {
     const cab = r.opciones.map((o, i) => `<th class="num">Opción ${i + 1}</th>`).join("");
     const filas = s.filas
       .map((f) => {
-        const celdas = f.totales.map((t, i) => `<td class="num${i === f.ganador ? " col-mejor" : ""}">${fmtMillones(t)}</td>`).join("");
+        const celdas = f.totales.map((t) => `<td class="num">${fmtMillones(t)}</td>`).join("");
         return `<tr><td class="etiqueta-fila">${escapeHtml(f.etiqueta)}</td>${celdas}<td>Opción ${f.ganador + 1}</td></tr>`;
       })
       .join("");
@@ -511,7 +512,7 @@ export async function render(container) {
     return `
       <div class="result-subhead">Sensibilidad (costo total actualizado, millones de $)</div>
       <p class="text-muted text-sm" style="margin: 0 0 var(--space-3);">${mensaje}</p>
-      <div class="table-wrap tabla-resultado"><table>
+      <div class="table-wrap tabla-resultado tabla-matriz"><table>
         <thead><tr><th>Escenario</th>${cab}<th>Menor costo</th></tr></thead>
         <tbody>${filas}</tbody>
       </table></div>`;
@@ -531,7 +532,7 @@ export async function render(container) {
         `  Resistencia AC a 75°C (por conductor): ${fmt(e.resistenciaOhmKm)} Ω/km`,
         `  Conductores por fase: ${e.numConductoresPorFase}`,
         `  Costo del conductor: ${fmtPesos(e.costoConductorKm)}/km`,
-        `  Costo de instalación: ${fmtPesos(e.costoInstalacionKm)}/km`,
+        `  Costo de instalación: ${e.instalacionIndicada ? `${fmtPesos(e.costoInstalacionKm)}/km` : "no indicado (solo se considera el conductor)"}`,
       ].join("\n")
     );
     const resultadosOpciones = r.opciones.map((o, i) => {
