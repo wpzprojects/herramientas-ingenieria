@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>verify_analisis_economico</title>
+<!--
+  Pruebas de Análisis económico (js/views/calc-analisis-economico.js) y de su logica (js/calc/analisis-economico.js).
+  Se ejecuta en el navegador, sin internet: la vista real se renderiza en un contenedor oculto y se maneja como lo haria una
+  persona. Los numeros se comparan con calculos escritos aqui de forma independiente (en kW, con la potencia fisica
+  3·I²·R·L y un bucle año a año), no con el codigo que se prueba.
+
+  Uso (desde la raiz del proyecto):
+    python -m http.server 8000
+    abrir http://localhost:8000/tools/verify_analisis_economico.html   -> lista PASS/FAIL
+  o en modo consola:
+    msedge --headless --dump-dom --virtual-time-budget=15000 http://localhost:8000/tools/verify_analisis_economico.html
+-->
+<style>body{font-family:ui-monospace,Consolas,monospace;font-size:13px;padding:12px}#stage{position:absolute;left:-9999px;width:1000px}</style>
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+<pre id="out"></pre>
+<div id="stage"></div>
+<script type="module">
+window.__BASE_PATH__ = "../";
+const out = document.getElementById("out");
+let fallos = 0;
+let total = 0;
+function ok(cond, msg) {
+  total++;
+  if (!cond) fallos++;
+  out.textContent += `${cond ? "PASS" : "FAIL"} ${msg}\n`;
+}
+function cerca(a, b, tol, msg) {
+  ok(Math.abs(a - b) <= tol * Math.max(1, Math.abs(b)), `${msg} (obtenido ${a}, esperado ${b})`);
+}
+async function seccion(nombre, fn) {
+  out.textContent += `\n== ${nombre}\n`;
+  try {
+    await fn();
+  } catch (err) {
+    fallos++;
+    total++;
+    out.textContent += `FAIL excepcion en "${nombre}": ${err && err.stack ? err.stack : err}\n`;
+  }
+}
+const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const eco = await import("../js/calc/analisis-economico.js");
+const desnudos = await (await fetch("../data/conductores-desnudos.json")).json();
+const ACSR_4_0 = desnudos.find((c) => c.tipo === "ACSR" && c.calibre_awg_kcmil === "4/0");
+const ACSR_1_0 = desnudos.find((c) => c.tipo === "ACSR" && c.calibre_awg_kcmil === "1/0");
+const ACSR_336 = desnudos.find((c) => c.tipo === "ACSR" && c.calibre_awg_kcmil === "336.4");
+
+// Calculo independiente: potencia FISICA perdida 3·I²·R·L (W) por el factor de pérdidas, año a año.
+function esperado(b, o) {
+  const n = o.numConductoresPorFase ?? 1;
+  const I1 = (b.potenciaActivaMw * 1e6) / (Math.sqrt(3) * b.tensionLineaKv * 1e3 * b.factorPotencia);
+  const Fp = 0.7 * b.factorCarga + 0.3;
+  const R = o.resistenciaOhmKm / n;
+  const inversion = b.longitudKm * (3 * n * o.costoConductorKm + o.costoInstalacionKm);
+  let vp = 0;
+  const acum = [inversion];
+  const anios = [];
+  for (let t = 1; t <= b.anios; t++) {
+    const It = I1 * (1 + (b.crecimientoDemandaPct ?? 0) / 100) ** (t - 1);
+    const kwPerdidos = (3 * It * It * R * b.longitudKm * Fp) / 1000; // kW
+    const kwh = kwPerdidos * 8760;
+    const precio = b.precioKwh * (1 + (b.escaladaEnergiaPct ?? 0) / 100) ** (t - 1);
+    vp += (kwh * precio) / (1 + b.tasaDescuentoPct / 100) ** t;
+    acum.push(inversion + vp);
+    anios.push({ It, kwh });
+  }
+  return { I1, inversion, vp, total: inversion + vp, acum, anios };
+}
+
+const BASE = { tensionLineaKv: 34.5, potenciaActivaMw: 19.9, factorPotencia: 0.9, factorCarga: 0.564, longitudKm: 10, anios: 25, tasaDescuentoPct: 10, precioKwh: 350, escaladaEnergiaPct: 2.5, crecimientoDemandaPct: 2 };
+const OP_A = { resistenciaOhmKm: ACSR_1_0.r_ac_75c_ohm_km, numConductoresPorFase: 1, costoConductorKm: 9e6, costoInstalacionKm: 60e6 };
+const OP_B = { resistenciaOhmKm: ACSR_4_0.r_ac_75c_ohm_km, numConductoresPorFase: 1, costoConductorKm: 14e6, costoInstalacionKm: 60e6 };
+const OP_C = { resistenciaOhmKm: ACSR_336.r_ac_75c_ohm_km, numConductoresPorFase: 1, costoConductorKm: 22e6, costoInstalacionKm: 60e6 };
+
+await seccion("analisis-economico: logica", async () => {
+  const a = eco.calcularOpcion(BASE, OP_A);
+  const e = esperado(BASE, OP_A);
+  cerca(a.corrienteAnio1, e.I1, 1e-9, "corriente del año 1");
+  cerca(a.inversion, e.inversion, 1e-12, "inversión = L·(3·N·c_conductor + c_instalación)");
+  cerca(a.energiaKwhAnio1, e.anios[0].kwh, 1e-9, "energía perdida del año 1 = 3·I²·R·L·Fp·8760 (comprueba el factor 3 y el factor de pérdidas)");
+  cerca(a.anios[9].energiaKwh, e.anios[9].kwh, 1e-9, "energía del año 10 con demanda creciente (crece con el cuadrado de la corriente)");
+  cerca(a.anios[1].perdidasMw / a.anios[0].perdidasMw, 1.02 ** 2, 1e-12, "con 2 % de crecimiento las pérdidas del año 2 son 1.02² veces las del año 1");
+  cerca(a.costoPerdidasVp, e.vp, 1e-9, "costo de las pérdidas a valor presente = suma año a año descontada");
+  cerca(a.costoTotal, e.total, 1e-9, "costo total = inversión + valor presente de las pérdidas");
+  ok(a.anios.length === 25 && a.acumulado.length === 26, "25 años de flujos y 26 puntos acumulados (año 0 = inversión)");
+  cerca(a.acumulado[0], a.inversion, 1e-12, "el acumulado del año 0 es la inversión");
+  cerca(a.acumulado[25], a.costoTotal, 1e-12, "el acumulado del año 25 es el costo total");
+
+  // sin crecimiento, sin escalada y sin descuento: el costo de las pérdidas es N veces el de un año
+  const plano = { ...BASE, crecimientoDemandaPct: 0, escaladaEnergiaPct: 0, tasaDescuentoPct: 0 };
+  const p = eco.calcularOpcion(plano, OP_A);
+  cerca(p.costoPerdidasVp, p.energiaKwhAnio1 * plano.precioKwh * 25, 1e-9, "sin crecimiento, escalada ni descuento: pérdidas = 25 × (kWh del año 1 × precio)");
+  cerca(p.corrienteUltimoAnio, p.corrienteAnio1, 1e-12, "sin crecimiento la corriente no cambia");
+
+  // conductores por fase: mitad de resistencia y el triple × N de cable
+  const n2 = eco.calcularOpcion(BASE, { ...OP_A, numConductoresPorFase: 2 });
+  const en2 = esperado(BASE, { ...OP_A, numConductoresPorFase: 2 });
+  cerca(n2.resistenciaEfectivaOhmKm, OP_A.resistenciaOhmKm / 2, 1e-12, "2 conductores por fase: resistencia efectiva R/2");
+  cerca(n2.costoConductores, 10 * 3 * 2 * 9e6, 1e-12, "2 conductores por fase: el cable cuesta 3 fases × 2 × precio × longitud");
+  cerca(n2.costoTotal, en2.total, 1e-9, "2 conductores por fase: costo total coincide con el cálculo independiente");
+  cerca(n2.perdidasPctAnio1, a.perdidasPctAnio1 / 2, 1e-9, "2 conductores por fase: pérdidas a la mitad");
+
+  // comparacion
+  const r = eco.compararOpciones(BASE, [OP_A, OP_B, OP_C]);
+  const totales = [OP_A, OP_B, OP_C].map((o) => esperado(BASE, o).total);
+  const mejor = totales.indexOf(Math.min(...totales));
+  ok(r.mejor === mejor, `la opción de menor costo total es la ${mejor + 1} (${r.mejor + 1})`);
+  ok(r.opciones.every((o, i) => Math.abs(o.diferenciaVsMejor - (totales[i] - totales[mejor])) < 1e-3), "diferencia frente al menor costo = total − mínimo");
+  ok(r.opciones[r.mejor].diferenciaVsMejor === 0, "la mejor tiene diferencia 0");
+  ok(r.indiceBase === 0, "la base del punto de equilibrio es la de menor inversión (la 1, el calibre más delgado)");
+  ok(r.opciones[0].puntoEquilibrio === null, "la base no tiene punto de equilibrio");
+  // punto de equilibrio: primer año en que el acumulado de la opción gruesa deja de superar al de la base
+  for (const i of [1, 2]) {
+    const ea = esperado(BASE, OP_A).acum;
+    const ei = esperado(BASE, [OP_A, OP_B, OP_C][i]).acum;
+    let t = null;
+    for (let k = 1; k <= 25; k++) if (ei[k] <= ea[k]) { t = k; break; }
+    ok(r.opciones[i].puntoEquilibrio === t, `punto de equilibrio de la opción ${i + 1} coincide con el cálculo independiente (${t})`);
+  }
+  // una opcion que invierte mas y pierde igual no compensa nunca
+  const igual = eco.compararOpciones(BASE, [OP_A, { ...OP_A, costoConductorKm: 20e6 }]);
+  ok(igual.opciones[1].puntoEquilibrio === null && igual.mejor === 0, "si invierte más y pierde lo mismo, no compensa y la barata gana");
+  // empate: gana la primera
+  ok(eco.compararOpciones(BASE, [OP_A, { ...OP_A }]).mejor === 0, "en un empate exacto gana la primera");
+  // horizonte corto: el grueso no alcanza a compensar
+  const corto = eco.compararOpciones({ ...BASE, anios: 3, potenciaActivaMw: 1, precioKwh: 100 }, [OP_A, OP_C]);
+  ok(corto.opciones[1].puntoEquilibrio === null && corto.mejor === 0, "con carga baja y 3 años el conductor grueso no compensa su inversión y gana el delgado");
+  const cargado = eco.compararOpciones({ ...BASE, anios: 3 }, [OP_A, OP_C]);
+  ok(cargado.mejor === 1 && cargado.opciones[1].puntoEquilibrio <= 3, "con carga alta el grueso compensa dentro de los 3 años y gana");
+  // horizonte largo: el grueso gana
+  const largo = eco.compararOpciones({ ...BASE, anios: 40, precioKwh: 900 }, [OP_A, OP_C]);
+  ok(largo.mejor === 1 && largo.opciones[1].puntoEquilibrio > 0, `con energía cara y 40 años gana el conductor grueso (equilibrio en el año ${largo.opciones[1].puntoEquilibrio})`);
+  // entradas invalidas dan NaN (la vista lo avisa)
+  ok(!Number.isFinite(eco.calcularOpcion({ ...BASE, factorPotencia: 0 }, OP_A).costoTotal), "factor de potencia 0: no da un número válido");
+});
+
+await seccion("analisis-economico: sensibilidad", async () => {
+  const s = eco.sensibilidad(BASE, [OP_A, OP_B, OP_C]);
+  const etiquetas = s.filas.map((f) => f.etiqueta);
+  ok(etiquetas.length === 7 && etiquetas[0] === "Caso base", `7 filas: base + 6 escenarios (${etiquetas.join(" | ")})`);
+  const r = eco.compararOpciones(BASE, [OP_A, OP_B, OP_C]);
+  ok(s.filas[0].totales.every((t, i) => t === r.opciones[i].costoTotal) && s.filas[0].ganador === r.mejor, "la fila «Caso base» es igual a la comparación");
+  const en = s.filas.find((f) => f.clave === "energia+");
+  const eo = eco.calcularOpcion({ ...BASE, precioKwh: BASE.precioKwh * 1.1 }, OP_A);
+  cerca(en.totales[0], eo.costoTotal, 1e-12, "energía +10 %: recalcula con el precio al 110 %");
+  const a = eco.calcularOpcion(BASE, OP_A);
+  cerca(en.totales[0], a.inversion + a.costoPerdidasVp * 1.1, 1e-9, "energía +10 %: solo el costo de las pérdidas sube 10 %, la inversión no");
+  const dm = s.filas.find((f) => f.clave === "demanda-");
+  const dmo = esperado({ ...BASE, potenciaActivaMw: BASE.potenciaActivaMw * 0.9 }, OP_B);
+  cerca(dm.totales[1], dmo.total, 1e-9, "demanda −10 %: coincide con el cálculo independiente");
+  const tm = s.filas.find((f) => f.clave === "tasa-");
+  cerca(tm.totales[2], esperado({ ...BASE, tasaDescuentoPct: 8 }, OP_C).total, 1e-9, "tasa −2 puntos: coincide con el cálculo independiente");
+  ok(eco.sensibilidad({ ...BASE, tasaDescuentoPct: 1 }, [OP_A, OP_B]).filas.every((f) => f.clave !== "tasa-"), "con tasa menor de 2 % no se prueba «−2 puntos» (quedaría negativa)");
+
+  // decision robusta vs. decision que cambia
+  const robusta = eco.sensibilidad({ ...BASE, precioKwh: 5000 }, [OP_A, OP_C]);
+  ok(!robusta.cambia && robusta.filas.every((f) => f.ganador === 1), "con energía muy cara gana siempre el grueso: sin cambios");
+  // se busca un precio en el que el ganador cambie con ±10 % de energia (en el punto de empate)
+  let lo = 1, hi = 5000;
+  for (let i = 0; i < 80; i++) {
+    const mid = (lo + hi) / 2;
+    const rr = eco.compararOpciones({ ...BASE, precioKwh: mid }, [OP_A, OP_C]);
+    if (rr.mejor === 1) hi = mid; else lo = mid;
+  }
+  const frontera = eco.sensibilidad({ ...BASE, precioKwh: hi }, [OP_A, OP_C]);
+  ok(frontera.cambia, `en el precio de empate (${hi.toFixed(1)} $/kWh) la sensibilidad detecta que el ganador cambia`);
+});
+
+// ---------- vista ----------
+const stage = document.getElementById("stage");
+const $ = (s, r = stage) => r.querySelector(s);
+const $$ = (s, r = stage) => [...r.querySelectorAll(s)];
+const poner = (sel, v, ev = "input") => { const e = $(sel); e.value = v; e.dispatchEvent(new Event(ev, { bubbles: true })); };
+const elegir = (sel, v) => poner(sel, v, "change");
+const texto = (e) => (e ? e.textContent.replace(/\s+/g, " ").trim() : "");
+const numDe = (s) => parseFloat(String(s).replace(/[^0-9.\-]/g, ""));
+
+const { render } = await import("../js/views/calc-analisis-economico.js");
+await render(stage, {});
+
+function llenarOpcion(id, { calibre, costoCond, costoInst, n = 1, material = "ACSR" }) {
+  elegir(`#f-red-${id}`, "Aerea");
+  elegir(`#f-material-${id}`, material);
+  elegir(`#f-calibre-${id}`, calibre);
+  poner(`#f-n-${id}`, n);
+  poner(`#f-costo-cond-${id}`, costoCond);
+  poner(`#f-costo-inst-${id}`, costoInst);
+}
+const enviar = () => $("#form-calc").requestSubmit();
+const ids = () => $$(".tramo-block").map((c) => c.querySelector("select").id.replace("f-red-", ""));
+
+await seccion("vista: tarjetas, agregar y quitar opciones", async () => {
+  const titulos = $$(".form-section-title").map(texto);
+  ok($$(".card.form-section").length === 4 && titulos[0].includes("Datos de la línea") && titulos[1].includes("Supuestos económicos") && titulos[2].includes("Opción 1") && titulos[3].includes("Opción 2"), `cuatro tarjetas al iniciar: «${titulos.join("» · «")}»`);
+  ok($$(".form-section-title").every((t) => t.querySelector("svg.icon") && t.parentElement.classList.contains("card")), "cada título lleva su icono y va dentro de la tarjeta");
+  ok($$(".btn-tramo-quitar").every((b) => b.hidden), "con 2 opciones (el mínimo) no aparece «Quitar»");
+  ok($$(".tramo-block .btn").filter((b) => texto(b).includes("Agregar opción")).length === 1, "«Agregar opción» está en la última tarjeta");
+  // agregar hasta 5
+  for (let i = 0; i < 3; i++) $(".btn-agregar-tramo").click();
+  ok($$(".tramo-block").length === 5, "se pueden agregar hasta 5 opciones");
+  ok($(".fila-agregar").hidden, "con 5 opciones «Agregar opción» se oculta");
+  ok($$(".tramo-titulo").map(texto).join() === "Opción 1,Opción 2,Opción 3,Opción 4,Opción 5", "numeradas 1 a 5");
+  ok($$(".btn-tramo-quitar").every((b) => !b.hidden), "con más de 2 opciones todas pueden quitarse");
+  // quitar la 2
+  elegir(`#f-calibre-${ids()[2]}`, ""); // (no hace nada, solo confirma que los ids son independientes)
+  $$(".btn-tramo-quitar")[1].click();
+  ok($$(".tramo-block").length === 4 && $$(".tramo-titulo").map(texto).join() === "Opción 1,Opción 2,Opción 3,Opción 4", "al quitar una se renumeran");
+  ok(!$(".fila-agregar").hidden, "al bajar de 5 vuelve a aparecer «Agregar opción»");
+  $$(".btn-tramo-quitar")[0].click();
+  $$(".btn-tramo-quitar")[0].click();
+  ok($$(".tramo-block").length === 2 && $$(".btn-tramo-quitar").every((b) => b.hidden), "vuelve al mínimo de 2 y se oculta «Quitar»");
+  ok($(".tramo-block:last-child .fila-agregar, .tramo-block .fila-agregar"), "«Agregar opción» sigue en la última tarjeta");
+  ok(new Set(ids()).size === 2, "las tarjetas tienen ids distintos");
+});
+
+await seccion("vista: dato de partida y validación", async () => {
+  const visible = () => ["#wrap-potencia", "#wrap-aparente", "#wrap-corriente"].filter((s) => !$(s).hidden).join();
+  ok(visible() === "#wrap-potencia" && $("#f-potencia").required && !$("#f-aparente").required, "por defecto: potencia activa visible y obligatoria");
+  elegir("#f-modo", "aparente");
+  ok(visible() === "#wrap-aparente" && $("#f-aparente").required, "potencia aparente: solo ese campo");
+  elegir("#f-modo", "corriente");
+  ok(visible() === "#wrap-corriente" && $("#f-corriente").required, "corriente: solo ese campo");
+  elegir("#f-modo", "potencia");
+  // sin precios ni calibres el formulario no calcula
+  enviar();
+  ok($("#resultado-wrap").children.length === 0, "sin precio de la energía, calibres ni costos no se calcula (campos obligatorios)");
+  ok($("#f-precio").required && !$("#f-precio").value, "el precio de la energía no trae valor inventado: hay que escribirlo");
+  ok(ids().every((id) => $(`#f-costo-cond-${id}`).required && !$(`#f-costo-cond-${id}`).value && $(`#f-costo-inst-${id}`).required && !$(`#f-costo-inst-${id}`).value), "los costos de cada opción tampoco traen valor: los escribe el usuario");
+  ok($("#f-tasa").value === "10" && $("#f-anios").value === "25" && $("#f-escalada").value === "2.5" && $("#f-crecimiento").value === "0", "valores de partida editables: 25 años, 10 %, 2.5 %, crecimiento 0");
+});
+
+await seccion("vista: resultado de dos opciones", async () => {
+  const [i0, i1] = ids();
+  poner("#f-precio", 350);
+  poner("#f-crecimiento", 2);
+  llenarOpcion(i0, { calibre: "1/0", costoCond: 9e6, costoInst: 60e6 });
+  llenarOpcion(i1, { calibre: "4/0", costoCond: 14e6, costoInst: 60e6 });
+  ok($(`#f-resistencia-${i0}`).value === String(ACSR_1_0.r_ac_75c_ohm_km) && $(`#f-resistencia-${i1}`).value === String(ACSR_4_0.r_ac_75c_ohm_km), "la resistencia se llena desde el catálogo");
+  enviar();
+  const r = eco.compararOpciones(BASE, [OP_A, OP_B]);
+  const metricas = $$(".result-metric");
+  ok(metricas.length === 2, `una métrica de costo total por opción (${metricas.length})`);
+  const valores = metricas.map((m) => numDe(texto($(".value", m))));
+  cerca(valores[0], r.opciones[0].costoTotal / 1e6, 1e-3, `Opción 1: costo total en millones coincide con el motor (${valores[0]})`);
+  cerca(valores[1], r.opciones[1].costoTotal / 1e6, 1e-3, `Opción 2: costo total en millones coincide con el motor (${valores[1]})`);
+  const conBadge = metricas.map((m) => !!$(".badge-success", m));
+  ok(conBadge.filter(Boolean).length === 1 && conBadge[r.mejor], `solo la opción de menor costo lleva «Menor costo» (opción ${r.mejor + 1})`);
+  ok(texto($(".callout-success")).includes(`Opción ${r.mejor + 1}`) && texto($(".callout-success")).includes("25 años"), "el aviso verde nombra la mejor opción y el horizonte");
+  const filas = $$(".tabla-resultado")[0].querySelectorAll("tbody tr");
+  const et = [...filas].map((f) => texto(f.firstElementChild));
+  ok(et.join("|") === "Conductor|Conductores ($)|Instalación ($)|Inversión inicial ($)|Pérdidas del año 1 (%)|Pérdidas del año 1 (MWh)|Costo de las pérdidas, valor presente ($)|Costo total actualizado ($)|Diferencia frente al menor costo ($)|Compensa su mayor inversión", `filas de la tabla comparativa: ${et.length}`);
+  const totalFila = [...filas].find((f) => texto(f.firstElementChild).startsWith("Costo total"));
+  ok(totalFila.classList.contains("total-row") && numDe(texto(totalFila.children[1])) === Math.round(r.opciones[0].costoTotal), "la fila del costo total va en negrita y coincide con el motor");
+  ok($$("td.col-mejor").length > 0 && $$("td.col-mejor").every((td) => td.cellIndex === r.mejor + 1), "la columna de la mejor opción va resaltada");
+  const equilibrio = [...filas].find((f) => texto(f.firstElementChild).startsWith("Compensa"));
+  ok(texto(equilibrio.children[1]) === "Base" && /^Año \d+$/.test(texto(equilibrio.children[2])), `«Compensa su mayor inversión»: la base dice «Base» y la otra «${texto(equilibrio.children[2])}»`);
+  ok(numDe(texto(equilibrio.children[2])) === r.opciones[1].puntoEquilibrio, "el año de equilibrio coincide con el motor");
+  const sens = $$(".tabla-resultado")[1];
+  ok(sens && sens.querySelectorAll("tbody tr").length === 7, "tabla de sensibilidad con 7 filas");
+  ok(!/norma/i.test(texto($("#resultado-wrap"))), "el resultado no dice «norma»");
+});
+
+await seccion("vista: reporte", async () => {
+  const lineas = $('[data-panel="reporte"] .report-block').textContent.split("\n");
+  const i = (s) => lineas.indexOf(s);
+  ok(lineas[0] === "ANÁLISIS ECONÓMICO DE CONDUCTORES" && lineas[1] === "", "el reporte empieza con el título y una línea en blanco");
+  ok(i("PARÁMETROS DE ENTRADA:") > 0 && lineas[i("PARÁMETROS DE ENTRADA:") + 1] === "-".repeat(30), "«PARÁMETROS DE ENTRADA:» con la línea de 30 guiones debajo");
+  ok(i("RESULTADOS:") > i("PARÁMETROS DE ENTRADA:") && lineas[i("RESULTADOS:") + 1] === "-".repeat(30), "«RESULTADOS:» con la línea de 30 guiones debajo");
+  ok($$('[data-panel="reporte"] strong').map(texto).join("|") === "ANÁLISIS ECONÓMICO DE CONDUCTORES|PARÁMETROS DE ENTRADA:|RESULTADOS:", "las tres etiquetas van en negrita");
+  const antes = lineas.slice(0, i("RESULTADOS:")).join("\n");
+  const despues = lineas.slice(i("RESULTADOS:")).join("\n");
+  ok(antes.includes("Precio de la energía perdida (año 1): $ 350/kWh") && antes.includes("Opción 2:") && antes.includes("Costo de instalación: $ 60,000,000/km"), "parámetros: lo que dio el usuario, incluida cada opción");
+  ok(antes.includes("Potencia activa (año 1): 19.90 MW"), "con dato de partida en MW, la potencia activa va en parámetros");
+  ok(despues.includes("Costo total actualizado: $") && despues.includes("Opción de menor costo total: Opción") && despues.includes("Sensibilidad (opción de menor costo en cada escenario):"), "resultados: costo total, mejor opción y sensibilidad");
+  ok(!antes.includes("Costo total actualizado"), "los resultados no aparecen en parámetros");
+});
+
+await seccion("vista: fórmulas con KaTeX", async () => {
+  ok(!window.katex, "KaTeX no se carga hasta abrir la pestaña Fórmulas");
+  $$(".tab-btn").find((b) => b.dataset.tab === "formulas").click();
+  for (let i = 0; i < 60 && !$$("#formulas-katex .katex").length; i++) await espera(100);
+  const ecuaciones = $$("#formulas-katex .formula-katex");
+  ok(window.katex && ecuaciones.length === 14, `KaTeX cargado y 14 ecuaciones dibujadas (${ecuaciones.length})`);
+  ok($$("#formulas-katex .katex-error").length === 0, "ninguna ecuación con error de sintaxis");
+  ok($$("#formulas-katex .formula-etiquetas li").length === 23, `23 etiquetas descritas (${$$("#formulas-katex .formula-etiquetas li").length})`);
+  ok($("#formulas-plano").hidden, "al dibujarse las fórmulas se oculta el texto plano");
+});
+
+await seccion("vista: otras opciones (más opciones, manual, dato de partida, avisos)", async () => {
+  // 3 opciones + conductores por fase
+  $(".btn-agregar-tramo").click();
+  const idsAhora = ids();
+  llenarOpcion(idsAhora[2], { calibre: "336.4", costoCond: 22e6, costoInst: 60e6, n: 2 });
+  const base3 = { ...BASE };
+  const OP_C2 = { ...OP_C, numConductoresPorFase: 2 };
+  enviar();
+  let r = eco.compararOpciones(base3, [OP_A, OP_B, OP_C2]);
+  ok($$(".result-metric").length === 3, "con 3 opciones hay 3 métricas");
+  cerca(numDe(texto($(".value", $$(".result-metric")[2]))), r.opciones[2].costoTotal / 1e6, 1e-3, "la opción 3 con 2 conductores por fase coincide con el motor");
+  ok($$(".tabla-resultado")[0].querySelector("thead tr").children.length === 4, "la tabla comparativa tiene una columna por opción");
+  ok(texto($$(".result-metric .label")[2]).includes("×2"), "el conductor con 2 por fase se rotula «×2»");
+
+  // resistencia manual
+  const id0 = idsAhora[0];
+  $(`#chk-resistencia-${id0}`).click();
+  ok(!$(`#f-resistencia-${id0}`).disabled, "«Manual» habilita la resistencia");
+  poner(`#f-resistencia-${id0}`, "0.9");
+  enviar();
+  r = eco.compararOpciones(base3, [{ ...OP_A, resistenciaOhmKm: 0.9 }, OP_B, OP_C2]);
+  cerca(numDe(texto($(".value", $$(".result-metric")[0]))), r.opciones[0].costoTotal / 1e6, 1e-3, "con resistencia manual se usa el valor escrito");
+  $(`#chk-resistencia-${id0}`).click();
+  ok($(`#f-resistencia-${id0}`).value === String(ACSR_1_0.r_ac_75c_ohm_km), "al desmarcar «Manual» vuelve el valor del catálogo");
+
+  // dato de partida en corriente: 370 A
+  elegir("#f-modo", "corriente");
+  poner("#f-corriente", 370);
+  enviar();
+  const P370 = (Math.sqrt(3) * 34.5 * 370 * 0.9) / 1000;
+  r = eco.compararOpciones({ ...BASE, potenciaActivaMw: P370 }, [OP_A, OP_B, OP_C2]);
+  cerca(numDe(texto($(".value", $$(".result-metric")[1]))), r.opciones[1].costoTotal / 1e6, 1e-3, "dato de partida en amperios: se convierte a potencia activa");
+  const rep = $('[data-panel="reporte"] .report-block').textContent;
+  ok(rep.includes("Dato de partida: Corriente (370.00 A)") && rep.indexOf("Potencia activa (año 1)") > rep.indexOf("RESULTADOS:"), "con dato en A, la potencia activa va en resultados");
+  elegir("#f-modo", "potencia");
+
+  // aviso de ampacidad: demanda muy alta con el calibre delgado
+  poner("#f-potencia", 60);
+  enviar();
+  const aviso = $(".callout-warning");
+  ok(aviso && texto(aviso).includes("Opción 1") && texto(aviso).includes("supera los"), `aviso de ampacidad para el calibre delgado con demanda alta: «${texto(aviso).slice(0, 90)}…»`);
+  poner("#f-potencia", 19.9);
+  enviar();
+  const avisoMedio = texto($(".callout-warning"));
+  ok(avisoMedio.includes("Opción 1") && avisoMedio.includes("Opción 2") && !avisoMedio.includes("Opción 3"), "con 19.9 MW (370 A) rebasan su corriente de catálogo el 1/0 (242 A) y el 4/0 (359 A), pero no el 336.4 con 2 conductores por fase");
+  poner("#f-potencia", 5);
+  poner("#f-crecimiento", 0);
+  enviar();
+  ok(!$(".callout-warning"), "sin sobrecarga (5 MW) no hay aviso");
+
+  // datos que no permiten calcular
+  poner("#f-fp", 0);
+  enviar();
+  ok($(".callout-danger") && texto($(".callout-danger")).includes("No se pudo calcular"), "factor de potencia 0: aviso rojo en vez de números raros");
+  ok(!/NaN/.test(texto($("#resultado-wrap"))), "no se muestra «NaN»");
+  poner("#f-fp", 0.9);
+});
+
+await seccion("vista: aspecto de las tarjetas", async () => {
+  const titulos = $$(".form-section-title");
+  const medidas = titulos.map((t) => {
+    const card = t.closest(".card");
+    const svg = t.querySelector("svg.icon");
+    const rc = card.getBoundingClientRect(), rt = t.getBoundingClientRect(), ri = svg.getBoundingClientRect();
+    return { nombre: texto(t).replace("Quitar", "").trim(), rc, rt, ri, fondo: getComputedStyle(t).backgroundColor, borde: getComputedStyle(card).borderTopColor };
+  });
+  const sonda = document.createElement("div");
+  stage.append(sonda);
+  sonda.style.backgroundColor = "var(--accent-soft)";
+  const suave = getComputedStyle(sonda).backgroundColor;
+  sonda.remove();
+  for (const m of medidas) {
+    ok(Math.abs(m.rt.left - (m.rc.left + 1)) <= 0.6 && Math.abs(m.rt.right - (m.rc.right - 1)) <= 0.6 && m.rt.top - m.rc.top <= 1.6, `«${m.nombre}»: barra de título de borde a borde y arriba`);
+    ok(m.fondo === suave, `«${m.nombre}»: fondo con el color atenuado del tema`);
+    ok(Math.abs(m.ri.top + m.ri.height / 2 - (m.rt.top + (m.rt.height - 1) / 2)) <= 1, `«${m.nombre}»: icono centrado en la barra`);
+  }
+  const tarjetas = $$(".card.form-section").map((c) => c.getBoundingClientRect());
+  ok(tarjetas.slice(1).every((r, i) => r.top - tarjetas[i].bottom >= 8 && r.top - tarjetas[i].bottom <= 24), `separación entre tarjetas de 8 a 24 px (${tarjetas.slice(1).map((r, i) => Math.round(r.top - tarjetas[i].bottom)).join(", ")})`);
+  ok($$(".info-btn").length >= 8, `hay botones «i» de ayuda en los campos que la necesitan (${$$(".info-btn").length})`);
+  ok($$(".hint").length === 0, "sin textos .hint bajo los campos (la ayuda va en botones «i»)");
+});
+
+await seccion("menú, ruta, acceso y service worker", async () => {
+  const nav = await import("../js/nav.js");
+  const item = nav.sectionMenus.calculos.find((x) => x.title === "Análisis económico");
+  ok(item && item.hash === "#/calculos/analisis-economico" && item.icon === "coin" && !item.libre, "tarjeta «Análisis económico» en Cálculos, con icono coin, no libre (solo usuarios)");
+  const { icon } = await import("../js/icons.js");
+  ok(/<svg/.test(icon("coin")) && icon("coin").includes("M12 7v10"), "el icono coin existe");
+  const perm = await import("../js/auth/permisos.js");
+  ok(!perm.permitida("/calculos/analisis-economico", "visitante") && perm.permitida("/calculos/analisis-economico", "usuario"), "el visitante no la abre; el usuario sí");
+  const router = await (await fetch("../js/router.js")).text();
+  ok(router.includes('"/calculos/analisis-economico"') && router.includes("calc-analisis-economico.js"), "la ruta está en el router");
+  const sw = await (await fetch("../sw.js")).text();
+  const lista = [...sw.matchAll(/^\s*"([^"]+)",\s*$/gm)].map((m) => m[1]);
+  ok(lista.includes("js/calc/analisis-economico.js") && lista.includes("js/views/calc-analisis-economico.js"), "el service worker precachea el motor y la vista");
+  const existen = await Promise.all(lista.filter((f) => f !== "./").map((f) => fetch(`../${f}`, { method: "HEAD" }).then((r) => [f, r.ok])));
+  const faltan = existen.filter(([, okk]) => !okk).map(([f]) => f);
+  ok(faltan.length === 0, `todos los archivos del APP_SHELL existen${faltan.length ? ": " + faltan.join(", ") : ""}`);
+  const css = await (await fetch("../css/app.css")).text();
+  ok(!/#[0-9a-fA-F]{3,8}\b/.test(css.split("\n").filter((l) => l.includes("col-mejor") || l.includes("etiqueta-fila")).join("\n")), "el CSS nuevo no lleva colores escritos a mano");
+});
+
+out.textContent += `\nRESULT: ${fallos ? "FAIL" : "OK"} (${total - fallos}/${total})\n`;
+</script>
+</body>
+</html>
