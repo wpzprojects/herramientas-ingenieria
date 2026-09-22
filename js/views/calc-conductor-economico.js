@@ -265,7 +265,7 @@ export async function render(container) {
     cont.innerHTML = `
       <div class="card tarjeta-borde form-section tramo-block">
         <div class="form-section-title">
-          ${icon("conductorCableado")} <span class="tramo-titulo">Opción 1</span>
+          ${icon("conductorCableado")} <span class="tramo-titulo">Conductor opción 1</span>
           <button type="button" class="btn btn-ghost btn-tramo-quitar" hidden>${icon("close")} Quitar</button>
         </div>
         <div class="grid-2">
@@ -277,7 +277,7 @@ export async function render(container) {
             </select>
           </div>
           <div class="field">
-            <label for="f-material-${id}">Material / Tipo de conductor</label>
+            <label for="f-material-${id}">Material/Tipo de conductor</label>
             <select id="f-material-${id}" required></select>
           </div>
         </div>
