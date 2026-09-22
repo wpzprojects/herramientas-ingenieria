@@ -511,7 +511,7 @@ export async function render(container) {
               </div>
               <div class="result-metric">
                 <div class="value">${fmt(r.perdidasMw, 3)}<span class="unit">MW</span></div>
-                <div class="label">Pérdidas de potencia por efecto Joule</div>
+                <div class="label">Pérdidas por efecto Joule</div>
               </div>
             </div>
             <p class="text-muted text-sm" style="margin: var(--space-3) 0 0;">Referencias de diseño: hasta ${UMBRAL_OPTIMO_PCT}% óptimo · hasta ${UMBRAL_ACEPTABLE_PCT}% aceptable.</p>

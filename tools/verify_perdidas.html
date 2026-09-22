@@ -313,7 +313,7 @@ await seccion("vista: un tramo, cálculo y resultados", async () => {
   cerca(valorDe("Potencia aparente"), e.S, 0.006, "resultado: potencia aparente (MVA)");
   cerca(valorDe("Potencia activa"), 19.9, 0.006, "resultado: potencia activa (MW)");
   cerca(valorDe("Porcentaje de pérdidas"), e.pct, 0.006, "resultado: % de pérdidas");
-  cerca(valorDe("Pérdidas de potencia"), (e.pct / 100) * 19.9, 0.0006, "resultado: pérdidas en MW");
+  cerca(valorDe("Pérdidas por efecto Joule"), (e.pct / 100) * 19.9, 0.0006, "resultado: pérdidas en MW");
   ok(metrica("Porcentaje de pérdidas").querySelector(".badge") && texto(metrica("Porcentaje de pérdidas").querySelector(".badge")).length > 0, "el % de pérdidas lleva su etiqueta");
   ok(!/norma/i.test(texto($("#resultado-wrap"))), "en los resultados no aparece la palabra «norma» ni «normativo» en ninguna parte");
   ok(texto($("#resultado-wrap")).includes("Referencias de diseño: hasta 1% óptimo · hasta 3% aceptable.") && !texto($("#resultado-wrap")).includes("(no son un límite"), "las referencias se muestran como «Referencias de diseño: hasta 1% óptimo · hasta 3% aceptable.» (sin paréntesis)");
