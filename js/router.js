@@ -79,6 +79,10 @@ function match(path) {
 
 export function initRouter({ mount, onNavigate }) {
   let token = 0;
+  // Si la vista que se esta dejando devolvio una funcion en su render(), se llama justo antes de
+  // salir (p. ej. las calculadoras la usan para guardar en memoria lo escrito en el formulario:
+  // ver js/util/persistencia-calculo.js). No es un hook generico mas alla de esto.
+  let antesDeSalir = null;
 
   // Fade de entrada: reinicia la animacion en cada render quitando y
   // reponiendo la clase (si ya estaba, el navegador no la relanza sola).
@@ -89,6 +93,8 @@ export function initRouter({ mount, onNavigate }) {
   }
 
   async function renderCurrent() {
+    antesDeSalir?.();
+    antesDeSalir = null;
     const path = currentPath();
     const found = match(path);
     const myToken = ++token;
@@ -120,7 +126,8 @@ export function initRouter({ mount, onNavigate }) {
       mount.scrollTop = 0;
       fadeIn();
       onNavigate?.(path, found.params); // antes de render: pantallas lentas (p. ej. Perfil, que espera al servicio) ya marcan su ítem del menú
-      await mod.render(mount, found.params);
+      const salida = await mod.render(mount, found.params);
+      if (typeof salida === "function") antesDeSalir = salida;
       mount.focus({ preventScroll: true });
     } catch (err) {
       console.error("Error cargando la vista:", err);

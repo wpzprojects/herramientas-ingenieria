@@ -47,11 +47,11 @@ print("\nCortocircuito Cobre 100mm2 t=0.3s:", round(cortocircuito("Cobre", 100),
 print("Cortocircuito Aluminio 100mm2 t=0.3s:", round(cortocircuito("Aluminio", 100), 2), "kA")
 
 # --- Perdidas --------------------------------------------------------------
-def perdidas(U_kv=34.5, P_mw=19.9, fp=0.9, R_ohm_km=0.5, L_km=10, Fc=0.564):
+def perdidas(U_kv=34.5, P_mw=19.9, fp=0.9, R_ohm_km=0.5, L_km=10, Fc=0.4):
     I = (P_mw*1000)/(U_kv*fp*math.sqrt(3))
     S = P_mw/fp
     Q = math.sqrt(S**2-P_mw**2)
-    fperd = 0.7*Fc+0.3
+    fperd = 0.3*Fc+0.7*Fc**2  # Buller-Woodrow (cuadratica); ver js/calc/perdidas.js
     perd = (math.sqrt(3)*I*R_ohm_km*L_km*fperd*100)/(U_kv*1000*fp)
     return I, S, Q, perd
 

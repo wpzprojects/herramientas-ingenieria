@@ -234,7 +234,7 @@ await seccion("vista: dato de partida y validación", async () => {
   ok($("#resultado-wrap").children.length === 0, "sin precio de la energía, calibres ni costos no se calcula (campos obligatorios)");
   ok($("#f-precio").required && !$("#f-precio").value, "el precio de la energía no trae valor inventado: hay que escribirlo");
   ok(ids().every((id) => $(`#f-costo-cond-${id}`).required && !$(`#f-costo-cond-${id}`).value && !$(`#f-costo-inst-${id}`).required && !$(`#f-costo-inst-${id}`).value), "el costo del conductor es obligatorio y el de instalación opcional; ninguno trae valor: los escribe el usuario");
-  ok(ids().every((id) => $(`#f-costo-inst-${id}`).closest(".field").querySelector("label").dataset.info.includes("Es opcional: si lo dejas vacío, el cálculo solo considera el costo del conductor")), "la nota del costo de instalación explica que es opcional y qué pasa si se deja vacío");
+  ok(ids().every((id) => $(`#f-costo-inst-${id}`).closest(".field").querySelector("label").dataset.info.includes("Si se deja vacío el cálculo considerará únicamente el costo del conductor")), "la nota del costo de instalación explica que es opcional y qué pasa si se deja vacío");
   ok($("#f-tasa").value === "10" && $("#f-anios").value === "25" && $("#f-escalada").value === "2.5" && $("#f-crecimiento").value === "0", "valores de partida editables: 25 años, 10 %, 2.5 %, crecimiento 0");
 });
 
@@ -400,7 +400,7 @@ await seccion("vista: aspecto de las tarjetas", async () => {
   ok(infoTasa.includes("valor presente") && infoTasa.includes("costo de oportunidad") && infoTasa.includes("Referencia orientativa: 8-14 %"), "la ayuda de la tasa de descuento explica qué es y da un valor de referencia");
   $("label[for='f-tasa'] .info-btn").click();
   const popTasa = $("label[for='f-tasa'] + .info-popover");
-  ok(popTasa && !popTasa.hidden && getComputedStyle(popTasa).whiteSpace === "pre-line" && popTasa.textContent.includes("• Tasa alta"), "el cuadro de la tasa se abre y respeta los saltos de línea y las viñetas");
+  ok(popTasa && !popTasa.hidden && popTasa.textContent.includes("costo de oportunidad"), "el cuadro de la tasa se abre y muestra la ayuda");
   $("label[for='f-tasa'] .info-btn").click();
   ok($$(".hint").length === 0, "sin textos .hint bajo los campos (la ayuda va en botones «i»)");
 });

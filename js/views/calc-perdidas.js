@@ -17,6 +17,9 @@ import {
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
+import { guardarEstado, leerEstado } from "../util/persistencia-calculo.js";
+
+const RUTA = "/calculos/perdidas";
 
 // Ecuaciones (LaTeX) de la pestaña Fórmulas: replican lo que hace el motor, con las mismas unidades (MW, kV, Ω/km, km).
 const FORMULAS_TEX = [
@@ -303,6 +306,33 @@ export async function render(container) {
         resistenciaOhmKm: parseFloat(fResistencia.value),
         numConductoresPorFase: parseInt(fN.value, 10) || 1,
       }),
+      /** Foto cruda (valores de texto, tal cual estan en los campos) para guardarla y restaurarla despues. */
+      bruto: () => ({
+        red: selRed.value,
+        material: selMaterial.value,
+        calibre: selCalibre.value,
+        manual: chkResistencia.checked,
+        resistencia: fResistencia.value,
+        longitud: fLongitud.value,
+        n: fN.value,
+      }),
+      /** Aplica una foto de `bruto()`, disparando los "change" en cascada (red -> material -> calibre) para que las listas se repueblen antes de fijar el valor final. */
+      aplicarBruto: (d) => {
+        if (!d) return;
+        selRed.value = d.red;
+        selRed.dispatchEvent(new Event("change"));
+        selMaterial.value = d.material;
+        selMaterial.dispatchEvent(new Event("change"));
+        if (d.manual) {
+          chkResistencia.checked = true;
+          chkResistencia.dispatchEvent(new Event("change"));
+        }
+        selCalibre.value = d.calibre;
+        selCalibre.dispatchEvent(new Event("change"));
+        if (d.manual) fResistencia.value = d.resistencia;
+        fLongitud.value = d.longitud;
+        fN.value = d.n;
+      },
     };
   }
 
@@ -341,6 +371,21 @@ export async function render(container) {
   }
   agregarTramo();
 
+  // ---------- restaurar lo que habia si se volvio de otra seccion (no sobrevive a un recargue) ----------
+  const guardado = leerEstado(RUTA);
+  if (guardado) {
+    fTension.value = guardado.tension;
+    selModo.value = guardado.modo;
+    aplicarModo();
+    fPotencia.value = guardado.potencia;
+    fAparente.value = guardado.aparente;
+    fCorriente.value = guardado.corriente;
+    fFp.value = guardado.fp;
+    fFc.value = guardado.fc;
+    for (let i = 1; i < guardado.tramos.length; i++) agregarTramo();
+    tramos.forEach((t, i) => t.aplicarBruto(guardado.tramos[i]));
+  }
+
   // ---------- calculo ----------
   form.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -366,6 +411,22 @@ export async function render(container) {
     const estados = tramos.map((t) => t.estado());
     renderResultado(calcularPerdidasTramos(base, estados), base, estados, { modo, datoPartida });
   });
+
+  // El router llama a esto justo antes de salir de la pantalla (ver js/router.js), para que lo
+  // escrito no se pierda al volver de otra sección; una recarga de la app si lo reinicia (no se
+  // guarda en localStorage).
+  function antesDeSalir() {
+    guardarEstado(RUTA, {
+      tension: fTension.value,
+      modo: selModo.value,
+      potencia: fPotencia.value,
+      aparente: fAparente.value,
+      corriente: fCorriente.value,
+      fp: fFp.value,
+      fc: fFc.value,
+      tramos: tramos.map((t) => t.bruto()),
+    });
+  }
 
   /** Calibres del mismo material que el tramo, con las pérdidas que tendria cada uno (un calibre = su primera referencia). */
   function candidatosCalibre(base, estado) {
@@ -525,4 +586,6 @@ export async function render(container) {
 
     wrap.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
+
+  return antesDeSalir;
 }
