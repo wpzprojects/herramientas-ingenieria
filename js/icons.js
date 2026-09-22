@@ -121,9 +121,9 @@ const shapes = {
     '<g stroke-width="2"><path d="M6 22 12 2l6 20"/><path d="M3 7h18"/><path d="M9.3 11l7.5 7"/><path d="M14.7 11l-7.5 7"/></g>',
   underground:
     '<g stroke-width="2"><path d="M3 5h18"/><path d="M6.5 12.5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M13.5 12.5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M6.5 19.5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M13.5 19.5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/></g>',
-  // Ocupacion de ductos: el ducto (circulo grande) con una terna de conductores (3 circulos macizos) en el fondo. Esquema del usuario.
+  // Ocupacion de ductos: el ducto (circulo grande) con una terna de conductores (3 circulos macizos) en el fondo. Esquema del usuario. Sin <g stroke-width="2">: el circulo grande usa el trazo base (1.6), tan delgado como Perdidas o Regulacion (2026-09-21, pedido del usuario).
   ductoTerna:
-    '<g stroke-width="2"><circle cx="12" cy="12" r="9.5"/><g fill="currentColor" stroke="none"><circle cx="9" cy="17" r="2.4"/><circle cx="15" cy="17" r="2.4"/><circle cx="12" cy="11.6" r="2.4"/></g></g>',
+    '<circle cx="12" cy="12" r="9.5"/><g fill="currentColor" stroke="none"><circle cx="9" cy="17" r="2.4"/><circle cx="15" cy="17" r="2.4"/><circle cx="12" cy="11.6" r="2.4"/></g>',
   // Letras «Ab» (icono de Codificacion de entregables): una A mayuscula y una b minuscula, con el trazo de Tabler.
   idLetras:
     '<g stroke-width="2"><path d="M3.5 18 8 6l4.5 12M5.2 14h5.6"/><path d="M15.5 6v12M15.5 12h1.5a3 3 0 0 1 0 6h-1.5"/></g>',
