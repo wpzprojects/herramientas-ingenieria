@@ -181,7 +181,7 @@ export async function render(container) {
             <input type="number" id="f-fp" min="0" max="1" step="0.01" value="0.9" required>
           </div>
           <div class="field">
-            <label for="f-fc" data-info="Circuitos de uso: 1 · Granjas solares: 0.28-0.53 según tecnología (lo ideal es calcularlo con la curva real de generación a 24 h)">Factor de carga (Fc)</label>
+            <label for="f-fc" data-info="Circuitos de uso: 1 · Granjas solares: 0.28-0.53 según tecnología y ubicación (lo ideal es calcularlo con la curva real de generación a 24 h)">Factor de carga (Fc)</label>
             <input type="number" id="f-fc" min="0" max="1" step="0.0001" value="0.4" required>
           </div>
         </div>
