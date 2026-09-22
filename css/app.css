@@ -114,6 +114,12 @@ button { font-family: inherit; }
   color: var(--text-muted);
   font-size: 0.92rem; font-weight: 600;
 }
+/* padding/justify-content del boton y de .nav-link NO cambian entre expandido y contraido
+   (a diferencia de versiones anteriores): son propiedades que no se pueden animar por CSS, asi
+   que cambiarlas de un golpe (aunque fuera al terminar la transicion de ancho) se sentia como un
+   pequeno "salto" del icono. Al dejarlas fijas, solo el ancho del sidebar (que si esta animado)
+   mueve visualmente el icono, sin saltos; el icono contraido queda un par de px fuera de centro
+   perfecto (imperceptible) en vez de perfectamente centrado. */
 .sidebar-collapse-btn .nav-icon { width: 20px; text-align: center; flex: 0 0 auto; display: flex; justify-content: center; }
 .sidebar-collapse-btn .nav-label { white-space: nowrap; overflow: hidden; margin-left: var(--space-3); max-width: 220px; opacity: 1; }
 .sidebar-collapse-btn:hover { color: var(--text); }
@@ -124,21 +130,14 @@ button { font-family: inherit; }
     position: sticky; top: var(--topbar-h); align-self: flex-start;
     height: calc(100vh - var(--topbar-h));
     display: flex; flex-direction: column;
-    transition: width .18s ease; overflow-x: hidden;
+    transition: width .18s ease, padding-left .18s ease, padding-right .18s ease; overflow-x: hidden;
   }
   .sidebar .nav-list { flex: 0 0 auto; }
   /* contraido: barra delgada solo con el icono de cada categoria. El label se apaga con opacity
      (no display:none) para que se desvanezca junto con el angostado del ancho, en vez de
-     desaparecer de golpe. justify-content/padding (no son animables por CSS) NO se aplican con
-     sb-collapsed solo: esperan a la clase sb-collapsed-snap, que app.js agrega recien cuando la
-     transicion de ancho termina -- asi el icono no "salta" al centro mientras la barra todavia
-     se ve ancha. Al expandir, app.js quita sb-collapsed-snap de inmediato (junto con
-     sb-collapsed): el layout se abre de una vez y el label aparece progresivamente. */
+     desaparecer de golpe. */
   html.sb-collapsed .sidebar { width: 64px; padding-left: var(--space-2); padding-right: var(--space-2); }
   html.sb-collapsed .nav-label { opacity: 0; max-width: 0; margin-left: 0; }
-  html.sb-collapsed-snap .sidebar-head { justify-content: center; }
-  html.sb-collapsed-snap .sidebar-collapse-btn { width: 100%; padding: 0; justify-content: center; }
-  html.sb-collapsed-snap .nav-link { justify-content: center; padding-left: 0; padding-right: 0; }
   .nav-label, .sidebar-collapse-btn .nav-label { transition: opacity .18s ease, max-width .18s ease, margin-left .18s ease; }
 }
 @media (prefers-reduced-motion: reduce) {
