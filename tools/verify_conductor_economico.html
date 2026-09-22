@@ -199,25 +199,25 @@ const ids = () => $$(".tramo-block").map((c) => c.querySelector("select").id.rep
 
 await seccion("vista: tarjetas, agregar y quitar opciones", async () => {
   const titulos = $$(".form-section-title").map(texto);
-  ok($$(".card.form-section").length === 4 && titulos[0].includes("Datos de la línea") && titulos[1].includes("Supuestos económicos") && titulos[2].includes("Opción 1") && titulos[3].includes("Opción 2"), `cuatro tarjetas al iniciar: «${titulos.join("» · «")}»`);
+  ok($$(".card.form-section").length === 4 && titulos[0].includes("Datos de la línea") && titulos[1].includes("Supuestos económicos") && titulos[2].includes("Conductor opción 1") && titulos[3].includes("Conductor opción 2"), `cuatro tarjetas al iniciar: «${titulos.join("» · «")}»`);
   ok($$(".form-section-title").every((t) => t.querySelector("svg.icon") && t.parentElement.classList.contains("card")), "cada título lleva su icono y va dentro de la tarjeta");
   ok($$(".btn-tramo-quitar").every((b) => b.hidden), "con 2 opciones (el mínimo) no aparece «Quitar»");
-  ok($$(".btn-agregar-tramo").filter((b) => texto(b).includes("Agregar opción")).length === 1 && $(".btn-agregar-tramo").previousElementSibling === $("#form-calc button[type=submit]") && !$(".btn-agregar-tramo").closest(".card"), "«Agregar opción» está junto a «Calcular» (a su derecha), fuera de las tarjetas");
+  ok($$(".btn-agregar-tramo").filter((b) => texto(b).includes("Agregar conductor")).length === 1 && $(".btn-agregar-tramo").previousElementSibling === $("#form-calc button[type=submit]") && !$(".btn-agregar-tramo").closest(".card"), "«Agregar conductor» está junto a «Calcular» (a su derecha), fuera de las tarjetas");
   // agregar hasta 5
   for (let i = 0; i < 3; i++) $(".btn-agregar-tramo").click();
   ok($$(".tramo-block").length === 5, "se pueden agregar hasta 5 opciones");
-  ok($(".btn-agregar-tramo").hidden, "con 5 opciones «Agregar opción» se oculta");
-  ok($$(".tramo-titulo").map(texto).join() === "Opción 1,Opción 2,Opción 3,Opción 4,Opción 5", "numeradas 1 a 5");
+  ok($(".btn-agregar-tramo").hidden, "con 5 opciones «Agregar conductor» se oculta");
+  ok($$(".tramo-titulo").map(texto).join() === "Conductor opción 1,Conductor opción 2,Conductor opción 3,Conductor opción 4,Conductor opción 5", "numeradas 1 a 5");
   ok($$(".btn-tramo-quitar").every((b) => !b.hidden), "con más de 2 opciones todas pueden quitarse");
   // quitar la 2
   elegir(`#f-calibre-${ids()[2]}`, ""); // (no hace nada, solo confirma que los ids son independientes)
   $$(".btn-tramo-quitar")[1].click();
-  ok($$(".tramo-block").length === 4 && $$(".tramo-titulo").map(texto).join() === "Opción 1,Opción 2,Opción 3,Opción 4", "al quitar una se renumeran");
-  ok(!$(".btn-agregar-tramo").hidden, "al bajar de 5 vuelve a aparecer «Agregar opción»");
+  ok($$(".tramo-block").length === 4 && $$(".tramo-titulo").map(texto).join() === "Conductor opción 1,Conductor opción 2,Conductor opción 3,Conductor opción 4", "al quitar una se renumeran");
+  ok(!$(".btn-agregar-tramo").hidden, "al bajar de 5 vuelve a aparecer «Agregar conductor»");
   $$(".btn-tramo-quitar")[0].click();
   $$(".btn-tramo-quitar")[0].click();
   ok($$(".tramo-block").length === 2 && $$(".btn-tramo-quitar").every((b) => b.hidden), "vuelve al mínimo de 2 y se oculta «Quitar»");
-  ok($(".btn-row .btn-agregar-tramo") && !$(".tramo-block .btn-agregar-tramo"), "«Agregar opción» sigue en la fila de «Calcular»");
+  ok($(".btn-row .btn-agregar-tramo") && !$(".tramo-block .btn-agregar-tramo"), "«Agregar conductor» sigue en la fila de «Calcular»");
   ok(new Set(ids()).size === 2, "las tarjetas tienen ids distintos");
 });
 
