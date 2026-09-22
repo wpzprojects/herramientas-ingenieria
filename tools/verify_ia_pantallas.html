@@ -620,6 +620,8 @@ await seccion("tarjetas plegables en las pantallas de IA", async () => {
   agAn.guardarPropios([]);
   agAn.guardarActivo(agAn.ID_PREDETERMINADO);
   try { localStorage.removeItem("ia.agentesRedaccion"); localStorage.removeItem("ia.agenteRedaccionActivo"); } catch { /* nada */ }
+  const { plegado } = await import("../js/util/tarjetas-plegables.js");
+  plegado.animar = false; // aqui se prueba el estado final al instante; la animacion se prueba en verify_tarjetas_plegables.html
   const conBoton = (t) => t?.querySelector(":scope > .form-section-title > .btn-plegar");
   const visible = (e) => !!e && e.checkVisibility();
 

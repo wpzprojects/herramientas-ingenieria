@@ -454,14 +454,17 @@ input:disabled, select:disabled { opacity: 0.55; }
 }
 .form-section-title .btn-tramo-quitar:not([hidden]) + .btn-plegar { margin-left: 0; } /* con «Quitar» a la vista, este ya empuja a la derecha */
 .form-section-title .btn-plegar::before { content: ""; position: absolute; inset: -4px; }
-.form-section-title .btn-plegar .icon { color: var(--text-muted); transition: transform 0.18s ease, color 0.18s ease; }
+.form-section-title .btn-plegar .icon { color: var(--text-muted); transition: transform 0.22s ease, color 0.18s ease; }
 .form-section-title .btn-plegar:hover .icon, .form-section-title .btn-plegar:focus-visible .icon { color: var(--accent); }
 .form-section.plegada > .form-section-title .btn-plegar .icon { transform: rotate(180deg); }
 @media (prefers-reduced-motion: reduce) { .form-section-title .btn-plegar .icon { transition: none; } }
 /* Tarjeta plegada: solo queda la barra (todo lo demas se oculta). «Agregar tramo/opcion/tipo» ya no vive en la tarjeta: va junto a «Calcular».
    `.card.form-section.plegada` (3 clases, despues de `.card.tarjeta-borde.form-section`) gana al relleno inferior de las tarjetas de datos. */
-.form-section.plegada > :not(.form-section-title) { display: none; }
-.form-section.plegada > .form-section-title { margin-bottom: 0; border-bottom-color: transparent; border-radius: calc(var(--radius-lg) - 1px); }
+.plegable-cuerpo { display: flow-root; } /* (js/util/tarjetas-plegables.js) envuelve todo lo que va bajo la barra; flow-root: contiene los margenes de sus hijos, asi la altura que se anima es la real */
+.form-section.plegada:not(.animando) > .plegable-cuerpo { display: none; }
+.form-section.animando > .plegable-cuerpo { overflow: hidden; } /* mientras se recoge/despliega (la altura y el relleno inferior los anima el JS) */
+.form-section.plegada > .form-section-title { margin-bottom: 0; }
+.form-section.plegada:not(.animando) > .form-section-title { border-bottom-color: transparent; border-radius: calc(var(--radius-lg) - 1px); } /* la linea y las esquinas cambian al TERMINAR de plegar (al desplegar, al empezar) */
 .card.form-section.plegada { padding-bottom: 0; }
 .tarjeta-borde .result-panel, .result-panel.compacto { padding: var(--space-4); }  /* panel azul de resultados: tambien 16px (en otras calculadoras sigue en 24px) */
 /* Subtarjeta de las formulas (KaTeX): mismo aspecto que la caja de «Reporte» (fondo hundido, borde y esquinas), sin su letra monoespaciada */

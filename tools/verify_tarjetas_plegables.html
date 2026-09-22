@@ -60,6 +60,11 @@ const VISTAS = [
   ["Conductor económico", "calc-conductor-economico"],
 ];
 
+// Las pruebas de estado comprueban el resultado FINAL al instante: sin animacion (Edge sin pantalla no avanza las animaciones de forma fiable).
+// La animacion tiene su propia seccion mas abajo, donde se avanza a mano.
+const { plegado } = await import("../js/util/tarjetas-plegables.js");
+plegado.animar = false;
+
 for (const [nombre, modulo] of VISTAS) {
   await seccion(`${nombre}: cada tarjeta se puede plegar`, async () => {
     stage.innerHTML = "";
@@ -215,6 +220,77 @@ for (const [nombre, modulo, texto_boton] of [["Pérdidas", "calc-perdidas", "Agr
     boton(ultima).click();
   });
 }
+
+await seccion("animación al plegar y desplegar (se avanza a mano)", async () => {
+  plegado.animar = true;
+  plegado.duracion = 4000; // larga: no termina sola; la prueba mueve el tiempo con currentTime / finish()
+  try {
+    stage.innerHTML = "";
+    const { render } = await import("../js/views/calc-perdidas.js");
+    await render(stage, {});
+    const t = $$(".form-section")[1], b = boton(t), cuerpo = $(":scope > .plegable-cuerpo", t);
+    const alto = () => cuerpo.getBoundingClientRect().height;
+    const altoTarjeta = () => t.getBoundingClientRect().height;
+    const natural = alto(), tarjeta0 = altoTarjeta();
+    ok(!!cuerpo && t.children.length === 2 && t.children[0].classList.contains("form-section-title") && t.children[1] === cuerpo, "todo lo que va bajo la barra está dentro de un solo cuerpo (.plegable-cuerpo)");
+
+    // --- plegar
+    b.click();
+    const a = cuerpo.getAnimations();
+    ok(a.length === 1 && t.classList.contains("animando") && cerrada(t) && b.getAttribute("aria-expanded") === "false", "al plegar: la tarjeta queda «animando», marcada como plegada y con una animación en curso");
+    ok(getComputedStyle(cuerpo).display !== "none" && alto() > natural - 1, "el cuerpo sigue a la vista al empezar (no desaparece de golpe)");
+    a[0].pause();
+    a[0].currentTime = 2000;
+    const medio = alto();
+    ok(medio > 2 && medio < natural - 2, `a mitad de la animación el cuerpo mide algo intermedio (${Math.round(medio)} px de ${Math.round(natural)} px)`);
+    ok(altoTarjeta() < tarjeta0 - 2 && altoTarjeta() > 40, `y la tarjeta entera se va acortando (${Math.round(altoTarjeta())} px de ${Math.round(tarjeta0)} px)`);
+    ok(getComputedStyle(cuerpo).overflow === "hidden" && parseFloat(getComputedStyle(cuerpo).opacity) < 1, "mientras dura, el contenido se recorta y se desvanece");
+    a[0].finish();
+    await espera(60);
+    ok(!t.classList.contains("animando") && getComputedStyle(cuerpo).display === "none" && cuerpo.getAnimations().length === 0 && t.getAnimations().length === 0, "al terminar: sin marca «animando», cuerpo oculto y sin animaciones pendientes");
+    ok(altoTarjeta() < 60 && cuerpo.style.height === "" && t.style.paddingBottom === "", `queda solo la barra (${Math.round(altoTarjeta())} px), sin estilos residuales`);
+
+    // --- desplegar
+    b.click();
+    const d = cuerpo.getAnimations();
+    ok(d.length === 1 && t.classList.contains("animando") && !cerrada(t) && b.getAttribute("aria-expanded") === "true", "al desplegar: animación en curso y tarjeta marcada como abierta");
+    d[0].pause();
+    d[0].currentTime = 2000;
+    const medio2 = alto();
+    ok(medio2 > 2 && medio2 < natural - 2, `a mitad del despliegue el cuerpo mide algo intermedio (${Math.round(medio2)} px de ${Math.round(natural)} px)`);
+
+    // --- un clic a mitad la interrumpe y parte de la altura actual
+    const antes = alto();
+    b.click();
+    const e = cuerpo.getAnimations();
+    ok(e.length === 1 && cerrada(t) && t.classList.contains("animando") && Math.abs(alto() - antes) < 3, `un clic a mitad interrumpe y parte de la altura actual (${Math.round(antes)} px → ${Math.round(alto())} px), sin saltos`);
+    e[0].finish();
+    await espera(60);
+    ok(cerrada(t) && getComputedStyle(cuerpo).display === "none" && !t.classList.contains("animando"), "la interrupción termina plegada y limpia");
+
+    // --- desplegar del todo: vuelve a medir lo de antes
+    b.click();
+    cuerpo.getAnimations()[0].finish();
+    await espera(60);
+    ok(!cerrada(t) && !t.classList.contains("animando") && Math.abs(alto() - natural) < 1.5 && Math.abs(altoTarjeta() - tarjeta0) < 1.5 && cuerpo.style.height === "", `al terminar de desplegar mide lo de antes (tarjeta ${altoTarjeta().toFixed(1)} px de ${tarjeta0.toFixed(1)}; cuerpo ${alto().toFixed(1)} de ${natural.toFixed(1)}; height inline «${cuerpo.style.height}»), sin estilos residuales`);
+
+    // --- el despliegue automatico por un dato faltante es instantaneo
+    b.click();
+    cuerpo.getAnimations()[0].finish();
+    await espera(60);
+    $("#f-longitud-0").value = "";
+    $("#form-calc").requestSubmit();
+    ok(!cerrada(t) && !t.classList.contains("animando") && cuerpo.getAnimations().length === 0 && getComputedStyle(cuerpo).display !== "none", "el despliegue automático por dato faltante es instantáneo (sin animación)");
+
+    // --- con la animacion apagada (o sin movimiento) el cambio es instantaneo
+    plegado.animar = false;
+    b.click();
+    ok(cerrada(t) && !t.classList.contains("animando") && cuerpo.getAnimations().length === 0 && getComputedStyle(cuerpo).display === "none", "con la animación desactivada plegar es instantáneo");
+  } finally {
+    plegado.animar = false;
+    plegado.duracion = 220;
+  }
+});
 
 await seccion("archivos: icono, service worker y colores", async () => {
   const { icon } = await import("../js/icons.js");
