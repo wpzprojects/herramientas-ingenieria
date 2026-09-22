@@ -139,7 +139,7 @@ const ACSR_4_0 = desnudos.find((c) => c.tipo === "ACSR" && c.calibre_awg_kcmil =
 
 await seccion("tools: esquema para Gemini", async () => {
   const decl = tools.declaraciones();
-  ok(decl.length === 14, `sin lista se declaran las 14 herramientas (${decl.length})`);
+  ok(decl.length === 15, `sin lista se declaran las 15 herramientas (${decl.length})`);
   ok(tools.declaraciones(tools.HERRAMIENTAS_ESTANDAR).length === 9, "con las del estándar se declaran 9");
   ok(decl.every((d) => d.name && d.description && d.parameters.type === "object" && Object.keys(d.parameters.properties).length > 0), "todas con descripcion y propiedades no vacias");
   ok(decl.every((d) => (d.parameters.required || []).every((r) => r in d.parameters.properties)), "required subconjunto de properties");
@@ -317,7 +317,7 @@ await seccion("tools: conversión de coordenadas con códigos EPSG, varios punto
 await seccion("tools: herramientas permitidas por agente", async () => {
   ok(tools.HERRAMIENTAS_ESTANDAR.length === 9 && Object.isFrozen(tools.HERRAMIENTAS_ESTANDAR), "el estándar habilita las 9 herramientas actuales");
   const cat = tools.catalogoHerramientas();
-  ok(cat.length === 14 && cat.every((h) => h.nombre && h.titulo && h.grupo && h.descripcion), "catálogo: 14 herramientas con título, grupo y descripción");
+  ok(cat.length === 15 && cat.every((h) => h.nombre && h.titulo && h.grupo && h.descripcion), "catálogo: 15 herramientas con título, grupo y descripción");
   ok([...new Set(cat.map((h) => h.grupo))].join() === "Calculadoras,Catálogos,Análisis,Varios", "cuatro grupos: Calculadoras, Catálogos, Análisis y Varios");
   ok(!tools.HERRAMIENTAS_ESTANDAR.includes("convertir_unidades") && !tools.HERRAMIENTAS_ESTANDAR.includes("convertir_coordenadas"), "las de Varios son opcionales: no están en el estándar");
   ok(tools.declaraciones(["calcular_perdidas", "buscar_tuberia"]).map((d) => d.name).join() === "calcular_perdidas,buscar_tuberia", "declaraciones(permitidas) solo declara esas");
@@ -345,9 +345,9 @@ await seccion("tools: pérdidas", async () => {
   const ctx = ctxNuevo();
   const r = await tools.ejecutarLlamada("calcular_perdidas", { ...LINEA, factor_carga: 0.564, red: "Aerea", material: "ACSR", calibre: "4/0" }, ctx);
   ok(r.ok === true, "ejecuta sin error");
-  // formula independiente (factor de perdidas lineal 0.7*Fc+0.3, igual que la app original)
+  // formula independiente (factor de perdidas cuadratico de Buller-Woodrow, 0.3*Fc+0.7*Fc^2)
   const I = (9.9 * 1000) / (34.5 * 0.95 * Math.sqrt(3));
-  const esperado = (Math.sqrt(3) * I * ACSR_4_0.r_ac_75c_ohm_km * 5.2 * (0.7 * 0.564 + 0.3) * 100) / (34.5 * 1000 * 0.95);
+  const esperado = (Math.sqrt(3) * I * ACSR_4_0.r_ac_75c_ohm_km * 5.2 * (0.3 * 0.564 + 0.7 * 0.564 * 0.564) * 100) / (34.5 * 1000 * 0.95);
   cerca(salida(ctx, "perdidas_pct"), esperado, 1e-9, "pérdidas % coincide con fórmula independiente");
   cerca(salida(ctx, "corriente_a"), I, 1e-9, "corriente coincide");
   const ctx2 = ctxNuevo();
@@ -366,6 +366,45 @@ await seccion("tools: regulación", async () => {
   });
   cerca(salida(ctx, "caida_tension_pct"), directo.caidaTensionPct, 1e-9, "caída de tensión = motor con valores por defecto de la vista");
   ok(ctx.log[0].supuestos.length === 3, "declara las 3 distancias por defecto como supuestos");
+});
+
+await seccion("tools: conductor económico", async () => {
+  const engEconomico = await import("../js/calc/conductor-economico.js");
+  const ACSR_1_0 = desnudos.find((c) => c.tipo === "ACSR" && c.calibre_awg_kcmil === "1/0");
+  const base = { tension_kv: 34.5, potencia_mw: 9.9, factor_potencia: 0.95, longitud_km: 5.2, factor_carga: 0.4, anios: 25, tasa_descuento_pct: 10, precio_kwh: 450, escalada_energia_pct: 2.5 };
+  const opciones = [
+    { red: "Aerea", material: "ACSR", calibre: "1/0", costo_conductor_km: 9e6, costo_instalacion_km: 60e6 },
+    { red: "Aerea", material: "ACSR", calibre: "4/0", costo_conductor_km: 14e6, costo_instalacion_km: 60e6 },
+  ];
+  const ctx = ctxNuevo();
+  const r = await tools.ejecutarLlamada("calcular_conductor_economico", { ...base, opciones }, ctx);
+  ok(r.ok === true, "ejecuta sin error");
+
+  const baseMotor = { tensionLineaKv: 34.5, potenciaActivaMw: 9.9, factorPotencia: 0.95, longitudKm: 5.2, factorCarga: 0.4, anios: 25, tasaDescuentoPct: 10, precioKwh: 450, escaladaEnergiaPct: 2.5, crecimientoDemandaPct: 0 };
+  const opA = { resistenciaOhmKm: ACSR_1_0.r_ac_75c_ohm_km, numConductoresPorFase: 1, costoConductorKm: 9e6, costoInstalacionKm: 60e6 };
+  const opB = { resistenciaOhmKm: ACSR_4_0.r_ac_75c_ohm_km, numConductoresPorFase: 1, costoConductorKm: 14e6, costoInstalacionKm: 60e6 };
+  const directo = engEconomico.compararOpciones(baseMotor, [opA, opB]);
+  cerca(salida(ctx, "opcion1_costo_total"), directo.opciones[0].costoTotal, 1e-3, "opción 1: costo total = motor");
+  cerca(salida(ctx, "opcion2_costo_total"), directo.opciones[1].costoTotal, 1e-3, "opción 2: costo total = motor");
+  ok(salida(ctx, "opcion_menor_costo").includes(`Opción ${directo.mejor + 1}`), "opción de menor costo coincide con el motor");
+
+  const pocas = await tools.ejecutarLlamada("calcular_conductor_economico", { ...base, opciones: [opciones[0]] }, ctxNuevo());
+  ok(pocas.ok === false && /entre 2 y 5/.test(pocas.error), "menos de 2 opciones: error claro");
+  const muchas = await tools.ejecutarLlamada("calcular_conductor_economico", { ...base, opciones: Array(6).fill(opciones[0]) }, ctxNuevo());
+  ok(muchas.ok === false && /entre 2 y 5/.test(muchas.error), "más de 5 opciones: error claro");
+
+  const sinCosto = await tools.ejecutarLlamada("calcular_conductor_economico", { ...base, opciones: [opciones[0], { red: "Aerea", material: "ACSR", calibre: "4/0" }] }, ctxNuevo());
+  ok(sinCosto.ok === false && /costo_conductor_km/.test(sinCosto.error), "falta costo_conductor_km en una opción: error claro");
+
+  const rManual = await tools.ejecutarLlamada(
+    "calcular_conductor_economico",
+    { ...base, opciones: [{ resistencia_ohm_km: ACSR_1_0.r_ac_75c_ohm_km, costo_conductor_km: 9e6 }, { resistencia_ohm_km: ACSR_4_0.r_ac_75c_ohm_km, costo_conductor_km: 14e6 }] },
+    ctxNuevo()
+  );
+  ok(rManual.ok === true, "acepta resistencia manual sin catálogo (y costo de instalación vacío)");
+
+  ok(ctx.log[0].notas.some((n) => n.includes("valor residual")), "nota de alcance (sin valor residual ni O&M)");
+  ok(!tools.HERRAMIENTAS_ESTANDAR.includes("calcular_conductor_economico"), "es opcional: no está en el agente estándar");
 });
 
 await seccion("tools: cortocircuito", async () => {
@@ -702,11 +741,11 @@ await seccion("herramientas de diseño: dimensionar, verificar y buscar valor l�
 
   // --- verificar
   const ctxV = ctxNuevo();
-  const v = await tools.ejecutarLlamada("verificar_conductor", { red: "Aerea", material: "ACSR", calibre: "4/0", ...CASO, perdidas_max_pct: 1, corriente_falla_ka: 8 }, ctxV);
+  const v = await tools.ejecutarLlamada("verificar_conductor", { red: "Aerea", material: "ACSR", calibre: "4/0", ...CASO, perdidas_max_pct: 0.5, corriente_falla_ka: 8 }, ctxV);
   const pCalc = await tools.ejecutarLlamada("calcular_perdidas", { ...LINEA, factor_carga: 0.56, red: "Aerea", material: "ACSR", calibre: "4/0" }, ctxNuevo());
   const perdidasRef = pCalc.resultados.find((x) => x.nombre === "Pérdidas").valor;
   const kp = v.criterios?.find((k) => k.criterio === "Pérdidas");
-  ok(v.ok && kp && Math.abs(kp.valor - perdidasRef) < 1e-6 && kp.cumple === false && v.cumple_todos === false, `verificar 4/0: pérdidas ${kp?.valor} % (la calculadora dice ${perdidasRef}) no cumple el 1 %`);
+  ok(v.ok && kp && Math.abs(kp.valor - perdidasRef) < 1e-6 && kp.cumple === false && v.cumple_todos === false, `verificar 4/0: pérdidas ${kp?.valor} % (la calculadora dice ${perdidasRef}) no cumple el 0.5 %`);
   ok(v.criterios.length === 4 && v.criterios.every((k) => typeof k.margen === "number" && /[≤≥]/.test(k.limite)), "entrega valor, límite, margen y veredicto de los 4 criterios");
   ok(ctxV.log.length === 1 && ctxV.log[0].herramienta === "verificar_conductor", "queda UNA fila en el reporte");
   const vNo = await tools.ejecutarLlamada("verificar_conductor", { red: "Aerea", material: "ACSR", calibre: "9999", ...CASO }, ctxNuevo());

@@ -87,7 +87,7 @@ const T_OCUPACION = {
 
 **Campos con lista de objetos (2026-09-19).** Un campo puede ser una lista de objetos declarando `itemCampos` (los campos de cada elemento; `esquemaDe` lo convierte en un esquema anidado para Gemini y `normalizar` valida cada elemento, con errores del tipo `tramos[2]: "longitud_km" debe ser…`). Lo usan `tramos` (pérdidas y regulación), `grupos` (ocupación) y `puntos` (coordenadas). Regla común: lo que un tramo no indica se toma del nivel superior (así una línea de 3 tramos con el mismo conductor solo repite las longitudes). Helpers en `tools.js`: `campoTramos`, `listaTramos`, `volcarTramo` (antepone «Tramo N —» a entradas y notas), `datoPartida`. Los campos de nivel superior se conservan para el caso de un solo tramo/tipo/punto, de modo que las llamadas antiguas y `barrer_parametro` siguen funcionando.
 
-## 4. Herramientas actuales (14)
+## 4. Herramientas actuales (15)
 
 | Herramienta | Tipo | Grupo en Agentes | Agente estándar |
 |---|---|---|---|
@@ -95,7 +95,10 @@ const T_OCUPACION = {
 | `buscar_conductor`, `buscar_tuberia` | consulta | Catálogos | Sí |
 | `barrer_parametro` | barrido | Análisis | Sí |
 | `dimensionar_conductor`, `verificar_conductor`, `resolver_valor_limite` | diseno | Análisis | **No** (opcionales) |
+| `calcular_conductor_economico` | calculo | Calculadoras | **No** (opcional) |
 | `convertir_unidades`, `convertir_coordenadas` | calculo | Varios | **No** (opcionales) |
+
+**`calcular_conductor_economico`** (2026-09-22): compara entre 2 y 5 opciones de conductor de una línea nueva por su costo total actualizado (inversión + valor presente del costo de las pérdidas durante `anios`), igual que la calculadora. Reutiliza `js/calc/conductor-economico.js` (`compararOpciones`, `sensibilidad`) sin tocarlo; cada opción resuelve su conductor con el mismo `resolverConductor`/`resistencia75` que usan las demás fichas. Es `opcional: true` (no forma parte del agente estándar) y NO entra en `CALCULADORAS` (no ofrece barrido: su resultado es una comparación entre opciones, no un valor único que tenga sentido barrer). Devuelve por opción `opcionN_conductor/inversion/perdidas_pct/perdidas_mwh/costo_perdidas_vp/costo_total/compensa`, más `opcion_menor_costo` y `sensibilidad_robusta` (si la ganadora cambia en algún escenario de energía ±10 %, demanda ±10 % o tasa ±2 puntos).
 
 Las de Varios no entran en el barrido de parámetros.
 

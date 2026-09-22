@@ -20,6 +20,7 @@ import { calcularAmpacidadAerea } from "../calc/ampacidad-aerea.js";
 import { calcularAmpacidadSubterranea } from "../calc/ampacidad-subterranea.js";
 import { calcularPantalla } from "../calc/ampacidad-subterranea-pantalla.js";
 import { calcularOcupacionGrupos } from "../calc/ocupacion-grupos.js";
+import { compararOpciones as compararOpcionesEconomico, sensibilidad as sensibilidadEconomico } from "../calc/conductor-economico.js";
 import { convertirBase, datosCalibre, calibrePorArea, CALIBRES } from "../calc/unidades-extendido.js";
 import { SISTEMAS, convertirCoordenadas } from "../calc/coordenadas.js";
 import { parseCodigoEpsg, infoSistema, convertirEntreSistemas, avisosArea } from "../calc/coordenadas-epsg.js";
@@ -779,6 +780,114 @@ const T_OCUPACION = {
 
 const CALCULADORAS = [T_PERDIDAS, T_REGULACION, T_CORTOCIRCUITO, T_AMP_AEREA, T_AMP_SUBT, T_OCUPACION];
 
+// ---------------------------------------------------------------- conductor economico (opcional, no entra al barrido)
+
+const MIN_OPCIONES_ECONOMICO = 2;
+const MAX_OPCIONES_ECONOMICO = 5;
+
+const T_CONDUCTOR_ECONOMICO = {
+  nombre: "calcular_conductor_economico",
+  tipo: "calculo",
+  opcional: true,
+  titulo: "Conductor económico",
+  descripcion:
+    `Compara entre ${MIN_OPCIONES_ECONOMICO} y ${MAX_OPCIONES_ECONOMICO} opciones de conductor para una línea NUEVA por su COSTO TOTAL ACTUALIZADO (inversión inicial + valor presente del costo de las pérdidas durante "anios"); gana la de menor costo total. ` +
+      "El dato de partida es potencia_mw, potencia_mva o corriente_a (uno solo), igual que en Pérdidas. Cada opción de \"opciones\" define su conductor (red+material+calibre del catálogo, o resistencia manual), sus conductores por fase y su costo_conductor_km (precio de UN conductor por km); costo_instalacion_km es opcional (sin él solo se considera el conductor). " +
+      "No incluye valor residual, operación y mantenimiento, impuestos ni otras condiciones técnicas (regulación, cortocircuito): esas se validan con las otras calculadoras.",
+  campos: [
+    ...CAMPOS_LINEA,
+    N("factor_carga", "Factor de carga Fc", { req: true, min: 0, max: 1 }),
+    N("crecimiento_demanda_pct", "Crecimiento anual de la demanda a partir del año 1; con 0 no crece (uso típico en líneas de una planta de generación ya dimensionada, p. ej. una granja solar, que no va a superar su capacidad instalada)", {
+      e: "Crecimiento anual de la demanda",
+      min: 0,
+      max: 100,
+      defecto: 0,
+    }),
+    I("anios", "Años de análisis (horizonte del estudio; la inversión se paga al inicio del proyecto)", { e: "Años de análisis", min: 1, max: 60, req: true }),
+    N("tasa_descuento_pct", "Tasa de descuento nominal anual, con la que se trae a valor de hoy el costo de las pérdidas", { e: "Tasa de descuento", min: 0, max: 100, req: true }),
+    N("precio_kwh", "Precio de la energía perdida en el año 1 (costo de compra o reconocido, no la tarifa de venta)", { e: "Precio de la energía perdida", u: "$/kWh", min: 0, minExcl: true, req: true }),
+    N("escalada_energia_pct", "Aumento anual del precio de la energía; con 0 no cambia", { e: "Aumento anual del precio", min: 0, max: 100, defecto: 0 }),
+    {
+      n: "opciones",
+      t: "array",
+      d: `Entre ${MIN_OPCIONES_ECONOMICO} y ${MAX_OPCIONES_ECONOMICO} opciones de conductor a comparar`,
+      req: true,
+      itemCampos: [
+        ...CAMPOS_CONDUCTOR,
+        CAMPO_R_MANUAL,
+        CAMPO_POR_FASE,
+        N("costo_conductor_km", "Precio de UN conductor (un hilo) por km; se multiplica por 3 fases, conductores por fase y la longitud de la línea para obtener la inversión", { e: "Costo del conductor", u: "$/km", min: 0, minExcl: true, req: true }),
+        N("costo_instalacion_km", "Costo de instalación por km de línea sin el conductor (postes, aisladores, herrajes, mano de obra, transporte); opcional, suele ser similar entre calibres cercanos", { e: "Costo de instalación", u: "$/km", min: 0 }),
+      ],
+    },
+  ],
+  async calcular(v, extra) {
+    const { modo, potenciaMw } = datoPartida(v);
+    const listaOp = v.opciones ?? [];
+    if (listaOp.length < MIN_OPCIONES_ECONOMICO || listaOp.length > MAX_OPCIONES_ECONOMICO) {
+      throw new ErrorHerramienta(`Indica entre ${MIN_OPCIONES_ECONOMICO} y ${MAX_OPCIONES_ECONOMICO} opciones en "opciones" (recibí ${listaOp.length}).`);
+    }
+    const opciones = [];
+    const etiquetas = [];
+    for (const [i, t] of listaOp.entries()) {
+      if (t.costo_conductor_km === undefined) throw new ErrorHerramienta(`Falta "costo_conductor_km" en la opción ${i + 1}.`);
+      const sub = subNuevo();
+      const { r75, fila } = await resistencia75(t, sub);
+      const porFase = t.conductores_por_fase ?? 1;
+      const costoInstalacionKm = t.costo_instalacion_km ?? 0;
+      if (t.costo_instalacion_km === undefined) sub.notas.push("costo de instalación no indicado: solo se considera el conductor");
+      sub.entradas.push(ent("costo_conductor_km", "Costo del conductor", t.costo_conductor_km, "$/km"));
+      if (t.costo_instalacion_km !== undefined) sub.entradas.push(ent("costo_instalacion_km", "Costo de instalación", t.costo_instalacion_km, "$/km"));
+      if (porFase > 1) sub.entradas.push(ent("conductores_por_fase", "Conductores por fase", porFase));
+      const pre = `Opción ${i + 1} — `;
+      for (const e of sub.entradas) extra.entradas.push({ ...e, clave: `opcion${i + 1}_${e.clave}`, etiqueta: pre + e.etiqueta });
+      extra.supuestos.push(...sub.supuestos.map((x) => pre + x));
+      extra.notas.push(...sub.notas.map((x) => pre + x));
+      const sufijoHaz = porFase > 1 ? ` ×${porFase}` : "";
+      etiquetas.push(fila ? `${fila.tipo ?? fila.material_conductor} ${fila.calibre_awg_kcmil}${sufijoHaz}` : `manual${sufijoHaz}`);
+      opciones.push({ resistenciaOhmKm: r75, numConductoresPorFase: porFase, costoConductorKm: t.costo_conductor_km, costoInstalacionKm });
+    }
+    const base = {
+      tensionLineaKv: v.tension_kv,
+      potenciaActivaMw: potenciaMw,
+      factorPotencia: v.factor_potencia,
+      factorCarga: v.factor_carga,
+      longitudKm: v.longitud_km,
+      crecimientoDemandaPct: v.crecimiento_demanda_pct ?? 0,
+      anios: v.anios,
+      tasaDescuentoPct: v.tasa_descuento_pct,
+      precioKwh: v.precio_kwh,
+      escaladaEnergiaPct: v.escalada_energia_pct ?? 0,
+    };
+    const r = compararOpcionesEconomico(base, opciones);
+    const s = sensibilidadEconomico(base, opciones);
+    extra.notas.push(
+      "No se incluyen valor residual, costos de operación y mantenimiento, impuestos ni otras condiciones técnicas (regulación, cortocircuito): son decisiones de alcance de esta calculadora."
+    );
+
+    const salida = [];
+    if (modo !== "potencia") salida.push(res("potencia_activa_mw", "Potencia activa (año 1)", potenciaMw, "MW"));
+    salida.push(res("corriente_a", "Corriente (año 1)", r.opciones[0].corrienteAnio1, "A"));
+    r.opciones.forEach((o, i) => {
+      const pre = `Opción ${i + 1}`;
+      const compensa =
+        i === r.indiceBase ? "Base (menor inversión)" : o.inversion <= r.opciones[r.indiceBase].inversion ? "—" : o.puntoEquilibrio == null ? `no en ${base.anios} años` : `año ${o.puntoEquilibrio}`;
+      salida.push(
+        res(`opcion${i + 1}_conductor`, `${pre} — Conductor`, etiquetas[i]),
+        res(`opcion${i + 1}_inversion`, `${pre} — Inversión inicial`, o.inversion, "$", 0),
+        res(`opcion${i + 1}_perdidas_pct`, `${pre} — Pérdidas del año 1`, o.perdidasPctAnio1, "%"),
+        res(`opcion${i + 1}_perdidas_mwh`, `${pre} — Pérdidas del año 1`, o.energiaKwhAnio1 / 1000, "MWh", 1),
+        res(`opcion${i + 1}_costo_perdidas_vp`, `${pre} — Costo de las pérdidas (VP)`, o.costoPerdidasVp, "$", 0),
+        res(`opcion${i + 1}_costo_total`, `${pre} — Costo total actualizado`, o.costoTotal, "$", 0),
+        res(`opcion${i + 1}_compensa`, `${pre} — Compensa su mayor inversión`, compensa)
+      );
+    });
+    salida.push(res("opcion_menor_costo", "Opción de menor costo total", `Opción ${r.mejor + 1} — ${etiquetas[r.mejor]}`));
+    salida.push(res("sensibilidad_robusta", "La opción ganadora es la misma en todos los escenarios de sensibilidad", s.cambia ? "No" : "Sí"));
+    return salida;
+  },
+};
+
 // ---------------------------------------------------------------- consultas de catalogo
 
 const T_BUSCAR_CONDUCTOR = {
@@ -1447,7 +1556,7 @@ const VARIOS = [T_CONVERTIR_UNIDADES, T_CONVERTIR_COORDENADAS];
 
 // ---------------------------------------------------------------- registro y ejecucion
 
-const REGISTRO = Object.fromEntries([...CALCULADORAS, T_BUSCAR_CONDUCTOR, T_BUSCAR_TUBERIA, T_BARRIDO, ...DISENO, ...VARIOS].map((t) => [t.nombre, t]));
+const REGISTRO = Object.fromEntries([...CALCULADORAS, T_CONDUCTOR_ECONOMICO, T_BUSCAR_CONDUCTOR, T_BUSCAR_TUBERIA, T_BARRIDO, ...DISENO, ...VARIOS].map((t) => [t.nombre, t]));
 
 // Cada agente elige cuales herramientas puede usar. Una herramienta con `opcional: true` no forma parte de las del
 // agente estandar (queda desmarcada hasta que un agente propio la active); `grupo` la ubica en el formulario.
