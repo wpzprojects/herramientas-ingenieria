@@ -125,6 +125,7 @@ await seccion("vista: tarjetas de tubería y conductores", async () => {
   const titulos = $$(".form-section-title").map(texto);
   ok($$(".card.form-section").length === 2 && titulos[0].includes("Tubería") && titulos[1].includes("Conductores tipo 1") && !titulos[1].includes("—"), `dos tarjetas: «${titulos.join("» y «")}»`);
   ok($$(".form-section-title").every((t) => t.querySelector("svg.icon") && t.parentElement.classList.contains("card")), "cada título lleva su icono y va dentro de su tarjeta");
+  ok($$(".grupo-block > .form-section-title > svg.icon").filter((i) => !i.closest(".btn-plegar")).every((i) => i.querySelectorAll("g circle").length === 7 && i.querySelectorAll(":scope > circle").length === 1), "las tarjetas «Conductores tipo N» llevan el icono de conductor cableado (aro con 7 hilos)");
   { const ico = $(".form-section-title svg.icon"), rb = ico.getBoundingClientRect(), otro = $$(".form-section-title svg.icon")[1].getBoundingClientRect();
     ok(getComputedStyle(ico).transform === "matrix(0, -1, 1, 0, 0, 0)" && getComputedStyle($$(".form-section-title svg.icon")[1]).transform === "none", "el icono de «Tubería» está girado 90° en sentido contrario a las manecillas (y el de conductores no)");
     ok(Math.abs(rb.width - otro.width) < 0.5 && Math.abs(rb.height - otro.height) < 0.5, "el giro no cambia el tamaño del icono ni la altura de la barra"); }

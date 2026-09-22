@@ -124,6 +124,9 @@ const shapes = {
   // Ocupacion de ductos: el ducto (circulo grande) con una terna de conductores (3 circulos macizos) en el fondo. Esquema del usuario. Sin <g stroke-width="2">: el circulo grande usa el trazo base (1.6), tan delgado como Perdidas o Regulacion (2026-09-21, pedido del usuario).
   ductoTerna:
     '<circle cx="12" cy="12" r="9.5"/><g fill="currentColor" stroke="none"><circle cx="9" cy="17" r="2.4"/><circle cx="15" cy="17" r="2.4"/><circle cx="12" cy="11.6" r="2.4"/></g>',
+  // Conductor cableado en corte: aro con 7 hilos macizos (centro + 6). Propio, en el estilo de ductoTerna; trazo base (1.6). Prueba en Ocupacion de ductos (2026-09-21).
+  conductorCableado:
+    '<circle cx="12" cy="12" r="9.5"/><g fill="currentColor" stroke="none"><circle cx="12" cy="12" r="1.9"/><circle cx="16.3" cy="12" r="1.9"/><circle cx="14.15" cy="15.72" r="1.9"/><circle cx="9.85" cy="15.72" r="1.9"/><circle cx="7.7" cy="12" r="1.9"/><circle cx="9.85" cy="8.28" r="1.9"/><circle cx="14.15" cy="8.28" r="1.9"/></g>',
   // Letras «Ab» (icono de Codificacion de entregables): una A mayuscula y una b minuscula, con el trazo de Tabler.
   idLetras:
     '<g stroke-width="2"><path d="M3.5 18 8 6l4.5 12M5.2 14h5.6"/><path d="M15.5 6v12M15.5 12h1.5a3 3 0 0 1 0 6h-1.5"/></g>',

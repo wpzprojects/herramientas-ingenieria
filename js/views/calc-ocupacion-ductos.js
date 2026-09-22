@@ -191,7 +191,7 @@ export async function render(container) {
     cont.innerHTML = `
       <div class="card tarjeta-borde form-section grupo-block">
         <div class="form-section-title">
-          ${icon("plugConnected")} <span class="grupo-titulo">Conductores tipo 1</span>
+          ${icon("conductorCableado")} <span class="grupo-titulo">Conductores tipo 1</span>
           <button type="button" class="btn btn-ghost btn-tramo-quitar" hidden>${icon("close")} Quitar</button>
         </div>
         <div class="grid-2">

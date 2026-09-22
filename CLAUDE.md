@@ -50,7 +50,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   validación con valores de 3 decimales (p. ej. 0.396).
 
 - Ocupación de ductos (2026-09-19) sigue el mismo patrón (tarjetas, iconos, relleno, info «i», reporte y fórmulas KaTeX). Dos tarjetas:
-  «Tubería» (icono `cylinder` girado 90° en sentido antihorario con la clase `.icono-tubo`, 2026-09-21; tipo, diámetro nominal y diámetro interno del catálogo con «Manual») y una tarjeta «Conductores tipo N» (2026-09-21: sin guión, en plural; igual en el reporte de texto: «Conductores tipo N:»)
+  «Tubería» (icono `cylinder` girado 90° en sentido antihorario con la clase `.icono-tubo`, 2026-09-21; tipo, diámetro nominal y diámetro interno del catálogo con «Manual») y una tarjeta «Conductores tipo N» (icono `conductorCableado`: aro con 7 hilos macizos, trazo base; PRUEBA solo en esta calculadora, 2026-09-21: las demás siguen con `plugConnected` hasta que el usuario decida; 2026-09-21: sin guión, en plural; igual en el reporte de texto: «Conductores tipo N:»)
   por cada TIPO de conductor (icono `plugConnected`; «Agregar tipo de conductor» / «Quitar»: p. ej. una terna de un calibre y otra de
   otro). Cada tipo tiene número de conductores (1–9) y diámetro con casilla «Catálogo» a su derecha: al marcarla salen Nivel de
   tensión → Nivel de aislamiento (solo 15/35 kV; en 17.5/36 kV queda «No aplica») → Material → Pantalla → Calibre del catálogo
