@@ -10,6 +10,9 @@ import { compararOpciones, sensibilidad } from "../calc/conductor-economico.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
+import { guardarEstado, leerEstado } from "../util/persistencia-calculo.js";
+
+const RUTA = "/calculos/conductor-economico";
 
 const MIN_OPCIONES = 2;
 const MAX_OPCIONES = 5;
@@ -381,6 +384,35 @@ export async function render(container) {
         instalacionIndicada: fCostoInst.value.trim() !== "",
         ampacidadA: selRed.value === "Aerea" && fila ? fila.corriente_75c_a ?? null : null,
       }),
+      /** Foto cruda para guardarla y restaurarla despues. */
+      bruto: () => ({
+        red: selRed.value,
+        material: selMaterial.value,
+        calibre: selCalibre.value,
+        manual: chkResistencia.checked,
+        resistencia: fResistencia.value,
+        n: fN.value,
+        costoCond: fCostoCond.value,
+        costoInst: fCostoInst.value,
+      }),
+      /** Aplica una foto de `bruto()`, disparando los "change" en cascada (red -> material -> calibre). */
+      aplicarBruto: (d) => {
+        if (!d) return;
+        selRed.value = d.red;
+        selRed.dispatchEvent(new Event("change"));
+        selMaterial.value = d.material;
+        selMaterial.dispatchEvent(new Event("change"));
+        if (d.manual) {
+          chkResistencia.checked = true;
+          chkResistencia.dispatchEvent(new Event("change"));
+        }
+        selCalibre.value = d.calibre;
+        selCalibre.dispatchEvent(new Event("change"));
+        if (d.manual) fResistencia.value = d.resistencia;
+        fN.value = d.n;
+        fCostoCond.value = d.costoCond;
+        fCostoInst.value = d.costoInst;
+      },
     };
   }
 
@@ -420,6 +452,48 @@ export async function render(container) {
     actualizarOpciones();
   }
   for (let i = 0; i < MIN_OPCIONES; i++) agregarOpcion();
+
+  // ---------- restaurar lo que habia si se volvio de otra seccion (no sobrevive a un recargue) ----------
+  const guardado = leerEstado(RUTA);
+  if (guardado) {
+    fTension.value = guardado.tension;
+    selModo.value = guardado.modo;
+    aplicarModo();
+    fPotencia.value = guardado.potencia;
+    fAparente.value = guardado.aparente;
+    fCorriente.value = guardado.corriente;
+    fFp.value = guardado.fp;
+    fFc.value = guardado.fc;
+    fLongitud.value = guardado.longitud;
+    fCrecimiento.value = guardado.crecimiento;
+    fAnios.value = guardado.anios;
+    fTasa.value = guardado.tasa;
+    fPrecio.value = guardado.precio;
+    fEscalada.value = guardado.escalada;
+    for (let i = opciones.length; i < guardado.opciones.length; i++) agregarOpcion();
+    opciones.forEach((o, i) => o.aplicarBruto(guardado.opciones[i]));
+  }
+
+  // El router llama a esto justo antes de salir de la pantalla (ver js/router.js), para que lo
+  // escrito no se pierda al volver de otra sección; una recarga de la app si lo reinicia.
+  function antesDeSalir() {
+    guardarEstado(RUTA, {
+      tension: fTension.value,
+      modo: selModo.value,
+      potencia: fPotencia.value,
+      aparente: fAparente.value,
+      corriente: fCorriente.value,
+      fp: fFp.value,
+      fc: fFc.value,
+      longitud: fLongitud.value,
+      crecimiento: fCrecimiento.value,
+      anios: fAnios.value,
+      tasa: fTasa.value,
+      precio: fPrecio.value,
+      escalada: fEscalada.value,
+      opciones: opciones.map((o) => o.bruto()),
+    });
+  }
 
   // ---------- calculo ----------
   form.addEventListener("submit", (e) => {
@@ -629,5 +703,7 @@ export async function render(container) {
     activarPestanas(wrap, { grupos: FORMULAS_TEX, etiquetas: FORMULAS_ETIQUETAS, nota: FORMULAS_NOTA });
     wrap.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
+
+  return antesDeSalir;
 }
 

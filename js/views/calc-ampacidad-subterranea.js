@@ -11,6 +11,9 @@ import { calcularPantalla } from "../calc/ampacidad-subterranea-pantalla.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
+import { guardarEstado, leerEstado } from "../util/persistencia-calculo.js";
+
+const RUTA = "/calculos/ampacidad-subterranea";
 
 const ORDEN_CALIBRES = ["1/0 AWG", "2/0 AWG", "3/0 AWG", "4/0 AWG", "250 kcmil", "350 kcmil", "500 kcmil", "750 kcmil", "1000 kcmil"];
 
@@ -340,6 +343,55 @@ export async function render(container) {
   actualizarNivelPct();
   actualizarDisponibilidad();
 
+  // ---------- restaurar lo que habia si se volvio de otra seccion (no sobrevive a un recargue) ----------
+  const guardado = leerEstado(RUTA);
+  if (guardado) {
+    selTipoCable.value = guardado.tipoCable;
+    selTipoCable.dispatchEvent(new Event("change"));
+    selMaterial.value = guardado.material;
+    selCalibre.value = guardado.calibre;
+    selPantalla.value = guardado.pantalla;
+    selNivelKv.value = guardado.nivelKv;
+    selNivelKv.dispatchEvent(new Event("change"));
+    selNivelPct.value = guardado.nivelPct;
+    selTierra.value = guardado.tierra;
+    fTension.value = guardado.tension;
+    fFrecuencia.value = guardado.frecuencia;
+    fTempMax.value = guardado.tempMax;
+    fTempTerreno.value = guardado.tempTerreno;
+    fRhoSuelo.value = guardado.rhoSuelo;
+    fUDucto.value = guardado.uDucto;
+    fSepFases.value = guardado.sepFases;
+    fNCircuitos.value = guardado.nCircuitos;
+    fNCircuitos.dispatchEvent(new Event("input"));
+    fProfundidad.value = guardado.profundidad;
+    fSepDuctos.value = guardado.sepDuctos;
+  }
+
+  // El router llama a esto justo antes de salir de la pantalla (ver js/router.js), para que lo
+  // escrito no se pierda al volver de otra sección; una recarga de la app si lo reinicia.
+  function antesDeSalir() {
+    guardarEstado(RUTA, {
+      tipoCable: selTipoCable.value,
+      material: selMaterial.value,
+      calibre: selCalibre.value,
+      pantalla: selPantalla.value,
+      nivelKv: selNivelKv.value,
+      nivelPct: selNivelPct.value,
+      tierra: selTierra.value,
+      tension: fTension.value,
+      frecuencia: fFrecuencia.value,
+      tempMax: fTempMax.value,
+      tempTerreno: fTempTerreno.value,
+      rhoSuelo: fRhoSuelo.value,
+      uDucto: fUDucto.value,
+      sepFases: fSepFases.value,
+      nCircuitos: fNCircuitos.value,
+      profundidad: fProfundidad.value,
+      sepDuctos: fSepDuctos.value,
+    });
+  }
+
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     if (!form.reportValidity()) return;
@@ -479,4 +531,6 @@ export async function render(container) {
 
     wrap.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
+
+  return antesDeSalir;
 }

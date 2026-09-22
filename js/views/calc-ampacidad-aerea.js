@@ -9,6 +9,9 @@ import { calcularAmpacidadAerea } from "../calc/ampacidad-aerea.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
+import { guardarEstado, leerEstado } from "../util/persistencia-calculo.js";
+
+const RUTA = "/calculos/ampacidad-aerea";
 
 // Ecuaciones (LaTeX) de la pestaña Fórmulas: las del motor, con las mismas unidades (D en m, temperaturas en °C, R en Ω/m).
 const FORMULAS_TEX = [
@@ -336,6 +339,76 @@ export async function render(container) {
     syncDefaults();
   });
 
+  // ---------- restaurar lo que habia si se volvio de otra seccion (no sobrevive a un recargue) ----------
+  const guardado = leerEstado(RUTA);
+  if (guardado) {
+    selTipo.value = guardado.tipo;
+    selTipo.dispatchEvent(new Event("change"));
+    selCalibre.value = guardado.calibre;
+    selCalibre.dispatchEvent(new Event("change"));
+    selReferencia.value = guardado.referencia;
+    selReferencia.dispatchEvent(new Event("change"));
+    if (guardado.manualDiametro) {
+      chkDiametro.checked = true;
+      chkDiametro.dispatchEvent(new Event("change"));
+      fDiametro.value = guardado.diametro;
+    }
+    if (guardado.manualRbajo) {
+      chkRbajo.checked = true;
+      chkRbajo.dispatchEvent(new Event("change"));
+      fRbajo.value = guardado.rbajo;
+    }
+    if (guardado.manualRalto) {
+      chkRalto.checked = true;
+      chkRalto.dispatchEvent(new Event("change"));
+      fRalto.value = guardado.ralto;
+    }
+    fTa.value = guardado.ta;
+    fTc.value = guardado.tc;
+    fVw.value = guardado.vw;
+    fAngulo.value = guardado.angulo;
+    fElevacion.value = guardado.elevacion;
+    fEpsilon.value = guardado.epsilon;
+    fAlfa.value = guardado.alfa;
+    if (guardado.manualQse) {
+      chkQse.checked = true;
+      chkQse.dispatchEvent(new Event("change"));
+      fQse.value = guardado.qse;
+    }
+    if (guardado.manualTheta) {
+      chkTheta.checked = true;
+      chkTheta.dispatchEvent(new Event("change"));
+      fTheta.value = guardado.theta;
+    }
+  }
+
+  // El router llama a esto justo antes de salir de la pantalla (ver js/router.js), para que lo
+  // escrito no se pierda al volver de otra sección; una recarga de la app si lo reinicia.
+  function antesDeSalir() {
+    guardarEstado(RUTA, {
+      tipo: selTipo.value,
+      calibre: selCalibre.value,
+      referencia: selReferencia.value,
+      manualDiametro: chkDiametro.checked,
+      diametro: fDiametro.value,
+      manualRbajo: chkRbajo.checked,
+      rbajo: fRbajo.value,
+      manualRalto: chkRalto.checked,
+      ralto: fRalto.value,
+      ta: fTa.value,
+      tc: fTc.value,
+      vw: fVw.value,
+      angulo: fAngulo.value,
+      elevacion: fElevacion.value,
+      epsilon: fEpsilon.value,
+      alfa: fAlfa.value,
+      manualQse: chkQse.checked,
+      qse: fQse.value,
+      manualTheta: chkTheta.checked,
+      theta: fTheta.value,
+    });
+  }
+
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     if (!form.reportValidity()) return;
@@ -421,4 +494,6 @@ export async function render(container) {
 
     wrap.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
+
+  return antesDeSalir;
 }

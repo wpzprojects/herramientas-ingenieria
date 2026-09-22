@@ -17,6 +17,9 @@ import {
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
+import { guardarEstado, leerEstado } from "../util/persistencia-calculo.js";
+
+const RUTA = "/calculos/regulacion";
 
 // Ecuaciones (LaTeX) de la pestaña Fórmulas: replican lo que hace el motor, con las mismas unidades
 // (MW, kV, Ω/km, km, mm para el radio medio geométrico y m para las distancias).
@@ -365,6 +368,49 @@ export async function render(container) {
         dacM: parseFloat(fDac.value),
         dbcM: parseFloat(fDbc.value),
       }),
+      /** Foto cruda para guardarla y restaurarla despues. */
+      bruto: () => ({
+        red: selRed.value,
+        material: selMaterial.value,
+        calibre: selCalibre.value,
+        manualR: chkResistencia.checked,
+        resistencia: fResistencia.value,
+        manualRmg: chkRmg.checked,
+        rmg: fRmg.value,
+        longitud: fLongitud.value,
+        n: fN.value,
+        sephaz: fSepHaz.value,
+        dab: fDab.value,
+        dac: fDac.value,
+        dbc: fDbc.value,
+      }),
+      /** Aplica una foto de `bruto()`, disparando los "change"/"input" en cascada. */
+      aplicarBruto: (d) => {
+        if (!d) return;
+        selRed.value = d.red;
+        selRed.dispatchEvent(new Event("change"));
+        selMaterial.value = d.material;
+        selMaterial.dispatchEvent(new Event("change"));
+        if (d.manualR) {
+          chkResistencia.checked = true;
+          chkResistencia.dispatchEvent(new Event("change"));
+        }
+        if (d.manualRmg) {
+          chkRmg.checked = true;
+          chkRmg.dispatchEvent(new Event("change"));
+        }
+        selCalibre.value = d.calibre;
+        selCalibre.dispatchEvent(new Event("change"));
+        if (d.manualR) fResistencia.value = d.resistencia;
+        if (d.manualRmg) fRmg.value = d.rmg;
+        fLongitud.value = d.longitud;
+        fN.value = d.n;
+        fN.dispatchEvent(new Event("input"));
+        fSepHaz.value = d.sephaz;
+        fDab.value = d.dab;
+        fDac.value = d.dac;
+        fDbc.value = d.dbc;
+      },
     };
   }
 
@@ -403,6 +449,20 @@ export async function render(container) {
   }
   agregarTramo();
 
+  // ---------- restaurar lo que habia si se volvio de otra seccion (no sobrevive a un recargue) ----------
+  const guardado = leerEstado(RUTA);
+  if (guardado) {
+    fTension.value = guardado.tension;
+    selModo.value = guardado.modo;
+    aplicarModo();
+    fPotencia.value = guardado.potencia;
+    fAparente.value = guardado.aparente;
+    fCorriente.value = guardado.corriente;
+    fFp.value = guardado.fp;
+    for (let i = 1; i < guardado.tramos.length; i++) agregarTramo();
+    tramos.forEach((t, i) => t.aplicarBruto(guardado.tramos[i]));
+  }
+
   // ---------- calculo ----------
   form.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -427,6 +487,20 @@ export async function render(container) {
     const estados = tramos.map((t) => t.estado());
     renderResultado(calcularRegulacionTramos(base, estados), base, estados, { modo, datoPartida });
   });
+
+  // El router llama a esto justo antes de salir de la pantalla (ver js/router.js), para que lo
+  // escrito no se pierda al volver de otra sección; una recarga de la app si lo reinicia.
+  function antesDeSalir() {
+    guardarEstado(RUTA, {
+      tension: fTension.value,
+      modo: selModo.value,
+      potencia: fPotencia.value,
+      aparente: fAparente.value,
+      corriente: fCorriente.value,
+      fp: fFp.value,
+      tramos: tramos.map((t) => t.bruto()),
+    });
+  }
 
   /** Calibres del mismo material que el tramo, con la caida de tension que tendria cada uno (un calibre = su primera referencia). */
   function candidatosCalibre(base, estado) {
@@ -592,4 +666,6 @@ export async function render(container) {
 
     wrap.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
+
+  return antesDeSalir;
 }

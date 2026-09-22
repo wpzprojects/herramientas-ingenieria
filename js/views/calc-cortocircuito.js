@@ -11,6 +11,9 @@ import { compararCalibres } from "../calc/cortocircuito-calibre.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
+import { guardarEstado, leerEstado } from "../util/persistencia-calculo.js";
+
+const RUTA = "/calculos/cortocircuito";
 
 // Ecuaciones (LaTeX) de la pestaña Fórmulas: las del motor, con las mismas unidades (mm², °C, s y kA).
 const FORMULAS_TEX = [
@@ -244,6 +247,52 @@ export async function render(container) {
   poblarMaterial();
   fTop.value = defaultTop();
 
+  // ---------- restaurar lo que habia si se volvio de otra seccion (no sobrevive a un recargue) ----------
+  const guardado = leerEstado(RUTA);
+  if (guardado) {
+    selRed.value = guardado.red;
+    selRed.dispatchEvent(new Event("change"));
+    selMaterial.value = guardado.material;
+    selMaterial.dispatchEvent(new Event("change"));
+    selCalibre.value = guardado.calibre;
+    selCalibre.dispatchEvent(new Event("change"));
+    if (guardado.manualArea) {
+      chkArea.checked = true;
+      chkArea.dispatchEvent(new Event("change"));
+      fArea.value = guardado.area;
+    }
+    if (guardado.manualTop) {
+      chkTop.checked = true;
+      chkTop.dispatchEvent(new Event("change"));
+      fTop.value = guardado.top;
+    }
+    if (guardado.manualTfalla) {
+      chkTfalla.checked = true;
+      chkTfalla.dispatchEvent(new Event("change"));
+      fTfalla.value = guardado.tfalla;
+    }
+    fTiempo.value = guardado.tiempo;
+    fObjetivo.value = guardado.objetivo;
+  }
+
+  // El router llama a esto justo antes de salir de la pantalla (ver js/router.js), para que lo
+  // escrito no se pierda al volver de otra sección; una recarga de la app si lo reinicia.
+  function antesDeSalir() {
+    guardarEstado(RUTA, {
+      red: selRed.value,
+      material: selMaterial.value,
+      calibre: selCalibre.value,
+      manualArea: chkArea.checked,
+      area: fArea.value,
+      manualTop: chkTop.checked,
+      top: fTop.value,
+      manualTfalla: chkTfalla.checked,
+      tfalla: fTfalla.value,
+      tiempo: fTiempo.value,
+      objetivo: fObjetivo.value,
+    });
+  }
+
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     if (!form.reportValidity()) return;
@@ -389,4 +438,6 @@ export async function render(container) {
 
     wrap.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
+
+  return antesDeSalir;
 }

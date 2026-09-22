@@ -11,6 +11,9 @@ import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } fr
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
 import { donaOcupacionSvg, corteDuctoSvg } from "../util/graficos.js";
+import { guardarEstado, leerEstado } from "../util/persistencia-calculo.js";
+
+const RUTA = "/calculos/ocupacion-ductos";
 
 // Ecuaciones (LaTeX) de la pestaña Fórmulas.
 const FORMULAS_TEX = [
@@ -315,6 +318,34 @@ export async function render(container) {
         diametroMm: parseFloat(fDiametro.value),
         catalogo: chkCatalogo.checked ? { tension: selTension.value, aislamiento: selAislamiento.value, material: selMaterial.value, pantalla: selPantalla.value, calibre: selCalibre.value } : null,
       }),
+      /** Foto cruda para guardarla y restaurarla despues. */
+      bruto: () => ({
+        n: fN.value,
+        diametro: fDiametro.value,
+        catalogo: chkCatalogo.checked,
+        tension: selTension.value,
+        aislamiento: selAislamiento.value,
+        material: selMaterial.value,
+        pantalla: selPantalla.value,
+        calibre: selCalibre.value,
+      }),
+      /** Aplica una foto de `bruto()`. */
+      aplicarBruto: (d) => {
+        if (!d) return;
+        fN.value = d.n;
+        if (d.catalogo) {
+          chkCatalogo.checked = true;
+          chkCatalogo.dispatchEvent(new Event("change"));
+          selTension.value = d.tension;
+          selAislamiento.value = d.aislamiento;
+          selMaterial.value = d.material;
+          selPantalla.value = d.pantalla;
+          selCalibre.value = d.calibre;
+          selPantalla.dispatchEvent(new Event("change")); // recalcula la cascada conservando estos valores y sincroniza el diametro
+        } else {
+          fDiametro.value = d.diametro;
+        }
+      },
     };
   }
 
@@ -353,6 +384,22 @@ export async function render(container) {
   }
   agregarGrupo();
 
+  // ---------- restaurar lo que habia si se volvio de otra seccion (no sobrevive a un recargue) ----------
+  const guardado = leerEstado(RUTA);
+  if (guardado) {
+    selTipo.value = guardado.tipo;
+    selTipo.dispatchEvent(new Event("change"));
+    selNominal.value = guardado.nominal;
+    selNominal.dispatchEvent(new Event("change"));
+    if (guardado.manual) {
+      chkManual.checked = true;
+      chkManual.dispatchEvent(new Event("change"));
+      fInterno.value = guardado.interno;
+    }
+    for (let i = 1; i < guardado.grupos.length; i++) agregarGrupo();
+    grupos.forEach((g, i) => g.aplicarBruto(guardado.grupos[i]));
+  }
+
   // ---------- calculo ----------
   form.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -376,6 +423,18 @@ export async function render(container) {
     const data = calcularOcupacionGrupos(diametroTuboMm, estados.map((s) => ({ cantidad: s.cantidad, diametroMm: s.diametroMm })));
     renderResultado(data, { diametroTuboMm, tubo, estados });
   });
+
+  // El router llama a esto justo antes de salir de la pantalla (ver js/router.js), para que lo
+  // escrito no se pierda al volver de otra sección; una recarga de la app si lo reinicia.
+  function antesDeSalir() {
+    guardarEstado(RUTA, {
+      tipo: selTipo.value,
+      nominal: selNominal.value,
+      manual: chkManual.checked,
+      interno: fInterno.value,
+      grupos: grupos.map((g) => g.bruto()),
+    });
+  }
 
   function renderError(msg) {
     const wrap = container.querySelector("#resultado-wrap");
@@ -478,4 +537,6 @@ export async function render(container) {
 
     wrap.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
+
+  return antesDeSalir;
 }
