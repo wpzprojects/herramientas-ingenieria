@@ -202,7 +202,8 @@ for (const [nombre, modulo, texto_boton] of [["Pérdidas", "calc-perdidas", "Agr
     const ra = agregar.getBoundingClientRect(), rc = calcular.getBoundingClientRect();
     ok(texto(agregar) === texto_boton && $$(".btn-agregar-tramo").length === 1, `un solo botón «${texto_boton}»`);
     ok(!agregar.closest(".card") && !$(".fila-agregar") && agregar.parentElement === calcular.parentElement && agregar.previousElementSibling === calcular, "va en la fila de «Calcular», justo después, y ninguna tarjeta lo contiene");
-    ok(ra.left >= rc.right && ra.left - rc.right <= 16 && Math.abs(ra.top - rc.top) <= 1 && Math.abs(ra.height - rc.height) <= 1, `queda a la derecha de «Calcular», a la misma altura y del mismo alto (${Math.round(ra.left - rc.right)} px de separación)`);
+    const rFila = calcular.parentElement.getBoundingClientRect();
+    ok(ra.left > rc.right && Math.abs(ra.right - rFila.right) <= 1 && Math.abs(ra.top - rc.top) <= 1 && Math.abs(ra.height - rc.height) <= 1, `queda justificado a la derecha de la línea, a la misma altura y del mismo alto que «Calcular» (${Math.round(rFila.right - ra.right)} px del borde)`);
     const tarjetas = $$(".form-section");
     const ultima = tarjetas.at(-1);
     boton(ultima).click();

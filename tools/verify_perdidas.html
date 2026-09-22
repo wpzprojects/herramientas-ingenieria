@@ -202,7 +202,8 @@ await seccion("vista: aspecto de las tarjetas", async () => {
   const ra = agregar.getBoundingClientRect(), rcalc = calcular.getBoundingClientRect();
   const finCard = Math.max(...$$(".tramo-block").map((c) => c.getBoundingClientRect().bottom));
   ok(!agregar.closest(".card") && agregar.parentElement === calcular.parentElement && agregar.previousElementSibling === calcular, "«Agregar tramo» va en la misma fila que «Calcular», justo después (a su derecha) y fuera de las tarjetas");
-  ok(ra.left >= rcalc.right && ra.left - rcalc.right <= 16 && Math.abs(ra.top - rcalc.top) <= 1 && Math.abs(ra.height - rcalc.height) <= 1, `«Agregar tramo» mide lo mismo que «Calcular» y queda a su derecha (${Math.round(ra.left - rcalc.right)} px de separación, alto ${Math.round(ra.height)} y ${Math.round(rcalc.height)})`);
+  const rFila = calcular.parentElement.getBoundingClientRect();
+  ok(ra.left > rcalc.right && Math.abs(ra.right - rFila.right) <= 1 && Math.abs(ra.top - rcalc.top) <= 1 && Math.abs(ra.height - rcalc.height) <= 1, `«Agregar tramo» mide lo mismo que «Calcular» y queda justificado a la derecha de la línea (${Math.round(rFila.right - ra.right)} px del borde derecho, alto ${Math.round(ra.height)} y ${Math.round(rcalc.height)})`);
   ok(ra.top > finCard, "y queda debajo de la última tarjeta");
 });
 

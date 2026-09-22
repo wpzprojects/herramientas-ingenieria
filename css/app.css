@@ -399,6 +399,8 @@ input:disabled, select:disabled { opacity: 0.55; }
   .form-section :is(.grid-2, .grid-3).ultima > .field:not(:last-child) { margin-bottom: var(--space-4); }
 }
 /* `.btn.x` (no solo `.x`): la regla general `.btn` esta mas abajo en este archivo y, con la misma especificidad, ganaria */
+/* «Agregar tramo/opcion/tipo» va en la fila de «Calcular», justificado a la DERECHA de esa linea (prueba pedida por el usuario; alternativa: a la derecha de «Calcular», sin `margin-left: auto`) */
+.btn.btn-agregar-tramo { margin-left: auto; }
 .btn.btn-tramo-quitar { margin-left: auto; padding: 2px 8px; font-size: 0.72rem; text-transform: none; letter-spacing: normal; }
 .input-with-toggle { display: flex; align-items: center; gap: var(--space-3); }
 .input-with-toggle input[type="number"] { flex: 1 1 auto; min-width: 0; }
