@@ -197,7 +197,7 @@ export async function render(container) {
         <div class="form-section-title">${icon("coin")} Supuestos económicos</div>
         <div class="grid-2">
           <div class="field">
-            <label for="f-anios" data-info="Horizonte de tiempo del análisis, o vida útil esperada del proyecto. La inversión se paga al inicio del proyecto; el año 1 es el primer año de operación (ahí arrancan la demanda, el precio de la energía y las pérdidas), y así sigue hasta el año N.">Años de análisis</label>
+            <label for="f-anios" data-info="Horizonte de tiempo del análisis, o vida útil esperada del proyecto. La inversión se paga de una sola vez al inicio del proyecto; las pérdidas se calculan año por año durante todo este período a partir del año 1.">Años de análisis</label>
             <input type="number" id="f-anios" min="1" max="60" step="1" value="25" required>
           </div>
           <div class="field">
