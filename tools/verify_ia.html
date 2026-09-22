@@ -940,6 +940,23 @@ await seccion("analisis: bucle con herramientas (Gemini simulado)", async () => 
   const r2 = await analisis.ejecutarTurno({ conv: conv2, texto: "x", clave: "k", ajustes: { ...ajustes, maxRondas: 2 }, ctx: ctxNuevo() });
   ok(r2.truncado && r2.texto === "Cierre." && modos.at(-1) === "NONE" && modos.length === 3, `agota rondas y fuerza cierre (${modos.join(",")})`);
 
+  // calculos agotados (no las rondas) -> queda marcado aunque el modelo conteste sin mas llamadas
+  const conv4 = { contenidos: [] };
+  let n4 = 0;
+  gemini.usarMock(async () => {
+    n4++;
+    if (n4 === 1) {
+      return { candidates: [{ content: { role: "model", parts: [
+        { functionCall: { name: "calcular_perdidas", args: { ...LINEA, factor_carga: 0.5, resistencia_ohm_km: 0.3 } } },
+        { functionCall: { name: "calcular_perdidas", args: { ...LINEA, factor_carga: 0.9, resistencia_ohm_km: 0.3 } } },
+      ] } }] };
+    }
+    return { candidates: [{ content: { role: "model", parts: [{ text: "Resumen con lo obtenido." }] } }] };
+  });
+  const ctx4 = ctxNuevo();
+  const r4 = await analisis.ejecutarTurno({ conv: conv4, texto: "y", clave: "k", ajustes: { ...ajustes, maxCalculos: 1 }, ctx: ctx4 });
+  ok(r4.presupuestoAgotado === true && !r4.truncado && r4.texto === "Resumen con lo obtenido.", "se acaban los cálculos (no las rondas): queda marcado presupuestoAgotado");
+
   // error de red -> se revierte el turno
   const conv3 = { contenidos: [{ role: "user", parts: [{ text: "previo" }] }, { role: "model", parts: [{ text: "ok" }] }] };
   const ctx3 = ctxNuevo();

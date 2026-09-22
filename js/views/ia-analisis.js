@@ -310,8 +310,10 @@ export async function render(container) {
       if (esReporte) {
         conv.reporte = r.texto;
         textoVisible = "Reporte generado. Consúltalo en **Reporte de escenarios**, más abajo: puedes copiarlo, descargarlo o imprimirlo.";
+      } else if (r.presupuestoAgotado) {
+        textoVisible += "\n\n> Se alcanzó el límite de cálculos por pregunta (Configuración → Cálculos máximos); puedes continuar con una nueva pregunta.";
       } else if (r.truncado) {
-        textoVisible += "\n\n> Se alcanzó el límite de rondas de cálculo; puedes continuar con una nueva pregunta.";
+        textoVisible += "\n\n> Se alcanzó el límite de rondas de cálculo (Configuración → Rondas máximas); puedes continuar con una nueva pregunta.";
       }
       const msg = { rol: "model", texto: textoVisible, herramientas: r.herramientas, ...(esReporte ? { sinCopia: true } : {}) };
       conv.mensajes.push(msg);

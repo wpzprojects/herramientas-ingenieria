@@ -47,13 +47,14 @@ No ejecutes cálculos nuevos salvo que sea indispensable. No inventes datos ni l
  * @param {string} [o.sistema] - prompt de sistema del agente activo (por defecto SISTEMA_ANALISIS)
  * @param {string[]} [o.permitidas] - nombres de las herramientas que el agente puede usar (por defecto, las del agente estándar)
  * @param {(e:object)=>void} [o.onEvento] - { tipo:"herramienta", nombre, titulo } | { tipo:"herramienta-fin", nombre, titulo, ok }
- * @returns {Promise<{texto:string, herramientas:{titulo:string, ok:boolean}[], truncado:boolean}>}
+ * @returns {Promise<{texto:string, herramientas:{titulo:string, ok:boolean}[], truncado:boolean, presupuestoAgotado:boolean}>}
  */
 export async function ejecutarTurno({ conv, texto, clave, ajustes, ctx, onEvento, sistema = SISTEMA_ANALISIS, permitidas = HERRAMIENTAS_ESTANDAR }) {
   const marcador = conv.contenidos.length;
   const marcadorLog = ctx.log.length;
   const herramientas = [];
   ctx.presupuesto = { max: ajustes.maxCalculos, usado: 0 };
+  ctx.presupuestoAgotado = false;
   ctx.permitidas = permitidas ? new Set(permitidas) : null;
   conv.contenidos.push({ role: "user", parts: [{ text: texto }] });
 
@@ -65,7 +66,7 @@ export async function ejecutarTurno({ conv, texto, clave, ajustes, ctx, onEvento
       conv.contenidos.push(r.content);
 
       if (!r.llamadas.length) {
-        return { texto: r.texto.trim() || "(La IA no devolvió texto.)", herramientas, truncado: false };
+        return { texto: r.texto.trim() || "(La IA no devolvió texto.)", herramientas, truncado: false, presupuestoAgotado: ctx.presupuestoAgotado };
       }
 
       const respuestas = [];
@@ -87,7 +88,7 @@ export async function ejecutarTurno({ conv, texto, clave, ajustes, ctx, onEvento
     });
     const cierre = await generar({ ...base, contenidos: conv.contenidos, modoHerramientas: "NONE" });
     conv.contenidos.push(cierre.content);
-    return { texto: cierre.texto.trim() || "(La IA no devolvió texto.)", herramientas, truncado: true };
+    return { texto: cierre.texto.trim() || "(La IA no devolvió texto.)", herramientas, truncado: true, presupuestoAgotado: ctx.presupuestoAgotado };
   } catch (err) {
     conv.contenidos.length = marcador;
     ctx.log.length = marcadorLog;

@@ -1635,6 +1635,7 @@ const paraModeloResultados = (rs) => rs.map((r) => ({ nombre: r.etiqueta, valor:
 function consumir(ctx, n) {
   const p = ctx.presupuesto;
   if (p.usado + n > p.max) {
+    ctx.presupuestoAgotado = true; // para que ejecutarTurno lo muestre igual que el limite de rondas, sin depender de que la IA lo cuente bien
     throw new ErrorHerramienta(
       `Se alcanzó el límite de cálculos por pregunta (${p.max}; quedan ${Math.max(p.max - p.usado, 0)}). Resume con lo obtenido y sugiere continuar en una nueva pregunta.`
     );
