@@ -204,7 +204,7 @@ export async function render(container) {
             <input type="number" id="f-precio" min="0" step="any" required>
           </div>
           <div class="field">
-            <label for="f-escalada" data-info="Porcentualmente cuánto sube cada año el precio de la energía. Con 0 el precio se mantiene en el tiempo.">Aumento anual del precio (%)</label>
+            <label for="f-escalada" data-info="Porcentualmente cuánto sube cada año el precio de la energía. Con 0 el precio se mantiene en el tiempo. Referencia orientativa: 2-5 % anual (cercano a la inflación esperada).">Aumento anual del precio (%)</label>
             <input type="number" id="f-escalada" min="0" max="100" step="any" value="2.5" required>
           </div>
         </div>
