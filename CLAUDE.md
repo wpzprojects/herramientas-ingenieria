@@ -218,6 +218,10 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Herramientas alineadas con las pantallas (2026-09-19; plan y registro de avance en `docs/plan-ajustes-ia.md`, TERMINADO salvo el reporte de la IA, `js/ai/reporte.js`, que el usuario decidió rediseñar él con otras ideas: no tocarlo sin que lo pida). Pérdidas y regulación aceptan `tramos`, dato de partida (MW/MVA/A) y conductores por fase y devuelven la clasificación Óptimo/Aceptable/Elevado; cortocircuito acepta `corriente_falla_ka`; ocupación acepta `grupos` y da el radio 12D; ampacidad subterránea da la corriente circulante/tensión inducida en la pantalla; unidades usa `data/unidades.json`; coordenadas acepta ~500 códigos EPSG y `puntos`. Los campos de nivel superior siguen valiendo para un solo tramo/tipo/punto. Los motores de `js/calc/` no se tocaron. Detalle en `docs/ia-herramientas.md` (sección 4).
 - Explicación completa de cómo la IA usa las herramientas y de cómo agregar una nueva: `docs/ia-herramientas.md` (léelo antes de
   tocar `tools.js` o los agentes; si cambia ese comportamiento, actualízalo).
+- Bug reportado por el usuario (2026-09-22, corregido): el modelo escribía sintaxis LaTeX (`$...$`, `\text{}`) dentro de
+  respuestas y reportes de Análisis; `js/ai/markdown.js` no la interpreta (no hay integración con KaTeX ahí, solo en la
+  pestaña «Fórmulas» de cada calculadora) y se veía como código crudo. Se agregó la regla 11 al `SISTEMA_ANALISIS`
+  (`js/ai/analisis.js`) pidiendo texto/Unicode plano en vez de LaTeX; no se tocó el renderizador.
 - La IA nunca calcula: las calculadoras se exponen como herramientas (`js/ai/tools.js`) que
   llaman a los motores de `js/calc/*.js`. Si cambia la firma de un motor, actualizar su adaptador
   en `tools.js` y correr `tools/verify_ia.html` (arnés en el navegador, ver su encabezado).
@@ -414,6 +418,11 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   (`detalle-resolucion.js`, es un dato). `.page-title`
   ya trae el margen inferior de una pantalla sin descripción. `sectionMeta.*.subtitle` (`nav.js`)
   se conserva porque la pantalla Ayuda lo muestra en la tarjeta de cada sección.
+- Pantalla Ayuda (2026-09-22, pedido del usuario): cada enlace ya NO repite `item.desc` de `sectionMenus` (frase corta de
+  las tarjetas de menú); lleva su propia descripción de 2-3 renglones (qué hace y para qué sirve), en
+  `AYUDA_DESCRIPCIONES` (`js/views/ayuda.js`, mapa por `hash`) como párrafo `.ayuda-desc` debajo del enlace. Al agregar un
+  ítem nuevo a `sectionMenus` (`nav.js`), agregar también su entrada larga en `AYUDA_DESCRIPCIONES` (si falta, cae de
+  vuelta a `item.desc`).
 - Modo oscuro: `--bg` es `#0f0f0f` (antes `#1e1e1e`, se oscureció ~50% el 2026-09-17).
 - Tema claro (2026-09-18): barra de título de color sólido `#0a5f5e` (sin degradado), `--bg` `#e7eaee`
   y `--bg-sunken` `#dce1e8`; encabezados de tabla en verde (`--thead-bg`/`--thead-fg`) y borde
