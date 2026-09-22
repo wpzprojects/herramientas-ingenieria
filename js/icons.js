@@ -116,11 +116,11 @@ const shapes = {
   gridDots:
     '<g stroke-width="2"><path d="M4 5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M11 5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M18 5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M4 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M18 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M4 19a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M11 19a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M18 19a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/></g>',
   // Ampacidad aerea (torre de celosia: patas, cruceta y diagonales) y subterranea (banco de ductos en corte: superficie y 4 ductos).
-  // Dibujados a mano en el estilo de Tabler (trazo 2); elegidos por el usuario entre varias opciones (2026-09-19).
+  // Dibujados a mano en el estilo de Tabler; elegidos por el usuario entre varias opciones (2026-09-19). Sin <g stroke-width="2">: trazo base (1.6), como Perdidas y Regulacion (2026-09-21, pedido del usuario; `underground` tambien lo usa el catalogo de Tuberias).
   powerTower:
-    '<g stroke-width="2"><path d="M6 22 12 2l6 20"/><path d="M3 7h18"/><path d="M9.3 11l7.5 7"/><path d="M14.7 11l-7.5 7"/></g>',
+    '<path d="M6 22 12 2l6 20"/><path d="M3 7h18"/><path d="M9.3 11l7.5 7"/><path d="M14.7 11l-7.5 7"/>',
   underground:
-    '<g stroke-width="2"><path d="M3 5h18"/><path d="M6.5 12.5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M13.5 12.5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M6.5 19.5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M13.5 19.5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/></g>',
+    '<path d="M3 5h18"/><path d="M6.5 12.5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M13.5 12.5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M6.5 19.5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M13.5 19.5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/>',
   // Ocupacion de ductos: el ducto (circulo grande) con una terna de conductores (3 circulos macizos) en el fondo. Esquema del usuario. Sin <g stroke-width="2">: el circulo grande usa el trazo base (1.6), tan delgado como Perdidas o Regulacion (2026-09-21, pedido del usuario).
   ductoTerna:
     '<circle cx="12" cy="12" r="9.5"/><g fill="currentColor" stroke="none"><circle cx="9" cy="17" r="2.4"/><circle cx="15" cy="17" r="2.4"/><circle cx="12" cy="11.6" r="2.4"/></g>',
