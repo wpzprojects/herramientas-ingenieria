@@ -309,7 +309,7 @@ export async function render(container) {
             <input type="number" id="f-n-${id}" min="1" max="8" step="1" value="1" required>
           </div>
           <div class="field">
-            <label for="f-costo-cond-${id}" data-info="Precio de UN conductor por km. Se multiplica por 3 fases, los conductores por fase y la longitud de la línea.">Costo del conductor ($/km)</label>
+            <label for="f-costo-cond-${id}" data-info="Precio de un solo conductor (un hilo). El cálculo lo multiplica por las 3 fases, por el número de conductores por fase (si hay haz) y por la longitud de la línea para obtener la inversión total.">Costo del conductor ($/km)</label>
             <input type="number" id="f-costo-cond-${id}" min="0" step="any" required>
           </div>
         </div>
