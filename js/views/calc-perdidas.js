@@ -108,7 +108,7 @@ export async function render(container) {
 
   container.innerHTML = `
     <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/calculos">Cálculos</a> <span>/</span> <span>Pérdidas</span></div>
-    <h1 class="page-title">Pérdidas de potencia</h1>
+    <h1 class="page-title">Pérdidas por efecto Joule</h1>
 
     <form id="form-calc" novalidate>
       <div class="card tarjeta-borde form-section">
@@ -477,7 +477,7 @@ export async function render(container) {
       ...resultadosTramos,
       ``,
       `Porcentaje de pérdidas${r.tramos.length > 1 ? " total" : ""}: ${fmtPercent(r.perdidasPct)}`,
-      `Pérdidas de potencia: ${fmt(r.perdidasMw, 3)} MW`,
+      `Pérdidas de potencia por efecto Joule: ${fmt(r.perdidasMw, 3)} MW`,
     ].join("\n");
   }
 
@@ -511,7 +511,7 @@ export async function render(container) {
               </div>
               <div class="result-metric">
                 <div class="value">${fmt(r.perdidasMw, 3)}<span class="unit">MW</span></div>
-                <div class="label">Pérdidas de potencia</div>
+                <div class="label">Pérdidas de potencia por efecto Joule</div>
               </div>
             </div>
             <p class="text-muted text-sm" style="margin: var(--space-3) 0 0;">Referencias de diseño: hasta ${UMBRAL_OPTIMO_PCT}% óptimo · hasta ${UMBRAL_ACEPTABLE_PCT}% aceptable.</p>

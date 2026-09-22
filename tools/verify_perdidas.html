@@ -330,7 +330,7 @@ await seccion("vista: un tramo, cálculo y resultados", async () => {
   ok(new Set(calibres).size === calibres.length, "un calibre no se repite en la comparación (una sola referencia por calibre)");
 
   const rep = texto($('[data-panel="reporte"]'));
-  ok(rep.includes("Dato de partida: Potencia activa") && rep.includes("Tramo 1:") && rep.includes("Conductores por fase: 1") && rep.includes("Pérdidas de potencia:"), "el reporte incluye dato de partida, tramo y pérdidas");
+  ok(rep.includes("Dato de partida: Potencia activa") && rep.includes("Tramo 1:") && rep.includes("Conductores por fase: 1") && rep.includes("Pérdidas de potencia por efecto Joule:"), "el reporte incluye dato de partida, tramo y pérdidas");
 });
 
 await seccion("vista: color de la fila sugerida en cada tema", async () => {
@@ -522,7 +522,7 @@ await seccion("vista: estructura del reporte (se copia y se pega)", async () => 
   ok(etiquetasEn(d).length === 3 && d.filter((x) => LINEA.test(x)).length === 2, "con dos tramos siguen siendo tres etiquetas y dos líneas");
   ok(sd.params.filter((x) => /^Tramo \d:$/.test(x)).join() === "Tramo 1:,Tramo 2:" && sd.res.filter((x) => /^Tramo \d:$/.test(x)).join() === "Tramo 1:,Tramo 2:", "los dos tramos aparecen en los parámetros y en los resultados");
   ok(sd.params.filter((x) => x.includes("Longitud del tramo")).length === 2 && sd.res.filter((x) => x.includes("Porcentaje de pérdidas del tramo")).length === 2, "cada tramo: su longitud en los parámetros y su % de pérdidas en los resultados");
-  ok(tiene(sd.res, "Porcentaje de pérdidas total:") && d.at(-1).startsWith("Pérdidas de potencia:"), "el reporte termina con el % total y las pérdidas de potencia");
+  ok(tiene(sd.res, "Porcentaje de pérdidas total:") && d.at(-1).startsWith("Pérdidas de potencia por efecto Joule:"), "el reporte termina con el % total y las pérdidas de potencia");
   ok(sd.res.indexOf(sd.res.find((x) => x.startsWith("Porcentaje de pérdidas total"))) > sd.res.lastIndexOf("Tramo 2:"), "los totales van después del detalle de los tramos");
 });
 
