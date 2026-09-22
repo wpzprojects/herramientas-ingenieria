@@ -134,7 +134,7 @@ await seccion("vista: tarjetas y dato de partida", async () => {
   ok($$(".form-section-title").every((t) => t.querySelector("svg.icon")), "cada título lleva su icono");
   ok($$(".form-section-title").every((t) => t.parentElement.classList.contains("card")), "los títulos van dentro de tarjetas");
   ok($(".btn-tramo-quitar").hidden, "con un solo tramo no aparece «Quitar»");
-  ok($$(".tramo-block .btn").some((b) => texto(b).includes("Agregar tramo")), "«Agregar tramo» está dentro de la última tarjeta");
+  ok($$(".btn-row .btn").some((b) => texto(b).includes("Agregar tramo")) && !$(".tramo-block .btn-agregar-tramo"), "«Agregar tramo» está junto a «Calcular» (a su derecha), fuera de las tarjetas");
 
   const visible = () => ["#wrap-potencia", "#wrap-aparente", "#wrap-corriente"].filter((s) => !$(s).hidden).join();
   ok(visible() === "#wrap-potencia" && $("#f-potencia").required && !$("#f-aparente").required, "por defecto: potencia activa (MW) visible y obligatoria");
@@ -173,11 +173,9 @@ await seccion("vista: aspecto de las tarjetas", async () => {
       fondo: cs.backgroundColor,
       lineaColor: cs.borderBottomColor,
       lineaGrosor: cs.borderBottomWidth,
-      arribaBoton: card.querySelector(".fila-agregar")?.getBoundingClientRect().top,
       colorIcono: getComputedStyle(svg).color,
-      // fin del contenido: el ultimo elemento de la tarjeta (en la ultima tarjeta es la fila del boton «Agregar tramo»)
+      // fin del contenido: el ultimo elemento de la tarjeta (el «Agregar tramo» ya no esta dentro: va junto a «Calcular»)
       ultimoCampo: card.lastElementChild.getBoundingClientRect().bottom,
-      finCampos: Math.max(...[...card.querySelectorAll(".grid-2.ultima > .field")].map((f) => f.getBoundingClientRect().bottom)),
       tieneBoton: !!card.querySelector(".btn-agregar-tramo"),
     };
   });
@@ -193,18 +191,19 @@ await seccion("vista: aspecto de las tarjetas", async () => {
     if (rTexto) ok(Math.abs(rTexto.top + rTexto.height / 2 - centroBarra) <= 1.5, `«${nombre}»: texto centrado verticalmente en la barra (${(rTexto.top + rTexto.height / 2 - centroBarra).toFixed(1)} px)`);
     const espacio = rc.bottom - m.ultimoCampo;
     ok(espacio >= 8 && espacio <= 14, `«${nombre}»: margen compacto bajo el último elemento (${espacio.toFixed(0)} px)`);
-    if (m.tieneBoton) {
-      const sep = m.arribaBoton - m.finCampos;
-      ok(sep >= 6 && sep <= 12, `«${nombre}»: el botón «Agregar tramo» queda pegado al último campo (${sep.toFixed(0)} px de separación)`);
-    }
+    ok(!m.tieneBoton, `«${nombre}»: el botón «Agregar tramo» ya no está dentro de la tarjeta`);
   }
   ok(new Set(medidas.map((m) => Math.round(m.rt.height))).size === 1, "todas las barras de título tienen la misma altura");
   const iconos = titulos.map((t) => t.querySelector("svg path").getAttribute("d"));
   ok(iconos[0].startsWith("M5 12a7 7 0 1 0 14 0") && iconos[1].startsWith("M7 12l5 5l-1.5 1.5"), "iconos de Tabler: voltímetro (línea) y cable enchufado (conductor)");
   const agregar = $$(".btn-agregar-tramo")[0];
   ok(texto(agregar) === "Agregar tramo", `el botón dice «${texto(agregar)}»`);
-  const pad = getComputedStyle(agregar);
-  ok(parseFloat(pad.paddingLeft) <= 12 && parseFloat(pad.paddingRight) <= 12, `el botón tiene poco margen lateral (${pad.paddingLeft})`);
+  const calcular = $("#form-calc button[type=submit]");
+  const ra = agregar.getBoundingClientRect(), rcalc = calcular.getBoundingClientRect();
+  const finCard = Math.max(...$$(".tramo-block").map((c) => c.getBoundingClientRect().bottom));
+  ok(!agregar.closest(".card") && agregar.parentElement === calcular.parentElement && agregar.previousElementSibling === calcular, "«Agregar tramo» va en la misma fila que «Calcular», justo después (a su derecha) y fuera de las tarjetas");
+  ok(ra.left >= rcalc.right && ra.left - rcalc.right <= 16 && Math.abs(ra.top - rcalc.top) <= 1 && Math.abs(ra.height - rcalc.height) <= 1, `«Agregar tramo» mide lo mismo que «Calcular» y queda a su derecha (${Math.round(ra.left - rcalc.right)} px de separación, alto ${Math.round(ra.height)} y ${Math.round(rcalc.height)})`);
+  ok(ra.top > finCard, "y queda debajo de la última tarjeta");
 });
 
 // La pantalla se prueba tambien dentro de un iframe de ancho fijo: las media queries dependen del ancho de la ventana, no del contenedor.
@@ -392,13 +391,13 @@ await seccion("vista: dato de partida aparente y corriente", async () => {
 });
 
 await seccion("vista: varios tramos", async () => {
-  const agregar = $$(".tramo-block .btn").find((b) => texto(b).includes("Agregar tramo"));
+  const agregar = $(".btn-agregar-tramo");
   agregar.click();
   const bloques = () => $$(".tramo-block");
   ok(bloques().length === 2 && texto($$(".tramo-titulo")[1]) === "Conductor — Tramo 2", "agregar crea la tarjeta «Conductor — Tramo 2»");
   ok($$(".btn-tramo-quitar").every((b) => !b.hidden), "con dos tramos ambos muestran «Quitar»");
   ok(new Set($$(".form-section-title").map((t) => Math.round(t.getBoundingClientRect().height))).size === 1, "al aparecer «Quitar» las barras de título no cambian de altura");
-  ok(bloques()[1].contains(agregar) && !bloques()[0].contains(agregar), "«Agregar tramo» pasa a la última tarjeta");
+  ok(!bloques()[1].contains(agregar) && !bloques()[0].contains(agregar) && agregar.previousElementSibling === $("#form-calc button[type=submit]"), "«Agregar tramo» sigue junto a «Calcular» (no depende de las tarjetas)");
   ok($("#f-calibre-0").value === "4/0" && $("#f-material-0").value === "ACSR", "el primer tramo conserva lo elegido");
 
   elegir("#f-red-1", "Aerea");
@@ -440,7 +439,7 @@ await seccion("vista: varios tramos", async () => {
   $$(".btn-tramo-quitar")[0].click();
   ok(bloques().length === 1 && texto($(".tramo-titulo")) === "Conductor — Tramo 1", "quitar elimina la tarjeta y renumera");
   ok($(".btn-tramo-quitar").hidden, "con un solo tramo vuelve a ocultarse «Quitar»");
-  ok(bloques()[0].contains($$(".tramo-block .btn").find((b) => texto(b).includes("Agregar tramo"))), "«Agregar tramo» sigue en la última tarjeta");
+  ok(!bloques()[0].contains($(".btn-agregar-tramo")) && $(".btn-row .btn-agregar-tramo"), "«Agregar tramo» sigue junto a «Calcular»");
   ok($("#f-calibre-1").value === "1/0" && $("#chk-resistencia-1").checked && $("#f-resistencia-1").value === "0.5", "el tramo que queda conserva calibre y resistencia manual");
 });
 
@@ -496,7 +495,7 @@ await seccion("vista: estructura del reporte (se copia y se pega)", async () => 
   elegir("#f-modo", "potencia");
 
   // --- dos tramos: cada tramo aparece en los parametros (lo que se dio) y en los resultados (lo que se calculó)
-  $$(".tramo-block .btn-agregar-tramo")[0].click();
+  $$(".btn-agregar-tramo")[0].click();
   const nueva = $$(".tramo-block").at(-1);
   const sel = (p) => nueva.querySelector(`select[id^="${p}"]`);
   sel("f-material-").value = "AAAC";

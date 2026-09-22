@@ -325,10 +325,13 @@ export async function render(container) {
   const grupos = [];
   let siguienteId = 0;
 
-  const filaAgregar = document.createElement("div");
-  filaAgregar.className = "btn-row fila-agregar";
-  filaAgregar.innerHTML = `<button type="button" class="btn btn-agregar-tramo">${icon("plus")} Agregar tipo de conductor</button>`;
-  filaAgregar.querySelector("button").addEventListener("click", () => agregarGrupo());
+  // «Agregar» va a la derecha de «Calcular» (fuera de las tarjetas, siempre a la vista aunque se plieguen)
+  const botonAgregar = document.createElement("button");
+  botonAgregar.type = "button";
+  botonAgregar.className = "btn btn-agregar-tramo";
+  botonAgregar.innerHTML = `${icon("plus")} Agregar tipo de conductor`;
+  botonAgregar.addEventListener("click", () => agregarGrupo());
+  container.querySelector("#form-calc .btn-row").append(botonAgregar);
 
   /** El limite de la NTC-2050 depende del numero TOTAL de conductores, asi que se muestra junto al formulario. */
   function actualizarResumen() {
@@ -336,13 +339,12 @@ export async function render(container) {
     resumen.textContent = `Total de conductores: ${total} · Límite NTC-2050 aplicable: ${getLimiteOcupacion(total)}%`;
   }
 
-  /** Numera las tarjetas, muestra "Quitar" solo si hay mas de un tipo y deja "Agregar" en la ultima. */
+  /** Numera las tarjetas, muestra "Quitar" solo si hay mas de un tipo. */
   function actualizarGrupos() {
     grupos.forEach((g, i) => {
       g.titulo.textContent = `Conductores — Tipo ${i + 1}`;
       g.quitar.hidden = grupos.length < 2;
     });
-    grupos.at(-1).card.append(filaAgregar);
     actualizarResumen();
   }
 

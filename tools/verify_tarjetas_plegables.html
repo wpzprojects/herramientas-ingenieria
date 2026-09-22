@@ -92,7 +92,7 @@ for (const [nombre, modulo] of VISTAS) {
     const antes = campo.value;
     b.click();
     await espera(320);
-    const contenido = [...t.children].filter((h) => !h.classList.contains("form-section-title") && !h.classList.contains("fila-agregar"));
+    const contenido = [...t.children].filter((h) => !h.classList.contains("form-section-title"));
     const rp = t.getBoundingClientRect();
     ok(cerrada(t) && b.getAttribute("aria-expanded") === "false" && b.getAttribute("aria-label").startsWith("Desplegar la tarjeta"), "al hacer clic en el botón se pliega (aria-expanded=false, nombre «Desplegar…»)");
     ok(contenido.every((h) => getComputedStyle(h).display === "none"), "el contenido de la tarjeta queda oculto");
@@ -163,14 +163,17 @@ await seccion("Pérdidas: tramos nuevos, «Quitar» y «Agregar tramo»", async 
   ok(!quitar.hidden && rq.right <= rb.left && rb.left - rq.right <= 10, `«Quitar» y el botón de plegar quedan juntos, sin encimarse (${Math.round(rb.left - rq.right)} px entre ellos)`);
   ok(getComputedStyle(boton(tramo2).parentElement).height === getComputedStyle($(".form-section-title", tarjetas[0])).height, "la barra con «Quitar» y botón mide lo mismo que las demás (no crece)");
 
-  // la ultima tarjeta plegada mantiene a la vista «Agregar tramo»
+  // «Agregar tramo» esta junto a «Calcular» (fuera de las tarjetas): plegar la ultima tarjeta oculta TODO lo suyo y el boton sigue a la vista
+  const agregar = $(".btn-agregar-tramo");
+  ok(!agregar.closest(".form-section") && agregar.previousElementSibling === $("#form-calc button[type=submit]"), "«Agregar tramo» no está en ninguna tarjeta: va a la derecha de «Calcular»");
   boton(tramo2).click();
-  const fila = $(".fila-agregar", tramo2);
-  ok(cerrada(tramo2) && fila.getBoundingClientRect().height > 0, "con la última tarjeta plegada, «Agregar tramo» sigue a la vista");
-  fila.querySelector("button").click();
-  ok($$(".form-section").length === 4 && $$(".form-section").every((t) => boton(t)), "y se puede agregar otro tramo desde ahí (con su botón)");
+  ok(cerrada(tramo2) && [...tramo2.children].every((h) => h.classList.contains("form-section-title") || getComputedStyle(h).display === "none"), "con la última tarjeta plegada se oculta todo lo suyo (queda solo la barra)");
+  ok(agregar.getBoundingClientRect().height > 0, "«Agregar tramo» sigue a la vista con la última tarjeta plegada");
+  agregar.click();
+  ok($$(".form-section").length === 4 && $$(".form-section").every((t) => boton(t)), "y se puede agregar otro tramo (con su botón de plegar)");
   ok(cerrada(tramo2) && !cerrada($$(".form-section")[3]), "el nuevo nace abierto y el plegado se queda plegado");
-  ok($(".fila-agregar", $$(".form-section")[3]).getBoundingClientRect().height > 0 && !$(".fila-agregar", tramo2), "«Agregar tramo» pasa a la nueva última tarjeta");
+  { const b = $(".form-section-title", tramo2).getBoundingClientRect(), c = tramo2.getBoundingClientRect();
+    ok(c.bottom - b.bottom <= 1.5, `la última tarjeta plegada tampoco deja espacio vacío bajo la barra (${(c.bottom - b.bottom).toFixed(1)} px)`); }
   // quitar un tramo plegado
   $(".btn-tramo-quitar", tramo2).click();
   ok($$(".form-section").length === 3, "se puede quitar un tramo plegado");
@@ -189,6 +192,28 @@ await seccion("Ocupación de ductos: tipos de conductor nuevos", async () => {
   const t = $$(".form-section");
   ok(t.length === antes + 1 && t.every((c) => boton(c)), "el tipo de conductor agregado después también se puede plegar");
 });
+
+for (const [nombre, modulo, texto_boton] of [["Pérdidas", "calc-perdidas", "Agregar tramo"], ["Regulación", "calc-regulacion", "Agregar tramo"], ["Ocupación de ductos", "calc-ocupacion-ductos", "Agregar tipo de conductor"], ["Conductor económico", "calc-conductor-economico", "Agregar opción"]]) {
+  await seccion(`${nombre}: «${texto_boton}» junto a «Calcular»`, async () => {
+    stage.innerHTML = "";
+    const { render } = await import(`../js/views/${modulo}.js`);
+    await render(stage, {});
+    const agregar = $(".btn-agregar-tramo"), calcular = $("#form-calc button[type=submit]");
+    const ra = agregar.getBoundingClientRect(), rc = calcular.getBoundingClientRect();
+    ok(texto(agregar) === texto_boton && $$(".btn-agregar-tramo").length === 1, `un solo botón «${texto_boton}»`);
+    ok(!agregar.closest(".card") && !$(".fila-agregar") && agregar.parentElement === calcular.parentElement && agregar.previousElementSibling === calcular, "va en la fila de «Calcular», justo después, y ninguna tarjeta lo contiene");
+    ok(ra.left >= rc.right && ra.left - rc.right <= 16 && Math.abs(ra.top - rc.top) <= 1 && Math.abs(ra.height - rc.height) <= 1, `queda a la derecha de «Calcular», a la misma altura y del mismo alto (${Math.round(ra.left - rc.right)} px de separación)`);
+    const tarjetas = $$(".form-section");
+    const ultima = tarjetas.at(-1);
+    boton(ultima).click();
+    ok(cerrada(ultima) && [...ultima.children].every((h) => h.classList.contains("form-section-title") || getComputedStyle(h).display === "none"), "plegar la última tarjeta oculta todo lo suyo");
+    ok(agregar.getBoundingClientRect().height > 0 && !agregar.hidden, "el botón sigue a la vista");
+    const n = tarjetas.length;
+    agregar.click();
+    ok($$(".form-section").length === n + 1 && !cerrada($$(".form-section").at(-1)) && cerrada(ultima), "agregar crea una tarjeta abierta y deja plegada la anterior");
+    boton(ultima).click();
+  });
+}
 
 await seccion("archivos: icono, service worker y colores", async () => {
   const { icon } = await import("../js/icons.js");

@@ -7,7 +7,7 @@
 // Plegar solo OCULTA el contenido (CSS: .form-section.plegada): lo escrito en los campos se conserva y "Calcular" sigue
 // tomando todos los datos. El estado vive en el DOM, asi que se mantiene al recalcular. Si al calcular falta un dato
 // obligatorio dentro de una tarjeta plegada, esa tarjeta se despliega sola (el navegador no puede avisar de un campo oculto).
-// «Agregar tramo/opcion» vive DENTRO de la ultima tarjeta y sigue a la vista aunque esta se pliegue (ver app.css).
+// «Agregar tramo/opcion/tipo» ya NO vive en la ultima tarjeta: va en la fila de «Calcular» (a su derecha), asi que plegar oculta todo lo de la tarjeta.
 
 import { icon } from "../icons.js";
 

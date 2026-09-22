@@ -136,7 +136,7 @@ await seccion("vista: tarjetas y dato de partida", async () => {
   ok($$(".card.form-section").length === 2 && titulos[0].includes("Datos de la línea") && titulos[1].includes("Conductor — Tramo 1"), `dos tarjetas: «${titulos.join("» y «")}»`);
   ok($$(".form-section-title").every((t) => t.querySelector("svg.icon") && t.parentElement.classList.contains("card")), "cada título lleva su icono y va dentro de su tarjeta");
   ok($(".btn-tramo-quitar").hidden, "con un solo tramo no aparece «Quitar»");
-  ok($$(".tramo-block .btn").some((b) => texto(b) === "Agregar tramo"), "«Agregar tramo» está dentro de la última tarjeta");
+  ok($$(".btn-row .btn").some((b) => texto(b) === "Agregar tramo") && !$(".tramo-block .btn-agregar-tramo"), "«Agregar tramo» está junto a «Calcular» (a su derecha), fuera de las tarjetas");
   ok($$(".card").every((c) => c.classList.contains("tarjeta-borde")), "las tarjetas llevan el borde marcado");
 
   const visible = () => ["#wrap-potencia", "#wrap-aparente", "#wrap-corriente"].filter((s) => !$(s).hidden).join();
@@ -256,12 +256,12 @@ await seccion("vista: dato de partida aparente y corriente", async () => {
 });
 
 await seccion("vista: varios tramos", async () => {
-  const agregar = $$(".tramo-block .btn").find((b) => texto(b) === "Agregar tramo");
+  const agregar = $(".btn-agregar-tramo");
   agregar.click();
   const bloques = () => $$(".tramo-block");
   ok(bloques().length === 2 && texto($$(".tramo-titulo")[1]) === "Conductor — Tramo 2", "agregar crea la tarjeta «Conductor — Tramo 2»");
   ok($$(".btn-tramo-quitar").every((b) => !b.hidden), "con dos tramos ambos muestran «Quitar»");
-  ok(bloques()[1].contains(agregar) && !bloques()[0].contains(agregar), "«Agregar tramo» pasa a la última tarjeta");
+  ok(!bloques()[1].contains(agregar) && !bloques()[0].contains(agregar) && agregar.previousElementSibling === $("#form-calc button[type=submit]"), "«Agregar tramo» sigue junto a «Calcular» (no depende de las tarjetas)");
   ok($("#f-calibre-0").value === "4/0" && $("#f-material-0").value === "ACSR", "el primer tramo conserva lo elegido");
   ok(new Set($$(".form-section-title").map((t) => Math.round(t.getBoundingClientRect().height))).size === 1, "las barras de título no cambian de altura al aparecer «Quitar»");
 
@@ -292,7 +292,7 @@ await seccion("vista: varios tramos", async () => {
   ok(bloques().length === 1 && texto($(".tramo-titulo")) === "Conductor — Tramo 1" && $(".btn-tramo-quitar").hidden, "quitar elimina la tarjeta, renumera y oculta «Quitar»");
   ok($("#f-calibre-1").value === fila2 && $("#f-longitud-1").value === "3", "el tramo que queda conserva calibre y longitud");
   // dejamos dos tramos otra vez para las pruebas del reporte
-  $$(".tramo-block .btn").find((b) => texto(b) === "Agregar tramo").click();
+  $(".btn-agregar-tramo").click();
 });
 
 await seccion("vista: estructura del reporte (se copia y se pega)", async () => {
@@ -340,7 +340,7 @@ await seccion("vista: estructura del reporte (se copia y se pega)", async () => 
   elegir("#f-modo", "potencia");
 
   // dos tramos, el segundo con 2 conductores por fase
-  $$(".tramo-block .btn").find((b2) => texto(b2) === "Agregar tramo").click();
+  $(".btn-agregar-tramo").click();
   const idNuevo = $$(".tramo-block").at(-1).querySelector('input[id^="f-n-"]').id.replace("f-n-", "");
   poner(`#f-n-${idNuevo}`, "2");
   poner(`#f-sephaz-${idNuevo}`, "0.5");

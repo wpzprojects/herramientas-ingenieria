@@ -127,7 +127,7 @@ await seccion("vista: tarjetas de tubería y conductores", async () => {
   ok($$(".form-section-title").every((t) => t.querySelector("svg.icon") && t.parentElement.classList.contains("card")), "cada título lleva su icono y va dentro de su tarjeta");
   ok($$(".card").every((c) => c.classList.contains("tarjeta-borde")), "las tarjetas llevan el borde marcado");
   ok($(".btn-tramo-quitar").hidden, "con un solo tipo de conductor no aparece «Quitar»");
-  ok($$(".grupo-block .btn").some((b) => texto(b) === "Agregar tipo de conductor"), "«Agregar tipo de conductor» está dentro de la última tarjeta");
+  ok($$(".btn-row .btn").some((b) => texto(b) === "Agregar tipo de conductor") && !$(".grupo-block .btn-agregar-tramo"), "«Agregar tipo de conductor» está junto a «Calcular» (a su derecha), fuera de las tarjetas");
   ok(texto($("#resumen-total")) === "Total de conductores: 3 · Límite NTC-2050 aplicable: 40%", `resumen del límite: «${texto($("#resumen-total"))}»`);
   ok($$(".hint").length === 0, "no quedan textos de ayuda fijos (.hint) debajo de los campos");
   const tarjetas = $$(".form-section").map((c) => c.getBoundingClientRect());
@@ -293,12 +293,12 @@ await seccion("vista: conductor del catálogo", async () => {
 });
 
 await seccion("vista: varios tipos de conductor", async () => {
-  const agregar = $$(".grupo-block .btn").find((b) => texto(b) === "Agregar tipo de conductor");
+  const agregar = $(".btn-agregar-tramo");
   agregar.click();
   const bloques = () => $$(".grupo-block");
   ok(bloques().length === 2 && texto($$(".grupo-titulo")[1]) === "Conductores — Tipo 2", "agregar crea la tarjeta «Conductores — Tipo 2»");
   ok($$(".btn-tramo-quitar").every((b) => !b.hidden), "con dos tipos ambos muestran «Quitar»");
-  ok(bloques()[1].contains(agregar) && !bloques()[0].contains(agregar), "«Agregar tipo de conductor» pasa a la última tarjeta");
+  ok(!bloques()[1].contains(agregar) && !bloques()[0].contains(agregar) && agregar.previousElementSibling === $("#form-calc button[type=submit]"), "«Agregar tipo de conductor» sigue junto a «Calcular» (no depende de las tarjetas)");
   ok($("#f-diametro-0").value === "30" && $("#f-n-0").value === "3", "el primer tipo conserva lo elegido");
   ok(new Set($$(".form-section-title").map((t) => Math.round(t.getBoundingClientRect().height))).size === 1, "las barras de título no cambian de altura al aparecer «Quitar»");
   ok($("#f-n-1").value === "3" && $("#f-diametro-1").value === "30" && !$("#chk-catalogo-1").checked, "el tipo nuevo empieza con los valores por defecto y sin catálogo");
@@ -339,7 +339,7 @@ await seccion("vista: varios tipos de conductor", async () => {
   ok(texto($("#resumen-total")) === "Total de conductores: 3 · Límite NTC-2050 aplicable: 40%", "el resumen vuelve a contar solo lo que queda");
   marcar("#chk-catalogo-1", false);
   poner("#f-diametro-1", "30");
-  $$(".grupo-block .btn").find((b) => texto(b) === "Agregar tipo de conductor").click(); // dos tipos otra vez para el reporte
+  $(".btn-agregar-tramo").click(); // dos tipos otra vez para el reporte
 });
 
 await seccion("vista: estructura del reporte (se copia y se pega)", async () => {
@@ -380,7 +380,7 @@ await seccion("vista: estructura del reporte (se copia y se pega)", async () => 
   marcar("#chk-manual", false);
 
   // dos tipos, el segundo del catalogo
-  $$(".grupo-block .btn").find((b) => texto(b) === "Agregar tipo de conductor").click();
+  $(".btn-agregar-tramo").click();
   const id = $$(".grupo-block").at(-1).querySelector('select[id^="f-n-"]').id.replace("f-n-", "");
   marcar(`#chk-catalogo-${id}`, true);
   elegir(`#f-calibre-${id}`, "2");

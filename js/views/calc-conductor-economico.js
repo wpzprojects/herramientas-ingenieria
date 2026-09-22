@@ -388,19 +388,21 @@ export async function render(container) {
   const opciones = [];
   let siguienteId = 0;
 
-  const filaAgregar = document.createElement("div");
-  filaAgregar.className = "btn-row fila-agregar";
-  filaAgregar.innerHTML = `<button type="button" class="btn btn-agregar-tramo">${icon("plus")} Agregar opción</button>`;
-  filaAgregar.querySelector("button").addEventListener("click", () => agregarOpcion());
+  // «Agregar» va a la derecha de «Calcular» (fuera de las tarjetas, siempre a la vista aunque se plieguen)
+  const botonAgregar = document.createElement("button");
+  botonAgregar.type = "button";
+  botonAgregar.className = "btn btn-agregar-tramo";
+  botonAgregar.innerHTML = `${icon("plus")} Agregar opción`;
+  botonAgregar.addEventListener("click", () => agregarOpcion());
+  container.querySelector("#form-calc .btn-row").append(botonAgregar);
 
-  /** Numera las tarjetas, muestra "Quitar" solo si hay mas del minimo y deja "Agregar" en la ultima (oculto al llegar al maximo). */
+  /** Numera las tarjetas, muestra "Quitar" solo si hay mas del minimo (y oculta «Agregar» al llegar al maximo). */
   function actualizarOpciones() {
     opciones.forEach((o, i) => {
       o.titulo.textContent = `Opción ${i + 1}`;
       o.quitar.hidden = opciones.length <= MIN_OPCIONES;
     });
-    filaAgregar.hidden = opciones.length >= MAX_OPCIONES;
-    opciones.at(-1).card.append(filaAgregar);
+    botonAgregar.hidden = opciones.length >= MAX_OPCIONES;
   }
 
   function agregarOpcion() {

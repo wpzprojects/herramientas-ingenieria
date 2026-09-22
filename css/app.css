@@ -400,8 +400,6 @@ input:disabled, select:disabled { opacity: 0.55; }
 }
 /* `.btn.x` (no solo `.x`): la regla general `.btn` esta mas abajo en este archivo y, con la misma especificidad, ganaria */
 .btn.btn-tramo-quitar { margin-left: auto; padding: 2px 8px; font-size: 0.72rem; text-transform: none; letter-spacing: normal; }
-.btn.btn-agregar-tramo { padding: 8px 12px; }
-.form-section .fila-agregar { margin-top: 10px; } /* (dos clases: `.btn-row` esta mas abajo y ganaria) */
 .input-with-toggle { display: flex; align-items: center; gap: var(--space-3); }
 .input-with-toggle input[type="number"] { flex: 1 1 auto; min-width: 0; }
 .input-with-toggle .checkbox-row { white-space: nowrap; }
@@ -456,11 +454,11 @@ input:disabled, select:disabled { opacity: 0.55; }
 .form-section-title .btn-plegar:hover .icon, .form-section-title .btn-plegar:focus-visible .icon { color: var(--accent); }
 .form-section.plegada > .form-section-title .btn-plegar .icon { transform: rotate(180deg); }
 @media (prefers-reduced-motion: reduce) { .form-section-title .btn-plegar .icon { transition: none; } }
-/* Tarjeta plegada: solo queda la barra. La fila «Agregar tramo/opcion» (dentro de la ultima tarjeta) sigue a la vista para no perder esa accion. */
-.form-section.plegada > :not(.form-section-title, .fila-agregar) { display: none; }
-.form-section.plegada > .form-section-title { margin-bottom: 0; }
-.form-section.plegada:not(:has(> .fila-agregar:not([hidden]))) { padding-bottom: 0; }
-.form-section.plegada:not(:has(> .fila-agregar:not([hidden]))) > .form-section-title { border-bottom-color: transparent; border-radius: calc(var(--radius-lg) - 1px); }
+/* Tarjeta plegada: solo queda la barra (todo lo demas se oculta). «Agregar tramo/opcion/tipo» ya no vive en la tarjeta: va junto a «Calcular».
+   `.card.form-section.plegada` (3 clases, despues de `.card.tarjeta-borde.form-section`) gana al relleno inferior de las tarjetas de datos. */
+.form-section.plegada > :not(.form-section-title) { display: none; }
+.form-section.plegada > .form-section-title { margin-bottom: 0; border-bottom-color: transparent; border-radius: calc(var(--radius-lg) - 1px); }
+.card.form-section.plegada { padding-bottom: 0; }
 .tarjeta-borde .result-panel, .result-panel.compacto { padding: var(--space-4); }  /* panel azul de resultados: tambien 16px (en otras calculadoras sigue en 24px) */
 /* Subtarjeta de las formulas (KaTeX): mismo aspecto que la caja de «Reporte» (fondo hundido, borde y esquinas), sin su letra monoespaciada */
 .formula-caja {
