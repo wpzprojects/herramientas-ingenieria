@@ -388,13 +388,15 @@ export async function render(container) {
   const opciones = [];
   let siguienteId = 0;
 
-  // «Agregar» va a la derecha de «Calcular» (fuera de las tarjetas, siempre a la vista aunque se plieguen)
+  // «Agregar» va en la fila de «Calcular», justificado a la derecha (fuera de las tarjetas, siempre a la vista aunque se plieguen)
   const botonAgregar = document.createElement("button");
   botonAgregar.type = "button";
   botonAgregar.className = "btn btn-agregar-tramo";
   botonAgregar.innerHTML = `${icon("plus")} Agregar opción`;
   botonAgregar.addEventListener("click", () => agregarOpcion());
-  container.querySelector("#form-calc .btn-row").append(botonAgregar);
+  const filaCalcular = container.querySelector("#form-calc .btn-row");
+  filaCalcular.classList.add("btn-row--agregar"); // si no caben en una linea: «Agregar» arriba y «Calcular» abajo, ambos a la izquierda
+  filaCalcular.append(botonAgregar);
 
   /** Numera las tarjetas, muestra "Quitar" solo si hay mas del minimo (y oculta «Agregar» al llegar al maximo). */
   function actualizarOpciones() {

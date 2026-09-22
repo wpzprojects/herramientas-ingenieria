@@ -391,6 +391,20 @@ await seccion("vista: dato de partida aparente y corriente", async () => {
   elegir("#f-modo", "potencia");
 });
 
+await seccion("vista: «Agregar tramo» y «Calcular» según el ancho", async () => {
+  const medir = async (ancho) => {
+    const marco = await cargarMarco(ancho);
+    const d = marco.contentDocument;
+    const calc = d.querySelector("#form-calc button[type=submit]"), agr = d.querySelector(".btn-agregar-tramo"), fila = calc.parentElement;
+    const m = { rc: calc.getBoundingClientRect(), ra: agr.getBoundingClientRect(), rf: fila.getBoundingClientRect() };
+    marco.remove();
+    return m;
+  };
+  const ancha = await medir(900), angosta = await medir(230);
+  ok(Math.abs(ancha.rc.top - ancha.ra.top) <= 1 && ancha.rc.left < ancha.ra.left && Math.abs(ancha.ra.right - ancha.rf.right) <= 1, "con espacio: «Calcular» a la izquierda y «Agregar tramo» justificado a la derecha, en la misma línea");
+  ok(angosta.ra.bottom <= angosta.rc.top + 1 && Math.abs(angosta.ra.left - angosta.rc.left) <= 1 && Math.abs(angosta.rc.left - angosta.rf.left) <= 1, `sin espacio: «Agregar tramo» queda ARRIBA y «Calcular» abajo, ambos a la izquierda (${Math.round(angosta.ra.left - angosta.rf.left)} px del borde)`);
+});
+
 await seccion("vista: varios tramos", async () => {
   const agregar = $(".btn-agregar-tramo");
   agregar.click();

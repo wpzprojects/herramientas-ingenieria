@@ -123,12 +123,12 @@ await render(stage, {});
 
 await seccion("vista: tarjetas de tubería y conductores", async () => {
   const titulos = $$(".form-section-title").map(texto);
-  ok($$(".card.form-section").length === 2 && titulos[0].includes("Tubería") && titulos[1].includes("Conductores — Tipo 1"), `dos tarjetas: «${titulos.join("» y «")}»`);
+  ok($$(".card.form-section").length === 2 && titulos[0].includes("Tubería") && titulos[1].includes("Conductor tipo 1") && !titulos[1].includes("—"), `dos tarjetas: «${titulos.join("» y «")}»`);
   ok($$(".form-section-title").every((t) => t.querySelector("svg.icon") && t.parentElement.classList.contains("card")), "cada título lleva su icono y va dentro de su tarjeta");
   ok($$(".card").every((c) => c.classList.contains("tarjeta-borde")), "las tarjetas llevan el borde marcado");
   ok($(".btn-tramo-quitar").hidden, "con un solo tipo de conductor no aparece «Quitar»");
   ok($$(".btn-row .btn").some((b) => texto(b) === "Agregar tipo de conductor") && !$(".grupo-block .btn-agregar-tramo"), "«Agregar tipo de conductor» está junto a «Calcular» (a su derecha), fuera de las tarjetas");
-  ok(texto($("#resumen-total")) === "Total de conductores: 3 · Límite NTC-2050 aplicable: 40%", `resumen del límite: «${texto($("#resumen-total"))}»`);
+  ok(!$("#resumen-total") && !/Total de conductores/.test(texto($("#form-calc"))), "ya no hay la etiqueta «Total de conductores … Límite NTC-2050 aplicable» bajo las tarjetas");
   ok($$(".hint").length === 0, "no quedan textos de ayuda fijos (.hint) debajo de los campos");
   const tarjetas = $$(".form-section").map((c) => c.getBoundingClientRect());
   ok(Math.abs(tarjetas[1].top - tarjetas[0].bottom - 16) < 0.6, `las tarjetas Tubería y Conductores están separadas 16 px (${(tarjetas[1].top - tarjetas[0].bottom).toFixed(1)} px)`);
@@ -230,9 +230,10 @@ await seccion("vista: un tipo de conductor, cálculo y resultados", async () => 
   ok(!!$("#resultado-wrap .callout-warning") && texto($("#resultado-wrap .callout-warning")).includes("atascamiento"), "razón ≈ 3.1 con 3 conductores: aviso de atascamiento");
   poner("#f-diametro-0", "30");
 
-  // 1 conductor cambia el limite mostrado en el resumen
+  // 1 conductor cambia el limite (y el total) que muestra la dona
   elegir("#f-n-0", "1");
-  ok(texto($("#resumen-total")).includes("Límite NTC-2050 aplicable: 53%"), "con 1 conductor el resumen muestra el límite 53 %");
+  calcular();
+  ok(/Total de conductores: 1/.test(texto($(".oc-dona svg"))) && /Límite NTC-2050: 53 %/.test(texto($(".oc-dona svg"))), "con 1 conductor la dona dice «Total de conductores: 1» y «Límite NTC-2050: 53 %»");
   elegir("#f-n-0", "3");
 });
 
@@ -296,13 +297,12 @@ await seccion("vista: varios tipos de conductor", async () => {
   const agregar = $(".btn-agregar-tramo");
   agregar.click();
   const bloques = () => $$(".grupo-block");
-  ok(bloques().length === 2 && texto($$(".grupo-titulo")[1]) === "Conductores — Tipo 2", "agregar crea la tarjeta «Conductores — Tipo 2»");
+  ok(bloques().length === 2 && texto($$(".grupo-titulo")[1]) === "Conductor tipo 2", "agregar crea la tarjeta «Conductor tipo 2»");
   ok($$(".btn-tramo-quitar").every((b) => !b.hidden), "con dos tipos ambos muestran «Quitar»");
   ok(!bloques()[1].contains(agregar) && !bloques()[0].contains(agregar) && agregar.previousElementSibling === $("#form-calc button[type=submit]"), "«Agregar tipo de conductor» sigue junto a «Calcular» (no depende de las tarjetas)");
   ok($("#f-diametro-0").value === "30" && $("#f-n-0").value === "3", "el primer tipo conserva lo elegido");
   ok(new Set($$(".form-section-title").map((t) => Math.round(t.getBoundingClientRect().height))).size === 1, "las barras de título no cambian de altura al aparecer «Quitar»");
   ok($("#f-n-1").value === "3" && $("#f-diametro-1").value === "30" && !$("#chk-catalogo-1").checked, "el tipo nuevo empieza con los valores por defecto y sin catálogo");
-  ok(texto($("#resumen-total")) === "Total de conductores: 6 · Límite NTC-2050 aplicable: 40%", `el resumen suma todos los tipos: «${texto($("#resumen-total"))}»`);
 
   // el segundo tipo usa el catalogo, independiente del primero
   marcar("#chk-catalogo-1", true);
@@ -310,11 +310,16 @@ await seccion("vista: varios tipos de conductor", async () => {
   const f250 = xlpe.find((c) => c.nivel_tension_kv === "15 kV" && c.porcentaje_aislamiento_pct === 100 && c.material_conductor === "Cobre" && c.pantalla === "Cinta de cobre" && c.calibre_awg_kcmil === "250");
   cerca(parseFloat($("#f-diametro-1").value), f250.diametro_total_conductor_mm, 1e-12, `el segundo tipo toma del catálogo el calibre 250 (${f250.diametro_total_conductor_mm} mm)`);
   ok($("#f-diametro-0").value === "30" && !$("#f-diametro-0").disabled && $("#f-calibre-0").required === false, "el primer tipo no se ve afectado por el catálogo del segundo");
-  elegir("#f-n-1", "2");
-  ok(texto($("#resumen-total")) === "Total de conductores: 5 · Límite NTC-2050 aplicable: 40%", "el resumen se actualiza al cambiar la cantidad");
   elegir("#f-n-1", "3");
 
   calcular();
+  { // «Total de conductores» va en la dona, ARRIBA de «Límite NTC-2050», que baja un poco
+    const dona = $(".oc-dona svg"), textos = [...dona.querySelectorAll("text")];
+    const tTotal = textos.find((t) => /^Total de conductores: 6$/.test(texto(t))), tLim = textos.find((t) => /^Límite NTC-2050: 40 %$/.test(texto(t)));
+    const rt = tTotal?.getBoundingClientRect(), rl = tLim?.getBoundingClientRect(), rd = dona.getBoundingClientRect();
+    ok(!!tTotal && !!tLim && rt.bottom <= rl.top + 1 && rl.top - rt.top > 5, "la dona muestra «Total de conductores: 6» arriba de «Límite NTC-2050: 40 %» (suma todos los tipos)");
+    ok(rl.bottom <= rd.bottom + 0.5 && Math.abs(rt.left + rt.width / 2 - (rl.left + rl.width / 2)) < 1.5, "las dos líneas quedan dentro del gráfico y centradas");
+  }
   const lista = [{ cantidad: 3, diametroMm: 30 }, { cantidad: 3, diametroMm: f250.diametro_total_conductor_mm }];
   const e = esperado(D_TUBO, lista);
   cerca(valorDe("Porcentaje de ocupación"), e.pct, 0.006, `dos ternas de distinto diámetro: ocupación ${e.pct.toFixed(3)} %`);
@@ -334,9 +339,8 @@ await seccion("vista: varios tipos de conductor", async () => {
 
   // quitar el primer tipo
   $$(".btn-tramo-quitar")[0].click();
-  ok(bloques().length === 1 && texto($(".grupo-titulo")) === "Conductores — Tipo 1" && $(".btn-tramo-quitar").hidden, "quitar elimina la tarjeta, renumera y oculta «Quitar»");
+  ok(bloques().length === 1 && texto($(".grupo-titulo")) === "Conductor tipo 1" && $(".btn-tramo-quitar").hidden, "quitar elimina la tarjeta, renumera y oculta «Quitar»");
   ok($("#chk-catalogo-1").checked && $("#f-calibre-1").value === "250", "el tipo que queda conserva su catálogo y calibre");
-  ok(texto($("#resumen-total")) === "Total de conductores: 3 · Límite NTC-2050 aplicable: 40%", "el resumen vuelve a contar solo lo que queda");
   marcar("#chk-catalogo-1", false);
   poner("#f-diametro-1", "30");
   $(".btn-agregar-tramo").click(); // dos tipos otra vez para el reporte

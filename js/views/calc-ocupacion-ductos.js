@@ -6,7 +6,7 @@
 
 import { fmt, fmtPercent, loadData, distinct, escapeHtml } from "../util/format.js";
 import { icon } from "../icons.js";
-import { calcularOcupacionGrupos, getLimiteOcupacion } from "../calc/ocupacion-grupos.js";
+import { calcularOcupacionGrupos } from "../calc/ocupacion-grupos.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
@@ -139,7 +139,6 @@ export async function render(container) {
       </div>
 
       <div id="grupos-container"></div>
-      <p class="text-muted text-sm" id="resumen-total" style="margin: 0 0 var(--space-4);"></p>
 
       <div class="btn-row">
         <button type="submit" class="btn btn-primary">Calcular</button>
@@ -192,7 +191,7 @@ export async function render(container) {
     cont.innerHTML = `
       <div class="card tarjeta-borde form-section grupo-block">
         <div class="form-section-title">
-          ${icon("plugConnected")} <span class="grupo-titulo">Conductores — Tipo 1</span>
+          ${icon("plugConnected")} <span class="grupo-titulo">Conductor tipo 1</span>
           <button type="button" class="btn btn-ghost btn-tramo-quitar" hidden>${icon("close")} Quitar</button>
         </div>
         <div class="grid-2">
@@ -305,7 +304,6 @@ export async function render(container) {
     selMaterial.addEventListener("change", cascada);
     selPantalla.addEventListener("change", cascada);
     selCalibre.addEventListener("change", syncCatalogo);
-    fN.addEventListener("change", actualizarResumen);
 
     return {
       card,
@@ -321,31 +319,25 @@ export async function render(container) {
   }
 
   const gruposCont = container.querySelector("#grupos-container");
-  const resumen = container.querySelector("#resumen-total");
   const grupos = [];
   let siguienteId = 0;
 
-  // «Agregar» va a la derecha de «Calcular» (fuera de las tarjetas, siempre a la vista aunque se plieguen)
+  // «Agregar» va en la fila de «Calcular», justificado a la derecha (fuera de las tarjetas, siempre a la vista aunque se plieguen)
   const botonAgregar = document.createElement("button");
   botonAgregar.type = "button";
   botonAgregar.className = "btn btn-agregar-tramo";
   botonAgregar.innerHTML = `${icon("plus")} Agregar tipo de conductor`;
   botonAgregar.addEventListener("click", () => agregarGrupo());
-  container.querySelector("#form-calc .btn-row").append(botonAgregar);
-
-  /** El limite de la NTC-2050 depende del numero TOTAL de conductores, asi que se muestra junto al formulario. */
-  function actualizarResumen() {
-    const total = grupos.reduce((s, g) => s + g.estado().cantidad, 0);
-    resumen.textContent = `Total de conductores: ${total} · Límite NTC-2050 aplicable: ${getLimiteOcupacion(total)}%`;
-  }
+  const filaCalcular = container.querySelector("#form-calc .btn-row");
+  filaCalcular.classList.add("btn-row--agregar"); // si no caben en una linea: «Agregar» arriba y «Calcular» abajo, ambos a la izquierda
+  filaCalcular.append(botonAgregar);
 
   /** Numera las tarjetas, muestra "Quitar" solo si hay mas de un tipo. */
   function actualizarGrupos() {
     grupos.forEach((g, i) => {
-      g.titulo.textContent = `Conductores — Tipo ${i + 1}`;
+      g.titulo.textContent = `Conductor tipo ${i + 1}`;
       g.quitar.hidden = grupos.length < 2;
     });
-    actualizarResumen();
   }
 
   function agregarGrupo() {
@@ -451,7 +443,7 @@ export async function render(container) {
           <div class="result-panel">
             <div class="oc-resumen">
               <div class="oc-grafico oc-corte">${corteDuctoSvg({ diametroTuboMm: ctx.diametroTuboMm, tipos: ctx.estados.map((e) => ({ cantidad: e.cantidad, diametroMm: e.diametroMm })) })}</div>
-              <div class="oc-grafico oc-dona">${donaOcupacionSvg({ pct: data.ocupacionPct, limite: data.limitePct, cumple: data.cumple })}</div>
+              <div class="oc-grafico oc-dona">${donaOcupacionSvg({ pct: data.ocupacionPct, limite: data.limitePct, cumple: data.cumple, total: data.totalConductores })}</div>
               <div class="oc-metricas">
                 <div class="result-metric">
                   <div class="value">${fmtPercent(data.ocupacionPct)} <span class="badge ${data.cumple ? "badge-success" : "badge-danger"}">${data.cumple ? "Cumple" : "No cumple"}</span></div>

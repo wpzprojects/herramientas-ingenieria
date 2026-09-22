@@ -1,7 +1,7 @@
 // Graficos SVG a medida (dibujados por codigo a partir de los datos del calculo). Sin librerias: salen vectoriales al imprimir y
 // usan las variables de color del tema (claro, oscuro y la paleta personal). Devuelven una cadena <svg>…</svg>.
 //
-// - donaOcupacionSvg: dona de porcentaje con degradado, marca del limite y cifra al centro.
+// - donaOcupacionSvg: dona de porcentaje con degradado, marca del limite y cifra al centro; debajo, «Total de conductores» y el limite.
 // - corteDuctoSvg: corte transversal a ESCALA del ducto con sus conductores apoyados en el fondo (uno o varios tipos).
 
 const COLORES_TIPO = ["var(--accent)", "var(--warning)", "var(--success)", "var(--text-muted)"];
@@ -11,7 +11,7 @@ const polar = (cx, cy, r, grados) => [cx + r * Math.cos((grados * Math.PI) / 180
 // ---------------------------------------------------------------- dona
 
 /** Dona de ocupacion: `pct` (0-100+), `limite` (%) y `cumple`. Con pct > 100 el arco se llena y la cifra sigue diciendo el valor real. */
-export function donaOcupacionSvg({ pct, limite, cumple }) {
+export function donaOcupacionSvg({ pct, limite, cumple, total }) {
   // mismo lienzo (380 x 450) y mismo centro que el corte transversal: las dos columnas miden lo mismo y el aro iguala al ducto
   const r = 150, cx = 190, cy = 190, ancho = 38, L = 2 * Math.PI * r;
   const lleno = (L * Math.min(Math.max(pct, 0), 100)) / 100;
@@ -20,7 +20,7 @@ export function donaOcupacionSvg({ pct, limite, cumple }) {
   const [tx1, ty1] = polar(cx, cy, r - ancho / 2 - 3, grados);
   const [tx2, ty2] = polar(cx, cy, r + ancho / 2 + 3, grados);
   const [lx, ly] = polar(cx, cy, r + ancho / 2 + 20, grados);
-  return `<svg viewBox="0 0 380 450" role="img" aria-label="Ocupación ${f1(pct)} % con límite de ${limite} %: ${cumple ? "cumple" : "no cumple"}">
+  return `<svg viewBox="0 0 380 450" role="img" aria-label="Ocupación ${f1(pct)} % con límite de ${limite} %${total != null ? ` y ${total} conductores` : ""}: ${cumple ? "cumple" : "no cumple"}">
     <defs>
       <linearGradient id="oc-dona-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:${col[0]}"/><stop offset="1" style="stop-color:${col[1]}"/></linearGradient>
       <filter id="oc-dona-sombra" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="3" stdDeviation="4" flood-opacity=".25"/></filter>
@@ -31,7 +31,8 @@ export function donaOcupacionSvg({ pct, limite, cumple }) {
     <text x="${lx}" y="${ly + 6}" text-anchor="middle" font-size="19" font-weight="700" style="fill:var(--text)">${limite} %</text>
     <text x="${cx}" y="${cy + 14}" text-anchor="middle" font-size="64" font-weight="800" style="fill:var(--text)">${f1(pct)}<tspan font-size="30" dy="-20">%</tspan></text>
     <text x="${cx}" y="${cy + 50}" text-anchor="middle" font-size="19" style="fill:var(--text-muted)">de ocupación</text>
-    <text x="${cx}" y="${cy + 170 + 24 + 27}" text-anchor="middle" font-size="17" style="fill:var(--text-muted)">Límite NTC-2050: ${limite} %</text>
+    ${total != null ? `<text class="oc-total" x="${cx}" y="${cy + 170 + 24 + 27 - 10}" text-anchor="middle" font-size="17" style="fill:var(--text-muted)">Total de conductores: ${total}</text>` : ""}
+    <text x="${cx}" y="${cy + 170 + 24 + 27 + (total != null ? 18 : 0)}" text-anchor="middle" font-size="17" style="fill:var(--text-muted)">Límite NTC-2050: ${limite} %</text>
   </svg>`;
 }
 
