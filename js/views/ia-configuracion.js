@@ -88,11 +88,11 @@ export async function render(container) {
           </div>
           <div class="field">
             <label for="f-rondas" data-info="${escapeHtml(AYUDA_RONDAS)}">Rondas máximas por pregunta</label>
-            <input type="number" id="f-rondas" min="1" max="15" step="1">
+            <input type="number" id="f-rondas" min="1" max="30" step="1">
           </div>
           <div class="field">
             <label for="f-calculos" data-info="${escapeHtml(AYUDA_CALCULOS)}">Cálculos máximos por pregunta</label>
-            <input type="number" id="f-calculos" min="1" max="200" step="1">
+            <input type="number" id="f-calculos" min="1" max="400" step="1">
           </div>
         </div>
       </details>
@@ -254,8 +254,8 @@ export async function render(container) {
     const nuevos = {
       modelo: selModelo.value || AJUSTES_POR_DEFECTO.modelo,
       temperatura: num("#f-temp", AJUSTES_POR_DEFECTO.temperatura, 0, 1.5, false),
-      maxRondas: num("#f-rondas", AJUSTES_POR_DEFECTO.maxRondas, 1, 15, true),
-      maxCalculos: num("#f-calculos", AJUSTES_POR_DEFECTO.maxCalculos, 1, 200, true),
+      maxRondas: num("#f-rondas", AJUSTES_POR_DEFECTO.maxRondas, 1, 30, true),
+      maxCalculos: num("#f-calculos", AJUSTES_POR_DEFECTO.maxCalculos, 1, 400, true),
     };
     guardarAjustes(nuevos);
     pintarAjustes();
