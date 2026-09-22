@@ -299,7 +299,7 @@ await seccion("vista: estructura del reporte (se copia y se pega)", async () => 
   const leer = () => { calcular(); return $('[data-panel="reporte"] .report-block').textContent.split("\n"); };
   const LINEA = /^-{30}$/;
   const etiquetasEn = (l) => l.filter((x) => /^[A-ZÁÉÍÓÚÑ ]{4,}:?$/.test(x));
-  const secciones = (l) => { const iRes = l.indexOf("RESULTADOS:"); return { iRes, params: l.slice(4, iRes - 1), res: l.slice(iRes + 2) }; };
+  const secciones = (l) => { const iRes = l.indexOf("RESULTADOS:"); return { iRes, params: l.slice(5, iRes - 2), res: l.slice(iRes + 2) }; };
   const tiene = (l, inicio) => l.some((x) => x.trim().startsWith(inicio));
 
   // un tramo (se quita el de sobra para dejar solo el 1) y potencia activa como dato de partida
@@ -313,9 +313,9 @@ await seccion("vista: estructura del reporte (se copia y se pega)", async () => 
   poner("#f-dbc-1", "0.84");
   const a = leer();
   const sa = secciones(a);
-  ok(a[0] === "CÁLCULO DE REGULACIÓN" && a[1] === "" && a[2] === "PARÁMETROS DE ENTRADA:" && LINEA.test(a[3]), "«CÁLCULO DE REGULACIÓN», línea en blanco, «PARÁMETROS DE ENTRADA:» y su línea divisoria DEBAJO");
-  ok(sa.iRes > 4 && a[sa.iRes - 1] === "" && LINEA.test(a[sa.iRes + 1]), "«RESULTADOS:» con una línea en blanco antes y su línea divisoria DEBAJO");
-  ok(!LINEA.test(a[2]) && !LINEA.test(a[sa.iRes - 1]) && !LINEA.test(a[4]) && !LINEA.test(a[sa.iRes + 2]), "encima de las etiquetas no hay línea y debajo de la línea sigue directamente el contenido");
+  ok(a[0] === "CÁLCULO DE REGULACIÓN" && a[1] === "" && a[2] === "" && a[3] === "PARÁMETROS DE ENTRADA:" && LINEA.test(a[4]), "«CÁLCULO DE REGULACIÓN», dos líneas en blanco, «PARÁMETROS DE ENTRADA:» y su línea divisoria DEBAJO");
+  ok(sa.iRes > 5 && a[sa.iRes - 1] === "" && a[sa.iRes - 2] === "" && LINEA.test(a[sa.iRes + 1]), "«RESULTADOS:» con dos líneas en blanco antes y su línea divisoria DEBAJO");
+  ok(!LINEA.test(a[3]) && !LINEA.test(a[sa.iRes - 1]) && !LINEA.test(a[5]) && !LINEA.test(a[sa.iRes + 2]), "encima de las etiquetas no hay línea y debajo de la línea sigue directamente el contenido");
   ok(etiquetasEn(a).join("|") === "CÁLCULO DE REGULACIÓN|PARÁMETROS DE ENTRADA:|RESULTADOS:" && a.filter((x) => LINEA.test(x)).length === 2, "tres etiquetas y dos líneas divisorias");
   for (const inicio of ["Tensión de línea", "Dato de partida: Potencia activa (9.90 MW)", "Potencia activa: 9.90 MW", "Factor de potencia", "Tramo 1:", "Tipo de red", "Material/Tipo", "Calibre", "Resistencia AC a 75°C", "Radio medio geométrico (por conductor): 4.61 mm", "Conductores por fase", "Separación entre subconductores del haz: N/A (1 conductor)", "Longitud del tramo", "Distancia entre fases A-B: 2.00 m", "Distancia entre fases A-C: 2.84 m", "Distancia entre fases B-C: 0.84 m"]) {
     ok(tiene(sa.params, inicio), `parámetros de entrada incluye «${inicio}»`);

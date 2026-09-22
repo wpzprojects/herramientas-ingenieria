@@ -572,6 +572,7 @@ export async function render(container) {
     return [
       `CÁLCULO DE CONDUCTOR ECONÓMICO`,
       ``,
+      ``,
       `PARÁMETROS DE ENTRADA:`,
       LINEA_REPORTE,
       `Tensión de línea: ${fmt(base.tensionLineaKv)} kV`,
@@ -586,6 +587,7 @@ export async function render(container) {
       `Precio de la energía perdida (año 1): ${fmtPesos(base.precioKwh)}/kWh`,
       `Aumento anual del precio de la energía: ${fmtPercent(base.escaladaEnergiaPct)}`,
       ...parametrosOpciones,
+      ``,
       ``,
       `RESULTADOS:`,
       LINEA_REPORTE,

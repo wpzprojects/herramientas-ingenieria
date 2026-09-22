@@ -458,6 +458,7 @@ export async function render(container) {
     return [
       `CÁLCULO DE PÉRDIDAS`,
       ``,
+      ``,
       `PARÁMETROS DE ENTRADA:`,
       LINEA_REPORTE,
       `Tensión de línea: ${fmt(base.tensionLineaKv)} kV`,
@@ -466,6 +467,7 @@ export async function render(container) {
       `Factor de potencia: ${fmt(base.factorPotencia)}`,
       `Factor de carga (Fc): ${fmt(base.factorCarga, 4)}`,
       ...parametrosTramos,
+      ``,
       ``,
       `RESULTADOS:`,
       LINEA_REPORTE,

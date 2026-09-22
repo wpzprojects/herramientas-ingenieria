@@ -464,7 +464,7 @@ await seccion("vista: estructura del reporte (se copia y se pega)", async () => 
   const etiquetasEn = (l) => l.filter((x) => /^[A-ZÁÉÍÓÚÑ ]{4,}:?$/.test(x));
   const secciones = (l) => {
     const iRes = l.indexOf("RESULTADOS:");
-    return { iRes, params: l.slice(4, iRes - 1), res: l.slice(iRes + 2) };
+    return { iRes, params: l.slice(5, iRes - 2), res: l.slice(iRes + 2) };
   };
   const tiene = (l, inicio) => l.some((x) => x.trim().startsWith(inicio));
 
@@ -472,17 +472,17 @@ await seccion("vista: estructura del reporte (se copia y se pega)", async () => 
   elegir("#f-modo", "potencia");
   const a = leer();
   const sa = secciones(a);
-  ok(a[0] === "CÁLCULO DE PÉRDIDAS" && a[1] === "", "primera etiqueta: «CÁLCULO DE PÉRDIDAS», seguida de una línea en blanco");
-  ok(a[2] === "PARÁMETROS DE ENTRADA:" && LINEA.test(a[3]), "segunda etiqueta: «PARÁMETROS DE ENTRADA:» (con dos puntos) y la línea divisoria DEBAJO");
-  ok(sa.iRes > 4 && a[sa.iRes - 1] === "" && LINEA.test(a[sa.iRes + 1]), "tercera etiqueta: «RESULTADOS:» (con dos puntos), una línea en blanco antes y la línea divisoria DEBAJO");
-  ok(!LINEA.test(a[2]) && !LINEA.test(a[sa.iRes - 1]) && !LINEA.test(a[4]) && !LINEA.test(a[sa.iRes + 2]), "encima de las etiquetas no hay línea divisoria y debajo de la línea sigue directamente el contenido");
+  ok(a[0] === "CÁLCULO DE PÉRDIDAS" && a[1] === "" && a[2] === "", "primera etiqueta: «CÁLCULO DE PÉRDIDAS», seguida de dos líneas en blanco");
+  ok(a[3] === "PARÁMETROS DE ENTRADA:" && LINEA.test(a[4]), "segunda etiqueta: «PARÁMETROS DE ENTRADA:» (con dos puntos) y la línea divisoria DEBAJO");
+  ok(sa.iRes > 5 && a[sa.iRes - 1] === "" && a[sa.iRes - 2] === "" && LINEA.test(a[sa.iRes + 1]), "tercera etiqueta: «RESULTADOS:» (con dos puntos), dos líneas en blanco antes y la línea divisoria DEBAJO");
+  ok(!LINEA.test(a[3]) && !LINEA.test(a[sa.iRes - 1]) && !LINEA.test(a[5]) && !LINEA.test(a[sa.iRes + 2]), "encima de las etiquetas no hay línea divisoria y debajo de la línea sigue directamente el contenido");
   ok(etiquetasEn(a).join("|") === "CÁLCULO DE PÉRDIDAS|PARÁMETROS DE ENTRADA:|RESULTADOS:" && a.filter((x) => LINEA.test(x)).length === 2, "son exactamente tres etiquetas y dos líneas divisorias");
   ok(a[sa.iRes + 2].startsWith("Factor de pérdidas (Fp = 0.7·Fc + 0.3): 0.6948"), `el resultado arranca con el factor de pérdidas (${a[sa.iRes + 2]})`);
   // negrita: las tres etiquetas van en <strong> y el texto copiado no cambia
   const negritas = $$('[data-panel="reporte"] .report-block strong');
   const pesos = negritas.map((e) => parseInt(getComputedStyle(e).fontWeight, 10));
   ok(negritas.map((e) => e.textContent).join("|") === "CÁLCULO DE PÉRDIDAS|PARÁMETROS DE ENTRADA:|RESULTADOS:" && pesos.every((w) => w >= 700), `las tres etiquetas están en negrita (${pesos.join(", ")}) y solo ellas`);
-  ok($('[data-panel="reporte"] .report-block').textContent.split("\n")[2] === "PARÁMETROS DE ENTRADA:", "el texto que se copia no lleva marcas de formato");
+  ok($('[data-panel="reporte"] .report-block').textContent.split("\n")[3] === "PARÁMETROS DE ENTRADA:", "el texto que se copia no lleva marcas de formato");
   for (const inicio of ["Tensión de línea", "Dato de partida", "Potencia activa", "Factor de potencia", "Factor de carga", "Tramo 1:", "Tipo de red", "Material/Tipo", "Calibre", "Resistencia AC a 75°C", "Conductores por fase", "Longitud del tramo"]) {
     ok(tiene(sa.params, inicio), `parámetros de entrada incluye «${inicio}»`);
   }

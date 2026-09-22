@@ -406,6 +406,7 @@ export async function render(container) {
     return [
       `CÁLCULO DE AMPACIDAD SUBTERRÁNEA`,
       ``,
+      ``,
       `PARÁMETROS DE ENTRADA:`,
       LINEA_REPORTE,
       `Tipo de cable: ${p.tipoCable}`,
@@ -424,6 +425,7 @@ export async function render(container) {
       `Número de circuitos en el banco: ${fmt(p.numCircuitos, 0)}`,
       `Profundidad de enterramiento del banco: ${fmt(p.profundidadBancoM)} m`,
       `Separación entre ductos: ${p.numCircuitos > 1 ? `${fmt(p.separacionDuctosM)} m` : "N/A (1 circuito)"}`,
+      ``,
       ``,
       `RESULTADOS:`,
       LINEA_REPORTE,

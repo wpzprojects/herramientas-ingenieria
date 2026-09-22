@@ -281,10 +281,10 @@ await seccion("vista: corriente de falla a soportar", async () => {
   calcular();
   const rep = $('[data-panel="reporte"] .report-block').textContent.split("\n");
   const iRes = rep.indexOf("RESULTADOS:");
-  ok(rep.slice(4, iRes - 1).includes("Corriente de falla a soportar: 10.00 kA"), "reporte: la corriente a soportar va en PARÁMETROS DE ENTRADA");
+  ok(rep.slice(5, iRes - 2).includes("Corriente de falla a soportar: 10.00 kA"), "reporte: la corriente a soportar va en PARÁMETROS DE ENTRADA");
   const res = rep.slice(iRes + 2);
   ok(res.includes("Cumple la corriente a soportar: Sí") && res.some((l) => l.startsWith("Área mínima requerida: ") && l.includes(aMin.toFixed(2))) && res.some((l) => l === `Calibre sugerido: ${primero.calibre} (${fmtNum(primero.area)} mm²)`), "reporte: en RESULTADOS van el cumplimiento, el área mínima y el calibre sugerido");
-  ok(!rep.slice(4, iRes - 1).some((l) => l.startsWith("Cumple") || l.startsWith("Área mínima") || l.startsWith("Calibre sugerido")), "esos tres datos NO están en los parámetros");
+  ok(!rep.slice(5, iRes - 2).some((l) => l.startsWith("Cumple") || l.startsWith("Área mínima") || l.startsWith("Calibre sugerido")), "esos tres datos NO están en los parámetros");
   ok(rep.filter((x) => /^-{30}$/.test(x)).length === 2 && rep.at(-1).startsWith("Calibre sugerido:"), "siguen siendo dos líneas divisorias y el reporte termina con el calibre sugerido");
   poner("#f-objetivo", "500");
   calcular();
@@ -317,11 +317,11 @@ await seccion("vista: estructura del reporte (se copia y se pega)", async () => 
   const tiene = (l, inicio) => l.some((x) => x.trim().startsWith(inicio));
   const a = leer();
   const iRes = a.indexOf("RESULTADOS:");
-  const params = a.slice(4, iRes - 1);
+  const params = a.slice(5, iRes - 2);
   const res = a.slice(iRes + 2);
-  ok(a[0] === "CÁLCULO DE CORTOCIRCUITO" && a[1] === "" && a[2] === "PARÁMETROS DE ENTRADA:" && LINEA.test(a[3]), "«CÁLCULO DE CORTOCIRCUITO», línea en blanco, «PARÁMETROS DE ENTRADA:» y su línea divisoria DEBAJO");
-  ok(iRes > 4 && a[iRes - 1] === "" && LINEA.test(a[iRes + 1]), "«RESULTADOS:» con una línea en blanco antes y su línea divisoria DEBAJO");
-  ok(!LINEA.test(a[2]) && !LINEA.test(a[iRes - 1]) && !LINEA.test(a[4]) && !LINEA.test(a[iRes + 2]), "encima de las etiquetas no hay línea y debajo de la línea sigue directamente el contenido");
+  ok(a[0] === "CÁLCULO DE CORTOCIRCUITO" && a[1] === "" && a[2] === "" && a[3] === "PARÁMETROS DE ENTRADA:" && LINEA.test(a[4]), "«CÁLCULO DE CORTOCIRCUITO», dos líneas en blanco, «PARÁMETROS DE ENTRADA:» y su línea divisoria DEBAJO");
+  ok(iRes > 5 && a[iRes - 1] === "" && a[iRes - 2] === "" && LINEA.test(a[iRes + 1]), "«RESULTADOS:» con dos líneas en blanco antes y su línea divisoria DEBAJO");
+  ok(!LINEA.test(a[3]) && !LINEA.test(a[iRes - 1]) && !LINEA.test(a[5]) && !LINEA.test(a[iRes + 2]), "encima de las etiquetas no hay línea y debajo de la línea sigue directamente el contenido");
   ok(etiquetasEn(a).join("|") === "CÁLCULO DE CORTOCIRCUITO|PARÁMETROS DE ENTRADA:|RESULTADOS:" && a.filter((x) => LINEA.test(x)).length === 2, "tres etiquetas y dos líneas divisorias");
   for (const inicio of ["Tipo de red: Aéreo", "Tipo/Material de conductor: ACSR", "Calibre: 4/0", "Área del conductor", "Temperatura de operación: 75.00 °C", "Temperatura máxima admisible en falla: 250.00 °C", "Tiempo de despeje de la falla: 0.3 s"]) {
     ok(tiene(params, inicio), `parámetros de entrada incluye «${inicio}»`);

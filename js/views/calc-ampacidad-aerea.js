@@ -366,6 +366,7 @@ export async function render(container) {
     return [
       `CÁLCULO DE AMPACIDAD AÉREA`,
       ``,
+      ``,
       `PARÁMETROS DE ENTRADA:`,
       LINEA_REPORTE,
       `Tipo: ${ctx.tipo}`,
@@ -383,6 +384,7 @@ export async function render(container) {
       `Absortividad (α): ${fmt(p.alfa)}`,
       `Radiación solar total (Qse): ${fmt(p.qseWm2)} W/m²`,
       `Ángulo efectivo de incidencia solar (θ): ${fmt(p.thetaDeg)} °`,
+      ``,
       ``,
       `RESULTADOS:`,
       LINEA_REPORTE,

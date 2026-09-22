@@ -407,10 +407,12 @@ export async function render(container) {
     return [
       `CÁLCULO DE OCUPACIÓN DE DUCTOS`,
       ``,
+      ``,
       `PARÁMETROS DE ENTRADA:`,
       LINEA_REPORTE,
       ...tubo,
       ...parametrosGrupos,
+      ``,
       ``,
       `RESULTADOS:`,
       LINEA_REPORTE,

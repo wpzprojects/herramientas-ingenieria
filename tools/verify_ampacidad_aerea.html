@@ -241,11 +241,11 @@ await seccion("vista: estructura del reporte (se copia y se pega)", async () => 
   const tiene = (l, inicio) => l.some((x) => x.trim().startsWith(inicio));
   const a = leer();
   const iRes = a.indexOf("RESULTADOS:");
-  const params = a.slice(4, iRes - 1);
+  const params = a.slice(5, iRes - 2);
   const res = a.slice(iRes + 2);
-  ok(a[0] === "CÁLCULO DE AMPACIDAD AÉREA" && a[1] === "" && a[2] === "PARÁMETROS DE ENTRADA:" && LINEA.test(a[3]), "«CÁLCULO DE AMPACIDAD AÉREA», línea en blanco, «PARÁMETROS DE ENTRADA:» y su línea divisoria DEBAJO");
-  ok(iRes > 4 && a[iRes - 1] === "" && LINEA.test(a[iRes + 1]), "«RESULTADOS:» con una línea en blanco antes y su línea divisoria DEBAJO");
-  ok(!LINEA.test(a[2]) && !LINEA.test(a[iRes - 1]) && !LINEA.test(a[4]) && !LINEA.test(a[iRes + 2]), "encima de las etiquetas no hay línea y debajo de la línea sigue directamente el contenido");
+  ok(a[0] === "CÁLCULO DE AMPACIDAD AÉREA" && a[1] === "" && a[2] === "" && a[3] === "PARÁMETROS DE ENTRADA:" && LINEA.test(a[4]), "«CÁLCULO DE AMPACIDAD AÉREA», dos líneas en blanco, «PARÁMETROS DE ENTRADA:» y su línea divisoria DEBAJO");
+  ok(iRes > 5 && a[iRes - 1] === "" && a[iRes - 2] === "" && LINEA.test(a[iRes + 1]), "«RESULTADOS:» con dos líneas en blanco antes y su línea divisoria DEBAJO");
+  ok(!LINEA.test(a[3]) && !LINEA.test(a[iRes - 1]) && !LINEA.test(a[5]) && !LINEA.test(a[iRes + 2]), "encima de las etiquetas no hay línea y debajo de la línea sigue directamente el contenido");
   ok(etiquetasEn(a).join("|") === "CÁLCULO DE AMPACIDAD AÉREA|PARÁMETROS DE ENTRADA:|RESULTADOS:" && a.filter((x) => LINEA.test(x)).length === 2, "tres etiquetas y dos líneas divisorias");
   for (const inicio of ["Tipo: ACSR", "Calibre: 4/0", `Referencia: ${ACSR.nombre_clave}`, "Diámetro:", "Resistencia AC 25°C", "Resistencia AC 75°C", "Temperatura ambiente: 25.00 °C", "Temperatura máxima del conductor: 75.00 °C", "Velocidad del viento: 0.61 m/s", "Ángulo viento-conductor: 90.00 °", "Elevación sobre el nivel del mar: 0.00 m", "Emisividad (ε): 0.50", "Absortividad (α): 0.50", "Radiación solar total (Qse): 1000.00 W/m²", "Ángulo efectivo de incidencia solar (θ): 90.00 °"]) {
     ok(tiene(params, inicio), `parámetros de entrada incluye «${inicio}»`);

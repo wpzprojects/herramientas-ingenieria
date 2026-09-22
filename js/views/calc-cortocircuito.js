@@ -292,6 +292,7 @@ export async function render(container) {
     return [
       `CÁLCULO DE CORTOCIRCUITO`,
       ``,
+      ``,
       `PARÁMETROS DE ENTRADA:`,
       LINEA_REPORTE,
       `Tipo de red: ${ctx.red === "Aereo" ? "Aéreo" : "Subterráneo"}`,
@@ -302,6 +303,7 @@ export async function render(container) {
       `Temperatura máxima admisible en falla: ${fmt(p.tempFallaC)} °C`,
       `Tiempo de despeje de la falla: ${fmt(p.tiempoS, 1)} s`,
       ...(ctx.objetivoKa === null ? [] : [`Corriente de falla a soportar: ${fmt(ctx.objetivoKa)} kA`]),
+      ``,
       ``,
       `RESULTADOS:`,
       LINEA_REPORTE,

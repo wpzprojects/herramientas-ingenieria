@@ -520,6 +520,7 @@ export async function render(container) {
     return [
       `CÁLCULO DE REGULACIÓN`,
       ``,
+      ``,
       `PARÁMETROS DE ENTRADA:`,
       LINEA_REPORTE,
       `Tensión de línea: ${fmt(base.tensionLineaKv)} kV`,
@@ -527,6 +528,7 @@ export async function render(container) {
       ...(modo === "potencia" ? [potenciaActiva] : []), // si parte de otro dato, la potencia activa se calcula y va en resultados
       `Factor de potencia: ${fmt(base.factorPotencia)}`,
       ...parametrosTramos,
+      ``,
       ``,
       `RESULTADOS:`,
       LINEA_REPORTE,
