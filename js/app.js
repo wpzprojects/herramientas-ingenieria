@@ -74,8 +74,33 @@ navPerfil.innerHTML = `
 const SIDEBAR_KEY = "sidebarCollapsed";
 const collapseBtn = document.getElementById("sidebar-collapse");
 
-function applySidebarCollapsed(collapsed) {
-  document.documentElement.classList.toggle("sb-collapsed", collapsed);
+// Clase aparte para el "salto" de layout no animable (justify-content/padding, que centran el
+// icono contraido): al contraer se agrega recien cuando termina de angostarse el ancho (evento
+// transitionend, con un respaldo por si no hubo transicion), para que el icono no salte al
+// centro mientras la barra todavia se ve ancha; al expandir se quita de inmediato.
+const SNAP_CLASS = "sb-collapsed-snap";
+
+function applySidebarCollapsed(collapsed, { animar = true } = {}) {
+  const html = document.documentElement;
+  html.classList.toggle("sb-collapsed", collapsed);
+  if (!collapsed) {
+    html.classList.remove(SNAP_CLASS);
+  } else if (!animar) {
+    html.classList.add(SNAP_CLASS);
+  } else {
+    let hecho = false;
+    const marcar = () => {
+      if (hecho) return;
+      hecho = true;
+      html.classList.add(SNAP_CLASS);
+    };
+    const onTransitionEnd = (e) => {
+      if (e.target === sidebarEl && e.propertyName === "width") marcar();
+    };
+    const sidebarEl = document.querySelector(".sidebar");
+    sidebarEl?.addEventListener("transitionend", onTransitionEnd, { once: true });
+    setTimeout(marcar, 200); // respaldo: pantalla angosta o prefers-reduced-motion (sin transicion)
+  }
   const label = collapsed ? "Expandir menú" : "Contraer menú";
   // con el menú abierto se lee «Contraer menú» junto al icono; contraído solo queda el icono (.nav-label se oculta)
   collapseBtn.innerHTML = `<span class="nav-icon">${icon(collapsed ? "sidebarExpand" : "sidebarCollapse")}</span><span class="nav-label">${label}</span>`;
@@ -84,7 +109,7 @@ function applySidebarCollapsed(collapsed) {
   collapseBtn.setAttribute("aria-expanded", String(!collapsed));
 }
 
-applySidebarCollapsed(document.documentElement.classList.contains("sb-collapsed"));
+applySidebarCollapsed(document.documentElement.classList.contains("sb-collapsed"), { animar: false });
 
 collapseBtn.addEventListener("click", () => {
   const next = !document.documentElement.classList.contains("sb-collapsed");

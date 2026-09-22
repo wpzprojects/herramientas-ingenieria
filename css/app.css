@@ -124,14 +124,23 @@ button { font-family: inherit; }
     transition: width .18s ease; overflow-x: hidden;
   }
   .sidebar .nav-list { flex: 0 0 auto; }
-  /* contraido: barra delgada solo con el icono de cada categoria */
+  /* contraido: barra delgada solo con el icono de cada categoria. El label se apaga con opacity
+     (no display:none) para que se desvanezca junto con el angostado del ancho, en vez de
+     desaparecer de golpe. justify-content/padding (no son animables por CSS) NO se aplican con
+     sb-collapsed solo: esperan a la clase sb-collapsed-snap, que app.js agrega recien cuando la
+     transicion de ancho termina -- asi el icono no "salta" al centro mientras la barra todavia
+     se ve ancha. Al expandir, app.js quita sb-collapsed-snap de inmediato (junto con
+     sb-collapsed): el layout se abre de una vez y el label aparece progresivamente. */
   html.sb-collapsed .sidebar { width: 64px; padding-left: var(--space-2); padding-right: var(--space-2); }
-  html.sb-collapsed .sidebar-head { justify-content: center; }
-  html.sb-collapsed .sidebar-collapse-btn { width: 100%; padding: 0; justify-content: center; }
-  html.sb-collapsed .nav-label { display: none; }
-  html.sb-collapsed .nav-link { justify-content: center; padding-left: 0; padding-right: 0; }
+  html.sb-collapsed .nav-label { opacity: 0; }
+  html.sb-collapsed-snap .sidebar-head { justify-content: center; }
+  html.sb-collapsed-snap .sidebar-collapse-btn { width: 100%; padding: 0; justify-content: center; }
+  html.sb-collapsed-snap .nav-link { justify-content: center; padding-left: 0; padding-right: 0; }
+  .nav-label, .sidebar-collapse-btn .nav-label { transition: opacity .18s ease; }
 }
-@media (prefers-reduced-motion: reduce) { .sidebar { transition: none !important; } }
+@media (prefers-reduced-motion: reduce) {
+  .sidebar, .nav-label { transition: none !important; }
+}
 .nav-link:hover { background: var(--bg-sunken); color: var(--text); }
 .nav-link.active { background: var(--accent-soft); color: var(--accent-strong); }
 
