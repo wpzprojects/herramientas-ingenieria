@@ -74,6 +74,8 @@ Para granjas solares, el factor de carga que determina bien las pérdidas varía
 - Seguidor de dos ejes (curva muy plana): ≈0.53
 Por eso se sugiere un rango de 0.28-0.53 (más alto = más conservador) y no un valor fijo.
 
+El caso más riguroso y conservador es Fc=1: asume que la potencia se transporta siempre a carga plena, sin variación.
+
 Recomendación: si la decisión es importante (inversión, comparación de conductores), calcula el Fc con la curva real de generación a 24 h del proyecto, o mejor, haz el cálculo de pérdidas hora a hora en vez de depender del atajo Fc→Fp.`;
 
 // Texto plano de respaldo si KaTeX no se puede cargar.
