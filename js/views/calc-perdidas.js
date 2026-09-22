@@ -65,7 +65,16 @@ const FORMULAS_ETIQUETAS = [
 
 const FORMULAS_NOTA = `El circuito puede tener varios tramos (cada uno con su conductor y longitud): el % de pérdidas total es la suma del % de cada tramo, válido cuando la corriente es la misma en todo el circuito (sin cargas intermedias).
 
-El factor de pérdidas usa la forma cuadrática clásica de Buller-Woodrow (Fp = 0.3·Fc + 0.7·Fc²), válida siempre entre los límites Fc² ≤ Fp ≤ Fc.`;
+El factor de pérdidas usa la forma cuadrática clásica de Buller-Woodrow (Fp = 0.3·Fc + 0.7·Fc²), válida siempre entre los límites Fc² ≤ Fp ≤ Fc.
+
+Para granjas solares, el factor de carga que determina bien las pérdidas varía mucho según la tecnología (fijo, seguidor de uno o dos ejes) y la zona (nubosidad, ubicación geográfica):
+- Ventana corta o día nublado: ≈0.30
+- Pico agudo (paneles fijos): ≈0.39
+- Seguidor de un eje (curva más plana): ≈0.49
+- Seguidor de dos ejes (curva muy plana): ≈0.53
+Por eso se sugiere un rango de 0.28-0.53 (más alto = más conservador) y no un valor fijo.
+
+Recomendación: si la decisión es importante (inversión, comparación de conductores), calcula el Fc con la curva real de generación a 24 h del proyecto, o mejor, haz el cálculo de pérdidas hora a hora en vez de depender del atajo Fc→Fp.`;
 
 // Texto plano de respaldo si KaTeX no se puede cargar.
 const FORMULAS_TEXTO = `I = (P·1000) / (√3·V·cos φ)               [A]
