@@ -71,14 +71,14 @@ const FORMULAS_ETIQUETAS = [
   { tex: "p_t", texto: "Precio de la energía perdida en el año t [$/kWh]" },
   { tex: "c_{cond}", texto: "Precio de UN conductor por km [$/km]" },
   { tex: "c_{inst}", texto: "Costo de instalación por km de línea [$/km]" },
-  { tex: "C_0", texto: "Inversión inicial (año 0) [$]" },
+  { tex: "C_0", texto: "Inversión inicial (al inicio del proyecto) [$]" },
   { tex: "VP_{perd}", texto: "Valor presente del costo de las pérdidas [$]" },
   { tex: "C_{total}", texto: "Costo total actualizado [$]" },
   { tex: String.raw`\Delta_i`, texto: "Diferencia de la opción i frente a la de menor costo total [$]" },
   { tex: "t_{eq}", texto: "Año en que la opción compensa su mayor inversión frente a la de menor inversión" },
 ];
 
-const FORMULAS_NOTA = `La inversión se paga en el año 0. Las pérdidas de cada año se pagan al final de ese año y se traen a valor de hoy con la tasa de descuento. Todo va en pesos corrientes: la tasa es nominal y el precio de la energía sube el porcentaje indicado cada año.
+const FORMULAS_NOTA = `La inversión se paga al inicio del proyecto. Las pérdidas de cada año se pagan al final de ese año y se traen a valor de hoy con la tasa de descuento. Todo va en pesos corrientes: la tasa es nominal y el precio de la energía sube el porcentaje indicado cada año.
 
 La demanda indicada es la del año 1. Si crece, la corriente crece igual y las pérdidas crecen con su cuadrado. La potencia perdida que entrega la calculadora de Pérdidas ya incluye el factor de pérdidas (Fp = 0.3·Fc + 0.7·Fc², forma cuadrática, igual que en esa pantalla), por eso la energía anual es esa potencia por 8760 h.
 
@@ -197,7 +197,7 @@ export async function render(container) {
         <div class="form-section-title">${icon("coin")} Supuestos económicos</div>
         <div class="grid-2">
           <div class="field">
-            <label for="f-anios" data-info="Horizonte de tiempo del análisis, o vida útil esperada del proyecto. La inversión se paga de una sola vez al iniciar (año 0); las pérdidas se calculan año por año durante todo este período.">Años de análisis</label>
+            <label for="f-anios" data-info="Horizonte de tiempo del análisis, o vida útil esperada del proyecto. La inversión se paga al inicio del proyecto; el año 1 es el primer año de operación (ahí arrancan la demanda, el precio de la energía y las pérdidas), y así sigue hasta el año N.">Años de análisis</label>
             <input type="number" id="f-anios" min="1" max="60" step="1" value="25" required>
           </div>
           <div class="field">

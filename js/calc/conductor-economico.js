@@ -4,7 +4,7 @@
 // usan el mismo factor de pérdidas y las mismas formulas que esa pantalla.
 //
 // Convenciones (las mismas que se muestran en la pestaña «Fórmulas»):
-//  - La inversion se paga en el año 0. Las perdidas de cada año se pagan al final de ese año (t = 1…N) y se descuentan
+//  - La inversion se paga al inicio del proyecto. Las perdidas de cada año se pagan al final de ese año (t = 1…N) y se descuentan
 //    con (1 + r)^t. Todo en pesos corrientes: la tasa de descuento es nominal y el precio de la energia sube `escalada` % al año.
 //  - La demanda indicada es la del año 1; crece `crecimiento` % cada año. La corriente crece igual y las perdidas, con su cuadrado.
 //  - Las perdidas de potencia que da el motor (MW) ya incluyen el factor de pérdidas (Fp), o sea que son la potencia
