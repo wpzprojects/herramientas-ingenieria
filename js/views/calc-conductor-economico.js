@@ -305,7 +305,7 @@ export async function render(container) {
         </div>
         <div class="grid-2">
           <div class="field">
-            <label for="f-n-${id}" data-info="Resistencia efectiva: R conductor / # conductores por fase.">Conductores por fase</label>
+            <label for="f-n-${id}">Conductores por fase</label>
             <input type="number" id="f-n-${id}" min="1" max="8" step="1" value="1" required>
           </div>
           <div class="field">
