@@ -335,9 +335,9 @@ button { font-family: inherit; }
    .tile-desc. line-height y margen dan un poco mas de aire entre viñetas. */
 .ayuda-intro { font-size: 0.85rem; }
 .ayuda-lista { padding-left: 1.2rem; }
-.ayuda-lista li { font-size: 0.85rem; line-height: 1.5; margin-bottom: 4px; }
+.ayuda-lista li { font-size: 0.85rem; line-height: 1.5; margin-bottom: var(--space-4); }
 .ayuda-lista li:last-child { margin-bottom: 0; }
-.ayuda-lista .ayuda-desc { color: var(--text-muted); }
+.ayuda-lista .ayuda-desc { color: var(--text-muted); margin: 2px 0 0; }
 
 /* ---------- tarjeta de desarrollador (Ayuda) ---------- */
 .dev-card { display: flex; flex-direction: column; gap: var(--space-4); }
