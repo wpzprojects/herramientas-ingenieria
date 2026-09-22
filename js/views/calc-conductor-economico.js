@@ -187,7 +187,7 @@ export async function render(container) {
             <input type="number" id="f-longitud" min="0" step="0.01" value="10" required>
           </div>
           <div class="field">
-            <label for="f-crecimiento" data-info="La demanda escrita es la del año 1; cada año siguiente crece este porcentaje. La corriente crece igual y las pérdidas crecen con su cuadrado. Con 0 la demanda no cambia.">Crecimiento anual de la demanda (%)</label>
+            <label for="f-crecimiento" data-info="Cuánto aumenta la demanda cada año, a partir del año 1. Con 0 % la demanda se mantiene igual todos los años.">Crecimiento anual de la demanda (%)</label>
             <input type="number" id="f-crecimiento" min="0" max="100" step="any" value="0" required>
           </div>
         </div>
