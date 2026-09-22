@@ -190,7 +190,7 @@ export async function render(container) {
     cont.innerHTML = `
       <div class="card tarjeta-borde form-section tramo-block">
         <div class="form-section-title">
-          ${icon("plugConnected")} <span class="tramo-titulo">Conductor — Tramo 1</span>
+          ${icon("plugConnected")} <span class="tramo-titulo">Conductor tramo 1</span>
           <button type="button" class="btn btn-ghost btn-tramo-quitar" hidden>${icon("close")} Quitar</button>
         </div>
         <div class="grid-2">
@@ -316,7 +316,7 @@ export async function render(container) {
   /** Numera las tarjetas, muestra "Quitar" solo si hay mas de un tramo. */
   function actualizarTramos() {
     tramos.forEach((t, i) => {
-      t.titulo.textContent = `Conductor — Tramo ${i + 1}`;
+      t.titulo.textContent = `Conductor tramo ${i + 1}`;
       t.quitar.hidden = tramos.length < 2;
     });
   }

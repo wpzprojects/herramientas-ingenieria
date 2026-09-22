@@ -123,7 +123,7 @@ await render(stage, {});
 
 await seccion("vista: tarjetas de tubería y conductores", async () => {
   const titulos = $$(".form-section-title").map(texto);
-  ok($$(".card.form-section").length === 2 && titulos[0].includes("Tubería") && titulos[1].includes("Conductor tipo 1") && !titulos[1].includes("—"), `dos tarjetas: «${titulos.join("» y «")}»`);
+  ok($$(".card.form-section").length === 2 && titulos[0].includes("Tubería") && titulos[1].includes("Conductores tipo 1") && !titulos[1].includes("—"), `dos tarjetas: «${titulos.join("» y «")}»`);
   ok($$(".form-section-title").every((t) => t.querySelector("svg.icon") && t.parentElement.classList.contains("card")), "cada título lleva su icono y va dentro de su tarjeta");
   ok($$(".card").every((c) => c.classList.contains("tarjeta-borde")), "las tarjetas llevan el borde marcado");
   ok($(".btn-tramo-quitar").hidden, "con un solo tipo de conductor no aparece «Quitar»");
@@ -297,7 +297,7 @@ await seccion("vista: varios tipos de conductor", async () => {
   const agregar = $(".btn-agregar-tramo");
   agregar.click();
   const bloques = () => $$(".grupo-block");
-  ok(bloques().length === 2 && texto($$(".grupo-titulo")[1]) === "Conductor tipo 2", "agregar crea la tarjeta «Conductor tipo 2»");
+  ok(bloques().length === 2 && texto($$(".grupo-titulo")[1]) === "Conductores tipo 2", "agregar crea la tarjeta «Conductores tipo 2»");
   ok($$(".btn-tramo-quitar").every((b) => !b.hidden), "con dos tipos ambos muestran «Quitar»");
   ok(!bloques()[1].contains(agregar) && !bloques()[0].contains(agregar) && agregar.previousElementSibling === $("#form-calc button[type=submit]"), "«Agregar tipo de conductor» sigue junto a «Calcular» (no depende de las tarjetas)");
   ok($("#f-diametro-0").value === "30" && $("#f-n-0").value === "3", "el primer tipo conserva lo elegido");
@@ -339,7 +339,7 @@ await seccion("vista: varios tipos de conductor", async () => {
 
   // quitar el primer tipo
   $$(".btn-tramo-quitar")[0].click();
-  ok(bloques().length === 1 && texto($(".grupo-titulo")) === "Conductor tipo 1" && $(".btn-tramo-quitar").hidden, "quitar elimina la tarjeta, renumera y oculta «Quitar»");
+  ok(bloques().length === 1 && texto($(".grupo-titulo")) === "Conductores tipo 1" && $(".btn-tramo-quitar").hidden, "quitar elimina la tarjeta, renumera y oculta «Quitar»");
   ok($("#chk-catalogo-1").checked && $("#f-calibre-1").value === "250", "el tipo que queda conserva su catálogo y calibre");
   marcar("#chk-catalogo-1", false);
   poner("#f-diametro-1", "30");
@@ -361,7 +361,7 @@ await seccion("vista: estructura del reporte (se copia y se pega)", async () => 
   ok(sa.iRes > 4 && a[sa.iRes - 1] === "" && LINEA.test(a[sa.iRes + 1]), "«RESULTADOS:» con una línea en blanco antes y su línea divisoria DEBAJO");
   ok(!LINEA.test(a[2]) && !LINEA.test(a[sa.iRes - 1]) && !LINEA.test(a[4]) && !LINEA.test(a[sa.iRes + 2]), "encima de las etiquetas no hay línea y debajo de la línea sigue directamente el contenido");
   ok(etiquetasEn(a).join("|") === "CÁLCULO DE OCUPACIÓN DE DUCTOS|PARÁMETROS DE ENTRADA:|RESULTADOS:" && a.filter((x) => LINEA.test(x)).length === 2, "tres etiquetas y dos líneas divisorias");
-  for (const inicio of ["Tipo de tubería:", "Diámetro nominal:", "Diámetro interno de la tubería:", "Conductores — Tipo 1:", "Número de conductores: 3", "Diámetro del conductor: 30.00 mm", "Origen del diámetro: Ingresado manualmente"]) {
+  for (const inicio of ["Tipo de tubería:", "Diámetro nominal:", "Diámetro interno de la tubería:", "Conductores tipo 1:", "Número de conductores: 3", "Diámetro del conductor: 30.00 mm", "Origen del diámetro: Ingresado manualmente"]) {
     ok(tiene(sa.params, inicio), `parámetros de entrada incluye «${inicio}»`);
   }
   for (const inicio of ["Área", "Porcentaje", "Límite", "Cumple", "Número total"]) {
@@ -391,7 +391,7 @@ await seccion("vista: estructura del reporte (se copia y se pega)", async () => 
   const d = leer();
   const sd = secciones(d);
   ok(etiquetasEn(d).length === 3 && d.filter((x) => LINEA.test(x)).length === 2, "con dos tipos siguen siendo tres etiquetas y dos líneas");
-  ok(sd.params.filter((x) => /^Conductores — Tipo \d:$/.test(x)).join() === "Conductores — Tipo 1:,Conductores — Tipo 2:" && sd.res.filter((x) => /^Tipo \d:$/.test(x)).join() === "Tipo 1:,Tipo 2:", "los dos tipos aparecen en los parámetros y en los resultados");
+  ok(sd.params.filter((x) => /^Conductores tipo \d:$/.test(x)).join() === "Conductores tipo 1:,Conductores tipo 2:" && sd.res.filter((x) => /^Tipo \d:$/.test(x)).join() === "Tipo 1:,Tipo 2:", "los dos tipos aparecen en los parámetros y en los resultados");
   ok(tiene(sd.params, "Origen del diámetro: Catálogo XLPE: 15 kV (100 %), Cobre, Cinta de cobre, calibre 2"), "el tipo del catálogo indica de dónde salió el diámetro");
   ok(sd.res.filter((x) => x.trim().startsWith("Radio de curvatura (12D): ")).length === 2, "con dos tipos, el reporte trae el radio de curvatura de cada uno");
   ok(tiene(sd.res, "Número total de conductores: 6") && d.at(-1).startsWith("Cumple:"), "el total de conductores va en los resultados y el reporte termina con «Cumple»");

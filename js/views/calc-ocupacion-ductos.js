@@ -191,7 +191,7 @@ export async function render(container) {
     cont.innerHTML = `
       <div class="card tarjeta-borde form-section grupo-block">
         <div class="form-section-title">
-          ${icon("plugConnected")} <span class="grupo-titulo">Conductor tipo 1</span>
+          ${icon("plugConnected")} <span class="grupo-titulo">Conductores tipo 1</span>
           <button type="button" class="btn btn-ghost btn-tramo-quitar" hidden>${icon("close")} Quitar</button>
         </div>
         <div class="grid-2">
@@ -335,7 +335,7 @@ export async function render(container) {
   /** Numera las tarjetas, muestra "Quitar" solo si hay mas de un tipo. */
   function actualizarGrupos() {
     grupos.forEach((g, i) => {
-      g.titulo.textContent = `Conductor tipo ${i + 1}`;
+      g.titulo.textContent = `Conductores tipo ${i + 1}`;
       g.quitar.hidden = grupos.length < 2;
     });
   }
@@ -402,7 +402,7 @@ export async function render(container) {
     const tubo = ctx.tubo.manual
       ? [`Tubería: ingresada manualmente`, `Diámetro interno de la tubería: ${fmt(ctx.diametroTuboMm)} mm`]
       : [`Tipo de tubería: ${ctx.tubo.tipo}`, `Diámetro nominal: ${ctx.tubo.nominal}`, `Diámetro interno de la tubería: ${fmt(ctx.diametroTuboMm)} mm`];
-    const parametrosGrupos = ctx.estados.map((e, i) => [``, `Conductores — Tipo ${i + 1}:`, `  Número de conductores: ${e.cantidad}`, `  Diámetro del conductor: ${fmt(e.diametroMm)} mm`, `  Origen del diámetro: ${origenTexto(e)}`].join("\n"));
+    const parametrosGrupos = ctx.estados.map((e, i) => [``, `Conductores tipo ${i + 1}:`, `  Número de conductores: ${e.cantidad}`, `  Diámetro del conductor: ${fmt(e.diametroMm)} mm`, `  Origen del diámetro: ${origenTexto(e)}`].join("\n"));
     const resultadosGrupos = data.grupos.map((g) => [``, `Tipo ${g.numero}:`, `  Área de un conductor: ${fmt(g.areaCable)} mm²`, `  Área total del tipo: ${fmt(g.areaTotal)} mm²`, `  Radio de curvatura (12D): ${fmt(g.radioCurvaturaMm)} mm`].join("\n"));
     return [
       `CÁLCULO DE OCUPACIÓN DE DUCTOS`,
