@@ -20,7 +20,7 @@ const FORMULAS_TEX = [
     titulo: "Corriente y pérdidas del año 1 (mismas fórmulas de la calculadora de Pérdidas)",
     ecuaciones: [
       String.raw`I_1 = \dfrac{P_1 \cdot 1000}{\sqrt{3}\,V\,\cos\varphi} \quad [\mathrm{A}]`,
-      String.raw`F_p = 0.7\,F_c + 0.3`,
+      String.raw`F_p = 0.3\,F_c + 0.7\,F_c^{2}`,
       String.raw`R_{ef} = \dfrac{R_{75}}{N} \quad [\Omega/\mathrm{km}]`,
       String.raw`\%P_1 = \dfrac{\sqrt{3}\,I_1\,R_{ef}\,L\,F_p \cdot 100}{V \cdot 1000 \cdot \cos\varphi}`,
       String.raw`P_{perd,1} = P_1 \cdot \dfrac{\%P_1}{100} \quad [\mathrm{MW}]`,
@@ -80,14 +80,14 @@ const FORMULAS_ETIQUETAS = [
 
 const FORMULAS_NOTA = `La inversión se paga en el año 0. Las pérdidas de cada año se pagan al final de ese año y se traen a valor de hoy con la tasa de descuento. Todo va en pesos corrientes: la tasa es nominal y el precio de la energía sube el porcentaje indicado cada año.
 
-La demanda indicada es la del año 1. Si crece, la corriente crece igual y las pérdidas crecen con su cuadrado. La potencia perdida que entrega la calculadora de Pérdidas ya incluye el factor de pérdidas (Fp = 0.7·Fc + 0.3, forma lineal, igual que en esa pantalla), por eso la energía anual es esa potencia por 8760 h.
+La demanda indicada es la del año 1. Si crece, la corriente crece igual y las pérdidas crecen con su cuadrado. La potencia perdida que entrega la calculadora de Pérdidas ya incluye el factor de pérdidas (Fp = 0.3·Fc + 0.7·Fc², forma cuadrática, igual que en esa pantalla), por eso la energía anual es esa potencia por 8760 h.
 
 Gana la opción de menor costo total actualizado. El «año de equilibrio» compara cada opción con la de menor inversión y dice cuándo su costo acumulado (descontado) deja de ser mayor.
 
 No se incluyen valor residual, costos de operación y mantenimiento, impuestos ni otras condiciones técnicas (regulación, cortocircuito): son decisiones de alcance de esta calculadora. La tabla de sensibilidad cambia un supuesto a la vez (energía ±10 %, demanda ±10 %, tasa ±2 puntos) y muestra si la opción ganadora cambia.`;
 
 const FORMULAS_TEXTO = `I1 = (P1·1000) / (√3·V·cos φ)                          [A]
-Fp = 0.7·Fc + 0.3
+Fp = 0.3·Fc + 0.7·Fc²
 Ref = R75 / N                                          [Ω/km]
 %P1 = (√3·I1·Ref·L·Fp·100) / (V·1000·cos φ)
 Pperd1 = P1 · %P1 / 100                                [MW]
@@ -170,8 +170,8 @@ export async function render(container) {
             <input type="number" id="f-fp" min="0" max="1" step="0.01" value="0.9" required>
           </div>
           <div class="field">
-            <label for="f-fc" data-info="Circuitos de uso: 1 · Granjas solares: 0.564">Factor de carga (Fc)</label>
-            <input type="number" id="f-fc" min="0" max="1" step="0.0001" value="0.564" required>
+            <label for="f-fc" data-info="Circuitos de uso: 1 · Granjas solares: 0.28-0.53 según tecnología (lo ideal es calcularlo con la curva real de generación a 24 h)">Factor de carga (Fc)</label>
+            <input type="number" id="f-fc" min="0" max="1" step="0.0001" value="0.4" required>
           </div>
         </div>
         <div class="grid-2 ultima">

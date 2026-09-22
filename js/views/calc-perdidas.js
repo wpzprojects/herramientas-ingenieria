@@ -35,7 +35,7 @@ const FORMULAS_TEX = [
   {
     titulo: "Pérdidas",
     ecuaciones: [
-      String.raw`F_p = 0.7\,F_c + 0.3`,
+      String.raw`F_p = 0.3\,F_c + 0.7\,F_c^{2}`,
       String.raw`R_{ef} = \dfrac{R_{75}}{N} \quad [\Omega/\mathrm{km}]`,
       String.raw`\%P_i = \dfrac{\sqrt{3}\,I\,R_{ef,i}\,L_i\,F_p \cdot 100}{V \cdot 1000 \cdot \cos\varphi}`,
       String.raw`\%P_{total} = \sum_{i} \%P_i`,
@@ -65,14 +65,14 @@ const FORMULAS_ETIQUETAS = [
 
 const FORMULAS_NOTA = `El circuito puede tener varios tramos (cada uno con su conductor y longitud): el % de pérdidas total es la suma del % de cada tramo, válido cuando la corriente es la misma en todo el circuito (sin cargas intermedias).
 
-Nota de fidelidad: esta calculadora usa la forma LINEAL del factor de pérdidas (0.7·Fc + 0.3), replicando el comportamiento real de la aplicación original en producción — no la forma cuadrática clásica de Buller-Woodrow (0.7·Fc² + 0.3·Fc) que aparecía documentada en su panel de fórmulas. Es una decisión de fidelidad confirmada intencionalmente al migrar.`;
+El factor de pérdidas usa la forma cuadrática clásica de Buller-Woodrow (Fp = 0.3·Fc + 0.7·Fc²), válida siempre entre los límites Fc² ≤ Fp ≤ Fc.`;
 
 // Texto plano de respaldo si KaTeX no se puede cargar.
 const FORMULAS_TEXTO = `I = (P·1000) / (√3·V·cos φ)               [A]
 S = P / cos φ                              [MVA]
 Q = √(S² − P²)                             [MVAR]
 
-Fp = 0.7·Fc + 0.3                          (factor de pérdidas, forma lineal)
+Fp = 0.3·Fc + 0.7·Fc²                      (factor de pérdidas, forma cuadrática)
 Ref = R75 / N                              [Ω/km]
 % Pérdidas del tramo = (√3·I·Ref·L·Fp·100) / (V·1000·cos φ)
 % Pérdidas total = suma del % de cada tramo
@@ -136,8 +136,8 @@ export async function render(container) {
             <input type="number" id="f-fp" min="0" max="1" step="0.01" value="0.9" required>
           </div>
           <div class="field">
-            <label for="f-fc" data-info="Circuitos de uso: 1 · Granjas solares: 0.564">Factor de carga (Fc)</label>
-            <input type="number" id="f-fc" min="0" max="1" step="0.0001" value="0.564" required>
+            <label for="f-fc" data-info="Circuitos de uso: 1 · Granjas solares: 0.28-0.53 según tecnología (lo ideal es calcularlo con la curva real de generación a 24 h)">Factor de carga (Fc)</label>
+            <input type="number" id="f-fc" min="0" max="1" step="0.0001" value="0.4" required>
           </div>
         </div>
       </div>
@@ -458,7 +458,7 @@ export async function render(container) {
       ``,
       `RESULTADOS:`,
       LINEA_REPORTE,
-      `Factor de pérdidas (Fp = 0.7·Fc + 0.3): ${fmt(r.factorPerdidas, 4)}`,
+      `Factor de pérdidas (Fp = 0.3·Fc + 0.7·Fc²): ${fmt(r.factorPerdidas, 4)}`,
       ...(modo === "potencia" ? [] : [potenciaActiva]),
       `Corriente: ${fmt(r.corriente)} A`,
       `Potencia aparente: ${fmt(r.potenciaS)} MVA`,

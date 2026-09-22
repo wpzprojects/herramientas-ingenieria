@@ -57,7 +57,7 @@ const ACSR_336 = desnudos.find((c) => c.tipo === "ACSR" && c.calibre_awg_kcmil =
 function esperado(b, o) {
   const n = o.numConductoresPorFase ?? 1;
   const I1 = (b.potenciaActivaMw * 1e6) / (Math.sqrt(3) * b.tensionLineaKv * 1e3 * b.factorPotencia);
-  const Fp = 0.7 * b.factorCarga + 0.3;
+  const Fp = 0.3 * b.factorCarga + 0.7 * b.factorCarga * b.factorCarga;
   const R = o.resistenciaOhmKm / n;
   const inversion = b.longitudKm * (3 * n * o.costoConductorKm + o.costoInstalacionKm);
   let vp = 0;
@@ -75,7 +75,7 @@ function esperado(b, o) {
   return { I1, inversion, vp, total: inversion + vp, acum, anios };
 }
 
-const BASE = { tensionLineaKv: 34.5, potenciaActivaMw: 19.9, factorPotencia: 0.9, factorCarga: 0.564, longitudKm: 10, anios: 25, tasaDescuentoPct: 10, precioKwh: 350, escaladaEnergiaPct: 2.5, crecimientoDemandaPct: 2 };
+const BASE = { tensionLineaKv: 34.5, potenciaActivaMw: 19.9, factorPotencia: 0.9, factorCarga: 0.4, longitudKm: 10, anios: 25, tasaDescuentoPct: 10, precioKwh: 350, escaladaEnergiaPct: 2.5, crecimientoDemandaPct: 2 };
 const OP_A = { resistenciaOhmKm: ACSR_1_0.r_ac_75c_ohm_km, numConductoresPorFase: 1, costoConductorKm: 9e6, costoInstalacionKm: 60e6 };
 const OP_B = { resistenciaOhmKm: ACSR_4_0.r_ac_75c_ohm_km, numConductoresPorFase: 1, costoConductorKm: 14e6, costoInstalacionKm: 60e6 };
 const OP_C = { resistenciaOhmKm: ACSR_336.r_ac_75c_ohm_km, numConductoresPorFase: 1, costoConductorKm: 22e6, costoInstalacionKm: 60e6 };

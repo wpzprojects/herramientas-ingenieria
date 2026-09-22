@@ -102,9 +102,24 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   Normativa»): tarjeta «Datos de la línea» (con *dato de partida*: MW, MVA o A) + una tarjeta «Conductor tramo N» por tramo (sin guión desde 2026-09-21, también en Regulación; los reportes usan «Tramo N:»)
   (agregar/quitar, conductores por fase). Los COLORES no cambian (solo tokens existentes) y los resultados van en los formatos
   que ya había (métricas + tablas); **sin gráficos** (barras, velocímetro): el usuario los quiere más adelante, no ahora.
-  Unidades: se mantienen MW y MVA. El motor `js/calc/perdidas.js` NO se toca; la suma de tramos y el dato de partida viven en
+  Unidades: se mantienen MW y MVA. El motor `js/calc/perdidas.js` no se toca sin que lo pida el propietario del negocio (ver
+  más abajo la excepción del 2026-09-22); la suma de tramos y el dato de partida viven en
   `js/calc/perdidas-tramos.js`. La IA (`calcular_perdidas`) sigue igual (un tramo). Pruebas: `tools/verify_perdidas.html`.
 - Umbrales 1 % / 3 %: solo «referencias de diseño» (Óptimo / Aceptable / Elevado). NUNCA escribir «fuera de norma».
+- Factor de pérdidas (`js/calc/perdidas.js`, 2026-09-22): usa la forma cuadrática de Buller-Woodrow, `Fp = 0.3·Fc + 0.7·Fc²`.
+  Hasta esta fecha usaba la forma LINEAL (`0.7·Fc + 0.3`) para replicar la app original de Power Apps (ya retirada del repo);
+  se volvió a la cuadrática porque la lineal puede dar Fp > Fc (matemáticamente imposible: el límite teórico es
+  `Fc² ≤ Fp ≤ Fc`) y, validado hora a hora contra una curva real de generación solar, sobreestimaba las pérdidas hasta en un
+  74 %. Decisión del propietario del negocio (el mismo que pidió la paridad con Power Apps en su momento). Afecta también a
+  Conductor económico (reutiliza este motor sin duplicar la fórmula). El campo Fc de ambas pantallas cambió su valor por
+  defecto de 0.564 a **0.4** y su tooltip a «Circuitos de uso: 1 · Granjas solares: 0.28-0.53 según tecnología (lo ideal es
+  calcularlo con la curva real de generación a 24 h)». El rango 0.28-0.53 NO es el factor de planta real de una granja solar
+  (ese es ~0.20-0.32 según datos de plantas reales, ver historial de esta conversación): es el Fc que hay que meterle a la
+  fórmula cuadrática para que el resultado coincida con las pérdidas reales calculadas hora a hora, y varía mucho según la
+  forma de la curva (fijo con pico agudo ≈0.39, seguidor de 1 eje ≈0.49, ventana corta u opaca ≈0.30, seguidor de 2 ejes
+  ≈0.53) — no hay un solo número que sirva para todas las tecnologías, por eso el tooltip da un rango y remite al cálculo con
+  la curva real en vez de prometer precisión con un valor fijo. Pruebas actualizadas: `tools/verify_perdidas.html`,
+  `tools/verify_conductor_economico.html`.
 - Tarjetas (`.form-section`): título como BARRA de borde a borde (`.form-section-title`: fondo `--accent-soft` como el botón activo del
   menú lateral, línea inferior delgada `--accent`, icono `--accent` pleno, centrado vertical, `min-height` fijo para que no cambie al
   aparecer «Quitar»); espacio inferior compacto (`.grid-2.ultima`, relleno de 12px).
