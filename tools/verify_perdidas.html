@@ -194,8 +194,8 @@ await seccion("vista: aspecto de las tarjetas", async () => {
     ok(!m.tieneBoton, `«${nombre}»: el botón «Agregar tramo» ya no está dentro de la tarjeta`);
   }
   ok(new Set(medidas.map((m) => Math.round(m.rt.height))).size === 1, "todas las barras de título tienen la misma altura");
-  const iconos = titulos.map((t) => t.querySelector("svg path").getAttribute("d"));
-  ok(iconos[0].startsWith("M5 12a7 7 0 1 0 14 0") && iconos[1].startsWith("M7 12l5 5l-1.5 1.5"), "iconos de Tabler: voltímetro (línea) y cable enchufado (conductor)");
+  const iconos = titulos.map((t) => t.querySelector("svg.icon"));
+  ok(iconos[0].querySelector("path").getAttribute("d").startsWith("M5 12a7 7 0 1 0 14 0") && iconos[1].querySelectorAll("g circle").length === 7 && iconos[1].querySelectorAll(":scope > circle").length === 1, "iconos: voltímetro de Tabler (línea) y conductor cableado, aro con 7 hilos (conductor)");
   const agregar = $$(".btn-agregar-tramo")[0];
   ok(texto(agregar) === "Agregar tramo", `el botón dice «${texto(agregar)}»`);
   const calcular = $("#form-calc button[type=submit]");

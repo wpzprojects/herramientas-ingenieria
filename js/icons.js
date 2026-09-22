@@ -96,8 +96,6 @@ const shapes = {
   // Tabler "circuit-voltmeter" y "plug-connected" (SVG oficial): iconos de las tarjetas Datos de la linea y Conductor (Perdidas).
   circuitVoltmeter:
     '<g stroke-width="2"><path d="M5 12a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M5 12h-3"/><path d="M19 12h3"/><path d="M10 10l2 4l2 -4"/></g>',
-  plugConnected:
-    '<g stroke-width="2"><path d="M7 12l5 5l-1.5 1.5a3.536 3.536 0 1 1 -5 -5l1.5 -1.5"/><path d="M17 12l-5 -5l1.5 -1.5a3.536 3.536 0 1 1 5 5l-1.5 1.5"/><path d="M3 21l2.5 -2.5"/><path d="M18.5 5.5l2.5 -2.5"/><path d="M10 11l-2 2"/><path d="M13 14l-2 2"/></g>',
   // Tabler "coin" (SVG oficial): icono de Conductor económico (tarjeta del menú y tarjeta de supuestos). Sin <g stroke-width="2">: usa el trazo base de la app (1.6), como Pérdidas o Cortocircuito; con 2 se veía más grueso y menos legible a 20 px.
   coin:
     '<g><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M14.8 9a2 2 0 0 0 -1.8 -1h-2a2 2 0 1 0 0 4h2a2 2 0 1 1 0 4h-2a2 2 0 0 1 -1.8 -1"/><path d="M12 7v10"/></g>',
@@ -124,7 +122,7 @@ const shapes = {
   // Ocupacion de ductos: el ducto (circulo grande) con una terna de conductores (3 circulos macizos) en el fondo. Esquema del usuario. Sin <g stroke-width="2">: el circulo grande usa el trazo base (1.6), tan delgado como Perdidas o Regulacion (2026-09-21, pedido del usuario).
   ductoTerna:
     '<circle cx="12" cy="12" r="9.5"/><g fill="currentColor" stroke="none"><circle cx="9" cy="17" r="2.4"/><circle cx="15" cy="17" r="2.4"/><circle cx="12" cy="11.6" r="2.4"/></g>',
-  // Conductor cableado en corte: aro con 7 hilos macizos (centro + 6). Propio, en el estilo de ductoTerna; trazo base (1.6). Prueba en Ocupacion de ductos (2026-09-21).
+  // Conductor cableado en corte: aro con 7 hilos macizos (centro + 6). Propio, en el estilo de ductoTerna; trazo base (1.6). Icono de las tarjetas de conductor de TODAS las calculadoras (2026-09-21; reemplazo al enchufe Tabler `plug-connected`).
   conductorCableado:
     '<circle cx="12" cy="12" r="9.5"/><g fill="currentColor" stroke="none"><circle cx="12" cy="12" r="1.9"/><circle cx="16.3" cy="12" r="1.9"/><circle cx="14.15" cy="15.72" r="1.9"/><circle cx="9.85" cy="15.72" r="1.9"/><circle cx="7.7" cy="12" r="1.9"/><circle cx="9.85" cy="8.28" r="1.9"/><circle cx="14.15" cy="8.28" r="1.9"/></g>',
   // Letras «Ab» (icono de Codificacion de entregables): una A mayuscula y una b minuscula, con el trazo de Tabler.

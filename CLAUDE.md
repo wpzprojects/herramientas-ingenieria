@@ -50,8 +50,8 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   validación con valores de 3 decimales (p. ej. 0.396).
 
 - Ocupación de ductos (2026-09-19) sigue el mismo patrón (tarjetas, iconos, relleno, info «i», reporte y fórmulas KaTeX). Dos tarjetas:
-  «Tubería» (icono `cylinder` girado 90° en sentido antihorario con la clase `.icono-tubo`, 2026-09-21; tipo, diámetro nominal y diámetro interno del catálogo con «Manual») y una tarjeta «Conductores tipo N» (icono `conductorCableado`: aro con 7 hilos macizos, trazo base; PRUEBA solo en esta calculadora, 2026-09-21: las demás siguen con `plugConnected` hasta que el usuario decida; 2026-09-21: sin guión, en plural; igual en el reporte de texto: «Conductores tipo N:»)
-  por cada TIPO de conductor (icono `plugConnected`; «Agregar tipo de conductor» / «Quitar»: p. ej. una terna de un calibre y otra de
+  «Tubería» (icono `cylinder` girado 90° en sentido antihorario con la clase `.icono-tubo`, 2026-09-21; tipo, diámetro nominal y diámetro interno del catálogo con «Manual») y una tarjeta «Conductores tipo N» (2026-09-21: sin guión, en plural; igual en el reporte de texto: «Conductores tipo N:»)
+  por cada TIPO de conductor (icono `conductorCableado`; «Agregar tipo de conductor» / «Quitar»: p. ej. una terna de un calibre y otra de
   otro). Cada tipo tiene número de conductores (1–9) y diámetro con casilla «Catálogo» a su derecha: al marcarla salen Nivel de
   tensión → Nivel de aislamiento (solo 15/35 kV; en 17.5/36 kV queda «No aplica») → Material → Pantalla → Calibre del catálogo
   `conductores-xlpe.json`, y el diámetro es `diametro_total_conductor_mm` (cable completo con chaqueta), bloqueado. Las listas se
@@ -62,7 +62,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   (la celda del Total queda VACÍA, pedido del usuario), línea en el reporte y ecuación en Fórmulas. Se conserva la dona del resultado (ya existía; los «sin gráficos» eran de Pérdidas/Regulación). Pruebas: `tools/verify_ocupacion.html`.
   `#tramos-container, #grupos-container` llevan el margen superior que separa las tarjetas de la primera.
 - Gráficos de Ocupación de ductos (2026-09-20, elegidos por el usuario entre 5 propuestas): el resultado va en TRES columnas (`.oc-resumen`: corte transversal | dona | cifras grandes, alineadas a la izquierda y con corte y dona del mismo tamaño; una columna bajo 900 px; el usuario probó antes dona | cifras | corte y prefirió esta variante). Un conductor más grueso que el ducto se dibuja con el diámetro del ducto (lo llena por completo; el usuario descartó «− 1 mm» por incoherencias en ductos pequeños, y luego «− 1 %»). Ambos son SVG dibujados por código en `js/util/graficos.js` (`donaOcupacionSvg`, `corteDuctoSvg`, `asentarConductores`; sin librerías, con las variables de color del tema y vectoriales al imprimir). La dona lleva degradado y la marca del límite NTC-2050; el corte es a escala, con los conductores apoyados en el fondo (simulación de gravedad) y un color por tipo. Nombre de la técnica: «gráficos SVG a medida» (pedir así los siguientes). Se descartaron: torta con porciones, medidor semicircular y barra segmentada (el medidor queda como idea para Pérdidas/Regulación). El motor y la herramienta de la IA NO se tocaron.
-- Cortocircuito (2026-09-19) sigue el mismo patrón. Dos tarjetas: «Conductor» (icono `plugConnected`; red | material, calibre | área con
+- Cortocircuito (2026-09-19) sigue el mismo patrón. Dos tarjetas: «Conductor» (icono `conductorCableado`; red | material, calibre | área con
   «Manual») y «Condiciones de la falla» (icono `temperature`, Tabler; temperatura de operación y de falla, cada una con «Manual», y
   tiempo de despeje). Botones «i» solo donde aportan: material (red aérea se calcula como aluminio), área (en aéreos es el área de
   aluminio) y temperatura de operación (75 °C aérea / 90 °C subterránea). Las constantes intermedias (λ, k1, logaritmo) van en el
@@ -73,7 +73,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   cumplimiento, área mínima y calibre sugerido en RESULTADOS. Esa lógica vive en `js/calc/cortocircuito-calibre.js`; el motor
   `js/calc/cortocircuito.js` y la herramienta de la IA NO se tocan. De la Calculadora Normativa NO se copió (a propósito): λ y k1
   editables, la forma simplificada I = A·k/√t con la Tabla B1.4 ni el gráfico del margen térmico. Pruebas: `tools/verify_cortocircuito.html`.
-- Ampacidad aérea (2026-09-19) sigue el mismo patrón. Tres tarjetas: «Conductor» (icono `plugConnected`; tipo | calibre, referencia |
+- Ampacidad aérea (2026-09-19) sigue el mismo patrón. Tres tarjetas: «Conductor» (icono `conductorCableado`; tipo | calibre, referencia |
   diámetro con «Manual», resistencia 25 °C | 75 °C con «Manual»), «Condiciones de operación» (icono Tabler `wind`; temperatura
   ambiente | máxima del conductor, viento | ángulo, elevación) y «Radiación solar y superficie» (icono Tabler `sunTabler`, distinto
   del `sun` viejo; ε | α, Qse | θ con «Manual»). Botones «i» solo en resistencias (interpolación 25→75 °C), viento, ángulo, ε/α (rango
@@ -83,7 +83,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   propiedades del aire, convección, radiación y resistencia (15 ecuaciones, 23 etiquetas). El motor `js/calc/ampacidad-aerea.js` y la
   herramienta de la IA NO se tocan. Pruebas: `tools/verify_ampacidad_aerea.html`.
 - Ampacidad subterránea (2026-09-19, la ÚLTIMA calculadora rediseñada: ya están las seis) sigue el mismo patrón. Tres tarjetas: «Cable»
-  (icono `plugConnected`; tipo | material, calibre | pantalla, nivel kV | % de aislamiento, puesta a tierra | separación entre fases;
+  (icono `conductorCableado`; tipo | material, calibre | pantalla, nivel kV | % de aislamiento, puesta a tierra | separación entre fases;
   en tripolar se bloquean las dos últimas), «Condiciones de operación» (icono `circuitVoltmeter`; tensión | frecuencia,
   temperatura máxima del conductor | del terreno) e «Instalación» (icono Tabler `gridDots`; resistividad del suelo | resistencia
   térmica del ducto, número de circuitos | profundidad, separación entre ductos que solo se habilita con más de 1 circuito). Los seis
@@ -108,7 +108,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Tarjetas (`.form-section`): título como BARRA de borde a borde (`.form-section-title`: fondo `--accent-soft` como el botón activo del
   menú lateral, línea inferior delgada `--accent`, icono `--accent` pleno, centrado vertical, `min-height` fijo para que no cambie al
   aparecer «Quitar»); espacio inferior compacto (`.grid-2.ultima`, relleno de 12px).
-  Iconos de esta pantalla: `circuitVoltmeter` (línea) y `plugConnected` (conductor), elegidos por el usuario tras probar otros
+  Iconos de esta pantalla: `circuitVoltmeter` (línea) y `conductorCableado` (conductor: aro con 7 hilos macizos, dibujo propio; desde 2026-09-21 en TODAS las calculadoras, reemplazó al enchufe Tabler `plug-connected`, que se borró de `icons.js`), elegidos por el usuario tras probar otros
   (los descartados se borraron de `icons.js`). Copiados del SVG oficial
   de Tabler. La línea inferior de la barra es 35 % menos intensa que `--accent` (`color-mix`, decidido por el usuario tras probar dos
   alternativas; NO usar bordes de 0.5px: desaparecen en pantallas de densidad normal). La fila del calibre sugerido usa el token

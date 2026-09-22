@@ -79,7 +79,7 @@ export async function render(container) {
 
     <form id="form-calc" novalidate>
       <div class="card tarjeta-borde form-section">
-        <div class="form-section-title">${icon("plugConnected")} Conductor</div>
+        <div class="form-section-title">${icon("conductorCableado")} Conductor</div>
         <div class="grid-2">
           <div class="field">
             <label for="f-red">Tipo de red</label>
