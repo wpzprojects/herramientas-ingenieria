@@ -477,7 +477,7 @@ export async function render(container) {
       ...resultadosTramos,
       ``,
       `Porcentaje de pérdidas${r.tramos.length > 1 ? " total" : ""}: ${fmtPercent(r.perdidasPct)}`,
-      `Pérdidas de potencia por efecto Joule: ${fmt(r.perdidasMw, 3)} MW`,
+      `Pérdidas por efecto Joule: ${fmt(r.perdidasMw, 3)} MW`,
     ].join("\n");
   }
 
