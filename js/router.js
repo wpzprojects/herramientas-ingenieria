@@ -80,6 +80,14 @@ function match(path) {
 export function initRouter({ mount, onNavigate }) {
   let token = 0;
 
+  // Fade de entrada: reinicia la animacion en cada render quitando y
+  // reponiendo la clase (si ya estaba, el navegador no la relanza sola).
+  function fadeIn() {
+    mount.classList.remove("view-enter");
+    void mount.offsetWidth; // fuerza reflow para reiniciar la animacion
+    mount.classList.add("view-enter");
+  }
+
   async function renderCurrent() {
     const path = currentPath();
     const found = match(path);
@@ -93,12 +101,14 @@ export function initRouter({ mount, onNavigate }) {
           innerHTML: `<h2>Pantalla no encontrada</h2><p class="text-muted">La ruta <code>${path}</code> no existe.</p><p><a class="btn btn-primary" href="#/">Ir al inicio</a></p>`,
         })
       );
+      fadeIn();
       onNavigate?.(path, {});
       return;
     }
 
     if (!permitida(path, estadoAcceso().nivel)) {
       mount.innerHTML = `<div class="empty-state"><h2>Contenido para usuarios autorizados</h2><p class="text-muted">Esta pantalla está disponible al iniciar sesión con una cuenta autorizada.</p><p><a class="btn btn-primary" href="#/perfil">Ir a Perfil</a></p></div>`;
+      fadeIn();
       onNavigate?.(path, found.params);
       return;
     }
@@ -108,12 +118,14 @@ export function initRouter({ mount, onNavigate }) {
       if (myToken !== token) return; // navegacion mas reciente ya en curso
       mount.innerHTML = "";
       mount.scrollTop = 0;
+      fadeIn();
       onNavigate?.(path, found.params); // antes de render: pantallas lentas (p. ej. Perfil, que espera al servicio) ya marcan su ítem del menú
       await mod.render(mount, found.params);
       mount.focus({ preventScroll: true });
     } catch (err) {
       console.error("Error cargando la vista:", err);
       mount.innerHTML = `<div class="empty-state"><h2>Ocurrio un error cargando esta pantalla</h2><p class="text-muted mono">${String(err.message || err)}</p></div>`;
+      fadeIn();
     }
     onNavigate?.(path, found.params);
   }

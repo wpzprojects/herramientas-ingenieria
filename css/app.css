@@ -136,6 +136,9 @@ button { font-family: inherit; }
 .nav-link.active { background: var(--accent-soft); color: var(--accent-strong); }
 
 .content { flex: 1 1 auto; min-width: 0; padding: var(--space-5); width: 100%; }
+.content.view-enter { animation: view-fade .18s ease-out; }
+@keyframes view-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .content.view-enter { animation: none; } }
 
 /* ---------- typography helpers ---------- */
 /* Las pantallas no llevan descripcion bajo el titulo (ya la dicen las tarjetas de menu). `.page-subtitle` solo se usa
