@@ -180,7 +180,7 @@ export async function render(container) {
             <input type="number" id="f-longitud" min="0" step="0.01" value="10" required>
           </div>
           <div class="field">
-            <label for="f-crecimiento" data-info="Cuánto aumenta la demanda cada año a partir del año 1. Con 0 % la demanda se mantiene igual todos los años por ejemplo en una línea de una granja solar (o cualquier planta de generación) ya dimensionada que no va a superar su capacidad instalada. Para demanda creciente una referencia orientativa es 2-5 % anual (crecimiento histórico típico en Colombia).">Crecimiento anual de la demanda (%)</label>
+            <label for="f-crecimiento" data-info="Cuánto aumenta la demanda cada año a partir del año 1. Con 0 % la demanda se mantiene igual todos los años por ejemplo en una línea de una granja solar (o cualquier planta de generación) ya dimensionada que no va a superar su capacidad instalada. Por otro lado para demanda creciente una referencia orientativa es 2-5 % anual (crecimiento histórico típico en Colombia).">Crecimiento anual de la demanda (%)</label>
             <input type="number" id="f-crecimiento" min="0" max="100" step="any" value="0" required>
           </div>
         </div>
