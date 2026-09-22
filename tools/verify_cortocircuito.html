@@ -351,7 +351,7 @@ await seccion("vista: fórmulas con KaTeX", async () => {
   ok(window.katex && $$("#formulas-katex .formula-katex").length === 4 && $$("#formulas-katex .katex-display").length === 4, "KaTeX cargado y 4 ecuaciones dibujadas");
   ok($$("#formulas-katex .katex-error").length === 0, "ninguna ecuación con error de sintaxis");
   ok($("#formulas-plano").hidden && !caja.hidden, "al dibujarse las fórmulas se oculta el texto plano y aparece la subtarjeta");
-  ok(subtitulos.join("|") === "Capacidad de cortocircuito|Área mínima para una corriente a soportar|Constantes del material|Descripción de las etiquetas|Notas", `subtítulos: ${subtitulos.join(" | ")}`);
+  ok(subtitulos.join("|") === "Capacidad de cortocircuito|Área mínima para una corriente a soportar|Constantes del material|Descripción de las variables|Notas", `subtítulos: ${subtitulos.join(" | ")}`);
   ok(items.length === 9 && items.every((li) => li.querySelector(".formula-simbolo .katex")), `la descripción de las etiquetas es una lista de ${items.length} viñetas con el símbolo dibujado`);
   ok(Math.max(...izq) - Math.min(...izq) < 1, "los textos de las viñetas quedan alineados");
   const ks = $$("#formulas-katex .katex").map((k) => k.textContent);

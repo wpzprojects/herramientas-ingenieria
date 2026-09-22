@@ -375,7 +375,7 @@ await seccion("vista: fórmulas con KaTeX", async () => {
   ok($$("#formulas-katex .katex-error").length === 0, "ninguna ecuación con error de sintaxis");
   ok($("#formulas-plano").hidden && !caja.hidden, "al dibujarse las fórmulas se oculta el texto plano y aparece la subtarjeta");
   ok(cc.backgroundColor === cr.backgroundColor && cc.borderTopColor === cr.borderTopColor && cc.borderTopLeftRadius === cr.borderTopLeftRadius, "la subtarjeta tiene el fondo, borde y esquinas de la caja de Reporte");
-  ok(subtitulos.join("|") === "Dato de partida (se convierte a potencia activa)|Corriente y potencias|Conductor y disposición de fases|Regulación (caída de tensión)|Descripción de las etiquetas|Notas", `subtítulos: ${subtitulos.join(" | ")}`);
+  ok(subtitulos.join("|") === "Dato de partida (se convierte a potencia activa)|Corriente y potencias|Conductor y disposición de fases|Regulación (caída de tensión)|Descripción de las variables|Notas", `subtítulos: ${subtitulos.join(" | ")}`);
   ok(items.length === 21 && getComputedStyle($("#formulas-katex ul.formula-etiquetas")).listStyleType === "disc" && items.every((li) => li.querySelector(".formula-simbolo .katex")), `la descripción de las etiquetas es una lista de ${items.length} viñetas con el símbolo dibujado`);
   ok(Math.max(...izq) - Math.min(...izq) < 1, "los textos de las viñetas quedan alineados");
   const textoCaja = texto(caja);

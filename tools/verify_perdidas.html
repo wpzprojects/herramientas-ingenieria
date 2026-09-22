@@ -561,7 +561,7 @@ await seccion("vista: fórmulas con KaTeX", async () => {
   const subtitulos = $$("#formulas-katex > .result-subhead").map(texto);
   const items = $$("#formulas-katex ul.formula-etiquetas > li");
   const listaCS = getComputedStyle($("#formulas-katex ul.formula-etiquetas"));
-  ok(subtitulos.includes("Descripción de las etiquetas") && subtitulos.at(-1) === "Notas" && subtitulos.length === 5, `subtítulos de la subtarjeta: ${subtitulos.join(" | ")}`);
+  ok(subtitulos.includes("Descripción de las variables") && subtitulos.at(-1) === "Notas" && subtitulos.length === 5, `subtítulos de la subtarjeta: ${subtitulos.join(" | ")}`);
   // Linea divisoria entre la descripcion de las etiquetas y las notas: el subtitulo «Notas» (con su linea superior) va entre la lista y el texto.
   const tituloNotas = [...$$("#formulas-katex > .result-subhead")].find((e) => texto(e) === "Notas");
   const listaEt = $("#formulas-katex ul.formula-etiquetas");

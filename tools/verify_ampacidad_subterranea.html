@@ -388,7 +388,7 @@ await seccion("vista: fórmulas con KaTeX", async () => {
   ok(window.katex && n === 23 && $$("#formulas-katex .katex-display").length === 23, `KaTeX cargado y ${n} ecuaciones dibujadas`);
   ok($$("#formulas-katex .katex-error").length === 0, "ninguna ecuación con error de sintaxis");
   ok($("#formulas-plano").hidden && !caja.hidden, "al dibujarse las fórmulas se oculta el texto plano y aparece la subtarjeta");
-  ok(subtitulos.join("|") === "Ampacidad (IEC 60287-1-1)|Resistencia AC del conductor (efecto piel y proximidad)|Pérdida dieléctrica|Pérdidas en la pantalla (λ1)|Resistencias térmicas del cable|Resistencia térmica externa (ducto y suelo, método de imágenes de Kennelly)|Pantalla del cable monopolar (con la ampacidad ya calculada)|Descripción de las etiquetas|Notas", `subtítulos: ${subtitulos.join(" | ")}`);
+  ok(subtitulos.join("|") === "Ampacidad (IEC 60287-1-1)|Resistencia AC del conductor (efecto piel y proximidad)|Pérdida dieléctrica|Pérdidas en la pantalla (λ1)|Resistencias térmicas del cable|Resistencia térmica externa (ducto y suelo, método de imágenes de Kennelly)|Pantalla del cable monopolar (con la ampacidad ya calculada)|Descripción de las variables|Notas", `subtítulos: ${subtitulos.join(" | ")}`);
   ok(items.length === 36 && items.every((li) => li.querySelector(".formula-simbolo .katex")), `la descripción de las etiquetas es una lista de ${items.length} viñetas con el símbolo dibujado`);
   ok(Math.max(...izq) - Math.min(...izq) < 1, "los textos de las viñetas quedan alineados");
   ok($$("#formulas-katex .katex .sqrt").length >= 2 && $$("#formulas-katex .katex .mop").some((m) => m.textContent.includes("ln")) && $$("#formulas-katex .katex .mtable").length >= 2, "hay raíces, logaritmos y los casos de n y de λ1 dibujados");

@@ -276,7 +276,7 @@ await seccion("vista: fórmulas con KaTeX", async () => {
   ok(window.katex && n === 15 && $$("#formulas-katex .katex-display").length === 15, `KaTeX cargado y ${n} ecuaciones dibujadas`);
   ok($$("#formulas-katex .katex-error").length === 0, "ninguna ecuación con error de sintaxis");
   ok($("#formulas-plano").hidden && !caja.hidden, "al dibujarse las fórmulas se oculta el texto plano y aparece la subtarjeta");
-  ok(subtitulos.join("|") === "Balance térmico (IEEE Std 738)|Propiedades del aire|Convección|Radiación|Resistencia a la temperatura del conductor|Descripción de las etiquetas|Notas", `subtítulos: ${subtitulos.join(" | ")}`);
+  ok(subtitulos.join("|") === "Balance térmico (IEEE Std 738)|Propiedades del aire|Convección|Radiación|Resistencia a la temperatura del conductor|Descripción de las variables|Notas", `subtítulos: ${subtitulos.join(" | ")}`);
   ok(items.length === 23 && items.every((li) => li.querySelector(".formula-simbolo .katex")), `la descripción de las etiquetas es una lista de ${items.length} viñetas con el símbolo dibujado`);
   ok(Math.max(...izq) - Math.min(...izq) < 1, "los textos de las viñetas quedan alineados");
   ok($$("#formulas-katex .katex .sqrt").length >= 2 && $$("#formulas-katex .katex .mop").some((m) => m.textContent.includes("max")), "hay raíces y el máximo de las tres convecciones dibujados");

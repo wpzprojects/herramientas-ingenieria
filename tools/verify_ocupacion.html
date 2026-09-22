@@ -416,7 +416,7 @@ await seccion("vista: fórmulas con KaTeX", async () => {
   ok(window.katex && n === 9 && $$("#formulas-katex .katex-display").length === 9, `KaTeX cargado y ${n} ecuaciones dibujadas`);
   ok($$("#formulas-katex .katex-error").length === 0, "ninguna ecuación con error de sintaxis");
   ok($("#formulas-plano").hidden && !caja.hidden, "al dibujarse las fórmulas se oculta el texto plano y aparece la subtarjeta");
-  ok(subtitulos.join("|") === "Áreas|Ocupación|Límite de ocupación (NTC-2050, Cap. 9, Tabla 1)|Radio de curvatura|Riesgo de atascamiento (jamming ratio)|Descripción de las etiquetas|Notas", `subtítulos: ${subtitulos.join(" | ")}`);
+  ok(subtitulos.join("|") === "Áreas|Ocupación|Límite de ocupación (NTC-2050, Cap. 9, Tabla 1)|Radio de curvatura|Riesgo de atascamiento (jamming ratio)|Descripción de las variables|Notas", `subtítulos: ${subtitulos.join(" | ")}`);
   ok(items.length === 12 && items.every((li) => li.querySelector(".formula-simbolo .katex")), `la descripción de las etiquetas es una lista de ${items.length} viñetas con el símbolo dibujado`);
   ok(Math.max(...izq) - Math.min(...izq) < 1, "los textos de las viñetas quedan alineados");
   ok($$("#formulas-katex .katex").some((k) => k.textContent.includes("53") && k.textContent.includes("31") && k.textContent.includes("40")), "el límite (53 %, 31 %, 40 %) se dibuja como ecuación por casos");

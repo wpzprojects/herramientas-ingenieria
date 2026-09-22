@@ -41,7 +41,7 @@ export function tarjetaResultadosHtml({ resultado, reporte, formulasPlano }) {
 }
 
 /**
- * Contenido de la subtarjeta de fórmulas: grupos de ecuaciones, «Descripción de las etiquetas» (viñetas con el símbolo
+ * Contenido de la subtarjeta de fórmulas: grupos de ecuaciones, «Descripción de las variables» (viñetas con el símbolo
  * dibujado por KaTeX) y «Notas».
  * @param {object} katex
  * @param {{titulo:string, ecuaciones:string[]}[]} o.grupos
@@ -53,7 +53,7 @@ export function formulasHtml(katex, { grupos, etiquetas, nota }) {
     grupos
       .map((g) => `<div class="result-subhead">${escapeHtml(g.titulo)}</div>` + g.ecuaciones.map((tex) => `<div class="formula-katex">${ecuacionHtml(katex, tex)}</div>`).join(""))
       .join("") +
-    `<div class="result-subhead">Descripción de las etiquetas</div><ul class="formula-etiquetas">` +
+    `<div class="result-subhead">Descripción de las variables</div><ul class="formula-etiquetas">` +
     etiquetas.map((e) => `<li><span class="formula-simbolo">${katex.renderToString(e.tex, { throwOnError: false })}</span><span>${escapeHtml(e.texto)}</span></li>`).join("") +
     `</ul><div class="result-subhead">Notas</div><p class="text-muted text-sm formula-vars">${escapeHtml(nota)}</p>`
   );
