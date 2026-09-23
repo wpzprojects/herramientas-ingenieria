@@ -275,7 +275,7 @@ await seccion("router: pantallas bloqueadas", async () => {
   await acc.revalidar();
   await ir("#/perfil/clave");
   await espera(400);
-  ok(mount.querySelector(".ca-tabs .tab-btn.active")?.textContent.trim() === "Clave de Gemini", "por el router, la dirección #/perfil/clave abre Perfil en la pestaña «Clave de Gemini»");
+  ok(mount.querySelector(".ca-tabs .tab-btn.active")?.textContent.trim() === "Clave en servidor", "por el router, la dirección #/perfil/clave abre Perfil en la pestaña «Clave en servidor»");
   ok(typeof r.refresh === "function", "el router expone refresh() (la app lo usa al cambiar el nivel)");
   location.hash = previo || "#/";
 });
@@ -304,10 +304,10 @@ await seccion("pantalla de Perfil rediseñada", async () => {
   ok(/Acceso desde \d/.test(texto(q(".dev-header"))) && !/\d:\d\d/.test(texto(q(".dev-header"))), "muestra desde cuándo tiene acceso (fecha de la última confirmación, sin la hora)");
   ok(/Acceso desde \d[\d/]+\. Disponible hasta \d[\d/]+ y se renueva cada vez que abres la app con internet\./.test(texto(q(".dev-header"))) && qa(".dev-header p.text-muted").length === 1, "seguido, en el mismo párrafo: «Acceso desde … Disponible hasta … y se renueva cada vez que abres la app con internet.»");
   const pest = qa(".ca-tabs .tab-btn").map(texto);
-  ok(pest.join("|") === "Usuarios|Clave de Gemini|Apariencia", `el administrador ve tres pestañas: ${pest.join(", ")}`);
+  ok(pest.join("|") === "Usuarios|Clave en servidor|Apariencia", `el administrador ve tres pestañas: ${pest.join(", ")}`);
   ok(!q("#ca-tab-usuarios").hidden && q("#ca-tab-clave").hidden, "empieza en «Usuarios»");
   qa(".ca-tabs .tab-btn")[1].click();
-  ok(q("#ca-tab-usuarios").hidden && !q("#ca-tab-clave").hidden, "la pestaña «Clave de Gemini» cambia el panel");
+  ok(q("#ca-tab-usuarios").hidden && !q("#ca-tab-clave").hidden, "la pestaña «Clave en servidor» cambia el panel");
   qa(".ca-tabs .tab-btn")[0].click();
   const filas = qa("#ca-filas tr");
   ok(filas.length === 2, `la tabla lista los ${filas.length} usuarios`);
@@ -369,19 +369,19 @@ await seccion("pantalla de Perfil rediseñada", async () => {
     await espera(150);
   };
   await abrirPestana({ usuarios: semilla(), sesion: ADMIN }, "clave");
-  ok(qa(".ca-tabs .tab-btn.active").map(texto).join() === "Clave de Gemini" && !q("#ca-tab-clave").hidden && q("#ca-tab-usuarios").hidden, "el administrador que llega con «/perfil/clave» queda en la pestaña «Clave de Gemini» (no en «Usuarios»)");
+  ok(qa(".ca-tabs .tab-btn.active").map(texto).join() === "Clave en servidor" && !q("#ca-tab-clave").hidden && q("#ca-tab-usuarios").hidden, "el administrador que llega con «/perfil/clave» queda en la pestaña «Clave en servidor» (no en «Usuarios»)");
   await abrirPestana({ usuarios: semilla(), sesion: ADMIN }, undefined);
   ok(qa(".ca-tabs .tab-btn.active").map(texto).join() === "Usuarios", "sin indicar pestaña, el administrador sigue empezando en «Usuarios»");
   await abrirPestana({ usuarios: semilla(), sesion: ADMIN }, "apariencia");
   ok(qa(".ca-tabs .tab-btn.active").map(texto).join() === "Apariencia" && !q("#ca-tab-apariencia").hidden, "«/perfil/apariencia» abre Apariencia");
   await abrirPestana({ usuarios: semilla(), sesion: YO }, "clave");
-  ok(qa(".ca-tabs .tab-btn.active").map(texto).join() === "Clave de Gemini", "el usuario normal con «/perfil/clave» queda en «Clave de Gemini»");
+  ok(qa(".ca-tabs .tab-btn.active").map(texto).join() === "Clave en servidor", "el usuario normal con «/perfil/clave» queda en «Clave en servidor»");
   await abrirPestana({ usuarios: semilla(), sesion: YO }, "usuarios");
-  ok(qa(".ca-tabs .tab-btn.active").map(texto).join() === "Clave de Gemini", "una pestaña que la persona no tiene («usuarios» para un usuario normal) cae en la primera");
+  ok(qa(".ca-tabs .tab-btn.active").map(texto).join() === "Clave en servidor", "una pestaña que la persona no tiene («usuarios» para un usuario normal) cae en la primera");
 
   // ---- usuario normal: solo la clave, sin lista
   await dibujar({ usuarios: semilla(), sesion: YO });
-  ok(qa(".ca-tabs .tab-btn").map(texto).join("|") === "Clave de Gemini|Apariencia" && !q("#ca-usuarios") && !!q("#ca-clave") && !q("#ca-tab-clave").hidden, "un usuario normal ve las pestañas «Clave de Gemini | Apariencia» (empieza en la clave) y NO la lista de correos");
+  ok(qa(".ca-tabs .tab-btn").map(texto).join("|") === "Clave en servidor|Apariencia" && !q("#ca-usuarios") && !!q("#ca-clave") && !q("#ca-tab-clave").hidden, "un usuario normal ve las pestañas «Clave en servidor | Apariencia» (empieza en la clave) y NO la lista de correos");
   ok(!/jefe@empresa.com/.test(marco.textContent), "y no ve los correos de los demás");
   const opNormal = qa("#ca-fuentes input").find((r) => r.value === "compartida");
   ok(!!opNormal, "el usuario normal conserva la opción «Clave compartida» (la puede usar)");

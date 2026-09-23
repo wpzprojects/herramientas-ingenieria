@@ -160,7 +160,7 @@ export async function render(container, params = {}) {
   function pintarPanel(u, perfil) {
     const esAdmin = perfil.rol === "admin";
     // el administrador ve Usuarios; todos los autorizados ven la clave de Gemini y la apariencia (color personal, por dispositivo)
-    const pestanas = [...(esAdmin ? [["usuarios", "Usuarios"]] : []), ["clave", "Clave de Gemini"], ["apariencia", "Apariencia"]];
+    const pestanas = [...(esAdmin ? [["usuarios", "Usuarios"]] : []), ["clave", "Clave en servidor"], ["apariencia", "Apariencia"]];
     const inicial = pestanas.some(([id]) => id === params?.pestana) ? params.pestana : pestanas[0][0];
     const cache = leerCache();
     // un solo parrafo: se ajusta al ancho de la tarjeta (no se fuerza a dos lineas)
@@ -365,21 +365,22 @@ export async function render(container, params = {}) {
 
   async function pintarClave(esAdmin) {
     const box = cuerpo.querySelector("#ca-clave");
-    box.innerHTML = `${barra("key", "Clave de Gemini")}<p class="text-muted" style="margin:0">Cargando…</p>`;
+    box.innerHTML = `${barra("key", "Clave en servidor")}<p class="text-muted" style="margin:0">Cargando…</p>`;
     let hayPersonal = false;
     let hayCompartida = false;
     try {
       hayPersonal = !!(await b.leerClavePersonal());
       hayCompartida = !!(await b.leerClaveCompartida());
     } catch (e) {
-      box.innerHTML = `${barra("key", "Clave de Gemini")}<div class="callout callout-danger" style="margin:0"><span>${escapeHtml(mensajeDe(e))}</span></div>`;
+      box.innerHTML = `${barra("key", "Clave en servidor")}<div class="callout callout-danger" style="margin:0"><span>${escapeHtml(mensajeDe(e))}</span></div>`;
       return;
     }
     const estado = (hay) => (hay ? `<span class="badge badge-success">Configurada</span>` : `<span class="badge">Sin configurar</span>`);
     const disponible = { local: true, personal: hayPersonal, compartida: hayCompartida };
 
     box.innerHTML = `
-      ${barra("key", "Clave de Gemini")}
+      ${barra("key", "Clave en servidor")}
+      <p class="text-muted text-sm" style="margin:0 0 var(--space-3)">Esta clave guardada en el servidor es solo para <strong>Gemini</strong>. Para usar OpenAI (ChatGPT) o Anthropic (Claude), elige el proveedor y pega tu propia clave en <a href="#/ia/configuracion">Funciones con IA → Configuración</a> (se guarda en tu navegador, no en el servidor).</p>
       <div class="field">
         <label data-info="${escapeHtml(AYUDA_FUENTE)}">¿Dónde está la clave de Gemini que se usará?</label>
         <div class="ca-fuentes" id="ca-fuentes"></div>

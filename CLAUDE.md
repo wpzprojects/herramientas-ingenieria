@@ -176,6 +176,14 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 
 ## Multi-proveedor de IA: Gemini, OpenAI y Anthropic (2026-09-23)
 
+- La pestaña de Perfil **«Clave de Gemini»** se renombró a **«Clave en servidor»** (2026-09-23, pedido del
+  usuario): con el selector de proveedor en Configuración, el nombre viejo podía sugerir que ahí se
+  configuraba cualquier proveedor. Debajo del título de esa tarjeta (`js/views/configuracion-avanzada.js`,
+  función `pintarClave`) se agregó una línea aclarando que esa clave del servidor es solo para Gemini, con
+  enlace a Funciones con IA → Configuración para OpenAI/Claude. La ruta (`#/perfil/clave`) y los ids
+  (`ca-tab-clave`, `#ca-clave`…) no cambiaron. Pruebas actualizadas: `tools/verify_acceso.html`,
+  `tools/verify_tema.html`.
+
 - Además de Gemini, «Funciones con IA» admite OpenAI (ChatGPT) y Anthropic (Claude). Decisión del usuario:
   OpenAI/Anthropic son SOLO clave local (BYOK en este navegador, `js/ai/config.js`), sin «personal»/
   «compartida» en el servidor (eso sigue siendo exclusivo de Gemini, ver `js/ai/clave.js` y
