@@ -3,7 +3,7 @@
 // sirve cache-first con relleno en segundo plano (stale-while-revalidate)
 // para lo que no estuviera precacheado.
 
-const CACHE_VERSION = "v278";
+const CACHE_VERSION = "v279";
 const CACHE_NAME = `herramientas-ingenieria-${CACHE_VERSION}`;
 
 const SCOPE = self.registration.scope;
@@ -48,7 +48,11 @@ const APP_SHELL = [
   "js/calc/coordenadas.js",
   "js/calc/coordenadas-epsg.js",
   "js/ai/config.js",
+  "js/ai/errores.js",
   "js/ai/gemini.js",
+  "js/ai/openai.js",
+  "js/ai/anthropic.js",
+  "js/ai/proveedores.js",
   "js/ai/historial.js",
   "js/ai/markdown.js",
   "js/ai/ui-clave.js",

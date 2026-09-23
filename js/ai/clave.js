@@ -3,6 +3,10 @@
 //   "personal"   -> la clave personal del usuario, guardada en el servidor
 //   "compartida" -> la clave compartida por los usuarios autorizados, guardada en el servidor
 // La clave del servidor solo vive EN MEMORIA mientras la app esta abierta: nunca se copia a localStorage.
+//
+// Multi-proveedor (2026-09-23): este archivo SOLO aplica a Gemini. OpenAI y Anthropic no tienen
+// clave "personal"/"compartida" en el servidor: siempre usan la clave local de config.js
+// (obtenerClave(proveedor)), sin pasar por prepararClave()/obtenerFuente() de aqui.
 
 import { obtenerClave, hayClave } from "./config.js";
 import { obtenerBackend, esperarSesion } from "../auth/backend.js";

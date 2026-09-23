@@ -84,10 +84,13 @@ await seccion("Configuración de IA rediseñada", async () => {
   limpiarTodo();
   await dibujar();
   const tarjetas = qa(".card");
-  ok(tarjetas.length === 3 && tarjetas.every((c) => c.classList.contains("tarjeta-borde")), "tres tarjetas con el relleno de 16 px (tarjeta-borde)");
-  ok(qa(".form-section-title").map(texto).join("|") === "Conexión con Gemini|Modelo|Datos y privacidad" && qa(".form-section-title .icon").length === 3, "cada una con barra de título e icono: Conexión con Gemini | Modelo | Datos y privacidad");
+  ok(tarjetas.length === 4 && tarjetas.every((c) => c.classList.contains("tarjeta-borde")), "cuatro tarjetas con el relleno de 16 px (tarjeta-borde): Proveedor + las 3 de siempre");
+  ok(
+    qa(".form-section-title").map(texto).join("|") === "Proveedor de IA|Conexión con Gemini|Modelo|Datos y privacidad" && qa(".form-section-title .icon").length === 4,
+    "cada una con barra de título e icono: Proveedor de IA | Conexión con Gemini | Modelo | Datos y privacidad"
+  );
   ok(qa(".hint").length === 0, "ya no hay textos .hint debajo de los campos");
-  ok(qa("label[data-info]").length === 5 && qa(".info-btn, label[data-info] button").length >= 5, "la ayuda va en 5 botones «i» (clave, modelo, temperatura, rondas y cálculos)");
+  ok(qa("label[data-info]").length === 6 && qa(".info-btn, label[data-info] button").length >= 6, "la ayuda va en 6 botones «i» (proveedor, clave, modelo, temperatura, rondas y cálculos)");
 
   // conexion
   ok(!!q("#btn-guardar.btn-primary") && !!q("#btn-probar") && !!q("#btn-borrar-clave") && !q("#btn-instructivo.btn"), "«Guardar clave» es el principal, «Probar conexión» y «Borrar clave» secundarios; «¿Cómo obtener mi clave?» es un enlace, no un botón");
@@ -143,7 +146,7 @@ await seccion("Configuración de IA rediseñada", async () => {
   const a = cfg.obtenerAjustes();
   ok(a.temperatura === 0.5 && a.maxRondas === 30 && a.maxCalculos === 10 && /Ajustes guardados/.test(texto(q("#msg-ajustes"))), `guardar ajustes: temperatura y límites (un campo numérico ya normaliza la coma) y limita al rango (99 rondas → 30): ${JSON.stringify(a)} / ${texto(q("#msg-ajustes"))}`);
   q("#btn-restaurar-ajustes").click();
-  ok(cfg.obtenerAjustes().maxRondas === cfg.AJUSTES_POR_DEFECTO.maxRondas && /restablecidos/.test(texto(q("#msg-ajustes"))), "restablecer valores");
+  ok(cfg.obtenerAjustes().maxRondas === cfg.AJUSTES_POR_DEFECTO.gemini.maxRondas && /restablecidos/.test(texto(q("#msg-ajustes"))), "restablecer valores");
 
   // borrar clave: pide confirmacion
   q("#f-clave").value = "AIzaSyPRUEBA1234567890";

@@ -44,6 +44,9 @@ async function seccion(nombre, fn) {
 
 const { markdownAHtml } = await import("../js/ai/markdown.js");
 const gemini = await import("../js/ai/gemini.js");
+const openai = await import("../js/ai/openai.js");
+const anthropic = await import("../js/ai/anthropic.js");
+const proveedores = await import("../js/ai/proveedores.js");
 const agentes = await import("../js/ai/agentes.js");
 const config = await import("../js/ai/config.js");
 const agAn = await import("../js/ai/agentes-analisis.js");
@@ -89,6 +92,67 @@ await seccion("gemini (mock)", async () => {
   gemini.usarMock(null);
 });
 
+await seccion("openai (mock)", async () => {
+  openai.usarMock(async ({ ruta, cuerpo }) => {
+    if (ruta.startsWith("/models")) {
+      return { data: [{ id: "gpt-5-mini" }, { id: "gpt-5" }, { id: "gpt-4.1-preview" }, { id: "whisper-1" }, { id: "text-embedding-3-large" }] };
+    }
+    return {
+      choices: [{ finish_reason: "tool_calls", message: { content: "hola mundo", tool_calls: [{ id: "x", type: "function", function: { name: "f1", arguments: '{"a":1}' } }] } }],
+      _eco: cuerpo,
+    };
+  });
+  const modelos = await openai.listarModelos("k");
+  ok(modelos.length === 3 && !modelos.some((m) => m.id.includes("whisper") || m.id.includes("embedding")), "lista solo modelos de chat, sin whisper/embeddings");
+  ok(openai.elegirModeloPorDefecto(modelos) === "gpt-5-mini", `modelo por defecto = mini estable (${openai.elegirModeloPorDefecto(modelos)})`);
+  const r = await openai.generar({ clave: "k", modelo: "m", contenidos: [], temperatura: 0.2 });
+  ok(r.texto === "hola mundo" && r.llamadas.length === 1 && r.llamadas[0].name === "f1" && r.llamadas[0].args.a === 1, "parsea texto y llamadas a funciones (forma Gemini)");
+  ok(r.content.role === "model" && r.content.parts.length === 2, "reconstruye el turno en forma neutra (texto + functionCall)");
+  openai.usarMock(async () => ({ choices: [{ finish_reason: "content_filter", message: {} }] }));
+  let err = null;
+  try { await openai.generar({ clave: "k", modelo: "m", contenidos: [] }); } catch (e) { err = e; }
+  ok(err && err.tipo === "bloqueo", "content_filter -> ErrorOpenAI(bloqueo)");
+  openai.usarMock(async () => { throw new openai.ErrorOpenAI("clave invalida", { tipo: "clave", status: 401 }); });
+  err = null;
+  try { await openai.generar({ clave: "k", modelo: "m", contenidos: [] }); } catch (e) { err = e; }
+  ok(err && err.tipo === "clave" && !(err instanceof gemini.ErrorGemini), "propaga ErrorOpenAI (no ErrorGemini) con su tipo");
+  openai.usarMock(null);
+});
+
+await seccion("anthropic (mock)", async () => {
+  anthropic.usarMock(async ({ ruta, cuerpo }) => {
+    if (ruta.startsWith("/models")) {
+      return { data: [{ id: "claude-sonnet-4-5", display_name: "Sonnet" }, { id: "claude-haiku-4-5" }, { id: "claude-opus-4-1" }], has_more: false };
+    }
+    return { stop_reason: "tool_use", content: [{ type: "text", text: "hola mundo" }, { type: "tool_use", id: "x", name: "f1", input: { a: 1 } }], _eco: cuerpo };
+  });
+  const modelos = await anthropic.listarModelos("k");
+  ok(modelos.length === 3, "lista los modelos del catálogo");
+  ok(anthropic.elegirModeloPorDefecto(modelos) === "claude-sonnet-4-5", `modelo por defecto = sonnet estable (${anthropic.elegirModeloPorDefecto(modelos)})`);
+  const r = await anthropic.generar({ clave: "k", modelo: "m", contenidos: [], maxTokens: 1024 });
+  ok(r.texto === "hola mundo" && r.llamadas.length === 1 && r.llamadas[0].name === "f1" && r.llamadas[0].args.a === 1, "parsea texto y tool_use (forma Gemini)");
+  ok(r.content.role === "model" && r.content.parts.length === 2, "reconstruye el turno en forma neutra (texto + functionCall)");
+  anthropic.usarMock(async () => ({ content: [{ type: "tool_use", id: "x", name: "f1", input: {} }] }));
+  const sinTexto = await anthropic.generar({ clave: "k", modelo: "m", contenidos: [], maxTokens: 1024 });
+  ok(sinTexto.texto === "" && sinTexto.llamadas.length === 1, "solo tool_use, sin bloque de texto: texto vacío y 1 llamada");
+  anthropic.usarMock(async () => { throw new anthropic.ErrorAnthropic("saturado", { tipo: "servidor", status: 529 }); });
+  let err = null;
+  try { await anthropic.generar({ clave: "k", modelo: "m", contenidos: [], maxTokens: 1024 }); } catch (e) { err = e; }
+  ok(err && err.tipo === "servidor", "529 (overloaded) -> ErrorAnthropic(servidor)");
+  anthropic.usarMock(null);
+});
+
+await seccion("proveedores: registro y activo", async () => {
+  proveedores.guardarProveedorActivo("openai");
+  ok(proveedores.obtenerProveedorActivo() === "openai", "guarda y lee el proveedor activo");
+  proveedores.guardarProveedorActivo("algo-invalido");
+  ok(proveedores.obtenerProveedorActivo() === "gemini", "un id invalido cae a gemini");
+  ok(proveedores.proveedorDe({ proveedor: "anthropic" }) === "anthropic" && proveedores.proveedorDe({}) === "gemini" && proveedores.proveedorDe(null) === "gemini",
+    "proveedorDe: respeta el campo guardado y cae a gemini en conversaciones viejas (sin el campo)");
+  ok(Object.keys(proveedores.PROVEEDORES).length === 3 && proveedores.PROVEEDORES.gemini.soportaFuenteServidor && !proveedores.PROVEEDORES.openai.soportaFuenteServidor && !proveedores.PROVEEDORES.anthropic.soportaFuenteServidor,
+    "solo Gemini admite clave personal/compartida del servidor");
+});
+
 await seccion("agentes", async () => {
   const lista = agentes.AGENTES_POR_DEFECTO;
   ok(lista.length === 4 && lista.every((a) => a.predefinido), "4 agentes predeterminados");
@@ -121,6 +185,29 @@ await seccion("config", async () => {
   config.borrarAjustes();
 });
 
+await seccion("config: namespacing por proveedor", async () => {
+  config.borrarClave("gemini");
+  config.borrarClave("openai");
+  config.borrarClave("anthropic");
+  config.guardarClave("AIzaGEMINI0000000", true, "gemini");
+  config.guardarClave("sk-OPENAI00000000", true, "openai");
+  config.guardarClave("sk-ant-CLAUDE0000", true, "anthropic");
+  ok(
+    config.obtenerClave("gemini") === "AIzaGEMINI0000000" && config.obtenerClave("openai") === "sk-OPENAI00000000" && config.obtenerClave("anthropic") === "sk-ant-CLAUDE0000",
+    "cada proveedor guarda su propia clave sin pisar las otras"
+  );
+  ok(config.obtenerClave() === "AIzaGEMINI0000000", "sin proveedor explícito, por defecto es gemini (compatibilidad hacia atrás)");
+  config.guardarAjustes({ modelo: "gpt-5-mini" }, "openai");
+  config.guardarAjustes({ modelo: "claude-sonnet-4-5", maxTokens: 8000 }, "anthropic");
+  ok(config.obtenerAjustes("openai").modelo === "gpt-5-mini" && config.obtenerAjustes("gemini").modelo !== "gpt-5-mini", "los ajustes de un proveedor no afectan a los de otro");
+  ok(config.obtenerAjustes("anthropic").maxTokens === 8000, "Anthropic tiene su propio campo maxTokens");
+  config.borrarClave("gemini");
+  config.borrarClave("openai");
+  config.borrarClave("anthropic");
+  config.borrarAjustes("openai");
+  config.borrarAjustes("anthropic");
+});
+
 const tools = await import("../js/ai/tools.js");
 const analisis = await import("../js/ai/analisis.js");
 const reporte = await import("../js/ai/reporte.js");
@@ -146,6 +233,36 @@ await seccion("tools: esquema para Gemini", async () => {
   const barrido = decl.find((d) => d.name === "barrer_parametro").parameters.properties;
   ok(barrido.valores.type === "array" && barrido.valores.items.type === "number" && barrido.valores_texto.items.type === "string", "arrays con items");
   ok(barrido.herramienta.enum.length === 6, "barrido: enum de 6 calculadoras");
+});
+
+await seccion("openai/anthropic: envuelven el mismo esquema de tools.js sin perder required/enum", async () => {
+  const decl = tools.declaraciones();
+  const original = decl.find((d) => d.name === "barrer_parametro");
+
+  // openai.js no expone la traduccion de herramientas como funcion publica (vive dentro de generar);
+  // se verifica mandando un mock que hace eco del cuerpo enviado.
+  let cuerpoOpenAI = null;
+  openai.usarMock(async ({ cuerpo }) => {
+    cuerpoOpenAI = cuerpo;
+    return { choices: [{ finish_reason: "stop", message: { content: "ok" } }] };
+  });
+  await openai.generar({ clave: "k", modelo: "m", contenidos: [], herramientas: decl, modoHerramientas: "AUTO" });
+  const wOpenAI = cuerpoOpenAI.tools.find((t) => t.function.name === "barrer_parametro");
+  ok(wOpenAI.type === "function" && wOpenAI.function.parameters === original.parameters, "OpenAI: {type:'function', function:{name, description, parameters}} con el mismo JSON Schema");
+  ok(cuerpoOpenAI.tool_choice === "auto", "OpenAI: modoHerramientas AUTO -> tool_choice 'auto'");
+  openai.usarMock(null);
+
+  let cuerpoAnthropic = null;
+  anthropic.usarMock(async ({ cuerpo }) => {
+    cuerpoAnthropic = cuerpo;
+    return { content: [{ type: "text", text: "ok" }] };
+  });
+  await anthropic.generar({ clave: "k", modelo: "m", contenidos: [], herramientas: decl, modoHerramientas: "NONE", maxTokens: 100 });
+  const wAnthropic = cuerpoAnthropic.tools.find((t) => t.name === "barrer_parametro");
+  ok(wAnthropic.input_schema === original.parameters, "Anthropic: {name, description, input_schema} con el mismo JSON Schema (sin copiar/perder campos)");
+  ok(wAnthropic.input_schema.properties.herramienta.enum.length === 6 && (wAnthropic.input_schema.required || []).every((r) => r in wAnthropic.input_schema.properties), "conserva enum del barrido y required valido");
+  ok(cuerpoAnthropic.tool_choice.type === "none", "Anthropic: modoHerramientas NONE -> tool_choice {type:'none'}");
+  anthropic.usarMock(null);
 });
 
 await seccion("tools: Varios (conversión de unidades y de coordenadas)", async () => {
@@ -1009,6 +1126,67 @@ await seccion("analisis: bucle con herramientas (Gemini simulado)", async () => 
   const conVarios = await pedirConversion({ permitidas: [...tools.HERRAMIENTAS_ESTANDAR, "convertir_unidades"] });
   ok(conVarios.nDecl === 10 && conVarios.respuesta.ok === true && Math.abs(conVarios.respuesta.resultados[0].valor - 100 / 0.3048) < 1e-6 && conVarios.r.herramientas[0].titulo === "Conversión de unidades", "un agente que la activa la recibe y la usa (100 m = 328.0840 ft)");
   gemini.usarMock(null);
+});
+
+await seccion("analisis: bucle con herramientas (OpenAI simulado)", async () => {
+  // conv.proveedor fija el cliente que usa ejecutarTurno; valida sobre todo la
+  // correlacion posicional de ids sinteticos (tool_call_id) entre tool_calls y tool.
+  const ajustes = { modelo: "m", temperatura: 0.3, maxRondas: 4, maxCalculos: 60 };
+  const conv = { contenidos: [], proveedor: "openai" };
+  const ctx = ctxNuevo();
+  let n = 0;
+  openai.usarMock(async ({ cuerpo }) => {
+    n++;
+    if (n === 1) {
+      ok(cuerpo.tools.length === 9 && cuerpo.tool_choice === "auto", "1ª llamada: envía las 9 herramientas del agente estándar, tool_choice auto");
+      return {
+        choices: [{ finish_reason: "tool_calls", message: { content: null, tool_calls: [
+          { id: "a", type: "function", function: { name: "calcular_perdidas", arguments: JSON.stringify({ ...LINEA, factor_carga: 0.5, resistencia_ohm_km: 0.3 }) } },
+          { id: "b", type: "function", function: { name: "calcular_perdidas", arguments: JSON.stringify({ ...LINEA, factor_carga: 0.9, resistencia_ohm_km: 0.3 }) } },
+        ] } }],
+      };
+    }
+    const ultimos2 = cuerpo.messages.slice(-2);
+    ok(
+      ultimos2.every((m) => m.role === "tool") && ultimos2[0].tool_call_id !== ultimos2[1].tool_call_id && JSON.parse(ultimos2[0].content).ok === true,
+      "2ª llamada: 2 mensajes 'tool' con tool_call_id distintos, cada uno con su resultado"
+    );
+    return { choices: [{ finish_reason: "stop", message: { content: "Resultado interpretado." } }] };
+  });
+  const r = await analisis.ejecutarTurno({ conv, texto: "compara", clave: "k", ajustes, ctx, permitidas: tools.HERRAMIENTAS_ESTANDAR });
+  ok(r.texto === "Resultado interpretado." && r.herramientas.length === 2 && !r.truncado, "devuelve texto final y herramientas usadas");
+  ok(ctx.log.length === 2, "log con las 2 corridas");
+  openai.usarMock(null);
+});
+
+await seccion("analisis: bucle con herramientas (Anthropic simulado)", async () => {
+  const ajustes = { modelo: "m", temperatura: 0.3, maxRondas: 4, maxCalculos: 60, maxTokens: 4096 };
+  const conv = { contenidos: [], proveedor: "anthropic" };
+  const ctx = ctxNuevo();
+  let n = 0;
+  anthropic.usarMock(async ({ cuerpo }) => {
+    n++;
+    if (n === 1) {
+      ok(cuerpo.tools.length === 9 && cuerpo.max_tokens === 4096, "1ª llamada: envía las 9 herramientas y respeta maxTokens de los ajustes");
+      return {
+        stop_reason: "tool_use",
+        content: [
+          { type: "tool_use", id: "a", name: "calcular_perdidas", input: { ...LINEA, factor_carga: 0.5, resistencia_ohm_km: 0.3 } },
+          { type: "tool_use", id: "b", name: "calcular_perdidas", input: { ...LINEA, factor_carga: 0.9, resistencia_ohm_km: 0.3 } },
+        ],
+      };
+    }
+    const ultimoMsg = cuerpo.messages.at(-1);
+    ok(
+      ultimoMsg.role === "user" && ultimoMsg.content.length === 2 && ultimoMsg.content.every((c) => c.type === "tool_result") && ultimoMsg.content[0].tool_use_id !== ultimoMsg.content[1].tool_use_id,
+      "2ª llamada: 1 mensaje user con 2 bloques tool_result, cada uno con su tool_use_id"
+    );
+    return { stop_reason: "end_turn", content: [{ type: "text", text: "Resultado interpretado." }] };
+  });
+  const r = await analisis.ejecutarTurno({ conv, texto: "compara", clave: "k", ajustes, ctx, permitidas: tools.HERRAMIENTAS_ESTANDAR });
+  ok(r.texto === "Resultado interpretado." && r.herramientas.length === 2 && !r.truncado, "devuelve texto final y herramientas usadas");
+  ok(ctx.log.length === 2, "log con las 2 corridas");
+  anthropic.usarMock(null);
 });
 
 await seccion("agentes de análisis", async () => {

@@ -174,6 +174,58 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Resultado del modo completo: 6 cifras significativas (`fmtSig`, sin recortar enteros; científica si <1e-4 o ≥1e9); el modo normal
   sigue con 4 decimales. Pruebas: `tools/verify_unidades.html`.
 
+## Multi-proveedor de IA: Gemini, OpenAI y Anthropic (2026-09-23)
+
+- Además de Gemini, «Funciones con IA» admite OpenAI (ChatGPT) y Anthropic (Claude). Decisión del usuario:
+  OpenAI/Anthropic son SOLO clave local (BYOK en este navegador, `js/ai/config.js`), sin «personal»/
+  «compartida» en el servidor (eso sigue siendo exclusivo de Gemini, ver `js/ai/clave.js` y
+  `firebase/firestore.rules`, que NO se tocaron). El proveedor se elige de forma GLOBAL en Configuración de
+  IA (tarjeta «Proveedor de IA», primera de la pantalla), no por agente: los agentes
+  (`js/ai/agentes.js`/`agentes-analisis.js`) siguen siendo solo prompt + temperatura + herramientas.
+- **Arquitectura**: el formato de conversación que ya usaba Gemini
+  (`contenidos:[{role:"user"|"model", parts:[{text}|{functionCall}|{functionResponse}]}]`) es el formato
+  NEUTRO interno; se sigue persistiendo tal cual en IndexedDB (`js/ai/historial.js`), así que las
+  conversaciones guardadas antes de este cambio (sin campo `proveedor`) se interpretan como Gemini y
+  siguen abriendo igual (cero migración). `js/ai/openai.js` y `js/ai/anthropic.js` exponen el MISMO
+  contrato público que `js/ai/gemini.js` (`generar()`, `listarModelos()`, `elegirModeloPorDefecto()`,
+  `probarConexion()`, `usarMock()`) y traducen ese formato neutro hacia/desde su wire format puertas
+  adentro; los ids de `tool_call`/`tool_use` que exigen (Gemini no los tiene) se sintetizan por posición,
+  sin persistir nada nuevo. `js/ai/errores.js` define `ErrorProveedorIA` (tipos: offline/red/clave/cuota/
+  modelo/bloqueo/servidor/solicitud/vacio); `ErrorGemini`/`ErrorOpenAI`/`ErrorAnthropic` la extienden. El
+  registro central `js/ai/proveedores.js` (`PROVEEDORES`, `obtenerProveedorActivo`/`guardarProveedorActivo`,
+  `proveedorDe(conv)`) NO traduce nada: solo resuelve «cuál proveedor» y da los metadatos de UI (nombre
+  largo para el selector, `nombreCorto` para títulos de tarjeta, URL para conseguir la clave, si admite
+  fuente servidor). Cada conversación fija su proveedor al crearse (`conv.proveedor`) y lo conserva aunque
+  el usuario cambie el activo a mitad de camino. `js/ai/analisis.js` (`ejecutarTurno`) y las vistas
+  (`ia-analisis.js`, `ia-redaccion.js`) resuelven `PROVEEDORES[proveedor].cliente` en vez de importar
+  `generar` fijo de Gemini; `js/ai/tools.js` NO se tocó (su JSON Schema plano ya es compatible con los tres
+  formatos de tools, solo cambia el envoltorio dentro de cada cliente).
+- **CORS**: verificado que las tres APIs aceptan fetch directo desde el navegador sin backend, igual que
+  Gemini. OpenAI no exige nada especial (`Authorization: Bearer`). Anthropic SÍ exige el header
+  `anthropic-dangerous-direct-browser-access: true` en cada request (pensado por el propio proveedor para
+  apps 100% cliente); sin él, el fetch falla por CORS antes de llegar al servidor. Si Anthropic cambia esa
+  política, `js/ai/anthropic.js` es el único archivo a revisar.
+- **`config.js`**: la clave/ajustes de Gemini SIGUEN en las llaves de storage de siempre (`ia.apiKey`,
+  `ia.ajustes`, sin sufijo) para no perder lo que los usuarios ya tenían guardado; OpenAI/Anthropic usan
+  `ia.apiKey.<proveedor>`/`ia.ajustes.<proveedor>`. Todas las funciones reciben `proveedor = "gemini"` como
+  parámetro opcional (compatibilidad hacia atrás: cualquier llamada vieja sin ese argumento sigue
+  operando sobre Gemini). Anthropic tiene un campo extra `maxTokens` en sus ajustes (exige `max_tokens`
+  explícito, sin default implícito).
+- **UI**: `js/ai/ui-clave.js` generaliza el instructivo («¿Cómo obtener mi clave?») y `verificarAcceso()`
+  por proveedor (`PASOS_INSTRUCTIVO`); si el proveedor activo no admite fuente servidor, `verificarAcceso`
+  se salta por completo la rama de `prepararClave()`/backend y solo exige `hayClave(proveedor)` de
+  `config.js`. En Configuración, el título de la tarjeta de conexión usa `nombreCorto` («Conexión con
+  Gemini/OpenAI/Claude»); el aviso de privacidad usa el nombre largo («Google (Gemini)», etc.) y agrega la
+  frase del plan gratuito SOLO para Gemini (las otras dos no tienen ese texto porque no aplica igual). El
+  campo «Tokens máximos por respuesta» solo aparece en ajustes avanzados cuando el proveedor es Anthropic.
+- Pruebas: `tools/verify_ia.html` tiene secciones nuevas «openai (mock)», «anthropic (mock)», «proveedores:
+  registro y activo», «config: namespacing por proveedor», «openai/anthropic: envuelven el mismo esquema de
+  tools.js…» y dos «analisis: bucle con herramientas (OpenAI/Anthropic simulado)» que validan la
+  correlación posicional de ids de herramientas. `tools/verify_ia_pantallas.html` se actualizó a 4 tarjetas
+  y 6 botones «i» en Configuración (antes 3 y 5: la nueva es «Proveedor de IA»).
+- Pendiente (no pedido aún): probar con claves reales de OpenAI/Anthropic (el arnés solo mockea fetch); la
+  vista de Perfil (`configuracion-avanzada.js`) sigue mostrando únicamente la clave de Gemini, sin cambios.
+
 ## Sección "Funciones con IA" (`js/ai/*`, `js/views/ia*.js`)
 
 - La pantalla **«Análisis con calculadoras»** se renombró a **«Asistente técnico»** (2026-09-23, pedido del usuario: el nombre

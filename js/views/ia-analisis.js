@@ -6,9 +6,9 @@
 import { el, escapeHtml } from "../util/format.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables, plegarTarjeta } from "../util/tarjetas-plegables.js";
-import { obtenerAjustes } from "../ai/config.js";
+import { obtenerAjustes, obtenerClave } from "../ai/config.js";
 import { claveEnUso } from "../ai/clave.js";
-import { ErrorGemini } from "../ai/gemini.js";
+import { PROVEEDORES, ErrorProveedorIA, obtenerProveedorActivo, proveedorDe } from "../ai/proveedores.js";
 import { verificarAcceso } from "../ai/ui-clave.js";
 import { markdownAHtml } from "../ai/markdown.js";
 import { crearContexto, catalogoHerramientas } from "../ai/tools.js";
@@ -60,13 +60,16 @@ export async function render(container) {
   `;
   if (!(await verificarAcceso(container, { reintentar: () => render(container) }))) return;
 
-  const ajustes0 = obtenerAjustes();
+  const ajustes0 = obtenerAjustes(obtenerProveedorActivo());
   let conv = null;
   let ctx = crearContexto(ajustes0.maxCalculos);
   let ocupado = false;
   let agentes = cargarAgentes();
   let activoId = agentes.some((a) => a.id === leerActivo()) ? leerActivo() : ID_PREDETERMINADO;
   const agenteActivo = () => agentes.find((a) => a.id === activoId) || agentes[0];
+  // Proveedor de la conversacion ACTUAL (fijo desde que se crea); antes de crearla, el activo en Configuracion.
+  const proveedorActual = () => (conv ? proveedorDe(conv) : obtenerProveedorActivo());
+  const claveActual = () => (proveedorActual() === "gemini" ? claveEnUso() : obtenerClave(proveedorActual()));
 
   container.insertAdjacentHTML(
     "beforeend",
@@ -245,10 +248,12 @@ export async function render(container) {
   }
 
   function nuevaConversacion(texto) {
-    ctx = crearContexto(obtenerAjustes().maxCalculos);
+    const proveedor = obtenerProveedorActivo();
+    ctx = crearContexto(obtenerAjustes(proveedor).maxCalculos);
     conv = {
       id: historial.nuevoId(),
       tipo: "analisis",
+      proveedor,
       titulo: texto.replace(/\s+/g, " ").slice(0, 70),
       agenteId: agenteActivo().id,
       agenteNombre: agenteActivo().nombre,
@@ -279,11 +284,11 @@ export async function render(container) {
     const activos = new Map();
     try {
       const agente = agenteActivo();
-      const ajustes = obtenerAjustes();
+      const ajustes = obtenerAjustes(proveedorActual());
       const r = await ejecutarTurno({
         conv,
         texto,
-        clave: claveEnUso(),
+        clave: claveActual(),
         ajustes: { ...ajustes, temperatura: temperaturaDe(agente, ajustes.temperatura) },
         sistema: construirSistema(agente),
         permitidas: herramientasDe(agente),
@@ -322,7 +327,7 @@ export async function render(container) {
     } catch (err) {
       espera.remove();
       conv.mensajes.pop(); // el turno del usuario se revirtio en el motor
-      const texto = err instanceof ErrorGemini ? err.message : `Error inesperado: ${err?.message || err}`;
+      const texto = err instanceof ErrorProveedorIA ? err.message : `Error inesperado: ${err?.message || err}`;
       pintarMensaje({ rol: "error", texto });
     } finally {
       bloquear(false);
@@ -345,14 +350,14 @@ export async function render(container) {
   $("#btn-nueva").addEventListener("click", () => {
     mostrarVistaConv("actual");
     conv = null;
-    ctx = crearContexto(obtenerAjustes().maxCalculos);
+    ctx = crearContexto(obtenerAjustes(proveedorActual()).maxCalculos);
     pintarChat();
     pintarReporte();
     fPregunta.focus();
   });
 
   // ---------- reporte ----------
-  const datosReporte = () => ({ narrativa: conv?.reporte || "", log: ctx.log, fecha: fechaLarga(), modelo: obtenerAjustes().modelo });
+  const datosReporte = () => ({ narrativa: conv?.reporte || "", log: ctx.log, fecha: fechaLarga(), modelo: obtenerAjustes(proveedorActual()).modelo });
 
   function pintarReporte() {
     const { tablas, errores } = armarTablas(ctx.log);
@@ -360,7 +365,7 @@ export async function render(container) {
     $("#card-reporte").hidden = !hay;
     if (!hay) return;
     const total = tablas.reduce((s, t) => s + t.total, 0);
-    $("#reporte-meta").textContent = `${fechaLarga()} · Modelo: ${obtenerAjustes().modelo} · ${total} cálculo${total === 1 ? "" : "s"} ejecutado${total === 1 ? "" : "s"}`;
+    $("#reporte-meta").textContent = `${fechaLarga()} · Modelo: ${obtenerAjustes(proveedorActual()).modelo} · ${total} cálculo${total === 1 ? "" : "s"} ejecutado${total === 1 ? "" : "s"}`;
     const narrativa = conv?.reporte
       ? `<div class="md">${markdownAHtml(conv.reporte)}</div>`
       : `<div class="callout callout-info no-print"><span>Aún no hay texto de reporte. Pulsa «Generar reporte con IA» para que la IA redacte el análisis a partir de los cálculos ejecutados. Las tablas de abajo ya están completas.</span></div>`;
@@ -489,7 +494,7 @@ export async function render(container) {
                   guardarActivo(activoId);
                   pintarBadge();
                 }
-                ctx = crearContexto(obtenerAjustes().maxCalculos, c.log || []);
+                ctx = crearContexto(obtenerAjustes(proveedorActual()).maxCalculos, c.log || []);
                 conv.log = ctx.log;
                 pintarChat();
                 pintarReporte();

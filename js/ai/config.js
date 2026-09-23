@@ -1,18 +1,38 @@
-// Configuracion de la seccion de IA: clave de API de Gemini, modelo y
-// parametros. La clave vive SOLO en el navegador del usuario (localStorage si
-// elige recordarla, sessionStorage si no) y solo se envia a Google.
+// Configuracion de la seccion de IA: clave de API, modelo y parametros, por
+// proveedor (Gemini, OpenAI, Anthropic). La clave vive SOLO en el navegador
+// del usuario (localStorage si elige recordarla, sessionStorage si no) y
+// solo se envia al proveedor elegido.
 // Todo acceso a storage va envuelto en try/catch: puede no estar disponible
 // (ventana privada, datos bloqueados) y la app debe seguir funcionando.
-
-const K_CLAVE = "ia.apiKey";
-const K_AJUSTES = "ia.ajustes";
+//
+// Las claves de storage de Gemini se mantienen SIN cambios ("ia.apiKey",
+// "ia.ajustes") para no perder lo que los usuarios ya tenian guardado; los
+// demas proveedores usan una clave namespaced ("ia.apiKey.openai", etc).
 
 export const AJUSTES_POR_DEFECTO = {
-  modelo: "gemini-2.5-flash", // se reemplaza por la lista real del usuario en Configuracion
-  temperatura: 0.3,
-  maxRondas: 8, // idas y vueltas modelo <-> herramientas por pregunta
-  maxCalculos: 60, // cantidad maxima de calculos individuales por pregunta
+  gemini: {
+    modelo: "gemini-2.5-flash", // se reemplaza por la lista real del usuario en Configuracion
+    temperatura: 0.3,
+    maxRondas: 8, // idas y vueltas modelo <-> herramientas por pregunta
+    maxCalculos: 60, // cantidad maxima de calculos individuales por pregunta
+  },
+  openai: {
+    modelo: "",
+    temperatura: 0.3,
+    maxRondas: 8,
+    maxCalculos: 60,
+  },
+  anthropic: {
+    modelo: "",
+    temperatura: 0.3,
+    maxRondas: 8,
+    maxCalculos: 60,
+    maxTokens: 4096, // Anthropic exige max_tokens explicito, sin default implicito
+  },
 };
+
+const claveStorageDe = (proveedor) => (proveedor === "gemini" ? "ia.apiKey" : `ia.apiKey.${proveedor}`);
+const ajustesStorageDe = (proveedor) => (proveedor === "gemini" ? "ia.ajustes" : `ia.ajustes.${proveedor}`);
 
 function almacen(tipo) {
   try {
@@ -47,30 +67,33 @@ function quitar(tipo, clave) {
   }
 }
 
-export function obtenerClave() {
-  return leer("session", K_CLAVE) || leer("local", K_CLAVE) || "";
+export function obtenerClave(proveedor = "gemini") {
+  const k = claveStorageDe(proveedor);
+  return leer("session", k) || leer("local", k) || "";
 }
 
-export function hayClave() {
-  return obtenerClave().length > 0;
+export function hayClave(proveedor = "gemini") {
+  return obtenerClave(proveedor).length > 0;
 }
 
 /** true si la clave quedo guardada de forma persistente (localStorage). */
-export function clavePersistente() {
-  return !!leer("local", K_CLAVE);
+export function clavePersistente(proveedor = "gemini") {
+  return !!leer("local", claveStorageDe(proveedor));
 }
 
-export function guardarClave(clave, recordar) {
+export function guardarClave(clave, recordar, proveedor = "gemini") {
+  const k = claveStorageDe(proveedor);
   const limpia = String(clave || "").trim();
-  quitar("local", K_CLAVE);
-  quitar("session", K_CLAVE);
+  quitar("local", k);
+  quitar("session", k);
   if (!limpia) return false;
-  return escribir(recordar ? "local" : "session", K_CLAVE, limpia);
+  return escribir(recordar ? "local" : "session", k, limpia);
 }
 
-export function borrarClave() {
-  quitar("local", K_CLAVE);
-  quitar("session", K_CLAVE);
+export function borrarClave(proveedor = "gemini") {
+  const k = claveStorageDe(proveedor);
+  quitar("local", k);
+  quitar("session", k);
 }
 
 export function enmascarar(clave) {
@@ -79,21 +102,21 @@ export function enmascarar(clave) {
   return `${clave.slice(0, 4)}${"•".repeat(8)}${clave.slice(-4)}`;
 }
 
-export function obtenerAjustes() {
+export function obtenerAjustes(proveedor = "gemini") {
   let guardados = {};
   try {
-    guardados = JSON.parse(leer("local", K_AJUSTES) || "{}") || {};
+    guardados = JSON.parse(leer("local", ajustesStorageDe(proveedor)) || "{}") || {};
   } catch {
     guardados = {};
   }
-  return { ...AJUSTES_POR_DEFECTO, ...guardados };
+  return { ...(AJUSTES_POR_DEFECTO[proveedor] || AJUSTES_POR_DEFECTO.gemini), ...guardados };
 }
 
-export function guardarAjustes(parcial) {
-  const nuevos = { ...obtenerAjustes(), ...parcial };
-  return escribir("local", K_AJUSTES, JSON.stringify(nuevos));
+export function guardarAjustes(parcial, proveedor = "gemini") {
+  const nuevos = { ...obtenerAjustes(proveedor), ...parcial };
+  return escribir("local", ajustesStorageDe(proveedor), JSON.stringify(nuevos));
 }
 
-export function borrarAjustes() {
-  quitar("local", K_AJUSTES);
+export function borrarAjustes(proveedor = "gemini") {
+  quitar("local", ajustesStorageDe(proveedor));
 }

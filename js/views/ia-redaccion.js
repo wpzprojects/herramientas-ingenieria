@@ -7,9 +7,9 @@ import { el, escapeHtml } from "../util/format.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
 import { copiarTexto } from "../util/portapapeles.js";
-import { obtenerAjustes } from "../ai/config.js";
+import { obtenerAjustes, obtenerClave } from "../ai/config.js";
 import { claveEnUso } from "../ai/clave.js";
-import { generar, ErrorGemini } from "../ai/gemini.js";
+import { PROVEEDORES, ErrorProveedorIA, obtenerProveedorActivo, proveedorDe } from "../ai/proveedores.js";
 import { verificarAcceso } from "../ai/ui-clave.js";
 import * as historial from "../ai/historial.js";
 import { agregarMicrofono } from "../ai/voz.js";
@@ -83,6 +83,9 @@ export async function render(container) {
   let activoId = agentes.some((a) => a.id === leerActivo()) ? leerActivo() : agentes[0].id;
   let conv = null; // conversacion actual
   let ocupado = false;
+  // Proveedor de la conversacion ACTUAL (fijo desde que se crea); antes de crearla, el activo en Configuracion.
+  const proveedorActual = () => (conv ? proveedorDe(conv) : obtenerProveedorActivo());
+  const claveActual = () => (proveedorActual() === "gemini" ? claveEnUso() : obtenerClave(proveedorActual()));
 
   container.insertAdjacentHTML(
     "beforeend",
@@ -251,6 +254,7 @@ export async function render(container) {
       conv = {
         id: historial.nuevoId(),
         tipo: "redaccion",
+        proveedor: obtenerProveedorActivo(),
         titulo: (textoVisible || textoUsuario).replace(/\s+/g, " ").slice(0, 70),
         agenteId: agente.id,
         agenteNombre: agente.nombre,
@@ -269,13 +273,15 @@ export async function render(container) {
     bloquear(true);
 
     try {
-      const aj = obtenerAjustes();
+      const aj = obtenerAjustes(proveedorActual());
+      const { generar } = PROVEEDORES[proveedorActual()].cliente;
       const r = await generar({
-        clave: claveEnUso(),
+        clave: claveActual(),
         modelo: aj.modelo,
         sistema: construirSistema(agente),
         contenidos: conv.contenidos,
         temperatura: agente.temperatura ?? aj.temperatura,
+        maxTokens: aj.maxTokens,
       });
       const texto = r.texto.trim() || `(La IA no devolvió texto${r.finishReason ? `: ${r.finishReason}` : ""}. Reformula o acorta el texto.)`;
       conv.contenidos.push({ role: "model", parts: [{ text: r.texto || texto }] });
@@ -291,7 +297,7 @@ export async function render(container) {
       conv.mensajes.pop();
       espera.remove();
       // la burbuja del usuario queda visible junto al error para que sea claro que no se envio
-      burbuja("error", err instanceof ErrorGemini ? err.message : `Error inesperado: ${err.message || err}`);
+      burbuja("error", err instanceof ErrorProveedorIA ? err.message : `Error inesperado: ${err.message || err}`);
       if (!fTexto.value) {
         // se devuelve lo escrito a la caja para poder reintentar sin volver a pegarlo
         fTexto.value = textoVisible || textoUsuario;

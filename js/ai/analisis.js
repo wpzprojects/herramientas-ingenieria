@@ -2,7 +2,7 @@
 // que el modelo pide ejecutar herramientas (js/ai/tools.js), la app las corre
 // con los motores reales y le devuelve los resultados para que los interprete.
 
-import { generar } from "./gemini.js";
+import { PROVEEDORES, proveedorDe } from "./proveedores.js";
 import { declaraciones, ejecutarLlamada, tituloDe, HERRAMIENTAS_ESTANDAR } from "./tools.js";
 
 export const SISTEMA_ANALISIS = `Eres el asistente de análisis de la aplicación "Herramientas de Ingeniería", para líneas y redes de distribución eléctrica en Colombia (referencias: RETIE, NTC 2050, IEEE Std 738, IEC 60287, CREG). Respondes siempre en español.
@@ -51,6 +51,7 @@ No ejecutes cálculos nuevos salvo que sea indispensable. No inventes datos ni l
  * @returns {Promise<{texto:string, herramientas:{titulo:string, ok:boolean}[], truncado:boolean, presupuestoAgotado:boolean}>}
  */
 export async function ejecutarTurno({ conv, texto, clave, ajustes, ctx, onEvento, sistema = SISTEMA_ANALISIS, permitidas = HERRAMIENTAS_ESTANDAR }) {
+  const { generar } = PROVEEDORES[proveedorDe(conv)].cliente;
   const marcador = conv.contenidos.length;
   const marcadorLog = ctx.log.length;
   const herramientas = [];
@@ -59,7 +60,14 @@ export async function ejecutarTurno({ conv, texto, clave, ajustes, ctx, onEvento
   ctx.permitidas = permitidas ? new Set(permitidas) : null;
   conv.contenidos.push({ role: "user", parts: [{ text: texto }] });
 
-  const base = { clave, modelo: ajustes.modelo, sistema, temperatura: ajustes.temperatura, herramientas: declaraciones(permitidas) };
+  const base = {
+    clave,
+    modelo: ajustes.modelo,
+    sistema,
+    temperatura: ajustes.temperatura,
+    maxTokens: ajustes.maxTokens,
+    herramientas: declaraciones(permitidas),
+  };
 
   try {
     for (let ronda = 0; ronda < ajustes.maxRondas; ronda++) {

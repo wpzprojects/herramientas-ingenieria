@@ -4,15 +4,14 @@
 // Los nombres de modelo cambian con el tiempo: no se fijan aqui, se listan
 // con listarModelos() y el usuario elige en Configuracion.
 
+import { ErrorProveedorIA } from "./errores.js";
+
 const BASE = "https://generativelanguage.googleapis.com/v1beta";
 
-export class ErrorGemini extends Error {
-  /** @param {"offline"|"red"|"clave"|"cuota"|"modelo"|"bloqueo"|"servidor"|"solicitud"|"vacio"} tipo */
-  constructor(mensaje, { tipo = "solicitud", status = 0 } = {}) {
-    super(mensaje);
+export class ErrorGemini extends ErrorProveedorIA {
+  constructor(mensaje, opciones = {}) {
+    super(mensaje, { ...opciones, proveedor: "gemini" });
     this.name = "ErrorGemini";
-    this.tipo = tipo;
-    this.status = status;
   }
 }
 
