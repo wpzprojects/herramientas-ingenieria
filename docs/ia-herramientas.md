@@ -1,6 +1,6 @@
 # Cómo usa la IA las calculadoras (herramientas, agentes y filtro)
 
-Guía de la pantalla **Funciones con IA → Análisis con calculadoras**. Explica qué pasa desde que el usuario escribe hasta que aparece la respuesta, cómo se "presenta" cada calculadora a la IA, cómo se decide qué puede usar cada agente y qué hacer para agregar una herramienta nueva. Estado a 2026-09-19.
+Guía de la pantalla **Funciones con IA → Asistente técnico**. Explica qué pasa desde que el usuario escribe hasta que aparece la respuesta, cómo se "presenta" cada calculadora a la IA, cómo se decide qué puede usar cada agente y qué hacer para agregar una herramienta nueva. Estado a 2026-09-19.
 
 ## 1. La idea en una frase
 

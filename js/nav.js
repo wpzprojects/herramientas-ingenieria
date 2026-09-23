@@ -51,7 +51,7 @@ export const sectionMenus = {
     { title: "Conversión de unidades", desc: "Conversión entre unidades de longitud, área, fuerza, velocidad y más.", icon: "ruler", hash: "#/varios/conversion-unidades" },
   ],
   ia: [
-    { title: "Análisis con calculadoras", desc: "Compara escenarios con las calculadoras y genera un reporte.", icon: "chartLine", hash: "#/ia/analisis" },
+    { title: "Asistente técnico", desc: "Compara escenarios con las calculadoras y genera un reporte.", icon: "chartLine", hash: "#/ia/analisis" },
     { title: "Corrector de redacción", desc: "Correos, descripciones técnicas, actas y resúmenes con agentes configurables.", icon: "pencil", hash: "#/ia/redaccion" },
     { title: "Configuración de IA", desc: "Clave de API de Gemini, modelo y datos guardados en este navegador.", icon: "settings", hash: "#/ia/configuracion" },
   ],

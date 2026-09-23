@@ -5,7 +5,7 @@
 <title>verify_ia_pantallas</title>
 <!--
   Pruebas del rediseño de las pantallas de Funciones con IA (2026-09-19): «Configuración de IA» (js/views/ia-configuracion.js)
-  «Corrector de redacción» (js/views/ia-redaccion.js) y «Análisis con calculadoras» (js/views/ia-analisis.js). Se ejecuta en el navegador, sin internet (Gemini simulado con un fetch falso).
+  «Corrector de redacción» (js/views/ia-redaccion.js) y «Asistente técnico» (js/views/ia-analisis.js). Se ejecuta en el navegador, sin internet (Gemini simulado con un fetch falso).
 
   Uso (desde la raiz del proyecto):
     python -m http.server 8000
@@ -365,7 +365,7 @@ await seccion("Corrector de redacción rediseñado", async () => {
   try { cfg.borrarClave(); } catch { /* nada */ }
 });
 
-await seccion("Análisis con calculadoras rediseñado", async () => {
+await seccion("Asistente técnico rediseñado", async () => {
   // Gemini simulado: pide UN calculo (pérdidas) y luego redacta
   const fetchPrevio = window.fetch;
   let llamadasGemini = 0;

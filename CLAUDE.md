@@ -176,6 +176,12 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 
 ## Sección "Funciones con IA" (`js/ai/*`, `js/views/ia*.js`)
 
+- La pantalla **«Análisis con calculadoras»** se renombró a **«Asistente técnico»** (2026-09-23, pedido del usuario: el nombre
+  anterior sonaba poco profesional). Cambia solo el texto visible (menú, breadcrumb, título de la pantalla, README y
+  `docs/ia-herramientas.md`); NO cambian la ruta (`#/ia/analisis`), el archivo (`js/views/ia-analisis.js`) ni ningún
+  identificador interno. Las menciones de "Análisis con calculadoras" más abajo en este documento describen decisiones
+  tomadas bajo el nombre anterior: no hace falta reescribirlas.
+
 - Rediseño de las pantallas de IA (2026-09-19, el usuario dijo «cualquier cosa nos devolvemos al commit anterior»): en curso, una por una.
   **Configuración de IA** HECHA (commit anterior al rediseño: `c5d9379`): tarjetas `tarjeta-borde` con barra de título e icono («Conexión con
   Gemini», «Modelo», «Datos y privacidad»), ayudas en botones «i» (sin `.hint`), estado de la clave en uso con enlace a Perfil (y aviso si es una
