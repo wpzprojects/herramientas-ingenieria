@@ -176,13 +176,37 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 
 ## Multi-proveedor de IA: Gemini, OpenAI y Anthropic (2026-09-23)
 
-- La pestaña de Perfil **«Clave de Gemini»** se renombró a **«Clave en servidor»** (2026-09-23, pedido del
-  usuario): con el selector de proveedor en Configuración, el nombre viejo podía sugerir que ahí se
-  configuraba cualquier proveedor. Debajo del título de esa tarjeta (`js/views/configuracion-avanzada.js`,
-  función `pintarClave`) se agregó una línea aclarando que esa clave del servidor es solo para Gemini, con
-  enlace a Funciones con IA → Configuración para OpenAI/Claude. La ruta (`#/perfil/clave`) y los ids
-  (`ca-tab-clave`, `#ca-clave`…) no cambiaron. Pruebas actualizadas: `tools/verify_acceso.html`,
-  `tools/verify_tema.html`.
+- La pestaña de Perfil **«Clave de Gemini»** se renombró a **«Clave en servidor»** (2026-09-23) y, en la
+  misma sesión, esa tarjeta se **trasladó por completo a Configuración de IA** (el usuario seguía sin
+  convencerse del rename: "tener una configuración de IA en una parte y otra en otra sección no es muy
+  coherente"). Perfil se quedó solo con **Usuarios** (admin) y **Apariencia**; la pestaña «clave» y la
+  función `pintarClave` de `js/views/configuracion-avanzada.js` se BORRARON (no solo se renombraron). La
+  ruta `#/perfil/clave` sigue existiendo a nivel de router (`/perfil/:pestana` es genérico) pero cae en la
+  primera pestaña disponible, igual que cualquier pestaña inexistente.
+  - Ahora vive en `js/views/ia-configuracion.js`, como tarjeta **«Clave en servidor»** entre «Modelo» y
+    «Datos y privacidad», SOLO si el proveedor activo la admite (`meta.soportaFuenteServidor`; hoy solo
+    Gemini) — con OpenAI/Anthropic activos la tarjeta no aparece en absoluto (pedido explícito del
+    usuario). Se agrega como un `<div id="ia-servidor-slot">` vacío en el HTML síncrono inicial y una
+    función nueva, `pintarClaveServidor()` (mismo patrón async que `pintarDatos()`), la llena aparte:
+    resuelve `obtenerBackend()` → `esperarSesion()` → `obtenerPerfil()` y, si CUALQUIERA falla (sin
+    servicio, sin sesión, sin perfil), deja el slot vacío en silencio — sin error, sin tarjeta — en vez de
+    romper el resto de la pantalla (en la práctica esto no debería pasar: la ruta `/ia/configuracion` ya
+    exige nivel usuario/admin, pero es la misma cautela que ya usaba `clave.js:prepararClave()`). El
+    contenido (radios de fuente local/personal/compartida, campo de clave personal, campo de clave
+    compartida solo para admin o texto de solo lectura, avisos) es el mismo que tenía `pintarClave`, con
+    ids nuevos (`ia-f-*`, `ia-serv-k-*`, `ia-serv-g-*`, `ia-serv-b-*`, `ia-serv-msg-*`, `ia-fuente-detalle`,
+    `ia-fuente-avisos`) para no chocar con los de la clave LOCAL de la misma pantalla. `OPCIONES_FUENTE` y
+    `AYUDA_FUENTE` se movieron de `configuracion-avanzada.js` a `ia-configuracion.js`.
+  - La tarjeta «Conexión con Gemini» ya no dice «Cambiar en Perfil» (enlazaba a `#/perfil/clave`): ahora
+    dice «Cambiar abajo, en «Clave en servidor»» con un ancla dentro de la misma página (`href="#ia-servidor"`,
+    ese `id` en la tarjeta nueva). Los dos «Ir a Perfil» de `js/ai/ui-clave.js` (`verificarAcceso`, cuando
+    falla la fuente del servidor) pasaron a «Ir a Configuración» (`#/ia/configuracion`).
+  - Pruebas: `tools/verify_acceso.html` tiene una sección nueva, «Configuración de IA: clave de Gemini en
+    el servidor (trasladada de Perfil)», que monta `ia-configuracion.js` con el backend simulado y cubre lo
+    mismo que antes probaba en Perfil (radios, guardar/borrar personal y compartida, diferencias
+    admin/usuario) más los casos nuevos: la tarjeta desaparece sin sesión y desaparece con
+    OpenAI/Anthropic activos. `tools/verify_ia_pantallas.html` (no mockea el backend, así que ahí la
+    tarjeta nunca aparece) y `tools/verify_tema.html` se ajustaron a las pestañas de Perfil sin «clave».
 
 - Además de Gemini, «Funciones con IA» admite OpenAI (ChatGPT) y Anthropic (Claude). Decisión del usuario:
   OpenAI/Anthropic son SOLO clave local (BYOK en este navegador, `js/ai/config.js`), sin «personal»/

@@ -97,7 +97,7 @@ await seccion("Configuración de IA rediseñada", async () => {
   const bordeBorrar = getComputedStyle(q("#btn-borrar-clave")).borderTopWidth;
   ok(!q("#btn-borrar-clave").classList.contains("btn-ghost") && bordeBorrar !== "0px" && bordeBorrar === getComputedStyle(q("#btn-probar")).borderTopWidth, `«Borrar clave» tiene borde como los demás botones (${bordeBorrar})`);
   ok(!!q("#btn-borrar-clave svg") && !!q("#btn-borrar-historial svg"), "los botones de borrar llevan icono de papelera");
-  ok(/Cambiar en Perfil/.test(texto(q("#fuente-clave"))) && !!q("#fuente-clave a[href='#/perfil/clave']") && !!q("#fuente-clave .badge"), "la línea de estado dice qué clave se usa (insignia) y enlaza a Perfil");
+  ok(/Cambiar abajo/.test(texto(q("#fuente-clave"))) && !!q("#fuente-clave a[href='#ia-servidor']") && !!q("#fuente-clave .badge"), "la línea de estado dice qué clave se usa (insignia) y enlaza a la tarjeta «Clave en servidor», más abajo en la misma pantalla");
   ok(!q("#aviso-fuente .callout"), "con «Este navegador» no hay aviso sobre la clave del servidor");
   ok(/Todavía no hay una clave guardada en este navegador/.test(texto(q("#estado-clave"))), "sin clave: lo dice");
 

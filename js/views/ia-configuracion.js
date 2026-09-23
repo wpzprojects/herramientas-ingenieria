@@ -5,7 +5,12 @@
 // Ajustes avanzados plegados; «Actualizar lista» de modelos separado de «Probar conexion».
 // Multi-proveedor (2026-09-23): el proveedor se elige aqui de forma GLOBAL (no por agente); OpenAI y
 // Claude solo admiten clave LOCAL (BYOK), sin fuente «personal»/«compartida» en el servidor (eso sigue
-// siendo exclusivo de Gemini, ver js/ai/clave.js).
+// siendo exclusivo de Gemini, ver js/ai/clave.js). La gestion de esa clave en el servidor (antes en
+// Perfil) se trasladó aquí (2026-09-23, pedido del usuario: toda la config de IA en un solo lugar):
+// tarjeta «Clave en servidor», solo si el proveedor activo la admite (soportaFuenteServidor), entre
+// «Modelo» y «Datos y privacidad». Se resuelve sola (backend/sesion/perfil) y si algo falta (sin
+// servicio, sin sesion) simplemente no aparece, en vez de mostrar un error: el resto de la pantalla debe
+// seguir siendo utilizable.
 
 import { escapeHtml } from "../util/format.js";
 import { icon } from "../icons.js";
@@ -13,12 +18,20 @@ import { activarInfos } from "../util/info-campo.js";
 import { obtenerClave, guardarClave, borrarClave, clavePersistente, enmascarar, obtenerAjustes, guardarAjustes, borrarAjustes } from "../ai/config.js";
 import { PROVEEDORES, ORDEN_PROVEEDORES, obtenerProveedorActivo, guardarProveedorActivo, ErrorProveedorIA } from "../ai/proveedores.js";
 import { abrirInstructivo } from "../ai/ui-clave.js";
-import { obtenerFuente } from "../ai/clave.js";
+import { FUENTES, obtenerFuente, guardarFuente, olvidarClaveServidor } from "../ai/clave.js";
+import { obtenerBackend, esperarSesion, ErrorAcceso } from "../auth/backend.js";
 import { contar, borrarTodo } from "../ai/historial.js";
 import { restaurarPredeterminados } from "../ai/agentes.js";
 
-// Nombres cortos de la clave en uso (los mismos de Perfil)
+// Nombres cortos de la clave en uso (los mismos de antes, en Perfil)
 const NOMBRE_FUENTE = { local: "Este navegador", personal: "Mi clave personal (servidor)", compartida: "Clave compartida (servidor)" };
+// Cada opcion dice DONDE esta guardada la clave que van a usar las funciones con IA
+const OPCIONES_FUENTE = {
+  local: { titulo: "Este navegador", donde: "mi clave, guardada solo en este equipo" },
+  personal: { titulo: "Mi clave personal (servidor)", donde: "mi clave, guardada en el servidor y disponible en cualquier dispositivo" },
+  compartida: { titulo: "Clave compartida (servidor)", donde: "la clave del administrador, para todos los usuarios" },
+};
+const AYUDA_FUENTE = "Las funciones con IA necesitan una clave de Gemini. Elige dónde está guardada la que vas a usar.";
 const AYUDA_MODELO = "«Actualizar lista» carga los modelos disponibles con tu clave.";
 const AYUDA_TEMP = "Menor = respuestas más estables. Los agentes de redacción usan la suya.";
 const AYUDA_RONDAS = "Idas y vueltas con las calculadoras en cada pregunta.";
@@ -127,6 +140,8 @@ export async function render(container) {
       <div id="msg-ajustes" style="margin-top: var(--space-4);"></div>
     </div>
 
+    ${meta.soportaFuenteServidor ? `<div id="ia-servidor-slot"></div>` : ""}
+
     <div class="card tarjeta-borde form-section" id="ia-datos">
       ${barra("lock", "Datos y privacidad")}
       <p class="text-muted text-sm" id="info-datos" style="margin:0 0 var(--space-3)"></p>
@@ -190,19 +205,186 @@ export async function render(container) {
     $("#info-datos").textContent = `Conversaciones guardadas: ${n}. Los agentes de redacción y los ajustes también se guardan aquí.`;
   }
 
+  // Clave de Gemini en el servidor (personal/compartida): antes vivía en Perfil, ahora aquí (solo con
+  // Gemini activo). Se resuelve sola; si falta el servicio, la sesión o el perfil, no muestra nada (el
+  // resto de la pantalla se usa igual sin necesidad de tener eso resuelto).
+  async function pintarClaveServidor() {
+    const slot = $("#ia-servidor-slot");
+    if (!slot) return;
+    let b;
+    try {
+      b = await obtenerBackend();
+    } catch {
+      b = null;
+    }
+    if (!b) return;
+    let u;
+    try {
+      u = await esperarSesion(b);
+    } catch {
+      u = null;
+    }
+    if (!u) return;
+    let perfil;
+    try {
+      perfil = await b.obtenerPerfil();
+    } catch {
+      perfil = null;
+    }
+    if (!perfil) return;
+    const esAdmin = perfil.rol === "admin";
+
+    const mensajeAcceso = (e) => (e instanceof ErrorAcceso ? e.message : `Error inesperado: ${e?.message || e}`);
+    const avisoLocal = (nodo, tipo, texto) => {
+      nodo.innerHTML = `<div class="callout callout-${tipo}" style="margin:var(--space-3) 0 0"><span>${escapeHtml(texto)}</span></div>`;
+    };
+
+    slot.innerHTML = `<div class="card tarjeta-borde form-section" id="ia-servidor">${barra("key", "Clave en servidor")}<p class="text-muted" style="margin:0">Cargando…</p></div>`;
+    const box = slot.querySelector("#ia-servidor");
+
+    let hayPersonal = false;
+    let hayCompartida = false;
+    try {
+      hayPersonal = !!(await b.leerClavePersonal());
+      hayCompartida = !!(await b.leerClaveCompartida());
+    } catch (e) {
+      box.innerHTML = `${barra("key", "Clave en servidor")}<div class="callout callout-danger" style="margin:0"><span>${escapeHtml(mensajeAcceso(e))}</span></div>`;
+      return;
+    }
+    const estado = (hay) => (hay ? `<span class="badge badge-success">Configurada</span>` : `<span class="badge">Sin configurar</span>`);
+    const disponible = { local: true, personal: hayPersonal, compartida: hayCompartida };
+
+    box.innerHTML = `
+      ${barra("key", "Clave en servidor")}
+      <div class="field">
+        <label data-info="${escapeHtml(AYUDA_FUENTE)}">¿Dónde está la clave de Gemini que se usará?</label>
+        <div class="ca-fuentes" id="ia-fuentes"></div>
+      </div>
+      <div id="ia-fuente-detalle"></div>
+      <div id="ia-fuente-avisos"></div>`;
+
+    const contFuentes = box.querySelector("#ia-fuentes");
+    const detalle = box.querySelector("#ia-fuente-detalle");
+    const avisosFuente = box.querySelector("#ia-fuente-avisos");
+
+    contFuentes.innerHTML = FUENTES.map((f) => {
+      const extra = f === "local" ? "" : ` ${estado(disponible[f])}`;
+      return `<label for="ia-f-${f}" class="checkbox-row" style="color:var(--text)">
+        <input type="radio" name="ia-fuente" id="ia-f-${f}" value="${f}"${obtenerFuente() === f ? " checked" : ""}>
+        <span><strong>${escapeHtml(OPCIONES_FUENTE[f].titulo)}</strong> <span class="text-muted text-sm">— ${escapeHtml(OPCIONES_FUENTE[f].donde)}</span>${extra}</span>
+      </label>`;
+    }).join("");
+    for (const f of FUENTES) {
+      box.querySelector(`#ia-f-${f}`).addEventListener("change", () => {
+        guardarFuente(f);
+        pintarDetalleFuente();
+      });
+    }
+
+    const campoClave = (tipo, etiqueta, ayuda, hay) => `
+      <div class="field">
+        <label for="ia-serv-k-${tipo}" data-info="${escapeHtml(ayuda)}">${etiqueta} ${estado(hay)}</label>
+        <div class="input-group">
+          <input type="password" id="ia-serv-k-${tipo}" autocomplete="off" spellcheck="false" placeholder="Pega la clave de Gemini (AIza…)">
+          <button type="button" class="btn btn-primary" id="ia-serv-g-${tipo}" style="flex:0 0 auto">Guardar</button>
+          <button type="button" class="btn" id="ia-serv-b-${tipo}" style="flex:0 0 auto" ${hay ? "" : "disabled"}>Borrar</button>
+        </div>
+      </div>
+      <div id="ia-serv-msg-${tipo}"></div>`;
+
+    function pintarDetalleFuente() {
+      const fuente = obtenerFuente();
+      if (fuente === "personal") {
+        detalle.innerHTML = campoClave("personal", "Mi clave personal", "Solo tú puedes leerla; ni siquiera los administradores.", hayPersonal);
+      } else if (fuente === "compartida") {
+        detalle.innerHTML = esAdmin
+          ? campoClave("compartida", "Clave compartida", "Una sola clave para todos los usuarios autorizados; solo los administradores la cambian.", hayCompartida)
+          : `<p class="text-muted text-sm" style="margin:0">${hayCompartida ? "Clave compartida configurada por el administrador" : "Clave compartida aún no configurada por el administrador"} ${estado(hayCompartida)}</p>`;
+      } else {
+        detalle.innerHTML = `<p class="text-muted text-sm" style="margin:0">Se usa la clave guardada en este navegador, en la tarjeta «Conexión con ${escapeHtml(meta.nombreCorto)}» de arriba.</p>`;
+      }
+      pintarAvisosFuente(fuente);
+      activarInfos(box);
+      const g = (t) => box.querySelector(`#ia-serv-g-${t}`);
+      const bo = (t) => box.querySelector(`#ia-serv-b-${t}`);
+      if (g("personal")) {
+        g("personal").addEventListener("click", guardarClaveServidor("personal"));
+        bo("personal").addEventListener("click", borrarClaveServidor("personal"));
+      }
+      if (g("compartida")) {
+        g("compartida").addEventListener("click", guardarClaveServidor("compartida"));
+        bo("compartida").addEventListener("click", borrarClaveServidor("compartida"));
+      }
+    }
+
+    function pintarAvisosFuente(fuente) {
+      const puntos = [];
+      if (!disponible[fuente]) {
+        puntos.push(
+          fuente === "compartida" && !esAdmin
+            ? "El administrador aún no ha configurado la clave compartida: las funciones con IA te pedirán una clave."
+            : `Todavía no has configurado ${fuente === "compartida" ? "la clave compartida" : "esta clave"}: las funciones con IA te la pedirán.`
+        );
+      }
+      if (esAdmin && fuente === "compartida") {
+        puntos.push(
+          "La clave compartida la puede leer cualquier usuario autorizado (técnicamente, con las herramientas del navegador): compártela solo con personas de confianza.",
+          "Si alguien sale de la lista pierde el acceso, pero cambia la clave si sospechas que se filtró.",
+          "Todos los usuarios consumen el mismo cupo gratuito."
+        );
+      }
+      avisosFuente.innerHTML = puntos.length
+        ? `<div class="callout callout-warning ca-avisos"><div><strong>Ten presente</strong><ul>${puntos.map((p) => `<li>${escapeHtml(p)}</li>`).join("")}</ul></div></div>`
+        : "";
+    }
+
+    const guardarClaveServidor = (tipo) => async () => {
+      const inp = box.querySelector(`#ia-serv-k-${tipo}`);
+      const msg = box.querySelector(`#ia-serv-msg-${tipo}`);
+      const valor = inp.value.trim();
+      if (!valor) return avisoLocal(msg, "warning", "Escribe o pega la clave antes de guardar.");
+      try {
+        await (tipo === "personal" ? b.guardarClavePersonal(valor) : b.guardarClaveCompartida(valor));
+        olvidarClaveServidor();
+        inp.value = "";
+        await pintarClaveServidor();
+        avisoLocal(slot.querySelector(`#ia-serv-msg-${tipo}`), "success", "Clave guardada en el servidor.");
+      } catch (e) {
+        avisoLocal(msg, "danger", mensajeAcceso(e));
+      }
+    };
+    const borrarClaveServidor = (tipo) => async () => {
+      const msg = box.querySelector(`#ia-serv-msg-${tipo}`);
+      if (!confirm(`¿Borrar la clave ${tipo === "personal" ? "personal" : "compartida"} del servidor?`)) return;
+      try {
+        await (tipo === "personal" ? b.guardarClavePersonal(null) : b.guardarClaveCompartida(null));
+        olvidarClaveServidor();
+        await pintarClaveServidor();
+        avisoLocal(slot.querySelector(`#ia-serv-msg-${tipo}`), "info", "Clave borrada del servidor.");
+      } catch (e) {
+        avisoLocal(msg, "danger", mensajeAcceso(e));
+      }
+    };
+
+    pintarDetalleFuente();
+    activarInfos(box);
+  }
+
   if (meta.soportaFuenteServidor) {
-    // Origen de la clave que se esta usando (se elige en Perfil). Si no es «Este navegador», el campo de abajo no se usa.
+    // Origen de la clave que se esta usando (se elige mas abajo, en «Clave en servidor»). Si no es
+    // «Este navegador», el campo de esta tarjeta no se usa.
     const fuente = obtenerFuente();
     $("#fuente-clave").innerHTML =
-      `Las funciones con IA están usando <span class="badge">${escapeHtml(NOMBRE_FUENTE[fuente])}</span> · ` + `<a href="#/perfil/clave">Cambiar en Perfil</a>`;
+      `Las funciones con IA están usando <span class="badge">${escapeHtml(NOMBRE_FUENTE[fuente])}</span> · ` + `<a href="#ia-servidor">Cambiar abajo, en «Clave en servidor»</a>`;
     if (fuente !== "local") {
-      $("#aviso-fuente").innerHTML = `<div class="callout callout-info" style="margin:0 0 var(--space-4)"><span>Estás usando una clave del servidor: la clave de este navegador solo se usa si eliges «Este navegador» en Perfil.</span></div>`;
+      $("#aviso-fuente").innerHTML = `<div class="callout callout-info" style="margin:0 0 var(--space-4)"><span>Estás usando una clave del servidor: la clave de este navegador solo se usa si eliges «Este navegador» abajo, en «Clave en servidor».</span></div>`;
     }
   }
 
   pintarEstadoClave();
   pintarAjustes();
   pintarDatos();
+  if (meta.soportaFuenteServidor) pintarClaveServidor();
 
   $("#f-proveedor").addEventListener("change", (e) => {
     guardarProveedorActivo(e.target.value);

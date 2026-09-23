@@ -52,6 +52,7 @@ const acc = await import("../js/auth/acceso.js");
 const { usarBackend, ErrorAcceso } = await import("../js/auth/backend.js");
 const { crearBackendMock } = await import("../js/auth/backend-mock.js");
 const nav = await import("../js/nav.js");
+const proveedores = await import("../js/ai/proveedores.js");
 
 // reloj falso y conexion controlable
 let T0 = 1_800_000_000_000;
@@ -275,7 +276,7 @@ await seccion("router: pantallas bloqueadas", async () => {
   await acc.revalidar();
   await ir("#/perfil/clave");
   await espera(400);
-  ok(mount.querySelector(".ca-tabs .tab-btn.active")?.textContent.trim() === "Clave en servidor", "por el router, la dirección #/perfil/clave abre Perfil en la pestaña «Clave en servidor»");
+  ok(mount.querySelector(".ca-tabs .tab-btn.active")?.textContent.trim() === "Usuarios", "la clave de Gemini ya no vive en Perfil: «#/perfil/clave» (pestaña inexistente) cae en la primera, «Usuarios»");
   ok(typeof r.refresh === "function", "el router expone refresh() (la app lo usa al cambiar el nivel)");
   location.hash = previo || "#/";
 });
@@ -304,10 +305,10 @@ await seccion("pantalla de Perfil rediseñada", async () => {
   ok(/Acceso desde \d/.test(texto(q(".dev-header"))) && !/\d:\d\d/.test(texto(q(".dev-header"))), "muestra desde cuándo tiene acceso (fecha de la última confirmación, sin la hora)");
   ok(/Acceso desde \d[\d/]+\. Disponible hasta \d[\d/]+ y se renueva cada vez que abres la app con internet\./.test(texto(q(".dev-header"))) && qa(".dev-header p.text-muted").length === 1, "seguido, en el mismo párrafo: «Acceso desde … Disponible hasta … y se renueva cada vez que abres la app con internet.»");
   const pest = qa(".ca-tabs .tab-btn").map(texto);
-  ok(pest.join("|") === "Usuarios|Clave en servidor|Apariencia", `el administrador ve tres pestañas: ${pest.join(", ")}`);
-  ok(!q("#ca-tab-usuarios").hidden && q("#ca-tab-clave").hidden, "empieza en «Usuarios»");
+  ok(pest.join("|") === "Usuarios|Apariencia", `el administrador ve dos pestañas (la clave de Gemini se trasladó a Funciones con IA → Configuración): ${pest.join(", ")}`);
+  ok(!q("#ca-tab-usuarios").hidden && q("#ca-tab-apariencia").hidden, "empieza en «Usuarios»");
   qa(".ca-tabs .tab-btn")[1].click();
-  ok(q("#ca-tab-usuarios").hidden && !q("#ca-tab-clave").hidden, "la pestaña «Clave en servidor» cambia el panel");
+  ok(q("#ca-tab-usuarios").hidden && !q("#ca-tab-apariencia").hidden, "la pestaña «Apariencia» cambia el panel");
   qa(".ca-tabs .tab-btn")[0].click();
   const filas = qa("#ca-filas tr");
   ok(filas.length === 2, `la tabla lista los ${filas.length} usuarios`);
@@ -332,68 +333,24 @@ await seccion("pantalla de Perfil rediseñada", async () => {
   ok(/Usuario/.test(texto(qa("#ca-filas tr").find((tr) => /nuevo@empresa.com/.test(tr.textContent)))) && !/Administrador/.test(texto(qa("#ca-filas tr").find((tr) => /nuevo@empresa.com/.test(tr.textContent)))), "y queda registrado con el rol «Usuario»");
   ok(!/\.hint/.test(marco.innerHTML) && qa(".info-btn, [data-info]").length >= 3, "la ayuda va en botones «i», no en textos fijos");
 
-  // ---- clave de Gemini: solo el campo de la fuente elegida
-  qa(".ca-tabs .tab-btn")[1].click();
-  const fuentes = qa("#ca-fuentes input");
-  ok(fuentes.length === 3, "tres orígenes de clave como opciones compactas");
-  const ayudaFuente = q("#ca-clave label[data-info]").dataset.info;
-  ok(ayudaFuente.length < 130 && /dónde está guardada/.test(ayudaFuente), `la ayuda «i» de la clave es una sola frase corta (${ayudaFuente.length} caracteres)`);
-  ok(/¿Dónde está la clave de Gemini que se usará\?/.test(texto(q("#ca-clave label[data-info]"))), "la pregunta habla de DÓNDE está la clave");
-  const opciones = qa("#ca-fuentes label").map(texto);
-  ok(/Este navegador — mi clave, guardada solo en este equipo/.test(opciones[0]) && /Mi clave personal \(servidor\) — mi clave, guardada en el servidor/.test(opciones[1]) && /Clave compartida \(servidor\) — la clave del administrador/.test(opciones[2]), "cada opción dice dónde vive su clave");
-  fuentes.find((r) => r.value === "local").click();
-  fuentes.find((r) => r.value === "local").dispatchEvent(new Event("change"));
-  ok(!q("#ca-k-personal") && !q("#ca-k-compartida") && /Se usa la clave guardada en este navegador/.test(texto(q("#ca-detalle"))) && qa("#ca-clave .callout").length === 0, "«Este navegador»: no muestra campos de clave del servidor ni avisos");
-  fuentes.find((r) => r.value === "personal").click();
-  fuentes.find((r) => r.value === "personal").dispatchEvent(new Event("change"));
-  ok(!!q("#ca-k-personal") && !q("#ca-k-compartida"), "«Mi clave personal»: solo su campo");
-  fuentes.find((r) => r.value === "compartida").click();
-  fuentes.find((r) => r.value === "compartida").dispatchEvent(new Event("change"));
-  ok(!!q("#ca-k-compartida") && !q("#ca-k-personal") && qa(".ca-avisos li").length >= 3 && qa(".callout-warning").length === 1, "«Clave compartida» (admin): su campo y UN solo recuadro de avisos con viñetas");
-  ok(/Ten presente/.test(texto(q(".ca-avisos"))) && /cualquier usuario autorizado/.test(texto(q(".ca-avisos"))) && /Todavía no has configurado la clave compartida/.test(texto(q(".ca-avisos"))), "el recuadro une lo pendiente de la clave con la advertencia de quién puede leerla");
-  fuentes.find((r) => r.value === "local").click();
-  fuentes.find((r) => r.value === "local").dispatchEvent(new Event("change"));
-  ok(qa("#ca-clave .callout").length === 0, "con «Este navegador» no hay avisos");
-  fuentes.find((r) => r.value === "compartida").click();
-  fuentes.find((r) => r.value === "compartida").dispatchEvent(new Event("change"));
-  q("#ca-k-compartida").value = "AIzaPRUEBA";
-  q("#ca-g-compartida").click();
-  await espera(250);
-  ok(/Clave guardada en el servidor/.test(texto(q("#ca-msg-compartida"))) && /Configurada/.test(texto(q("#ca-detalle"))), "guardar la clave compartida funciona y queda «Configurada»");
-
-  // ---- abrir directo una pestaña (#/perfil/clave): el enlace «Cambiar en Perfil» de Configuración de IA
+  // ---- abrir directo una pestaña (la clave de Gemini ya no vive aquí, ver «Configuración de IA: clave en servidor»)
   const abrirPestana = async (opciones, pestana) => {
     await con(opciones);
     marco.innerHTML = "";
     await vista.render(marco, { pestana });
     await espera(150);
   };
-  await abrirPestana({ usuarios: semilla(), sesion: ADMIN }, "clave");
-  ok(qa(".ca-tabs .tab-btn.active").map(texto).join() === "Clave en servidor" && !q("#ca-tab-clave").hidden && q("#ca-tab-usuarios").hidden, "el administrador que llega con «/perfil/clave» queda en la pestaña «Clave en servidor» (no en «Usuarios»)");
   await abrirPestana({ usuarios: semilla(), sesion: ADMIN }, undefined);
   ok(qa(".ca-tabs .tab-btn.active").map(texto).join() === "Usuarios", "sin indicar pestaña, el administrador sigue empezando en «Usuarios»");
   await abrirPestana({ usuarios: semilla(), sesion: ADMIN }, "apariencia");
   ok(qa(".ca-tabs .tab-btn.active").map(texto).join() === "Apariencia" && !q("#ca-tab-apariencia").hidden, "«/perfil/apariencia» abre Apariencia");
-  await abrirPestana({ usuarios: semilla(), sesion: YO }, "clave");
-  ok(qa(".ca-tabs .tab-btn.active").map(texto).join() === "Clave en servidor", "el usuario normal con «/perfil/clave» queda en «Clave en servidor»");
   await abrirPestana({ usuarios: semilla(), sesion: YO }, "usuarios");
-  ok(qa(".ca-tabs .tab-btn.active").map(texto).join() === "Clave en servidor", "una pestaña que la persona no tiene («usuarios» para un usuario normal) cae en la primera");
+  ok(qa(".ca-tabs .tab-btn.active").map(texto).join() === "Apariencia", "una pestaña que la persona no tiene («usuarios» para un usuario normal) cae en la primera que sí tiene");
 
-  // ---- usuario normal: solo la clave, sin lista
+  // ---- usuario normal: solo apariencia, sin lista de correos ni clave (ya no vive en Perfil)
   await dibujar({ usuarios: semilla(), sesion: YO });
-  ok(qa(".ca-tabs .tab-btn").map(texto).join("|") === "Clave en servidor|Apariencia" && !q("#ca-usuarios") && !!q("#ca-clave") && !q("#ca-tab-clave").hidden, "un usuario normal ve las pestañas «Clave en servidor | Apariencia» (empieza en la clave) y NO la lista de correos");
+  ok(qa(".ca-tabs .tab-btn").map(texto).join("|") === "Apariencia" && !q("#ca-usuarios") && !q("#ca-clave"), "un usuario normal ve solo la pestaña «Apariencia»: ni la lista de correos ni la clave de Gemini (trasladada a Funciones con IA → Configuración)");
   ok(!/jefe@empresa.com/.test(marco.textContent), "y no ve los correos de los demás");
-  const opNormal = qa("#ca-fuentes input").find((r) => r.value === "compartida");
-  ok(!!opNormal, "el usuario normal conserva la opción «Clave compartida» (la puede usar)");
-  opNormal.click();
-  opNormal.dispatchEvent(new Event("change"));
-  ok(/aún no configurada por el administrador/.test(texto(q("#ca-detalle"))) && !/Solo los administradores pueden cambiarla/.test(marco.textContent) && !q("#ca-k-compartida"), "usuario normal + clave compartida sin configurar: «aún no configurada por el administrador», sin campo ni la frase de quién puede cambiarla");
-  ok(qa(".ca-avisos li").length === 1 && !/cualquier usuario autorizado/.test(marco.textContent), "y el recuadro trae solo la viñeta de lo pendiente (sin la advertencia que es solo para el administrador)");
-  await dibujar({ usuarios: semilla(), sesion: YO, claveCompartida: "AIzaADMIN" });
-  const opNormal2 = qa("#ca-fuentes input").find((r) => r.value === "compartida");
-  opNormal2.click();
-  opNormal2.dispatchEvent(new Event("change"));
-  ok(/Clave compartida configurada por el administrador/.test(texto(q("#ca-detalle"))) && qa("#ca-clave .callout").length === 0, "con la clave compartida ya configurada: «configurada por el administrador» y ningún aviso");
 
   // ---- sin autorizacion y sin sesion
   await dibujar({ usuarios: semilla(), sesion: EXTRANO });
@@ -402,6 +359,69 @@ await seccion("pantalla de Perfil rediseñada", async () => {
   ok(/Inicia sesión para habilitar todos los módulos/.test(texto(q(".ia-gate"))) && !!q("[data-login] svg") && /Iniciar sesión con Google/.test(texto(q("[data-login]"))), "sin sesión: texto nuevo y botón de Google con su icono");
   ok(!/Acceso restringido/.test(marco.textContent), "ya no dice «Acceso restringido»");
   ok(/Sin iniciar sesión puedes usar algunas funcionalidades\. Con una cuenta autorizada se habilitan todos los módulos\./.test(texto(q(".ia-gate"))), "la explicación es corta: «Sin iniciar sesión puedes usar algunas funcionalidades. Con una cuenta autorizada se habilitan todos los módulos.»");
+});
+
+await seccion("Configuración de IA: clave de Gemini en el servidor (trasladada de Perfil)", async () => {
+  const vista = await import("../js/views/ia-configuracion.js");
+  const marco = document.createElement("div");
+  stage.innerHTML = "";
+  stage.append(marco);
+  const q = (s) => marco.querySelector(s);
+  const qa = (s) => [...marco.querySelectorAll(s)];
+  const texto = (e) => (e ? e.textContent.replace(/\s+/g, " ").trim() : "");
+  const dibujar = async (opciones) => {
+    await con(opciones);
+    proveedores.guardarProveedorActivo("gemini");
+    marco.innerHTML = "";
+    await vista.render(marco);
+    await espera(300); // pintarClaveServidor() es async y no bloquea el render() sincrono
+  };
+
+  // ---- administrador, con sesion valida: aparece la tarjeta
+  await dibujar({ usuarios: semilla(), sesion: ADMIN });
+  ok(!!q("#ia-servidor"), "con Gemini activo y sesión válida aparece la tarjeta «Clave en servidor»");
+  const fuentes = qa("#ia-fuentes input");
+  ok(fuentes.length === 3, "tres orígenes de clave como opciones compactas");
+  const opciones = qa("#ia-fuentes label").map(texto);
+  ok(/Este navegador — mi clave, guardada solo en este equipo/.test(opciones[0]) && /Mi clave personal \(servidor\) — mi clave, guardada en el servidor/.test(opciones[1]) && /Clave compartida \(servidor\) — la clave del administrador/.test(opciones[2]), "cada opción dice dónde vive su clave");
+  fuentes.find((r) => r.value === "local").click();
+  fuentes.find((r) => r.value === "local").dispatchEvent(new Event("change"));
+  ok(!q("#ia-serv-k-personal") && !q("#ia-serv-k-compartida") && qa("#ia-servidor .callout").length === 0, "«Este navegador»: no muestra campos de clave del servidor ni avisos");
+  fuentes.find((r) => r.value === "personal").click();
+  fuentes.find((r) => r.value === "personal").dispatchEvent(new Event("change"));
+  ok(!!q("#ia-serv-k-personal") && !q("#ia-serv-k-compartida"), "«Mi clave personal»: solo su campo");
+  fuentes.find((r) => r.value === "compartida").click();
+  fuentes.find((r) => r.value === "compartida").dispatchEvent(new Event("change"));
+  ok(!!q("#ia-serv-k-compartida") && !q("#ia-serv-k-personal") && qa("#ia-servidor .ca-avisos li").length >= 3, "«Clave compartida» (admin): su campo y el recuadro de avisos con viñetas");
+  q("#ia-serv-k-compartida").value = "AIzaPRUEBA";
+  q("#ia-serv-g-compartida").click();
+  await espera(250);
+  ok(/Clave guardada en el servidor/.test(texto(q("#ia-serv-msg-compartida"))), "guardar la clave compartida llama al backend simulado y avisa");
+
+  // ---- la linea de estado de «Conexión con Gemini» enlaza dentro de la misma pagina a la tarjeta nueva
+  ok(!!q("#fuente-clave a[href='#ia-servidor']"), "«Conexión con Gemini» enlaza a «Clave en servidor», en la misma pantalla (ya no a Perfil)");
+
+  // ---- usuario normal: ve la tarjeta, con la clave compartida en solo lectura
+  await dibujar({ usuarios: semilla(), sesion: YO });
+  ok(!!q("#ia-servidor"), "un usuario normal también ve la tarjeta");
+  const opNormal = qa("#ia-fuentes input").find((r) => r.value === "compartida");
+  opNormal.click();
+  opNormal.dispatchEvent(new Event("change"));
+  ok(/aún no configurada por el administrador/.test(texto(q("#ia-fuente-detalle"))) && !q("#ia-serv-k-compartida"), "usuario normal + clave compartida: solo lectura, sin campo para editarla");
+
+  // ---- sin sesion (defensivo: no deberia pasar porque la ruta ya exige estar autorizado, pero no debe romper la pantalla)
+  await dibujar({ usuarios: semilla(), sesion: null });
+  ok(!q("#ia-servidor-slot")?.children.length, "sin sesión válida, el slot queda vacío (sin tarjeta, sin error) y el resto de la pantalla sigue usándose");
+  ok(!!q("#ia-conexion") && !!q("#ia-modelo"), "las demás tarjetas (Conexión, Modelo) siguen ahí");
+
+  // ---- con OpenAI activo: la tarjeta desaparece
+  await con({ usuarios: semilla(), sesion: ADMIN });
+  proveedores.guardarProveedorActivo("openai");
+  marco.innerHTML = "";
+  await vista.render(marco);
+  await espera(300);
+  ok(!q("#ia-servidor-slot") && !q("#ia-servidor"), "con OpenAI (o Anthropic) activo la tarjeta no se muestra en absoluto");
+  proveedores.guardarProveedorActivo("gemini");
 });
 
 await seccion("archivos y documentación", async () => {

@@ -148,7 +148,7 @@ export async function verificarAcceso(container, { reintentar } = {}) {
         <h2>${escapeHtml(TITULO_MOTIVO[r.motivo] || TITULO_MOTIVO.error)}</h2>
         <p class="text-muted">Elegiste usar ${escapeHtml(ETIQUETA_FUENTE[obtenerFuente()])}. ${escapeHtml(r.mensaje)}</p>
         <div class="btn-row">
-          <a class="btn btn-primary" href="#/perfil/clave">Ir a Perfil</a>
+          <a class="btn btn-primary" href="#/ia/configuracion">Ir a Configuración</a>
           <button type="button" class="btn" data-local>Usar la clave de este navegador</button>
           <button type="button" class="btn btn-ghost" data-reintentar>Reintentar</button>
         </div>`);

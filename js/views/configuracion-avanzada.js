@@ -1,15 +1,18 @@
 // Perfil y configuracion avanzada (menu lateral > Perfil, #/perfil): acceso con cuenta de Google.
 // Muestra el login y, si el correo esta en la lista de usuarios autorizados (guardada en el
-// servidor, no en el repositorio), la cuenta con su nivel de acceso, la clave de Gemini en el servidor y, solo para
-// administradores, la gestion de esa lista. La seguridad real la aplican las reglas de Firestore
-// (firebase/firestore.rules); esta pantalla solo decide que mostrar.
+// servidor, no en el repositorio), la cuenta con su nivel de acceso y, solo para administradores, la
+// gestion de esa lista. La seguridad real la aplican las reglas de Firestore (firebase/firestore.rules);
+// esta pantalla solo decide que mostrar.
 // Diseño (2026-09-19): mismas tarjetas de las calculadoras (relleno de 16 px, barra de titulo con icono, ayudas «i»).
+// La gestion de la clave de Gemini en el servidor (personal/compartida) se trasladó a Funciones con IA →
+// Configuración (2026-09-23, pedido del usuario: toda la config de IA en un solo lugar); ver
+// js/views/ia-configuracion.js.
 
 import { el, escapeHtml } from "../util/format.js";
 import { icon } from "../icons.js";
 import { activarInfos } from "../util/info-campo.js";
 import { obtenerBackend, esperarSesion, ROLES, ErrorAcceso, correoValido, normalizarCorreo } from "../auth/backend.js";
-import { FUENTES, obtenerFuente, guardarFuente, olvidarClaveServidor } from "../ai/clave.js";
+import { olvidarClaveServidor } from "../ai/clave.js";
 import { estadoAcceso, venceLaCache, leerCache, revalidar } from "../auth/acceso.js";
 import { PREDETERMINADO, leerColores, guardarColor, ajustarBase } from "../util/tema.js";
 
@@ -17,14 +20,6 @@ const fecha = (ms) => (ms ? new Date(ms).toLocaleDateString("es-CO", { dateStyle
 const mensajeDe = (e) => (e instanceof ErrorAcceso ? e.message : `Error inesperado: ${e?.message || e}`);
 const ETIQUETA_ROL = { admin: "Administrador", usuario: "Usuario" };
 const insigniaRol = (rol) => `<span class="badge ${rol === "admin" ? "badge-success" : ""}">${escapeHtml(ETIQUETA_ROL[rol] || rol)}</span>`;
-
-// Cada opcion dice DONDE esta guardada la clave que van a usar las funciones con IA
-const OPCIONES_FUENTE = {
-  local: { titulo: "Este navegador", donde: "mi clave, guardada solo en este equipo" },
-  personal: { titulo: "Mi clave personal (servidor)", donde: "mi clave, guardada en el servidor y disponible en cualquier dispositivo" },
-  compartida: { titulo: "Clave compartida (servidor)", donde: "la clave del administrador, para todos los usuarios" },
-};
-const AYUDA_FUENTE = "Las funciones con IA necesitan una clave de Gemini. Elige dónde está guardada la que vas a usar.";
 
 // Apariencia (Perfil): muestras de color y textos
 const MUESTRAS = {
@@ -36,7 +31,7 @@ const VISTA = { oscuro: "dark", claro: "light" };
 const AYUDA_COLOR =
   "Pulsa el cuadro de color para elegir un color personalizado, o usa una de las muestras. Los demás tonos se calculan solos. Si un color dificulta la lectura, se ajusta un poco.";
 
-// #/perfil abre la primera pestaña; #/perfil/clave, #/perfil/usuarios o #/perfil/apariencia abren esa pestaña (si la persona la tiene).
+// #/perfil abre la primera pestaña; #/perfil/usuarios o #/perfil/apariencia abren esa pestaña (si la persona la tiene).
 export async function render(container, params = {}) {
   container.innerHTML = `
     <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <span>Perfil y configuración avanzada</span></div>
@@ -159,8 +154,8 @@ export async function render(container, params = {}) {
   // ---------- 3. panel ----------
   function pintarPanel(u, perfil) {
     const esAdmin = perfil.rol === "admin";
-    // el administrador ve Usuarios; todos los autorizados ven la clave de Gemini y la apariencia (color personal, por dispositivo)
-    const pestanas = [...(esAdmin ? [["usuarios", "Usuarios"]] : []), ["clave", "Clave en servidor"], ["apariencia", "Apariencia"]];
+    // el administrador ve Usuarios; todos los autorizados ven la apariencia (color personal, por dispositivo)
+    const pestanas = [...(esAdmin ? [["usuarios", "Usuarios"]] : []), ["apariencia", "Apariencia"]];
     const inicial = pestanas.some(([id]) => id === params?.pestana) ? params.pestana : pestanas[0][0];
     const cache = leerCache();
     // un solo parrafo: se ajusta al ancho de la tarjeta (no se fuerza a dos lineas)
@@ -196,7 +191,6 @@ export async function render(container, params = {}) {
       });
     }
     if (esAdmin) pintarUsuarios(perfil);
-    pintarClave(esAdmin);
     pintarApariencia();
   }
 
@@ -361,140 +355,5 @@ export async function render(container, params = {}) {
     };
     box.querySelector("#ca-agregar").addEventListener("click", agregar);
     inp.addEventListener("keydown", (e) => e.key === "Enter" && agregar());
-  }
-
-  async function pintarClave(esAdmin) {
-    const box = cuerpo.querySelector("#ca-clave");
-    box.innerHTML = `${barra("key", "Clave en servidor")}<p class="text-muted" style="margin:0">Cargando…</p>`;
-    let hayPersonal = false;
-    let hayCompartida = false;
-    try {
-      hayPersonal = !!(await b.leerClavePersonal());
-      hayCompartida = !!(await b.leerClaveCompartida());
-    } catch (e) {
-      box.innerHTML = `${barra("key", "Clave en servidor")}<div class="callout callout-danger" style="margin:0"><span>${escapeHtml(mensajeDe(e))}</span></div>`;
-      return;
-    }
-    const estado = (hay) => (hay ? `<span class="badge badge-success">Configurada</span>` : `<span class="badge">Sin configurar</span>`);
-    const disponible = { local: true, personal: hayPersonal, compartida: hayCompartida };
-
-    box.innerHTML = `
-      ${barra("key", "Clave en servidor")}
-      <p class="text-muted text-sm" style="margin:0 0 var(--space-3)">Esta clave guardada en el servidor es solo para <strong>Gemini</strong>. Para usar OpenAI (ChatGPT) o Anthropic (Claude), elige el proveedor y pega tu propia clave en <a href="#/ia/configuracion">Funciones con IA → Configuración</a> (se guarda en tu navegador, no en el servidor).</p>
-      <div class="field">
-        <label data-info="${escapeHtml(AYUDA_FUENTE)}">¿Dónde está la clave de Gemini que se usará?</label>
-        <div class="ca-fuentes" id="ca-fuentes"></div>
-      </div>
-      <div id="ca-detalle"></div>
-      <div id="ca-avisos"></div>`;
-
-    const contFuentes = box.querySelector("#ca-fuentes");
-    const detalle = box.querySelector("#ca-detalle");
-    const avisos = box.querySelector("#ca-avisos");
-
-    for (const f of FUENTES) {
-      const id = `ca-f-${f}`;
-      const radio = el("input", { type: "radio", name: "ca-fuente", id, value: f, checked: obtenerFuente() === f });
-      radio.addEventListener("change", () => {
-        guardarFuente(f);
-        pintarDetalle();
-      });
-      contFuentes.append(
-        el("label", { for: id, class: "checkbox-row", style: "color:var(--text)" }, [
-          radio,
-          el("span", { html: `<strong>${OPCIONES_FUENTE[f].titulo}</strong> <span class="text-muted text-sm">— ${OPCIONES_FUENTE[f].donde}</span>${f === "local" ? "" : ` ${estado(disponible[f])}`}` }),
-        ])
-      );
-    }
-
-    const campoClave = (tipo, etiqueta, ayuda, hay) => `
-      <div class="field">
-        <label for="ca-k-${tipo}" data-info="${escapeHtml(ayuda)}">${etiqueta} ${estado(hay)}</label>
-        <div class="input-group">
-          <input type="password" id="ca-k-${tipo}" autocomplete="off" spellcheck="false" placeholder="Pega la clave de Gemini (AIza…)">
-          <button type="button" class="btn btn-primary" id="ca-g-${tipo}" style="flex:0 0 auto">Guardar</button>
-          <button type="button" class="btn" id="ca-b-${tipo}" style="flex:0 0 auto" ${hay ? "" : "disabled"}>Borrar</button>
-        </div>
-      </div>
-      <div id="ca-msg-${tipo}"></div>`;
-
-    function pintarDetalle() {
-      const fuente = obtenerFuente();
-      if (fuente === "personal") {
-        detalle.innerHTML = campoClave("personal", "Mi clave personal", "Solo tú puedes leerla; ni siquiera los administradores.", hayPersonal);
-      } else if (fuente === "compartida") {
-        detalle.innerHTML = esAdmin
-          ? campoClave("compartida", "Clave compartida", "Una sola clave para todos los usuarios autorizados; solo los administradores la cambian.", hayCompartida)
-          : `<p class="text-muted text-sm" style="margin:0">${hayCompartida ? "Clave compartida configurada por el administrador" : "Clave compartida aún no configurada por el administrador"} ${estado(hayCompartida)}</p>`;
-      } else {
-        detalle.innerHTML = `<p class="text-muted text-sm" style="margin:0">Se usa la clave guardada en este navegador. Para cambiarla ve a <a href="#/ia/configuracion">Funciones con IA → Configuración</a>.</p>`;
-      }
-      pintarAvisos(fuente);
-      activarInfos(box);
-      const g = (t) => box.querySelector(`#ca-g-${t}`);
-      const bo = (t) => box.querySelector(`#ca-b-${t}`);
-      if (g("personal")) {
-        g("personal").addEventListener("click", guardarClave("personal"));
-        bo("personal").addEventListener("click", borrarClave("personal"));
-      }
-      if (g("compartida")) {
-        g("compartida").addEventListener("click", guardarClave("compartida"));
-        bo("compartida").addEventListener("click", borrarClave("compartida"));
-      }
-    }
-
-    // Un solo recuadro de avisos (formal, con viñetas), debajo del detalle: lo pendiente de la clave elegida y, solo para el
-    // administrador con la clave compartida, la advertencia sobre quien puede leerla.
-    function pintarAvisos(fuente) {
-      const puntos = [];
-      if (!disponible[fuente]) {
-        puntos.push(
-          fuente === "compartida" && !esAdmin
-            ? "El administrador aún no ha configurado la clave compartida: las funciones con IA te pedirán una clave."
-            : `Todavía no has configurado ${fuente === "compartida" ? "la clave compartida" : "esta clave"}: las funciones con IA te la pedirán.`
-        );
-      }
-      if (esAdmin && fuente === "compartida") {
-        puntos.push(
-          "La clave compartida la puede leer cualquier usuario autorizado (técnicamente, con las herramientas del navegador): compártela solo con personas de confianza.",
-          "Si alguien sale de la lista pierde el acceso, pero cambia la clave si sospechas que se filtró.",
-          "Todos los usuarios consumen el mismo cupo gratuito."
-        );
-      }
-      avisos.innerHTML = puntos.length
-        ? `<div class="callout callout-warning ca-avisos"><div><strong>Ten presente</strong><ul>${puntos.map((p) => `<li>${escapeHtml(p)}</li>`).join("")}</ul></div></div>`
-        : "";
-    }
-
-    const guardarClave = (tipo) => async () => {
-      const inp = box.querySelector(`#ca-k-${tipo}`);
-      const msg = box.querySelector(`#ca-msg-${tipo}`);
-      const valor = inp.value.trim();
-      if (!valor) return aviso(msg, "warning", "Escribe o pega la clave antes de guardar.");
-      try {
-        await (tipo === "personal" ? b.guardarClavePersonal(valor) : b.guardarClaveCompartida(valor));
-        olvidarClaveServidor();
-        inp.value = "";
-        await pintarClave(esAdmin);
-        aviso(cuerpo.querySelector(`#ca-msg-${tipo}`), "success", "Clave guardada en el servidor.");
-      } catch (e) {
-        aviso(msg, "danger", mensajeDe(e));
-      }
-    };
-    const borrarClave = (tipo) => async () => {
-      const msg = box.querySelector(`#ca-msg-${tipo}`);
-      if (!confirm(`¿Borrar la clave ${tipo === "personal" ? "personal" : "compartida"} del servidor?`)) return;
-      try {
-        await (tipo === "personal" ? b.guardarClavePersonal(null) : b.guardarClaveCompartida(null));
-        olvidarClaveServidor();
-        await pintarClave(esAdmin);
-        aviso(cuerpo.querySelector(`#ca-msg-${tipo}`), "info", "Clave borrada del servidor.");
-      } catch (e) {
-        aviso(msg, "danger", mensajeDe(e));
-      }
-    };
-
-    pintarDetalle();
-    activarInfos(box);
   }
 }
