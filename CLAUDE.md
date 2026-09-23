@@ -186,17 +186,21 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   - Ahora vive en `js/views/ia-configuracion.js`, como tarjeta **«Clave en servidor»** entre «Modelo» y
     «Datos y privacidad», SOLO si el proveedor activo la admite (`meta.soportaFuenteServidor`; hoy solo
     Gemini) — con OpenAI/Anthropic activos la tarjeta no aparece en absoluto (pedido explícito del
-    usuario). Se agrega como un `<div id="ia-servidor-slot">` vacío en el HTML síncrono inicial y una
-    función nueva, `pintarClaveServidor()` (mismo patrón async que `pintarDatos()`), la llena aparte:
-    resuelve `obtenerBackend()` → `esperarSesion()` → `obtenerPerfil()` y, si CUALQUIERA falla (sin
-    servicio, sin sesión, sin perfil), deja el slot vacío en silencio — sin error, sin tarjeta — en vez de
-    romper el resto de la pantalla (en la práctica esto no debería pasar: la ruta `/ia/configuracion` ya
-    exige nivel usuario/admin, pero es la misma cautela que ya usaba `clave.js:prepararClave()`). El
-    contenido (radios de fuente local/personal/compartida, campo de clave personal, campo de clave
-    compartida solo para admin o texto de solo lectura, avisos) es el mismo que tenía `pintarClave`, con
-    ids nuevos (`ia-f-*`, `ia-serv-k-*`, `ia-serv-g-*`, `ia-serv-b-*`, `ia-serv-msg-*`, `ia-fuente-detalle`,
-    `ia-fuente-avisos`) para no chocar con los de la clave LOCAL de la misma pantalla. `OPCIONES_FUENTE` y
-    `AYUDA_FUENTE` se movieron de `configuracion-avanzada.js` a `ia-configuracion.js`.
+    usuario). Una función nueva, `pintarClaveServidor()` (async, se llama sin esperar tras el render
+    síncrono, igual que `pintarDatos()`), resuelve `obtenerBackend()` → `esperarSesion()` →
+    `obtenerPerfil()` y, si CUALQUIERA falla (sin servicio, sin sesión, sin perfil), NO inserta nada — sin
+    error, sin tarjeta — en vez de romper el resto de la pantalla (en la práctica esto no debería pasar: la
+    ruta `/ia/configuracion` ya exige nivel usuario/admin, pero es la misma cautela que ya usaba
+    `clave.js:prepararClave()`). Cuando sí se puede mostrar, la tarjeta se inserta con
+    `$("#ia-modelo").insertAdjacentHTML("afterend", …)`: hermana REAL de las demás tarjetas, sin ningún
+    `<div>` envoltorio — el espaciado entre tarjetas depende de `.card + .card { margin-top: … }` en
+    `app.css`, que exige hermanos directos; un envoltorio (probado primero como `<div id="ia-servidor-slot">`
+    y descartado) las despega y las deja "pegadas" arriba y abajo (bug reportado por el usuario el mismo
+    día, corregido). El contenido (radios de fuente local/personal/compartida, campo de clave personal,
+    campo de clave compartida solo para admin o texto de solo lectura, avisos) es el mismo que tenía
+    `pintarClave`, con ids nuevos (`ia-f-*`, `ia-serv-k-*`, `ia-serv-g-*`, `ia-serv-b-*`, `ia-serv-msg-*`,
+    `ia-fuente-detalle`, `ia-fuente-avisos`) para no chocar con los de la clave LOCAL de la misma pantalla.
+    `OPCIONES_FUENTE` y `AYUDA_FUENTE` se movieron de `configuracion-avanzada.js` a `ia-configuracion.js`.
   - La tarjeta «Conexión con Gemini» ya no dice «Cambiar en Perfil» (enlazaba a `#/perfil/clave`): ahora
     dice «Cambiar abajo, en «Clave en servidor»» con un ancla dentro de la misma página (`href="#ia-servidor"`,
     ese `id` en la tarjeta nueva). Los dos «Ir a Perfil» de `js/ai/ui-clave.js` (`verificarAcceso`, cuando

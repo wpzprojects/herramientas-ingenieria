@@ -411,7 +411,7 @@ await seccion("Configuración de IA: clave de Gemini en el servidor (trasladada 
 
   // ---- sin sesion (defensivo: no deberia pasar porque la ruta ya exige estar autorizado, pero no debe romper la pantalla)
   await dibujar({ usuarios: semilla(), sesion: null });
-  ok(!q("#ia-servidor-slot")?.children.length, "sin sesión válida, el slot queda vacío (sin tarjeta, sin error) y el resto de la pantalla sigue usándose");
+  ok(!q("#ia-servidor"), "sin sesión válida no aparece la tarjeta (sin error) y el resto de la pantalla sigue usándose");
   ok(!!q("#ia-conexion") && !!q("#ia-modelo"), "las demás tarjetas (Conexión, Modelo) siguen ahí");
 
   // ---- con OpenAI activo: la tarjeta desaparece
@@ -420,7 +420,7 @@ await seccion("Configuración de IA: clave de Gemini en el servidor (trasladada 
   marco.innerHTML = "";
   await vista.render(marco);
   await espera(300);
-  ok(!q("#ia-servidor-slot") && !q("#ia-servidor"), "con OpenAI (o Anthropic) activo la tarjeta no se muestra en absoluto");
+  ok(!q("#ia-servidor"), "con OpenAI (o Anthropic) activo la tarjeta no se muestra en absoluto");
   proveedores.guardarProveedorActivo("gemini");
 });
 

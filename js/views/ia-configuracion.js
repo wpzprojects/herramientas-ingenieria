@@ -140,8 +140,6 @@ export async function render(container) {
       <div id="msg-ajustes" style="margin-top: var(--space-4);"></div>
     </div>
 
-    ${meta.soportaFuenteServidor ? `<div id="ia-servidor-slot"></div>` : ""}
-
     <div class="card tarjeta-borde form-section" id="ia-datos">
       ${barra("lock", "Datos y privacidad")}
       <p class="text-muted text-sm" id="info-datos" style="margin:0 0 var(--space-3)"></p>
@@ -209,8 +207,7 @@ export async function render(container) {
   // Gemini activo). Se resuelve sola; si falta el servicio, la sesión o el perfil, no muestra nada (el
   // resto de la pantalla se usa igual sin necesidad de tener eso resuelto).
   async function pintarClaveServidor() {
-    const slot = $("#ia-servidor-slot");
-    if (!slot) return;
+    if (!meta.soportaFuenteServidor) return;
     let b;
     try {
       b = await obtenerBackend();
@@ -239,8 +236,13 @@ export async function render(container) {
       nodo.innerHTML = `<div class="callout callout-${tipo}" style="margin:var(--space-3) 0 0"><span>${escapeHtml(texto)}</span></div>`;
     };
 
-    slot.innerHTML = `<div class="card tarjeta-borde form-section" id="ia-servidor">${barra("key", "Clave en servidor")}<p class="text-muted" style="margin:0">Cargando…</p></div>`;
-    const box = slot.querySelector("#ia-servidor");
+    // Se inserta como hermana REAL de las demas tarjetas (no dentro de un div envoltorio): el espaciado
+    // entre tarjetas depende de `.card + .card` en app.css, que exige hermanos directos.
+    let box = $("#ia-servidor");
+    if (!box) {
+      $("#ia-modelo").insertAdjacentHTML("afterend", `<div class="card tarjeta-borde form-section" id="ia-servidor">${barra("key", "Clave en servidor")}<p class="text-muted" style="margin:0">Cargando…</p></div>`);
+      box = $("#ia-servidor");
+    }
 
     let hayPersonal = false;
     let hayCompartida = false;
@@ -348,7 +350,7 @@ export async function render(container) {
         olvidarClaveServidor();
         inp.value = "";
         await pintarClaveServidor();
-        avisoLocal(slot.querySelector(`#ia-serv-msg-${tipo}`), "success", "Clave guardada en el servidor.");
+        avisoLocal($(`#ia-serv-msg-${tipo}`), "success", "Clave guardada en el servidor.");
       } catch (e) {
         avisoLocal(msg, "danger", mensajeAcceso(e));
       }
@@ -360,7 +362,7 @@ export async function render(container) {
         await (tipo === "personal" ? b.guardarClavePersonal(null) : b.guardarClaveCompartida(null));
         olvidarClaveServidor();
         await pintarClaveServidor();
-        avisoLocal(slot.querySelector(`#ia-serv-msg-${tipo}`), "info", "Clave borrada del servidor.");
+        avisoLocal($(`#ia-serv-msg-${tipo}`), "info", "Clave borrada del servidor.");
       } catch (e) {
         avisoLocal(msg, "danger", mensajeAcceso(e));
       }
