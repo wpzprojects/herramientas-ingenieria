@@ -227,7 +227,7 @@ const ACSR_4_0 = desnudos.find((c) => c.tipo === "ACSR" && c.calibre_awg_kcmil =
 await seccion("tools: esquema para Gemini", async () => {
   const decl = tools.declaraciones();
   ok(decl.length === 15, `sin lista se declaran las 15 herramientas (${decl.length})`);
-  ok(tools.declaraciones(tools.HERRAMIENTAS_ESTANDAR).length === 9, "con las del estándar se declaran 9");
+  ok(tools.declaraciones(tools.HERRAMIENTAS_ESTANDAR).length === 10, "con las del estándar se declaran 10");
   ok(decl.every((d) => d.name && d.description && d.parameters.type === "object" && Object.keys(d.parameters.properties).length > 0), "todas con descripcion y propiedades no vacias");
   ok(decl.every((d) => (d.parameters.required || []).every((r) => r in d.parameters.properties)), "required subconjunto de properties");
   const barrido = decl.find((d) => d.name === "barrer_parametro").parameters.properties;
@@ -432,7 +432,7 @@ await seccion("tools: conversión de coordenadas con códigos EPSG, varios punto
 });
 
 await seccion("tools: herramientas permitidas por agente", async () => {
-  ok(tools.HERRAMIENTAS_ESTANDAR.length === 9 && Object.isFrozen(tools.HERRAMIENTAS_ESTANDAR), "el estándar habilita las 9 herramientas actuales");
+  ok(tools.HERRAMIENTAS_ESTANDAR.length === 10 && Object.isFrozen(tools.HERRAMIENTAS_ESTANDAR), "el estándar habilita las 10 herramientas actuales");
   const cat = tools.catalogoHerramientas();
   ok(cat.length === 15 && cat.every((h) => h.nombre && h.titulo && h.grupo && h.descripcion), "catálogo: 15 herramientas con título, grupo y descripción");
   ok([...new Set(cat.map((h) => h.grupo))].join() === "Calculadoras,Catálogos,Análisis,Varios", "cuatro grupos: Calculadoras, Catálogos, Análisis y Varios");
@@ -521,7 +521,7 @@ await seccion("tools: conductor económico", async () => {
   ok(rManual.ok === true, "acepta resistencia manual sin catálogo (y costo de instalación vacío)");
 
   ok(ctx.log[0].notas.some((n) => n.includes("valor residual")), "nota de alcance (sin valor residual ni O&M)");
-  ok(!tools.HERRAMIENTAS_ESTANDAR.includes("calcular_conductor_economico"), "es opcional: no está en el agente estándar");
+  ok(tools.HERRAMIENTAS_ESTANDAR.includes("calcular_conductor_economico"), "está en el agente estándar (2026-09-23, pedido del usuario)");
 });
 
 await seccion("tools: cortocircuito", async () => {
@@ -805,8 +805,8 @@ await seccion("herramientas de diseño: dimensionar, verificar y buscar valor l�
   const NUEVAS = ["dimensionar_conductor", "verificar_conductor", "resolver_valor_limite"];
   const cat = tools.catalogoHerramientas();
   ok(NUEVAS.every((n) => cat.find((h) => h.nombre === n)?.grupo === "Análisis"), "las tres aparecen en el catálogo de herramientas, en el grupo «Análisis»");
-  ok(NUEVAS.every((n) => !tools.HERRAMIENTAS_ESTANDAR.includes(n)) && tools.HERRAMIENTAS_ESTANDAR.length === 9, "son opcionales: NO están en el agente estándar (siguen sus 9 herramientas)");
-  ok(tools.declaraciones(tools.HERRAMIENTAS_ESTANDAR).length === 9 && NUEVAS.every((n) => tools.declaraciones().some((d) => d.name === n)), "el estándar no las declara; con todas habilitadas sí");
+  ok(NUEVAS.every((n) => !tools.HERRAMIENTAS_ESTANDAR.includes(n)) && tools.HERRAMIENTAS_ESTANDAR.length === 10, "son opcionales: NO están en el agente estándar (siguen sus 10 herramientas)");
+  ok(tools.declaraciones(tools.HERRAMIENTAS_ESTANDAR).length === 10 && NUEVAS.every((n) => tools.declaraciones().some((d) => d.name === n)), "el estándar no las declara; con todas habilitadas sí");
   const soloNuevas = tools.declaraciones(NUEVAS);
   ok(soloNuevas.length === 0, "sin calculadoras habilitadas no se ofrecen (necesitan las calculadoras que usan)");
   const conCalc = tools.declaraciones([...NUEVAS, "calcular_perdidas", "calcular_regulacion"]);
@@ -1031,7 +1031,7 @@ await seccion("analisis: bucle con herramientas (Gemini simulado)", async () => 
   gemini.usarMock(async ({ cuerpo }) => {
     n++;
     if (n === 1) {
-      ok(cuerpo.tools[0].functionDeclarations.length === 9 && cuerpo.toolConfig.functionCallingConfig.mode === "AUTO" && !!cuerpo.systemInstruction, "1ª llamada: envía herramientas, modo AUTO e instrucciones de sistema");
+      ok(cuerpo.tools[0].functionDeclarations.length === 10 && cuerpo.toolConfig.functionCallingConfig.mode === "AUTO" && !!cuerpo.systemInstruction, "1ª llamada: envía herramientas, modo AUTO e instrucciones de sistema");
       return { candidates: [{ content: { role: "model", parts: [
         { functionCall: { name: "calcular_perdidas", args: { ...LINEA, factor_carga: 0.5, resistencia_ohm_km: 0.3 } } },
         { functionCall: { name: "calcular_perdidas", args: { ...LINEA, factor_carga: 0.9, resistencia_ohm_km: 0.3 } } },
@@ -1122,9 +1122,9 @@ await seccion("analisis: bucle con herramientas (Gemini simulado)", async () => 
     return { respuesta, nDecl, r };
   };
   const porDefecto = await pedirConversion({});
-  ok(porDefecto.nDecl === 9 && porDefecto.respuesta.ok === false && porDefecto.respuesta.error.includes("no está habilitada"), "por defecto (agente estándar) la IA no tiene las herramientas de Varios: se declaran 9 y una llamada a convertir_unidades se rechaza");
+  ok(porDefecto.nDecl === 10 && porDefecto.respuesta.ok === false && porDefecto.respuesta.error.includes("no está habilitada"), "por defecto (agente estándar) la IA no tiene las herramientas de Varios: se declaran 10 y una llamada a convertir_unidades se rechaza");
   const conVarios = await pedirConversion({ permitidas: [...tools.HERRAMIENTAS_ESTANDAR, "convertir_unidades"] });
-  ok(conVarios.nDecl === 10 && conVarios.respuesta.ok === true && Math.abs(conVarios.respuesta.resultados[0].valor - 100 / 0.3048) < 1e-6 && conVarios.r.herramientas[0].titulo === "Conversión de unidades", "un agente que la activa la recibe y la usa (100 m = 328.0840 ft)");
+  ok(conVarios.nDecl === 11 && conVarios.respuesta.ok === true && Math.abs(conVarios.respuesta.resultados[0].valor - 100 / 0.3048) < 1e-6 && conVarios.r.herramientas[0].titulo === "Conversión de unidades", "un agente que la activa la recibe y la usa (100 m = 328.0840 ft)");
   gemini.usarMock(null);
 });
 
@@ -1138,7 +1138,7 @@ await seccion("analisis: bucle con herramientas (OpenAI simulado)", async () => 
   openai.usarMock(async ({ cuerpo }) => {
     n++;
     if (n === 1) {
-      ok(cuerpo.tools.length === 9 && cuerpo.tool_choice === "auto", "1ª llamada: envía las 9 herramientas del agente estándar, tool_choice auto");
+      ok(cuerpo.tools.length === 10 && cuerpo.tool_choice === "auto", "1ª llamada: envía las 10 herramientas del agente estándar, tool_choice auto");
       return {
         choices: [{ finish_reason: "tool_calls", message: { content: null, tool_calls: [
           { id: "a", type: "function", function: { name: "calcular_perdidas", arguments: JSON.stringify({ ...LINEA, factor_carga: 0.5, resistencia_ohm_km: 0.3 }) } },
@@ -1167,7 +1167,7 @@ await seccion("analisis: bucle con herramientas (Anthropic simulado)", async () 
   anthropic.usarMock(async ({ cuerpo }) => {
     n++;
     if (n === 1) {
-      ok(cuerpo.tools.length === 9 && cuerpo.max_tokens === 4096, "1ª llamada: envía las 9 herramientas y respeta maxTokens de los ajustes");
+      ok(cuerpo.tools.length === 10 && cuerpo.max_tokens === 4096, "1ª llamada: envía las 10 herramientas y respeta maxTokens de los ajustes");
       return {
         stop_reason: "tool_use",
         content: [
@@ -1221,14 +1221,14 @@ await seccion("agentes de análisis", async () => {
   ok(agAn.temperaturaDe(lista[2], 0.3) === 0.9 && agAn.temperaturaDe(lista[1], 0.3) === 0.3, "temperatura del agente o la general");
 
   // herramientas por agente
-  ok(agAn.herramientasDe(def).length === 9 && def.herramientas === tools.HERRAMIENTAS_ESTANDAR, "el predeterminado habilita las herramientas estándar");
-  ok(copia.herramientas.length === 9 && !Object.isFrozen(copia.herramientas) && nuevo.herramientas.length === 9, "duplicar y crear agentes parten de las estándar (lista editable)");
+  ok(agAn.herramientasDe(def).length === 10 && def.herramientas === tools.HERRAMIENTAS_ESTANDAR, "el predeterminado habilita las herramientas estándar");
+  ok(copia.herramientas.length === 10 && !Object.isFrozen(copia.herramientas) && nuevo.herramientas.length === 10, "duplicar y crear agentes parten de las estándar (lista editable)");
   const soloDos = { ...agAn.nuevoAgente(), nombre: "Dos", instrucciones: "x", herramientas: ["buscar_tuberia", "calcular_perdidas"] };
   agAn.guardarPropios([soloDos]);
   ok(agAn.cargarAgentes()[1].herramientas.join() === "calcular_perdidas,buscar_tuberia", "la lista de herramientas se guarda y se carga");
   window.localStorage.setItem("ia.agentesAnalisis", JSON.stringify([{ id: "v", nombre: "viejo", instrucciones: "a" }, { id: "w", nombre: "raro", instrucciones: "a", herramientas: ["inventada", "calcular_perdidas"] }, { id: "z", nombre: "vacio", instrucciones: "a", herramientas: [] }]));
   const cargados = agAn.cargarAgentes();
-  ok(cargados[1].herramientas.length === 9, "un agente guardado sin lista usa las herramientas estándar");
+  ok(cargados[1].herramientas.length === 10, "un agente guardado sin lista usa las herramientas estándar");
   ok(cargados[2].herramientas.join() === "calcular_perdidas" && cargados[3].herramientas.length === 0, "nombres desconocidos se descartan; una lista vacía se respeta");
 
   // almacenamiento manipulado: no puede suplantar ni romper el predeterminado

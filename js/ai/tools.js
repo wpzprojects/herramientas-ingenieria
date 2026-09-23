@@ -780,7 +780,7 @@ const T_OCUPACION = {
 
 const CALCULADORAS = [T_PERDIDAS, T_REGULACION, T_CORTOCIRCUITO, T_AMP_AEREA, T_AMP_SUBT, T_OCUPACION];
 
-// ---------------------------------------------------------------- conductor economico (opcional, no entra al barrido)
+// ---------------------------------------------------------------- conductor economico (no entra al barrido: no encaja en su patron de un solo calibre por corrida)
 
 const MIN_OPCIONES_ECONOMICO = 2;
 const MAX_OPCIONES_ECONOMICO = 5;
@@ -788,7 +788,6 @@ const MAX_OPCIONES_ECONOMICO = 5;
 const T_CONDUCTOR_ECONOMICO = {
   nombre: "calcular_conductor_economico",
   tipo: "calculo",
-  opcional: true,
   titulo: "Conductor económico",
   descripcion:
     `Compara entre ${MIN_OPCIONES_ECONOMICO} y ${MAX_OPCIONES_ECONOMICO} opciones de conductor para una línea NUEVA por su COSTO TOTAL ACTUALIZADO (inversión inicial + valor presente del costo de las pérdidas durante "anios"); gana la de menor costo total. ` +

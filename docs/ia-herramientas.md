@@ -91,14 +91,13 @@ const T_OCUPACION = {
 
 | Herramienta | Tipo | Grupo en Agentes | Agente estándar |
 |---|---|---|---|
-| `calcular_perdidas`, `calcular_regulacion`, `calcular_cortocircuito`, `calcular_ampacidad_aerea`, `calcular_ampacidad_subterranea`, `calcular_ocupacion_ductos` | calculo | Calculadoras | Sí |
+| `calcular_perdidas`, `calcular_regulacion`, `calcular_cortocircuito`, `calcular_ampacidad_aerea`, `calcular_ampacidad_subterranea`, `calcular_ocupacion_ductos`, `calcular_conductor_economico` | calculo | Calculadoras | Sí |
 | `buscar_conductor`, `buscar_tuberia` | consulta | Catálogos | Sí |
 | `barrer_parametro` | barrido | Análisis | Sí |
 | `dimensionar_conductor`, `verificar_conductor`, `resolver_valor_limite` | diseno | Análisis | **No** (opcionales) |
-| `calcular_conductor_economico` | calculo | Calculadoras | **No** (opcional) |
 | `convertir_unidades`, `convertir_coordenadas` | calculo | Varios | **No** (opcionales) |
 
-**`calcular_conductor_economico`** (2026-09-22): compara entre 2 y 5 opciones de conductor de una línea nueva por su costo total actualizado (inversión + valor presente del costo de las pérdidas durante `anios`), igual que la calculadora. Reutiliza `js/calc/conductor-economico.js` (`compararOpciones`, `sensibilidad`) sin tocarlo; cada opción resuelve su conductor con el mismo `resolverConductor`/`resistencia75` que usan las demás fichas. Es `opcional: true` (no forma parte del agente estándar) y NO entra en `CALCULADORAS` (no ofrece barrido: su resultado es una comparación entre opciones, no un valor único que tenga sentido barrer). Devuelve por opción `opcionN_conductor/inversion/perdidas_pct/perdidas_mwh/costo_perdidas_vp/costo_total/compensa`, más `opcion_menor_costo` y `sensibilidad_robusta` (si la ganadora cambia en algún escenario de energía ±10 %, demanda ±10 % o tasa ±2 puntos).
+**`calcular_conductor_economico`** (2026-09-22; entró al agente estándar el 2026-09-23, pedido del usuario): compara entre 2 y 5 opciones de conductor de una línea nueva por su costo total actualizado (inversión + valor presente del costo de las pérdidas durante `anios`), igual que la calculadora. Reutiliza `js/calc/conductor-economico.js` (`compararOpciones`, `sensibilidad`) sin tocarlo; cada opción resuelve su conductor con el mismo `resolverConductor`/`resistencia75` que usan las demás fichas. NO entra en `CALCULADORAS` (sigue sin ofrecer barrido: su resultado es una comparación entre opciones, no un valor único que tenga sentido barrer). Devuelve por opción `opcionN_conductor/inversion/perdidas_pct/perdidas_mwh/costo_perdidas_vp/costo_total/compensa`, más `opcion_menor_costo` y `sensibilidad_robusta` (si la ganadora cambia en algún escenario de energía ±10 %, demanda ±10 % o tasa ±2 puntos).
 
 Las de Varios no entran en el barrido de parámetros.
 
