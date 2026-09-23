@@ -224,6 +224,9 @@ function llenarOpcion(id, { calibre, costoCond, costoInst, n = 1, material = "AC
   elegir(`#f-red-${id}`, "Aerea");
   elegir(`#f-material-${id}`, material);
   elegir(`#f-calibre-${id}`, calibre);
+  // primera referencia disponible: reproduce el "primer calibre" que la pantalla usaba antes de pedir referencia
+  const primeraRef = desnudos.find((c) => c.tipo === material && c.calibre_awg_kcmil === calibre)?.nombre_clave ?? "";
+  elegir(`#f-referencia-${id}`, primeraRef);
   poner(`#f-n-${id}`, n);
   poner(`#f-costo-cond-${id}`, costoCond);
   if (costoInst !== undefined) poner(`#f-costo-inst-${id}`, costoInst);

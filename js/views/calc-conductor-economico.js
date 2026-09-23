@@ -123,6 +123,9 @@ const ETIQUETAS_REPORTE = ["CÁLCULO DE CONDUCTOR ECONÓMICO", "PARÁMETROS DE E
 // Ayuda de la tasa de descuento (cuadro «i»). Los valores de referencia son ORIENTATIVOS: no son una tasa de Celsia ni un dato normativo.
 const INFO_TASA = "Interés que se aplica a un valor futuro para traerlo a valor presente (VP = VF/(1+r)^n): con ella se descuentan a pesos de hoy los ahorros en pérdidas de cada año. Suele fijarse como el costo de oportunidad del capital de la empresa. Referencia orientativa: 8-14 % anual.";
 
+const INFO_REFERENCIA =
+  "Un mismo calibre puede tener varias construcciones (número de hilos, diámetro) con resistencia distinta. Solo aplica a conductores aéreos: en subterráneo (XLPE) no hay varias referencias por calibre.";
+
 const MODOS = { potencia: "Potencia activa", aparente: "Potencia aparente", corriente: "Corriente" };
 
 // Los numeros del resto de la app usan punto decimal (en-US): las cifras de dinero llevan coma de miles para leerse bien.
@@ -286,11 +289,17 @@ export async function render(container) {
             <select id="f-material-${id}" required></select>
           </div>
         </div>
-        <div class="grid-2">
+        <div class="grid-3">
           <div class="field">
             <label for="f-calibre-${id}">Calibre</label>
             <select id="f-calibre-${id}" required disabled>
               <option value="">Seleccione un material primero</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-referencia-${id}" data-info="${INFO_REFERENCIA}">Referencia</label>
+            <select id="f-referencia-${id}" required disabled>
+              <option value="">Seleccione un calibre primero</option>
             </select>
           </div>
           <div class="field">
@@ -325,6 +334,7 @@ export async function render(container) {
     const selRed = c(`#f-red-${id}`);
     const selMaterial = c(`#f-material-${id}`);
     const selCalibre = c(`#f-calibre-${id}`);
+    const selReferencia = c(`#f-referencia-${id}`);
     const fResistencia = c(`#f-resistencia-${id}`);
     const chkResistencia = c(`#chk-resistencia-${id}`);
     const fN = c(`#f-n-${id}`);
@@ -345,12 +355,39 @@ export async function render(container) {
         ? `<option value="">Seleccione…</option>` + calibres.map((k) => `<option value="${escapeHtml(k)}">${escapeHtml(k)}</option>`).join("")
         : `<option value="">Sin calibres disponibles</option>`;
       selCalibre.disabled = !calibres.length;
+      poblarReferencia();
+    }
+
+    // La referencia (construccion exacta del conductor) solo existe en el catalogo de conductores desnudos (aereos).
+    function poblarReferencia() {
+      if (selRed.value !== "Aerea") {
+        selReferencia.innerHTML = `<option value="">No aplica (solo conductores aéreos)</option>`;
+        selReferencia.disabled = true;
+        fila = resolverFila();
+        syncResistencia();
+        return;
+      }
+      const calibre = selCalibre.value;
+      const refs = calibre ? datasetDe(selRed.value).filter((f) => f[campoMaterialDe(selRed.value)] === selMaterial.value && f.calibre_awg_kcmil === calibre) : [];
+      selReferencia.innerHTML = refs.length
+        ? `<option value="">Seleccione…</option>` +
+          refs.map((f) => `<option value="${escapeHtml(f.nombre_clave)}">${escapeHtml(f.nombre_clave)}</option>`).join("")
+        : `<option value="">Seleccione un calibre primero</option>`;
+      selReferencia.disabled = !refs.length;
       fila = null;
       syncResistencia();
     }
 
     function resolverFila() {
       if (!selCalibre.value) return null;
+      if (selRed.value === "Aerea") {
+        if (!selReferencia.value) return null;
+        return (
+          datasetDe(selRed.value).find(
+            (f) => f[campoMaterialDe(selRed.value)] === selMaterial.value && f.calibre_awg_kcmil === selCalibre.value && f.nombre_clave === selReferencia.value
+          ) || null
+        );
+      }
       return datasetDe(selRed.value).find((f) => f[campoMaterialDe(selRed.value)] === selMaterial.value && f.calibre_awg_kcmil === selCalibre.value) || null;
     }
 
@@ -360,7 +397,8 @@ export async function render(container) {
 
     selRed.addEventListener("change", poblarMaterial);
     selMaterial.addEventListener("change", poblarCalibre);
-    selCalibre.addEventListener("change", () => {
+    selCalibre.addEventListener("change", poblarReferencia);
+    selReferencia.addEventListener("change", () => {
       fila = resolverFila();
       syncResistencia();
     });
@@ -379,6 +417,7 @@ export async function render(container) {
         red: selRed.value,
         material: selMaterial.value,
         calibre: selCalibre.value,
+        referencia: selReferencia.value,
         resistenciaOhmKm: parseFloat(fResistencia.value),
         numConductoresPorFase: parseInt(fN.value, 10) || 1,
         costoConductorKm: parseFloat(fCostoCond.value),
@@ -391,6 +430,7 @@ export async function render(container) {
         red: selRed.value,
         material: selMaterial.value,
         calibre: selCalibre.value,
+        referencia: selReferencia.value,
         manual: chkResistencia.checked,
         resistencia: fResistencia.value,
         n: fN.value,
@@ -410,6 +450,8 @@ export async function render(container) {
         }
         selCalibre.value = d.calibre;
         selCalibre.dispatchEvent(new Event("change"));
+        selReferencia.value = d.referencia ?? "";
+        selReferencia.dispatchEvent(new Event("change"));
         if (d.manual) fResistencia.value = d.resistencia;
         fN.value = d.n;
         fCostoCond.value = d.costoCond;
@@ -532,7 +574,7 @@ export async function render(container) {
   });
 
   const nombreRed = (red) => (red === "Aerea" ? "Aérea" : "Subterránea");
-  const conductorTexto = (e) => `${e.material} ${e.calibre}${e.numConductoresPorFase > 1 ? ` ×${e.numConductoresPorFase}` : ""}`;
+  const conductorTexto = (e) => `${e.material} ${e.calibre}${e.referencia ? ` (${e.referencia})` : ""}${e.numConductoresPorFase > 1 ? ` ×${e.numConductoresPorFase}` : ""}`;
 
   /** Avisos tecnicos: solo hay referencia de ampacidad en los aereos (corriente a 75 °C del catalogo, por conductor). */
   function avisosAmpacidad(r, estados, base) {
@@ -633,6 +675,7 @@ export async function render(container) {
         `  Tipo de red: ${nombreRed(e.red)}`,
         `  Material/Tipo de conductor: ${e.material}`,
         `  Calibre: ${e.calibre}`,
+        ...(e.referencia ? [`  Referencia: ${e.referencia}`] : []),
         `  Resistencia AC a 75°C (por conductor): ${fmt(e.resistenciaOhmKm)} Ω/km`,
         `  Conductores por fase: ${e.numConductoresPorFase}`,
         `  Costo del conductor: ${fmtPesos(e.costoConductorKm)}/km`,

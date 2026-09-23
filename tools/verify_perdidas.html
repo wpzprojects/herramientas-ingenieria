@@ -217,7 +217,7 @@ const cargarMarco = (ancho, calcular = false, alto = 3000) => new Promise((resol
     resolve(marco);
   };
   window.addEventListener("message", alRecibir);
-  marco.srcdoc = `<!doctype html><html><head><link rel="stylesheet" href="../css/tokens.css"><link rel="stylesheet" href="../css/app.css"></head><body><div id="c" class="content"></div><script type="module">window.__BASE_PATH__ = "../"; const { render } = await import("../js/views/calc-perdidas.js"); await render(document.getElementById("c"), {}); if (${calcular}) { const c = document.getElementById("c"); const ev = (s, v) => { const e = c.querySelector(s); e.value = v; e.dispatchEvent(new Event("change", { bubbles: true })); }; ev("#f-material-0", "ACSR"); ev("#f-calibre-0", "4/0"); c.querySelector("#form-calc").requestSubmit(); } parent.postMessage("listo", "*");<\/script></body></html>`;
+  marco.srcdoc = `<!doctype html><html><head><link rel="stylesheet" href="../css/tokens.css"><link rel="stylesheet" href="../css/app.css"></head><body><div id="c" class="content"></div><script type="module">window.__BASE_PATH__ = "../"; const { render } = await import("../js/views/calc-perdidas.js"); await render(document.getElementById("c"), {}); if (${calcular}) { const c = document.getElementById("c"); const ev = (s, v) => { const e = c.querySelector(s); e.value = v; e.dispatchEvent(new Event("change", { bubbles: true })); }; ev("#f-material-0", "ACSR"); ev("#f-calibre-0", "4/0"); ev("#f-referencia-0", ${JSON.stringify(ACSR_4_0.nombre_clave)}); c.querySelector("#form-calc").requestSubmit(); } parent.postMessage("listo", "*");<\/script></body></html>`;
   document.body.append(marco);
 });
 
@@ -304,6 +304,8 @@ await seccion("vista: un tramo, cálculo y resultados", async () => {
   elegir("#f-material-0", "ACSR");
   ok($("#f-calibre-0").options.length > 3, "el material carga sus calibres");
   elegir("#f-calibre-0", "4/0");
+  ok($("#f-referencia-0").options.length > 1, "el calibre carga sus referencias");
+  elegir("#f-referencia-0", ACSR_4_0.nombre_clave);
   cerca(parseFloat($("#f-resistencia-0").value), ACSR_4_0.r_ac_75c_ohm_km, 1e-12, "la resistencia sale del catálogo y no se puede editar");
   ok($("#f-resistencia-0").disabled, "resistencia bloqueada mientras no esté «Manual»");
   poner("#f-longitud-0", "10");
@@ -421,6 +423,7 @@ await seccion("vista: varios tramos", async () => {
   elegir("#f-red-1", "Aerea");
   elegir("#f-material-1", "ACSR");
   elegir("#f-calibre-1", "1/0");
+  elegir("#f-referencia-1", ACSR_1_0.nombre_clave);
   poner("#f-longitud-1", "4");
   $("#form-calc").requestSubmit();
   const e1 = esperado({ V: 34.5, Pmw: 19.9, fp: 0.9, fc: 0.4, R: ACSR_4_0.r_ac_75c_ohm_km, L: 10 });
@@ -486,7 +489,7 @@ await seccion("vista: estructura del reporte (se copia y se pega)", async () => 
   const pesos = negritas.map((e) => parseInt(getComputedStyle(e).fontWeight, 10));
   ok(negritas.map((e) => e.textContent).join("|") === "CÁLCULO DE PÉRDIDAS|PARÁMETROS DE ENTRADA:|RESULTADOS:" && pesos.every((w) => w >= 700), `las tres etiquetas están en negrita (${pesos.join(", ")}) y solo ellas`);
   ok($('[data-panel="reporte"] .report-block').textContent.split("\n")[3] === "PARÁMETROS DE ENTRADA:", "el texto que se copia no lleva marcas de formato");
-  for (const inicio of ["Tensión de línea", "Dato de partida", "Potencia activa", "Factor de potencia", "Factor de carga", "Tramo 1:", "Tipo de red", "Material/Tipo", "Calibre", "Resistencia AC a 75°C", "Conductores por fase", "Longitud del tramo"]) {
+  for (const inicio of ["Tensión de línea", "Dato de partida", "Potencia activa", "Factor de potencia", "Factor de carga", "Tramo 1:", "Tipo de red", "Material/Tipo", "Calibre", "Referencia", "Resistencia AC a 75°C", "Conductores por fase", "Longitud del tramo"]) {
     ok(tiene(sa.params, inicio), `parámetros de entrada incluye «${inicio}»`);
   }
   for (const inicio of ["Factor de pérdidas", "Resistencia efectiva", "Porcentaje de pérdidas", "Pérdidas del tramo", "Pérdidas por efecto Joule", "Corriente", "Potencia aparente", "Potencia reactiva"]) {
@@ -520,6 +523,8 @@ await seccion("vista: estructura del reporte (se copia y se pega)", async () => 
   sel("f-material-").dispatchEvent(new Event("change", { bubbles: true }));
   sel("f-calibre-").selectedIndex = 4;
   sel("f-calibre-").dispatchEvent(new Event("change", { bubbles: true }));
+  sel("f-referencia-").selectedIndex = 1;
+  sel("f-referencia-").dispatchEvent(new Event("change", { bubbles: true }));
   const d = leer();
   const sd = secciones(d);
   ok(etiquetasEn(d).length === 3 && d.filter((x) => LINEA.test(x)).length === 2, "con dos tramos siguen siendo tres etiquetas y dos líneas");
@@ -615,7 +620,7 @@ await seccion("vista: el botón de información no altera la altura de las etiqu
 
 await seccion("vista: ayuda de los campos con botón de información", async () => {
   const tramosN = $$(".tramo-block").length;
-  const ESPERADOS = ["Factor de carga (Fc)", ...Array(tramosN).fill("Conductores por fase")];
+  const ESPERADOS = ["Factor de carga (Fc)", ...Array(tramosN).fill(0).flatMap(() => ["Referencia", "Conductores por fase"])];
   const botones = $$(".info-btn");
   const nombres = botones.map((b) => b.getAttribute("aria-label").replace("Más información sobre ", ""));
   ok(nombres.join("|") === ESPERADOS.join("|"), `botones de información junto al nombre de: ${nombres.join(" | ")}`);

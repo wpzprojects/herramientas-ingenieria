@@ -95,6 +95,9 @@ ${FORMULAS_NOTA}`;
 // Lineas del reporte que son etiquetas: van en negrita (el texto que se copia es el mismo).
 const ETIQUETAS_REPORTE = ["CÁLCULO DE PÉRDIDAS", "PARÁMETROS DE ENTRADA:", "RESULTADOS:"];
 
+const INFO_REFERENCIA =
+  "Un mismo calibre puede tener varias construcciones (número de hilos, diámetro) con resistencia y RMG distintos. Solo aplica a conductores aéreos: en subterráneo (XLPE) no hay varias referencias por calibre.";
+
 const MODOS = {
   potencia: "Potencia activa",
   aparente: "Potencia aparente",
@@ -216,11 +219,17 @@ export async function render(container) {
             <select id="f-material-${id}" required></select>
           </div>
         </div>
-        <div class="grid-2">
+        <div class="grid-3">
           <div class="field">
             <label for="f-calibre-${id}">Calibre</label>
             <select id="f-calibre-${id}" required disabled>
               <option value="">Seleccione un material primero</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-referencia-${id}" data-info="${INFO_REFERENCIA}">Referencia</label>
+            <select id="f-referencia-${id}" required disabled>
+              <option value="">Seleccione un calibre primero</option>
             </select>
           </div>
           <div class="field">
@@ -249,6 +258,7 @@ export async function render(container) {
     const selRed = q(`#f-red-${id}`);
     const selMaterial = q(`#f-material-${id}`);
     const selCalibre = q(`#f-calibre-${id}`);
+    const selReferencia = q(`#f-referencia-${id}`);
     const fResistencia = q(`#f-resistencia-${id}`);
     const chkResistencia = q(`#chk-resistencia-${id}`);
     const fLongitud = q(`#f-longitud-${id}`);
@@ -268,12 +278,39 @@ export async function render(container) {
         ? `<option value="">Seleccione…</option>` + calibres.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("")
         : `<option value="">Sin calibres disponibles</option>`;
       selCalibre.disabled = !calibres.length;
+      poblarReferencia();
+    }
+
+    // La referencia (construccion exacta del conductor) solo existe en el catalogo de conductores desnudos (aereos).
+    function poblarReferencia() {
+      if (selRed.value !== "Aerea") {
+        selReferencia.innerHTML = `<option value="">No aplica (solo conductores aéreos)</option>`;
+        selReferencia.disabled = true;
+        fila = resolverFila();
+        syncResistencia();
+        return;
+      }
+      const calibre = selCalibre.value;
+      const refs = calibre ? datasetDe(selRed.value).filter((c) => c[campoMaterialDe(selRed.value)] === selMaterial.value && c.calibre_awg_kcmil === calibre) : [];
+      selReferencia.innerHTML = refs.length
+        ? `<option value="">Seleccione…</option>` +
+          refs.map((c) => `<option value="${escapeHtml(c.nombre_clave)}">${escapeHtml(c.nombre_clave)}</option>`).join("")
+        : `<option value="">Seleccione un calibre primero</option>`;
+      selReferencia.disabled = !refs.length;
       fila = null;
       syncResistencia();
     }
 
     function resolverFila() {
       if (!selCalibre.value) return null;
+      if (selRed.value === "Aerea") {
+        if (!selReferencia.value) return null;
+        return (
+          datasetDe(selRed.value).find(
+            (c) => c[campoMaterialDe(selRed.value)] === selMaterial.value && c.calibre_awg_kcmil === selCalibre.value && c.nombre_clave === selReferencia.value
+          ) || null
+        );
+      }
       return datasetDe(selRed.value).find((c) => c[campoMaterialDe(selRed.value)] === selMaterial.value && c.calibre_awg_kcmil === selCalibre.value) || null;
     }
 
@@ -283,7 +320,8 @@ export async function render(container) {
 
     selRed.addEventListener("change", poblarMaterial);
     selMaterial.addEventListener("change", poblarCalibre);
-    selCalibre.addEventListener("change", () => {
+    selCalibre.addEventListener("change", poblarReferencia);
+    selReferencia.addEventListener("change", () => {
       fila = resolverFila();
       syncResistencia();
     });
@@ -302,6 +340,7 @@ export async function render(container) {
         red: selRed.value,
         material: selMaterial.value,
         calibre: selCalibre.value,
+        referencia: selReferencia.value,
         longitudKm: parseFloat(fLongitud.value),
         resistenciaOhmKm: parseFloat(fResistencia.value),
         numConductoresPorFase: parseInt(fN.value, 10) || 1,
@@ -311,12 +350,13 @@ export async function render(container) {
         red: selRed.value,
         material: selMaterial.value,
         calibre: selCalibre.value,
+        referencia: selReferencia.value,
         manual: chkResistencia.checked,
         resistencia: fResistencia.value,
         longitud: fLongitud.value,
         n: fN.value,
       }),
-      /** Aplica una foto de `bruto()`, disparando los "change" en cascada (red -> material -> calibre) para que las listas se repueblen antes de fijar el valor final. */
+      /** Aplica una foto de `bruto()`, disparando los "change" en cascada (red -> material -> calibre -> referencia) para que las listas se repueblen antes de fijar el valor final. */
       aplicarBruto: (d) => {
         if (!d) return;
         selRed.value = d.red;
@@ -329,6 +369,8 @@ export async function render(container) {
         }
         selCalibre.value = d.calibre;
         selCalibre.dispatchEvent(new Event("change"));
+        selReferencia.value = d.referencia ?? "";
+        selReferencia.dispatchEvent(new Event("change"));
         if (d.manual) fResistencia.value = d.resistencia;
         fLongitud.value = d.longitud;
         fN.value = d.n;
@@ -473,7 +515,8 @@ export async function render(container) {
   }
 
   const nombreRed = (red) => (red === "Aerea" ? "Aérea" : "Subterránea");
-  const conductorTexto = (e) => `${nombreRed(e.red)} · ${e.material} ${e.calibre}${e.numConductoresPorFase > 1 ? ` ×${e.numConductoresPorFase}` : ""}`;
+  const conductorTexto = (e) =>
+    `${nombreRed(e.red)} · ${e.material} ${e.calibre}${e.referencia ? ` (${e.referencia})` : ""}${e.numConductoresPorFase > 1 ? ` ×${e.numConductoresPorFase}` : ""}`;
 
   function tablaTramosHtml(r, estados) {
     const filas = r.tramos
@@ -500,6 +543,7 @@ export async function render(container) {
       `  Tipo de red: ${nombreRed(e.red)}`,
       `  Material/Tipo de conductor: ${e.material}`,
       `  Calibre: ${e.calibre}`,
+      ...(e.referencia ? [`  Referencia: ${e.referencia}`] : []),
       `  Resistencia AC a 75°C (por conductor): ${fmt(e.resistenciaOhmKm)} Ω/km`,
       `  Conductores por fase: ${e.numConductoresPorFase}`,
       `  Longitud del tramo: ${fmt(e.longitudKm)} km`,

@@ -178,6 +178,29 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - `assets/ejemplos/` (o `assets/Ejemplos/`) es una carpeta TEMPORAL de referencia del usuario, con un repo git anidado: NO subirla.
   Está excluida en `.git/info/exclude` (local); aun así, hacer `git add` solo con rutas explícitas, nunca `git add -A`/`.`.
 
+- Selector de «Referencia» del conductor aéreo (2026-09-23, pedido del usuario tras revisar que solo Ampacidad aérea lo
+  pedía: las otras cuatro tomaban en silencio la primera fila del catálogo que coincidía en tipo+calibre, lo que puede
+  cambiar la resistencia hasta ~29 % entre construcciones del mismo calibre, p. ej. ACSR 266.8 Waxwing 18/1 vs Owl 6/7 vs
+  Partridge 26/7). Se agregó el mismo patrón de Ampacidad aérea (`nombre_clave` del catálogo) a Pérdidas, Regulación,
+  Cortocircuito y Conductor económico: campo `<select>` OBLIGATORIO «Referencia» entre Calibre y Resistencia/Área
+  (`grid-3`, antes `grid-2`), con ayuda «i» (nueva en estas 4 pantallas), que se repuebla al cambiar el calibre.
+  El catálogo XLPE (subterráneo) no tiene `nombre_clave` (su multiplicidad es por nivel de tensión/aislamiento/pantalla,
+  un problema distinto y fuera de este alcance): con red Subterránea el campo queda fijo en «No aplica (solo conductores
+  aéreos)», deshabilitado (por eso no bloquea el envío aunque siga `required` en el HTML: un campo `disabled` no entra en
+  la validación del formulario). `resolverFila()` de cada pantalla ahora filtra también por `nombre_clave` cuando la red
+  es aérea. Bug encontrado y corregido durante la implementación: al repoblar el select de Referencia para red
+  Subterránea, las 4 pantallas ponían la fila resuelta en `null` en vez de llamar a `resolverFila()` (que para
+  Subterránea no depende de la referencia): eso dejaba el área/resistencia en blanco y el cálculo daba `NaN` en
+  subterráneo (detectado por `verify_cortocircuito.html`, que sí prueba ese camino; Pérdidas y Regulación no lo probaban
+  y seguían en verde con el bug). Fuera de alcance (decidido con el usuario): las herramientas de diseño
+  (`dimensionar_conductor`, `verificar_conductor`, `resolver_valor_limite`), que siguen con «primera referencia por
+  calibre». `js/ai/tools.js` NO se tocó: `resolverConductor` ya soporta un `referencia` opcional oculto para las 4
+  herramientas correspondientes y ya avisaba en el reporte cuál eligió cuando no se especifica. Pruebas actualizadas:
+  `tools/verify_perdidas.html`, `verify_regulacion.html` (incluye el orden de campos del tramo, que ahora es
+  calibre|referencia|resistencia, igual criterio que antes), `verify_cortocircuito.html` y `verify_conductor_economico.html`
+  (su único helper central `llenarOpcion` se actualizó para elegir automáticamente la primera referencia disponible, lo que
+  conservó casi todas las aserciones numéricas existentes sin tocarlas una por una).
+
 ## Conversión de unidades (`js/views/conversion-unidades.js`, `data/unidades.json`)
 
 - Dos modos (2026-09-19, pedido del usuario). Casilla «Habilitar todas las conversiones» DEBAJO de la tarjeta (mismo estilo que la de

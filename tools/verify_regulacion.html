@@ -156,7 +156,7 @@ await seccion("vista: tarjetas y dato de partida", async () => {
 
 await seccion("vista: campos del tramo (mm, haz y distancias)", async () => {
   // Orden y ubicacion como en la calculadora normativa: fila a fila, de izquierda a derecha.
-  const ordenReferencia = ["Tipo de red", "Material / Tipo de conductor", "Longitud del tramo (km)", "Conductores por fase", "Calibre", "Resistencia AC a 75°C (Ω/km)", "Separación entre subconductores del haz (m)", "Radio medio geométrico (mm)", "Distancia entre fases A-B (m)", "Distancia entre fases A-C (m)", "Distancia entre fases B-C (m)"];
+  const ordenReferencia = ["Tipo de red", "Material / Tipo de conductor", "Longitud del tramo (km)", "Conductores por fase", "Calibre", "Referencia", "Resistencia AC a 75°C (Ω/km)", "Separación entre subconductores del haz (m)", "Radio medio geométrico (mm)", "Distancia entre fases A-B (m)", "Distancia entre fases A-C (m)", "Distancia entre fases B-C (m)"];
   const camposTramo = $$(".tramo-block .field").map((f) => ({ nombre: texto($(":scope > label:first-child", f)), r: f.getBoundingClientRect() }));
   const filasTramo = [];
   for (const c of camposTramo) {
@@ -165,15 +165,16 @@ await seccion("vista: campos del tramo (mm, haz y distancias)", async () => {
     else filasTramo.push([c]);
   }
   ok(camposTramo.map((c) => c.nombre).join("|") === ordenReferencia.join("|"), `orden de los campos del tramo: ${camposTramo.map((c) => c.nombre).join(" → ")}`);
-  ok(filasTramo.map((f) => f.map((c) => c.nombre).join(" | ")).join(" // ") === "Tipo de red | Material / Tipo de conductor // Longitud del tramo (km) | Conductores por fase // Calibre | Resistencia AC a 75°C (Ω/km) // Separación entre subconductores del haz (m) | Radio medio geométrico (mm) // Distancia entre fases A-B (m) | Distancia entre fases A-C (m) | Distancia entre fases B-C (m)", "ubicación por filas: red y material; longitud y conductores por fase; calibre y resistencia; separación del haz y radio medio geométrico; y las tres distancias");
+  ok(filasTramo.map((f) => f.map((c) => c.nombre).join(" | ")).join(" // ") === "Tipo de red | Material / Tipo de conductor // Longitud del tramo (km) | Conductores por fase // Calibre | Referencia | Resistencia AC a 75°C (Ω/km) // Separación entre subconductores del haz (m) | Radio medio geométrico (mm) // Distancia entre fases A-B (m) | Distancia entre fases A-C (m) | Distancia entre fases B-C (m)", "ubicación por filas: red y material; longitud y conductores por fase; calibre, referencia y resistencia; separación del haz y radio medio geométrico; y las tres distancias");
   ok(filasTramo.every((f) => f.every((c, i) => i === 0 || c.r.left > f[i - 1].r.left)), "dentro de cada fila los campos van de izquierda a derecha en ese orden");
   const etiquetas = $$(".tramo-block .field > label:first-child").map(texto);
-  for (const e of ["Tipo de red", "Material / Tipo de conductor", "Calibre", "Resistencia AC a 75°C (Ω/km)", "Longitud del tramo (km)", "Conductores por fase", "Radio medio geométrico (mm)", "Separación entre subconductores del haz (m)", "Distancia entre fases A-B (m)", "Distancia entre fases A-C (m)", "Distancia entre fases B-C (m)"]) {
+  for (const e of ["Tipo de red", "Material / Tipo de conductor", "Calibre", "Referencia", "Resistencia AC a 75°C (Ω/km)", "Longitud del tramo (km)", "Conductores por fase", "Radio medio geométrico (mm)", "Separación entre subconductores del haz (m)", "Distancia entre fases A-B (m)", "Distancia entre fases A-C (m)", "Distancia entre fases B-C (m)"]) {
     ok(etiquetas.includes(e), `campo del tramo: «${e}»`);
   }
   elegir("#f-red-0", "Aerea");
   elegir("#f-material-0", "ACSR");
   elegir("#f-calibre-0", "4/0");
+  elegir("#f-referencia-0", ACSR_4_0.nombre_clave);
   cerca(parseFloat($("#f-resistencia-0").value), R0, 1e-12, "la resistencia sale del catálogo");
   cerca(parseFloat($("#f-rmg-0").value), RMG0, 1e-12, `el radio medio geométrico sale del catálogo en mm (${$("#f-rmg-0").value} mm, no en m)`);
   ok($("#f-resistencia-0").disabled && $("#f-rmg-0").disabled, "resistencia y RMG bloqueados mientras no esté «Manual»");
@@ -268,6 +269,8 @@ await seccion("vista: varios tramos", async () => {
   elegir("#f-material-1", "AAAC");
   $("#f-calibre-1").selectedIndex = 4;
   $("#f-calibre-1").dispatchEvent(new Event("change", { bubbles: true }));
+  $("#f-referencia-1").selectedIndex = 1;
+  $("#f-referencia-1").dispatchEvent(new Event("change", { bubbles: true }));
   poner("#f-longitud-1", "3");
   poner("#f-dab-1", "1.6");
   poner("#f-dac-1", "2.7");
@@ -307,6 +310,7 @@ await seccion("vista: estructura del reporte (se copia y se pega)", async () => 
   elegir("#f-modo", "potencia");
   elegir("#f-material-1", "ACSR");
   elegir("#f-calibre-1", "4/0");
+  elegir("#f-referencia-1", ACSR_4_0.nombre_clave);
   poner("#f-longitud-1", "5.2");
   poner("#f-dab-1", "2");
   poner("#f-dac-1", "2.84");
@@ -317,7 +321,7 @@ await seccion("vista: estructura del reporte (se copia y se pega)", async () => 
   ok(sa.iRes > 5 && a[sa.iRes - 1] === "" && a[sa.iRes - 2] === "" && LINEA.test(a[sa.iRes + 1]), "«RESULTADOS:» con dos líneas en blanco antes y su línea divisoria DEBAJO");
   ok(!LINEA.test(a[3]) && !LINEA.test(a[sa.iRes - 1]) && !LINEA.test(a[5]) && !LINEA.test(a[sa.iRes + 2]), "encima de las etiquetas no hay línea y debajo de la línea sigue directamente el contenido");
   ok(etiquetasEn(a).join("|") === "CÁLCULO DE REGULACIÓN|PARÁMETROS DE ENTRADA:|RESULTADOS:" && a.filter((x) => LINEA.test(x)).length === 2, "tres etiquetas y dos líneas divisorias");
-  for (const inicio of ["Tensión de línea", "Dato de partida: Potencia activa (9.90 MW)", "Potencia activa: 9.90 MW", "Factor de potencia", "Tramo 1:", "Tipo de red", "Material/Tipo", "Calibre", "Resistencia AC a 75°C", "Radio medio geométrico (por conductor): 4.61 mm", "Conductores por fase", "Separación entre subconductores del haz: N/A (1 conductor)", "Longitud del tramo", "Distancia entre fases A-B: 2.00 m", "Distancia entre fases A-C: 2.84 m", "Distancia entre fases B-C: 0.84 m"]) {
+  for (const inicio of ["Tensión de línea", "Dato de partida: Potencia activa (9.90 MW)", "Potencia activa: 9.90 MW", "Factor de potencia", "Tramo 1:", "Tipo de red", "Material/Tipo", "Calibre", "Referencia", "Resistencia AC a 75°C", "Radio medio geométrico (por conductor): 4.61 mm", "Conductores por fase", "Separación entre subconductores del haz: N/A (1 conductor)", "Longitud del tramo", "Distancia entre fases A-B: 2.00 m", "Distancia entre fases A-C: 2.84 m", "Distancia entre fases B-C: 0.84 m"]) {
     ok(tiene(sa.params, inicio), `parámetros de entrada incluye «${inicio}»`);
   }
   for (const inicio of ["Resistencia efectiva", "RMG equivalente", "Constante de regulación", "Caída de tensión", "Corriente", "Potencia aparente", "Potencia reactiva"]) {
@@ -346,6 +350,7 @@ await seccion("vista: estructura del reporte (se copia y se pega)", async () => 
   poner(`#f-sephaz-${idNuevo}`, "0.5");
   elegir(`#f-material-${idNuevo}`, "ACSR");
   elegir(`#f-calibre-${idNuevo}`, "4/0");
+  elegir(`#f-referencia-${idNuevo}`, ACSR_4_0.nombre_clave);
   const d = leer();
   const sd = secciones(d);
   ok(etiquetasEn(d).length === 3 && d.filter((x) => LINEA.test(x)).length === 2, "con dos tramos siguen siendo tres etiquetas y dos líneas");
@@ -402,7 +407,7 @@ const cargarMarco = (ancho, _calcular = false, alto = 3400) => new Promise((reso
     resolve(marco);
   };
   window.addEventListener("message", alRecibir);
-  marco.srcdoc = `<!doctype html><html><head><link rel="stylesheet" href="../css/tokens.css"><link rel="stylesheet" href="../css/app.css"></head><body><div id="c" class="content"></div><script type="module">window.__BASE_PATH__ = "../"; const { render } = await import("../js/views/calc-regulacion.js"); const c = document.getElementById("c"); await render(c, {}); const ev = (s, v) => { const e = c.querySelector(s); e.value = v; e.dispatchEvent(new Event("change", { bubbles: true })); }; ev("#f-material-0", "ACSR"); ev("#f-calibre-0", "4/0"); c.querySelector("#form-calc").requestSubmit(); parent.postMessage("listo", "*");<\/script></body></html>`;
+  marco.srcdoc = `<!doctype html><html><head><link rel="stylesheet" href="../css/tokens.css"><link rel="stylesheet" href="../css/app.css"></head><body><div id="c" class="content"></div><script type="module">window.__BASE_PATH__ = "../"; const { render } = await import("../js/views/calc-regulacion.js"); const c = document.getElementById("c"); await render(c, {}); const ev = (s, v) => { const e = c.querySelector(s); e.value = v; e.dispatchEvent(new Event("change", { bubbles: true })); }; ev("#f-material-0", "ACSR"); ev("#f-calibre-0", "4/0"); ev("#f-referencia-0", ${JSON.stringify(ACSR_4_0.nombre_clave)}); c.querySelector("#form-calc").requestSubmit(); parent.postMessage("listo", "*");<\/script></body></html>`;
   document.body.append(marco);
 });
 
@@ -487,7 +492,7 @@ await seccion("vista: el botón de información no altera la altura de las etiqu
 
 await seccion("vista: ayuda de los campos con botón de información", async () => {
   const tramosN = $$(".tramo-block").length;
-  const ESPERADOS = Array.from({ length: tramosN }, () => ["Conductores por fase", "Separación entre subconductores del haz (m)"]).flat();
+  const ESPERADOS = Array.from({ length: tramosN }, () => ["Conductores por fase", "Referencia", "Separación entre subconductores del haz (m)"]).flat();
   const botones = $$(".info-btn");
   const nombres = botones.map((b) => b.getAttribute("aria-label").replace("Más información sobre ", ""));
   ok(nombres.join("|") === ESPERADOS.join("|"), `botones de información junto al nombre de: ${nombres.join(" | ")}`);

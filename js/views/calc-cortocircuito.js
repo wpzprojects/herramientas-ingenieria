@@ -72,6 +72,9 @@ ${FORMULAS_NOTA}`;
 // Lineas del reporte que son etiquetas: van en negrita (el texto que se copia es el mismo).
 const ETIQUETAS_REPORTE = ["CÁLCULO DE CORTOCIRCUITO", "PARÁMETROS DE ENTRADA:", "RESULTADOS:"];
 
+const INFO_REFERENCIA =
+  "Un mismo calibre puede tener varias construcciones (número de hilos, diámetro) con área ligeramente distinta. Solo aplica a conductores aéreos: en subterráneo (XLPE) no hay varias referencias por calibre.";
+
 export async function render(container) {
   const desnudos = await loadData("conductores-desnudos");
   const xlpe = await loadData("conductores-xlpe");
@@ -96,11 +99,17 @@ export async function render(container) {
             <select id="f-material" required></select>
           </div>
         </div>
-        <div class="grid-2 ultima">
+        <div class="grid-3 ultima">
           <div class="field">
             <label for="f-calibre">Calibre</label>
             <select id="f-calibre" required disabled>
               <option value="">Seleccione un material primero</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-referencia" data-info="${INFO_REFERENCIA}">Referencia</label>
+            <select id="f-referencia" required disabled>
+              <option value="">Seleccione un calibre primero</option>
             </select>
           </div>
           <div class="field">
@@ -158,6 +167,7 @@ export async function render(container) {
   const selRed = container.querySelector("#f-red");
   const selMaterial = container.querySelector("#f-material");
   const selCalibre = container.querySelector("#f-calibre");
+  const selReferencia = container.querySelector("#f-referencia");
   const fArea = container.querySelector("#f-area");
   const fTop = container.querySelector("#f-top");
   const fTfalla = container.querySelector("#f-tfalla");
@@ -191,6 +201,26 @@ export async function render(container) {
         calibres.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("")
       : `<option value="">Sin calibres disponibles</option>`;
     selCalibre.disabled = !calibres.length;
+    poblarReferencia();
+  }
+
+  // La referencia (construccion exacta del conductor) solo existe en el catalogo de conductores desnudos (aereos).
+  function poblarReferencia() {
+    if (selRed.value !== "Aereo") {
+      selReferencia.innerHTML = `<option value="">No aplica (solo conductores aéreos)</option>`;
+      selReferencia.disabled = true;
+      filaSeleccionada = resolverFila();
+      syncDefaults();
+      return;
+    }
+    const material = selMaterial.value;
+    const calibre = selCalibre.value;
+    const refs = calibre ? desnudos.filter((c) => c.tipo === material && c.calibre_awg_kcmil === calibre) : [];
+    selReferencia.innerHTML = refs.length
+      ? `<option value="">Seleccione…</option>` +
+        refs.map((c) => `<option value="${escapeHtml(c.nombre_clave)}">${escapeHtml(c.nombre_clave)}</option>`).join("")
+      : `<option value="">Seleccione un calibre primero</option>`;
+    selReferencia.disabled = !refs.length;
     filaSeleccionada = null;
     syncDefaults();
   }
@@ -201,7 +231,8 @@ export async function render(container) {
     const calibre = selCalibre.value;
     if (!calibre) return null;
     if (red === "Aereo") {
-      return desnudos.find((c) => c.tipo === material && c.calibre_awg_kcmil === calibre) || null;
+      if (!selReferencia.value) return null;
+      return desnudos.find((c) => c.tipo === material && c.calibre_awg_kcmil === calibre && c.nombre_clave === selReferencia.value) || null;
     }
     return xlpe.find((c) => c.material_conductor === material && c.calibre_awg_kcmil === calibre) || null;
   }
@@ -225,7 +256,8 @@ export async function render(container) {
     if (!chkTop.checked) fTop.value = defaultTop();
   });
   selMaterial.addEventListener("change", poblarCalibre);
-  selCalibre.addEventListener("change", () => {
+  selCalibre.addEventListener("change", poblarReferencia);
+  selReferencia.addEventListener("change", () => {
     filaSeleccionada = resolverFila();
     syncDefaults();
   });
@@ -256,6 +288,8 @@ export async function render(container) {
     selMaterial.dispatchEvent(new Event("change"));
     selCalibre.value = guardado.calibre;
     selCalibre.dispatchEvent(new Event("change"));
+    selReferencia.value = guardado.referencia ?? "";
+    selReferencia.dispatchEvent(new Event("change"));
     if (guardado.manualArea) {
       chkArea.checked = true;
       chkArea.dispatchEvent(new Event("change"));
@@ -282,6 +316,7 @@ export async function render(container) {
       red: selRed.value,
       material: selMaterial.value,
       calibre: selCalibre.value,
+      referencia: selReferencia.value,
       manualArea: chkArea.checked,
       area: fArea.value,
       manualTop: chkTop.checked,
@@ -315,7 +350,7 @@ export async function render(container) {
 
     const data = calcularCortocircuito(p);
     const objetivoKa = fObjetivo.value.trim() === "" ? null : parseFloat(fObjetivo.value);
-    const ctx = { red, tipoMaterial: selMaterial.value, calibre: selCalibre.value, materialElectrico: material, objetivoKa };
+    const ctx = { red, tipoMaterial: selMaterial.value, calibre: selCalibre.value, referencia: red === "Aereo" ? selReferencia.value : "", materialElectrico: material, objetivoKa };
     ctx.comparacion = objetivoKa === null ? null : compararCalibres(candidatosCalibre(red), { material, tempOperacionC: p.tempOperacionC, tempFallaC: p.tempFallaC, tiempoS: p.tiempoS }, objetivoKa, ctx.calibre);
     renderResultado(data, p, ctx);
   });
@@ -347,6 +382,7 @@ export async function render(container) {
       `Tipo de red: ${ctx.red === "Aereo" ? "Aéreo" : "Subterráneo"}`,
       `Tipo/Material de conductor: ${ctx.tipoMaterial}`,
       `Calibre: ${ctx.calibre}`,
+      ...(ctx.referencia ? [`Referencia: ${ctx.referencia}`] : []),
       `Área del conductor: ${fmt(p.areaMm2)} mm²`,
       `Temperatura de operación: ${fmt(p.tempOperacionC)} °C`,
       `Temperatura máxima admisible en falla: ${fmt(p.tempFallaC)} °C`,

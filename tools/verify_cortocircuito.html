@@ -142,7 +142,7 @@ await seccion("vista: tarjetas y campos", async () => {
     return fs.map((f) => f.map((c) => c.n).join(" | ")).join(" // ");
   };
   const [c1, c2] = $$(".form-section");
-  ok(filas(c1) === "Tipo de red | Material / Tipo de conductor // Calibre | Área del conductor (mm²)", `tarjeta Conductor: ${filas(c1)}`);
+  ok(filas(c1) === "Tipo de red | Material / Tipo de conductor // Calibre | Referencia | Área del conductor (mm²)", `tarjeta Conductor: ${filas(c1)}`);
   ok(filas(c2) === "Temperatura de operación (°C) | Temperatura máxima admisible en falla (°C) // Tiempo de despeje de la falla (s) | Corriente de falla a soportar (kA)", `tarjeta Condiciones: ${filas(c2)}`);
   ok($$(".input-with-toggle").length === 3 && $$(".input-with-toggle").every((w) => texto($("label.checkbox-row", w)) === "Manual"), "área y las dos temperaturas llevan la casilla «Manual» a su derecha");
 });
@@ -157,6 +157,8 @@ await seccion("vista: valores por defecto y casillas «Manual»", async () => {
 
   elegir("#f-material", "ACSR");
   elegir("#f-calibre", "4/0");
+  ok($("#f-referencia").options.length > 1, "el calibre carga sus referencias");
+  elegir("#f-referencia", ACSR.nombre_clave);
   cerca(parseFloat($("#f-area").value), ACSR.area_seccion_aluminio_mm2, 1e-12, `aéreo: el área es la de aluminio del catálogo (${$("#f-area").value} mm²)`);
 
   marcar("#chk-area", true);
@@ -182,6 +184,7 @@ await seccion("vista: cálculo y resultados", async () => {
   // red aerea: el material se calcula siempre como aluminio
   elegir("#f-material", "ACSR");
   elegir("#f-calibre", "4/0");
+  elegir("#f-referencia", ACSR.nombre_clave);
   calcular();
   const e1 = esperado({ material: "Aluminio", A: ACSR.area_seccion_aluminio_mm2, T1: 75, T2: 250, t: 0.3 });
   cerca(resultadoKa(), e1.kA, 0.006, `aéreo ACSR 4/0 (como aluminio): ${e1.kA.toFixed(3)} kA`);
@@ -214,8 +217,10 @@ await seccion("vista: cálculo y resultados", async () => {
   ok(!$("#form-calc").checkValidity(), "sin calibre elegido el formulario no es válido");
   elegir("#f-material", "ACSR");
   elegir("#f-calibre", "4/0");
+  ok(!$("#form-calc").checkValidity(), "con calibre pero sin referencia el formulario sigue sin ser válido (red aérea)");
+  elegir("#f-referencia", ACSR.nombre_clave);
   poner("#f-tiempo", "0.3");
-  ok($("#form-calc").checkValidity(), "con calibre elegido el formulario es válido");
+  ok($("#form-calc").checkValidity(), "con calibre y referencia elegidos el formulario es válido");
 });
 
 await seccion("vista: corriente de falla a soportar", async () => {
@@ -226,6 +231,7 @@ await seccion("vista: corriente de falla a soportar", async () => {
   elegir("#f-red", "Aereo");
   elegir("#f-material", "ACSR");
   elegir("#f-calibre", "4/0");
+  elegir("#f-referencia", ACSR.nombre_clave);
   poner("#f-tiempo", "0.3");
   const acsr = desnudos.filter((c) => c.tipo === "ACSR").map((c) => ({ calibre: c.calibre_awg_kcmil, area: c.area_seccion_aluminio_mm2 })).filter((c, i, a) => c.area != null && a.findIndex((x) => x.calibre === c.calibre) === i).sort((a, b) => a.area - b.area);
   const cap = (a) => esperado({ material: "Aluminio", A: a, T1: 75, T2: 250, t: 0.3 }).kA;
@@ -256,6 +262,7 @@ await seccion("vista: corriente de falla a soportar", async () => {
   // 2) un calibre chico no cumple
   const chico = acsr[1];
   elegir("#f-calibre", chico.calibre);
+  elegir("#f-referencia", desnudos.find((c) => c.tipo === "ACSR" && c.calibre_awg_kcmil === chico.calibre).nombre_clave);
   poner("#f-objetivo", "20");
   calcular();
   const b2 = $(".badge", $$(".result-metric")[0]);
@@ -277,6 +284,7 @@ await seccion("vista: corriente de falla a soportar", async () => {
 
   // reporte con corriente a soportar
   elegir("#f-calibre", "4/0");
+  elegir("#f-referencia", ACSR.nombre_clave);
   poner("#f-objetivo", "10");
   calcular();
   const rep = $('[data-panel="reporte"] .report-block').textContent.split("\n");
@@ -306,6 +314,7 @@ await seccion("vista: corriente de falla a soportar", async () => {
   elegir("#f-red", "Aereo");
   elegir("#f-material", "ACSR");
   elegir("#f-calibre", "4/0");
+  elegir("#f-referencia", ACSR.nombre_clave);
   calcular();
   ok($$(".result-metric").length === 1 && !$$(".badge").length && !$$(".result-subhead").length, "al vaciar el campo el resultado vuelve a ser solo la capacidad");
 });
@@ -323,7 +332,7 @@ await seccion("vista: estructura del reporte (se copia y se pega)", async () => 
   ok(iRes > 5 && a[iRes - 1] === "" && a[iRes - 2] === "" && LINEA.test(a[iRes + 1]), "«RESULTADOS:» con dos líneas en blanco antes y su línea divisoria DEBAJO");
   ok(!LINEA.test(a[3]) && !LINEA.test(a[iRes - 1]) && !LINEA.test(a[5]) && !LINEA.test(a[iRes + 2]), "encima de las etiquetas no hay línea y debajo de la línea sigue directamente el contenido");
   ok(etiquetasEn(a).join("|") === "CÁLCULO DE CORTOCIRCUITO|PARÁMETROS DE ENTRADA:|RESULTADOS:" && a.filter((x) => LINEA.test(x)).length === 2, "tres etiquetas y dos líneas divisorias");
-  for (const inicio of ["Tipo de red: Aéreo", "Tipo/Material de conductor: ACSR", "Calibre: 4/0", "Área del conductor", "Temperatura de operación: 75.00 °C", "Temperatura máxima admisible en falla: 250.00 °C", "Tiempo de despeje de la falla: 0.3 s"]) {
+  for (const inicio of ["Tipo de red: Aéreo", "Tipo/Material de conductor: ACSR", "Calibre: 4/0", `Referencia: ${ACSR.nombre_clave}`, "Área del conductor", "Temperatura de operación: 75.00 °C", "Temperatura máxima admisible en falla: 250.00 °C", "Tiempo de despeje de la falla: 0.3 s"]) {
     ok(tiene(params, inicio), `parámetros de entrada incluye «${inicio}»`);
   }
   for (const inicio of ["Material eléctrico", "λ", "k1", "log10", "Capacidad"]) {
@@ -379,7 +388,7 @@ const cargarMarco = (ancho) => new Promise((resolve) => {
     resolve(marco);
   };
   window.addEventListener("message", alRecibir);
-  marco.srcdoc = `<!doctype html><html><head><link rel="stylesheet" href="../css/tokens.css"><link rel="stylesheet" href="../css/app.css"></head><body><div id="c" class="content"></div><script type="module">window.__BASE_PATH__ = "../"; const { render } = await import("../js/views/calc-cortocircuito.js"); const c = document.getElementById("c"); await render(c, {}); const ev = (s, v) => { const e = c.querySelector(s); e.value = v; e.dispatchEvent(new Event("change", { bubbles: true })); }; ev("#f-material", "ACSR"); ev("#f-calibre", "4/0"); c.querySelector("#form-calc").requestSubmit(); parent.postMessage("listo", "*");<\/script></body></html>`;
+  marco.srcdoc = `<!doctype html><html><head><link rel="stylesheet" href="../css/tokens.css"><link rel="stylesheet" href="../css/app.css"></head><body><div id="c" class="content"></div><script type="module">window.__BASE_PATH__ = "../"; const { render } = await import("../js/views/calc-cortocircuito.js"); const c = document.getElementById("c"); await render(c, {}); const ev = (s, v) => { const e = c.querySelector(s); e.value = v; e.dispatchEvent(new Event("change", { bubbles: true })); }; ev("#f-material", "ACSR"); ev("#f-calibre", "4/0"); ev("#f-referencia", ${JSON.stringify(ACSR.nombre_clave)}); c.querySelector("#form-calc").requestSubmit(); parent.postMessage("listo", "*");<\/script></body></html>`;
   document.body.append(marco);
 });
 
@@ -445,14 +454,14 @@ await seccion("vista: ayuda de los campos con botón de información", async () 
     const control = f.querySelector("input, select");
     return { conInfo: !!label.querySelector(".info-btn"), alto: Math.round(label.getBoundingClientRect().height * 10) / 10, desfase: Math.round((control.getBoundingClientRect().top - f.getBoundingClientRect().top) * 10) / 10 };
   });
-  ok(medidas.filter((m) => m.conInfo).length === 4 && medidas.filter((m) => !m.conInfo).length >= 3, "se comparan campos con y sin botón de información");
+  ok(medidas.filter((m) => m.conInfo).length === 5 && medidas.filter((m) => !m.conInfo).length >= 3, "se comparan campos con y sin botón de información");
   ok(new Set(medidas.map((m) => m.alto)).size === 1 && new Set(medidas.map((m) => m.desfase)).size === 1, `el botón no cambia la altura de las etiquetas ni la posición de las casillas (${[...new Set(medidas.map((m) => m.alto))].join(", ")} px)`);
 
   const botones = $$(".info-btn");
   const nombres = botones.map((b) => b.getAttribute("aria-label").replace("Más información sobre ", ""));
-  ok(nombres.join("|") === "Material / Tipo de conductor|Área del conductor (mm²)|Temperatura de operación (°C)|Corriente de falla a soportar (kA)", `botones de información junto al nombre de: ${nombres.join(" | ")}`);
+  ok(nombres.join("|") === "Material / Tipo de conductor|Referencia|Área del conductor (mm²)|Temperatura de operación (°C)|Corriente de falla a soportar (kA)", `botones de información junto al nombre de: ${nombres.join(" | ")}`);
   ok(botones.every((b) => b.tagName === "BUTTON" && b.type === "button" && b.getAttribute("aria-expanded") === "false" && document.getElementById(b.getAttribute("aria-controls"))), "son botones reales, con aria-expanded y aria-controls");
-  const b0 = botones[2];
+  const b0 = botones[3];
   const campo = b0.closest(".field");
   const card = b0.closest(".card");
   const pop = document.getElementById(b0.getAttribute("aria-controls"));
