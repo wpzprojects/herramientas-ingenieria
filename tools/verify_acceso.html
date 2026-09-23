@@ -379,7 +379,7 @@ await seccion("Configuración de IA: clave de Gemini en el servidor (trasladada 
 
   // ---- administrador, con sesion valida: aparece la tarjeta
   await dibujar({ usuarios: semilla(), sesion: ADMIN });
-  ok(!!q("#ia-servidor"), "con Gemini activo y sesión válida aparece la tarjeta «Clave en servidor»");
+  ok(!!q("#ia-servidor"), "con Gemini activo y sesión válida aparece la tarjeta «Origen de la clave»");
   const fuentes = qa("#ia-fuentes input");
   ok(fuentes.length === 3, "tres orígenes de clave como opciones compactas");
   const opciones = qa("#ia-fuentes label").map(texto);
@@ -399,7 +399,7 @@ await seccion("Configuración de IA: clave de Gemini en el servidor (trasladada 
   ok(/Clave guardada en el servidor/.test(texto(q("#ia-serv-msg-compartida"))), "guardar la clave compartida llama al backend simulado y avisa");
 
   // ---- la linea de estado de «Conexión con Gemini» enlaza dentro de la misma pagina a la tarjeta nueva
-  ok(!!q("#fuente-clave a[href='#ia-servidor']"), "«Conexión con Gemini» enlaza a «Clave en servidor», en la misma pantalla (ya no a Perfil)");
+  ok(!!q("#fuente-clave a[href='#ia-servidor']"), "«Conexión con Gemini» enlaza a «Origen de la clave», en la misma pantalla (ya no a Perfil)");
 
   // ---- usuario normal: ve la tarjeta, con la clave compartida en solo lectura
   await dibujar({ usuarios: semilla(), sesion: YO });

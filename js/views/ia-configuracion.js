@@ -7,7 +7,7 @@
 // Claude solo admiten clave LOCAL (BYOK), sin fuente «personal»/«compartida» en el servidor (eso sigue
 // siendo exclusivo de Gemini, ver js/ai/clave.js). La gestion de esa clave en el servidor (antes en
 // Perfil) se trasladó aquí (2026-09-23, pedido del usuario: toda la config de IA en un solo lugar):
-// tarjeta «Clave en servidor», solo si el proveedor activo la admite (soportaFuenteServidor), entre
+// tarjeta «Origen de la clave», solo si el proveedor activo la admite (soportaFuenteServidor), entre
 // «Modelo» y «Datos y privacidad». Se resuelve sola (backend/sesion/perfil) y si algo falta (sin
 // servicio, sin sesion) simplemente no aparece, en vez de mostrar un error: el resto de la pantalla debe
 // seguir siendo utilizable.
@@ -240,7 +240,7 @@ export async function render(container) {
     // entre tarjetas depende de `.card + .card` en app.css, que exige hermanos directos.
     let box = $("#ia-servidor");
     if (!box) {
-      $("#ia-modelo").insertAdjacentHTML("afterend", `<div class="card tarjeta-borde form-section" id="ia-servidor">${barra("key", "Clave en servidor")}<p class="text-muted" style="margin:0">Cargando…</p></div>`);
+      $("#ia-modelo").insertAdjacentHTML("afterend", `<div class="card tarjeta-borde form-section" id="ia-servidor">${barra("key", "Origen de la clave")}<p class="text-muted" style="margin:0">Cargando…</p></div>`);
       box = $("#ia-servidor");
     }
 
@@ -250,14 +250,14 @@ export async function render(container) {
       hayPersonal = !!(await b.leerClavePersonal());
       hayCompartida = !!(await b.leerClaveCompartida());
     } catch (e) {
-      box.innerHTML = `${barra("key", "Clave en servidor")}<div class="callout callout-danger" style="margin:0"><span>${escapeHtml(mensajeAcceso(e))}</span></div>`;
+      box.innerHTML = `${barra("key", "Origen de la clave")}<div class="callout callout-danger" style="margin:0"><span>${escapeHtml(mensajeAcceso(e))}</span></div>`;
       return;
     }
     const estado = (hay) => (hay ? `<span class="badge badge-success">Configurada</span>` : `<span class="badge">Sin configurar</span>`);
     const disponible = { local: true, personal: hayPersonal, compartida: hayCompartida };
 
     box.innerHTML = `
-      ${barra("key", "Clave en servidor")}
+      ${barra("key", "Origen de la clave")}
       <div class="field">
         <label data-info="${escapeHtml(AYUDA_FUENTE)}">¿Dónde está la clave de Gemini que se usará?</label>
         <div class="ca-fuentes" id="ia-fuentes"></div>
@@ -373,13 +373,13 @@ export async function render(container) {
   }
 
   if (meta.soportaFuenteServidor) {
-    // Origen de la clave que se esta usando (se elige mas abajo, en «Clave en servidor»). Si no es
+    // Fuente de la clave que se esta usando (se elige mas abajo, en «Origen de la clave»). Si no es
     // «Este navegador», el campo de esta tarjeta no se usa.
     const fuente = obtenerFuente();
     $("#fuente-clave").innerHTML =
-      `Las funciones con IA están usando <span class="badge">${escapeHtml(NOMBRE_FUENTE[fuente])}</span> · ` + `<a href="#ia-servidor">Cambiar abajo, en «Clave en servidor»</a>`;
+      `Las funciones con IA están usando <span class="badge">${escapeHtml(NOMBRE_FUENTE[fuente])}</span> · ` + `<a href="#ia-servidor">Cambiar abajo, en «Origen de la clave»</a>`;
     if (fuente !== "local") {
-      $("#aviso-fuente").innerHTML = `<div class="callout callout-info" style="margin:0 0 var(--space-4)"><span>Estás usando una clave del servidor: la clave de este navegador solo se usa si eliges «Este navegador» abajo, en «Clave en servidor».</span></div>`;
+      $("#aviso-fuente").innerHTML = `<div class="callout callout-info" style="margin:0 0 var(--space-4)"><span>Estás usando una clave del servidor: la clave de este navegador solo se usa si eliges «Este navegador» abajo, en «Origen de la clave».</span></div>`;
     }
   }
 

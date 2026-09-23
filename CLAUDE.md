@@ -183,7 +183,9 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   función `pintarClave` de `js/views/configuracion-avanzada.js` se BORRARON (no solo se renombraron). La
   ruta `#/perfil/clave` sigue existiendo a nivel de router (`/perfil/:pestana` es genérico) pero cae en la
   primera pestaña disponible, igual que cualquier pestaña inexistente.
-  - Ahora vive en `js/views/ia-configuracion.js`, como tarjeta **«Clave en servidor»** entre «Modelo» y
+  - Ahora vive en `js/views/ia-configuracion.js`, como tarjeta **«Origen de la clave»** (nombre definitivo;
+    se llamó «Clave en servidor» hasta que el usuario notó que una de las tres opciones de la tarjeta —
+    «Este navegador»— NO es del servidor, así que ese nombre no cubría los tres orígenes) entre «Modelo» y
     «Datos y privacidad», SOLO si el proveedor activo la admite (`meta.soportaFuenteServidor`; hoy solo
     Gemini) — con OpenAI/Anthropic activos la tarjeta no aparece en absoluto (pedido explícito del
     usuario). Una función nueva, `pintarClaveServidor()` (async, se llama sin esperar tras el render
@@ -202,7 +204,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
     `ia-fuente-detalle`, `ia-fuente-avisos`) para no chocar con los de la clave LOCAL de la misma pantalla.
     `OPCIONES_FUENTE` y `AYUDA_FUENTE` se movieron de `configuracion-avanzada.js` a `ia-configuracion.js`.
   - La tarjeta «Conexión con Gemini» ya no dice «Cambiar en Perfil» (enlazaba a `#/perfil/clave`): ahora
-    dice «Cambiar abajo, en «Clave en servidor»» con un ancla dentro de la misma página (`href="#ia-servidor"`,
+    dice «Cambiar abajo, en «Origen de la clave»» con un ancla dentro de la misma página (`href="#ia-servidor"`,
     ese `id` en la tarjeta nueva). Los dos «Ir a Perfil» de `js/ai/ui-clave.js` (`verificarAcceso`, cuando
     falla la fuente del servidor) pasaron a «Ir a Configuración» (`#/ia/configuracion`).
   - Pruebas: `tools/verify_acceso.html` tiene una sección nueva, «Configuración de IA: clave de Gemini en
