@@ -75,8 +75,27 @@ export function conIdPorPosicion(rows) {
   return rows.map((r, i) => ({ ...r, id: String(i + 1) }));
 }
 
-export function distinct(rows, key) {
-  return [...new Set(rows.map((r) => r[key]).filter((v) => v !== null && v !== undefined && v !== ""))].sort(
-    (a, b) => String(a).localeCompare(String(b), "es", { numeric: true })
-  );
+/**
+ * Valores distintos de `key` en `rows`. Por defecto se ordenan como texto (orden natural, numérico dentro del texto).
+ * Con `ordenarPor` (nombre de otro campo numérico de la fila, p. ej. un área) se ordenan por ESE valor en su lugar: lo usan
+ * los calibres AWG/kcmil, donde el orden alfabético/natural del texto ("1", "1/0", "2"…) no coincide con el tamaño real del
+ * conductor (un AWG más bajo o un kcmil más alto es más grueso). Si a algún valor le falta ese campo, cae al orden de texto.
+ */
+export function distinct(rows, key, ordenarPor) {
+  const valores = [...new Set(rows.map((r) => r[key]).filter((v) => v !== null && v !== undefined && v !== ""))];
+  const ordenTexto = (a, b) => String(a).localeCompare(String(b), "es", { numeric: true });
+  if (!ordenarPor) return valores.sort(ordenTexto);
+
+  const valorNumerico = new Map();
+  for (const r of rows) {
+    const k = r[key];
+    const v = r[ordenarPor];
+    if (k === null || k === undefined || k === "" || v === null || v === undefined || valorNumerico.has(k)) continue;
+    valorNumerico.set(k, v);
+  }
+  return valores.sort((a, b) => {
+    const av = valorNumerico.get(a);
+    const bv = valorNumerico.get(b);
+    return av !== undefined && bv !== undefined ? av - bv : ordenTexto(a, b);
+  });
 }

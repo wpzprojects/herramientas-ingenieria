@@ -186,7 +186,7 @@ async function resolverConductor(v, extra) {
     const deTipo = desnudos.filter((c) => c.tipo === tipo);
     const porCalibre = deTipo.filter((c) => normCalibre(c.calibre_awg_kcmil) === normCalibre(v.calibre));
     if (!porCalibre.length) {
-      throw new ErrorHerramienta(`El calibre "${v.calibre}" no existe para ${tipo}. Calibres disponibles: ${distinct(deTipo, "calibre_awg_kcmil").join(", ")}.`);
+      throw new ErrorHerramienta(`El calibre "${v.calibre}" no existe para ${tipo}. Calibres disponibles: ${distinct(deTipo, "calibre_awg_kcmil", "area_seccion_aluminio_mm2").join(", ")}.`);
     }
     let fila = porCalibre[0];
     if (v.referencia) {
@@ -209,7 +209,7 @@ async function resolverConductor(v, extra) {
   const deMaterial = xlpe.filter((c) => c.material_conductor === material);
   const porCalibre = deMaterial.filter((c) => normCalibre(c.calibre_awg_kcmil) === normCalibre(v.calibre));
   if (!porCalibre.length) {
-    throw new ErrorHerramienta(`El calibre "${v.calibre}" no existe para XLPE ${material}. Calibres disponibles: ${distinct(deMaterial, "calibre_awg_kcmil").join(", ")}.`);
+    throw new ErrorHerramienta(`El calibre "${v.calibre}" no existe para XLPE ${material}. Calibres disponibles: ${distinct(deMaterial, "calibre_awg_kcmil", "area_conductor_mm2").join(", ")}.`);
   }
   const fila = porCalibre[0];
   if (porCalibre.length > 1) {
@@ -678,7 +678,7 @@ async function diametroGrupo(t, sub, etiqueta) {
   if (!material) throw new ErrorHerramienta(`El material "${t.material}" no existe en el catálogo XLPE. Opciones: ${materiales.join(", ")}${etiqueta}.`);
   let filas = xlpe.filter((c) => c.material_conductor === material && normCalibre(c.calibre_awg_kcmil) === normCalibre(t.calibre));
   if (!filas.length) {
-    throw new ErrorHerramienta(`El calibre "${t.calibre}" no existe para XLPE ${material}. Calibres disponibles: ${distinct(xlpe.filter((c) => c.material_conductor === material), "calibre_awg_kcmil").join(", ")}${etiqueta}.`);
+    throw new ErrorHerramienta(`El calibre "${t.calibre}" no existe para XLPE ${material}. Calibres disponibles: ${distinct(xlpe.filter((c) => c.material_conductor === material), "calibre_awg_kcmil", "area_conductor_mm2").join(", ")}${etiqueta}.`);
   }
   if (t.nivel_tension_kv) {
     const q = norm(t.nivel_tension_kv).replace(/kv/, "").trim();

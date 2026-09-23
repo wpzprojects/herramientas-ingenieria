@@ -275,7 +275,9 @@ await seccion("vista: varios tramos", async () => {
   poner("#f-dab-1", "1.6");
   poner("#f-dac-1", "2.7");
   poner("#f-dbc-1", "1.1");
-  const fila2 = desnudos.filter((c) => c.tipo === "AAAC").map((c) => c.calibre_awg_kcmil).filter((v, i, a) => a.indexOf(v) === i)[3];
+  // El orden del desplegable es por área ascendente (igual que en la pantalla, no el orden natural del texto): el 4.o calibre (indice 3) es el que quedó elegido con selectedIndex = 4.
+  const { distinct: distinctProd } = await import("../js/util/format.js");
+  const fila2 = distinctProd(desnudos.filter((c) => c.tipo === "AAAC"), "calibre_awg_kcmil", "area_seccion_aluminio_mm2")[3];
   const cat2 = desnudos.find((c) => c.tipo === "AAAC" && c.calibre_awg_kcmil === fila2);
   ok($("#f-calibre-1").value === fila2, `el segundo tramo elige el calibre ${fila2}`);
   calcular();

@@ -216,6 +216,24 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   Ajuste posterior (mismo día, pedido del usuario): en Conductor económico, «Costo del conductor» y «Costo de instalación»
   vuelven a compartir fila (quedaron cada uno solo a media fila tras el ajuste anterior; el usuario los quiere juntos).
 
+- **Orden del desplegable de Calibre por tamaño real, no alfabético (2026-09-23, reportado por el usuario)**: `distinct()`
+  (`js/util/format.js`) ordenaba SIEMPRE como texto (`localeCompare` con `numeric: true`, «orden natural»): para
+  `calibre_awg_kcmil` eso da 1, 1/0, 2, 2/0, 3, 3/0, 4, 4/0, 5, 6, 8, 101.8… — ni por tamaño real (en AWG, el número BAJA
+  al crecer el calibre: 8 AWG es más delgado que 1 AWG, y 1/0‑2/0‑3/0‑4/0 siguen creciendo después de 1 AWG) ni consistente
+  con los códigos no estándar del catálogo (números como 101.8, 110.8, 134.6, que son áreas en kcmil intercaladas entre los
+  AWG). `distinct(rows, key, ordenarPor)` ahora acepta un tercer parámetro OPCIONAL: el nombre de un campo numérico de la
+  fila (p. ej. un área) por el que ordenar en su lugar; sin ese parámetro seguía igual que antes, así que ninguna otra
+  llamada a `distinct()` (tipo, material, nombre_clave, etc.) cambió. Se usa para el `calibre_awg_kcmil` en las 5 pantallas
+  que lo listan (Pérdidas, Regulación, Cortocircuito —ambas redes—, Conductor económico y Ampacidad aérea) pasando el campo
+  de área correspondiente al dataset (`area_seccion_aluminio_mm2` en desnudos/aéreo, `area_conductor_mm2` en XLPE/subterráneo)
+  y también en los 3 mensajes de error «Calibres disponibles: …» de `js/ai/tools.js` (mismo criterio, por prolijidad).
+  Si a algún calibre le falta el área (dato incompleto) cae de vuelta al orden de texto para ese valor. No se tocó
+  `js/views/calc-ampacidad-subterranea.js` (usa `ORDEN_CALIBRES`, un array fijo con los pocos calibres estándar de XLPE
+  subterráneo: no tiene el mismo problema). Pruebas: `tools/verify_perdidas.html`, `verify_regulacion.html` (se corrigió
+  además el cálculo de `fila2` en «vista: varios tramos», que ya no podía asumir que el calibre en `selectedIndex = 4`
+  coincidiera con el orden crudo del JSON: ahora usa el mismo `distinct()` de producción), `verify_cortocircuito.html`,
+  `verify_conductor_economico.html`, `verify_ampacidad_aerea.html` y `verify_ia.html`.
+
 ## Conversión de unidades (`js/views/conversion-unidades.js`, `data/unidades.json`)
 
 - Dos modos (2026-09-19, pedido del usuario). Casilla «Habilitar todas las conversiones» DEBAJO de la tarjeta (mismo estilo que la de

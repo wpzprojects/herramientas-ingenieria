@@ -196,6 +196,7 @@ export async function render(container) {
   // ---------- tramos ----------
   const datasetDe = (red) => (red === "Aerea" ? desnudos : xlpe);
   const campoMaterialDe = (red) => (red === "Aerea" ? "tipo" : "material_conductor");
+  const campoAreaDe = (red) => (red === "Aerea" ? "area_seccion_aluminio_mm2" : "area_conductor_mm2");
 
   /** Tarjeta de un tramo: cada tarjeta guarda su propio estado en el DOM, asi agregar o quitar otro tramo no lo pierde. */
   function crearTramo(id) {
@@ -275,7 +276,7 @@ export async function render(container) {
     }
 
     function poblarCalibre() {
-      const calibres = distinct(datasetDe(selRed.value).filter((c) => c[campoMaterialDe(selRed.value)] === selMaterial.value), "calibre_awg_kcmil");
+      const calibres = distinct(datasetDe(selRed.value).filter((c) => c[campoMaterialDe(selRed.value)] === selMaterial.value), "calibre_awg_kcmil", campoAreaDe(selRed.value));
       selCalibre.innerHTML = calibres.length
         ? `<option value="">Seleccione…</option>` + calibres.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("")
         : `<option value="">Sin calibres disponibles</option>`;

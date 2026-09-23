@@ -196,8 +196,8 @@ export async function render(container) {
     const material = selMaterial.value;
     const calibres =
       red === "Aereo"
-        ? distinct(desnudos.filter((c) => c.tipo === material), "calibre_awg_kcmil")
-        : distinct(xlpe.filter((c) => c.material_conductor === material), "calibre_awg_kcmil");
+        ? distinct(desnudos.filter((c) => c.tipo === material), "calibre_awg_kcmil", "area_seccion_aluminio_mm2")
+        : distinct(xlpe.filter((c) => c.material_conductor === material), "calibre_awg_kcmil", "area_conductor_mm2");
     selCalibre.innerHTML = calibres.length
       ? `<option value="">Seleccione…</option>` +
         calibres.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("")

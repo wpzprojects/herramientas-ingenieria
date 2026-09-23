@@ -305,7 +305,7 @@ export async function render(container) {
 
   selTipo.addEventListener("change", () => {
     const tipo = selTipo.value;
-    const calibres = tipo ? distinct(conductores.filter((c) => c.tipo === tipo), "calibre_awg_kcmil") : [];
+    const calibres = tipo ? distinct(conductores.filter((c) => c.tipo === tipo), "calibre_awg_kcmil", "area_seccion_aluminio_mm2") : [];
     selCalibre.innerHTML = calibres.length
       ? `<option value="">Seleccione…</option>` +
         calibres.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("")
