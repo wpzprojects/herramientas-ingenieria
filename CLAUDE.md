@@ -208,6 +208,11 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   económico: Conductores por fase pasa a la fila de Calibre, dejando Costo del conductor y Costo de instalación cada uno solo a
   media fila). Un campo `<div class="field">` solo dentro de un `grid-2` ya ocupa media fila por comportamiento normal de CSS
   Grid (no hace falta CSS nuevo). Pruebas y `ordenReferencia`/`filas(...)` actualizados en los 4 arneses.
+  Ajuste posterior (mismo día, pedido del usuario): en Regulación, «Separación entre subconductores del haz» pasa justo
+  después de «Conductores por fase» (antes iba después de Resistencia/RMG), desplazando lo que sigue: Longitud|Conductores
+  por fase → Separación del haz|Calibre → Referencia|Resistencia → RMG solo (media fila) → las 3 distancias. Solo cambia el
+  orden visual de los campos en `js/views/calc-regulacion.js` (mismos ids, misma lógica); las pruebas de orden de
+  `verify_regulacion.html` (`ordenReferencia`, `filas(...)`, el listado de botones «i») se actualizaron para el nuevo orden.
 
 ## Conversión de unidades (`js/views/conversion-unidades.js`, `data/unidades.json`)
 

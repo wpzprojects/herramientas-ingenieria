@@ -243,19 +243,23 @@ export async function render(container) {
         </div>
         <div class="grid-2">
           <div class="field">
+            <label for="f-sephaz-${id}" data-info="Solo aplica con más de un conductor por fase.">Separación entre subconductores del haz (m)</label>
+            <input type="number" id="f-sephaz-${id}" min="0.01" max="5" step="0.01" value="0.4" disabled>
+          </div>
+          <div class="field">
             <label for="f-calibre-${id}">Calibre</label>
             <select id="f-calibre-${id}" required disabled>
               <option value="">Seleccione un material primero</option>
             </select>
           </div>
+        </div>
+        <div class="grid-2">
           <div class="field">
             <label for="f-referencia-${id}" data-info="${INFO_REFERENCIA}">Referencia</label>
             <select id="f-referencia-${id}" required disabled>
               <option value="">Seleccione un calibre primero</option>
             </select>
           </div>
-        </div>
-        <div class="grid-2">
           <div class="field">
             <label for="f-resistencia-${id}">Resistencia AC a 75°C (Ω/km)</label>
             <div class="input-with-toggle">
@@ -263,18 +267,14 @@ export async function render(container) {
               <label class="checkbox-row"><input type="checkbox" id="chk-resistencia-${id}"> Manual</label>
             </div>
           </div>
+        </div>
+        <div class="grid-2">
           <div class="field">
             <label for="f-rmg-${id}">Radio medio geométrico (mm)</label>
             <div class="input-with-toggle">
               <input type="number" id="f-rmg-${id}" min="0" step="any" required disabled>
               <label class="checkbox-row"><input type="checkbox" id="chk-rmg-${id}"> Manual</label>
             </div>
-          </div>
-        </div>
-        <div class="grid-2">
-          <div class="field">
-            <label for="f-sephaz-${id}" data-info="Solo aplica con más de un conductor por fase.">Separación entre subconductores del haz (m)</label>
-            <input type="number" id="f-sephaz-${id}" min="0.01" max="5" step="0.01" value="0.4" disabled>
           </div>
         </div>
         <div class="grid-3 ultima">

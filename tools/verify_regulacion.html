@@ -156,7 +156,7 @@ await seccion("vista: tarjetas y dato de partida", async () => {
 
 await seccion("vista: campos del tramo (mm, haz y distancias)", async () => {
   // Orden y ubicacion como en la calculadora normativa: fila a fila, de izquierda a derecha.
-  const ordenReferencia = ["Tipo de red", "Material / Tipo de conductor", "Longitud del tramo (km)", "Conductores por fase", "Calibre", "Referencia", "Resistencia AC a 75°C (Ω/km)", "Radio medio geométrico (mm)", "Separación entre subconductores del haz (m)", "Distancia entre fases A-B (m)", "Distancia entre fases A-C (m)", "Distancia entre fases B-C (m)"];
+  const ordenReferencia = ["Tipo de red", "Material / Tipo de conductor", "Longitud del tramo (km)", "Conductores por fase", "Separación entre subconductores del haz (m)", "Calibre", "Referencia", "Resistencia AC a 75°C (Ω/km)", "Radio medio geométrico (mm)", "Distancia entre fases A-B (m)", "Distancia entre fases A-C (m)", "Distancia entre fases B-C (m)"];
   const camposTramo = $$(".tramo-block .field").map((f) => ({ nombre: texto($(":scope > label:first-child", f)), r: f.getBoundingClientRect() }));
   const filasTramo = [];
   for (const c of camposTramo) {
@@ -165,7 +165,7 @@ await seccion("vista: campos del tramo (mm, haz y distancias)", async () => {
     else filasTramo.push([c]);
   }
   ok(camposTramo.map((c) => c.nombre).join("|") === ordenReferencia.join("|"), `orden de los campos del tramo: ${camposTramo.map((c) => c.nombre).join(" → ")}`);
-  ok(filasTramo.map((f) => f.map((c) => c.nombre).join(" | ")).join(" // ") === "Tipo de red | Material / Tipo de conductor // Longitud del tramo (km) | Conductores por fase // Calibre | Referencia // Resistencia AC a 75°C (Ω/km) | Radio medio geométrico (mm) // Separación entre subconductores del haz (m) // Distancia entre fases A-B (m) | Distancia entre fases A-C (m) | Distancia entre fases B-C (m)", "ubicación por filas: red y material; longitud y conductores por fase; calibre y referencia; resistencia y radio medio geométrico; separación del haz sola; y las tres distancias");
+  ok(filasTramo.map((f) => f.map((c) => c.nombre).join(" | ")).join(" // ") === "Tipo de red | Material / Tipo de conductor // Longitud del tramo (km) | Conductores por fase // Separación entre subconductores del haz (m) | Calibre // Referencia | Resistencia AC a 75°C (Ω/km) // Radio medio geométrico (mm) // Distancia entre fases A-B (m) | Distancia entre fases A-C (m) | Distancia entre fases B-C (m)", "ubicación por filas: red y material; longitud y conductores por fase; separación del haz y calibre; referencia y resistencia; radio medio geométrico solo; y las tres distancias");
   ok(filasTramo.every((f) => f.every((c, i) => i === 0 || c.r.left > f[i - 1].r.left)), "dentro de cada fila los campos van de izquierda a derecha en ese orden");
   const etiquetas = $$(".tramo-block .field > label:first-child").map(texto);
   for (const e of ["Tipo de red", "Material / Tipo de conductor", "Calibre", "Referencia", "Resistencia AC a 75°C (Ω/km)", "Longitud del tramo (km)", "Conductores por fase", "Radio medio geométrico (mm)", "Separación entre subconductores del haz (m)", "Distancia entre fases A-B (m)", "Distancia entre fases A-C (m)", "Distancia entre fases B-C (m)"]) {
@@ -492,7 +492,7 @@ await seccion("vista: el botón de información no altera la altura de las etiqu
 
 await seccion("vista: ayuda de los campos con botón de información", async () => {
   const tramosN = $$(".tramo-block").length;
-  const ESPERADOS = Array.from({ length: tramosN }, () => ["Conductores por fase", "Referencia", "Separación entre subconductores del haz (m)"]).flat();
+  const ESPERADOS = Array.from({ length: tramosN }, () => ["Conductores por fase", "Separación entre subconductores del haz (m)", "Referencia"]).flat();
   const botones = $$(".info-btn");
   const nombres = botones.map((b) => b.getAttribute("aria-label").replace("Más información sobre ", ""));
   ok(nombres.join("|") === ESPERADOS.join("|"), `botones de información junto al nombre de: ${nombres.join(" | ")}`);
@@ -506,14 +506,14 @@ await seccion("vista: ayuda de los campos con botón de información", async () 
   const campo = b0.closest(".field");
   const card = b0.closest(".card");
   const pop = document.getElementById(b0.getAttribute("aria-controls"));
-  const antes = { card: card.getBoundingClientRect().height, campo: campo.getBoundingClientRect().height, input: campo.querySelector("input").getBoundingClientRect().top - campo.getBoundingClientRect().top };
+  const antes = { card: card.getBoundingClientRect().height, campo: campo.getBoundingClientRect().height, input: campo.querySelector("input, select").getBoundingClientRect().top - campo.getBoundingClientRect().top };
   b0.click();
   const abierto = {
     oculto: pop.hidden, exp: b0.getAttribute("aria-expanded"), texto: texto(pop), info: campo.querySelector("label").dataset.info,
     pos: getComputedStyle(pop).position, z: getComputedStyle(pop).zIndex, abajo: pop.classList.contains("info-popover--abajo"),
     rp: pop.getBoundingClientRect(), rc: campo.getBoundingClientRect(), rl: campo.querySelector("label").getBoundingClientRect(),
     card: card.getBoundingClientRect().height, campoH: campo.getBoundingClientRect().height,
-    input: campo.querySelector("input").getBoundingClientRect().top - campo.getBoundingClientRect().top,
+    input: campo.querySelector("input, select").getBoundingClientRect().top - campo.getBoundingClientRect().top,
   };
   b0.click();
   const cerrado = pop.hidden && b0.getAttribute("aria-expanded") === "false";
