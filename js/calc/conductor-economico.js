@@ -113,6 +113,29 @@ export function compararOpciones(base, opciones) {
   return { opciones: lista, mejor, indiceBase };
 }
 
+/**
+ * Sensibilidad al costo de instalación (2026-09-23): cuando no se conoce el costo de instalación de una
+ * opción (o de la ganadora), `costoTotal` ya lo excluye (queda en 0), así que `diferenciaVsMejor` YA ES la
+ * diferencia de costo sin instalación. Esta función solo la expresa en $/km, que es la unidad comparable con
+ * un costo de instalación: no calcula nada nuevo ni estima el costo de instalación (eso se intentó con un
+ * factor y se descartó por inexacto). El resultado es una DIFERENCIA neutral (no dice cuál instalación sería
+ * más cara, porque no se sabe) y solo se da para pares donde al menos un lado no indicó su costo real.
+ * @param {{opciones:object[], mejor:number}} resultado - el devuelto por compararOpciones
+ * @param {number} longitudKm
+ * @param {boolean[]} instalacionIndicada - por opcion, si se escribió un costo de instalación real (no vacío/0 por defecto)
+ * @returns {{opcion:number, umbralKm:number, vecesConductor:number|null}[]}
+ */
+export function sensibilidadInstalacion({ opciones, mejor }, longitudKm, instalacionIndicada) {
+  const costoConductorGanadorKm = opciones[mejor].costoConductores / longitudKm;
+  return opciones
+    .map((o, i) => ({ o, i }))
+    .filter(({ i }) => i !== mejor && !(instalacionIndicada[mejor] && instalacionIndicada[i]))
+    .map(({ o, i }) => {
+      const umbralKm = o.diferenciaVsMejor / longitudKm;
+      return { opcion: i, umbralKm, vecesConductor: costoConductorGanadorKm > 0 ? umbralKm / costoConductorGanadorKm : null };
+    });
+}
+
 /** Variaciones de la tabla de sensibilidad: cada una cambia UN supuesto y el resto queda igual. */
 export const ESCENARIOS_SENSIBILIDAD = [
   { clave: "energia+", etiqueta: "Precio de la energía +10 %", aplicar: (b) => ({ ...b, precioKwh: b.precioKwh * 1.1 }) },

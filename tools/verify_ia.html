@@ -522,6 +522,24 @@ await seccion("tools: conductor económico", async () => {
 
   ok(ctx.log[0].notas.some((n) => n.includes("valor residual")), "nota de alcance (sin valor residual ni O&M)");
   ok(tools.HERRAMIENTAS_ESTANDAR.includes("calcular_conductor_economico"), "está en el agente estándar (2026-09-23, pedido del usuario)");
+
+  // sensibilidad al costo de instalacion (2026-09-23): solo aparece si falta el dato en alguna opcion
+  const tieneCampo = (c, clave) => c.log.at(-1).resultados.some((r) => r.clave === clave);
+  ok(!tieneCampo(ctx, "opcion1_umbral_instalacion_km") && !tieneCampo(ctx, "opcion2_umbral_instalacion_km") && !ctx.log.at(-1).notas.some((n) => n.includes("umbral_instalacion_km")), "con costo de instalación indicado en ambas opciones, no aparece el umbral ni su nota");
+
+  const ctxSinInst = ctxNuevo();
+  const opcionesSinInst = [
+    { red: "Aerea", material: "ACSR", calibre: "1/0", costo_conductor_km: 9e6 },
+    { red: "Aerea", material: "ACSR", calibre: "4/0", costo_conductor_km: 14e6 },
+  ];
+  const rSinInst = await tools.ejecutarLlamada("calcular_conductor_economico", { ...base, opciones: opcionesSinInst }, ctxSinInst);
+  ok(rSinInst.ok === true, "sin costo de instalación en ninguna opción: igual calcula");
+  const directoSinInst = engEconomico.compararOpciones(baseMotor, [{ ...opA, costoInstalacionKm: 0 }, { ...opB, costoInstalacionKm: 0 }]);
+  const filasInst = engEconomico.sensibilidadInstalacion(directoSinInst, baseMotor.longitudKm, [false, false]);
+  const perdedora = filasInst[0].opcion + 1;
+  cerca(salida(ctxSinInst, `opcion${perdedora}_umbral_instalacion_km`), filasInst[0].umbralKm, 1e-3, "opcionN_umbral_instalacion_km coincide con sensibilidadInstalacion del motor");
+  ok(!tieneCampo(ctxSinInst, `opcion${directoSinInst.mejor + 1}_umbral_instalacion_km`), "la opción ganadora no lleva su propio umbral (se compara contra ella, no consigo misma)");
+  ok(ctxSinInst.log.at(-1).notas.some((n) => n.includes("umbral_instalacion_km") && n.includes("DIFERENCIA") && n.includes("no dice cuál instalación sería más cara")), "la nota aclara que es una diferencia neutral, no una estimación ni una dirección");
 });
 
 await seccion("tools: cortocircuito", async () => {

@@ -20,7 +20,11 @@ import { calcularAmpacidadAerea } from "../calc/ampacidad-aerea.js";
 import { calcularAmpacidadSubterranea } from "../calc/ampacidad-subterranea.js";
 import { calcularPantalla } from "../calc/ampacidad-subterranea-pantalla.js";
 import { calcularOcupacionGrupos } from "../calc/ocupacion-grupos.js";
-import { compararOpciones as compararOpcionesEconomico, sensibilidad as sensibilidadEconomico } from "../calc/conductor-economico.js";
+import {
+  compararOpciones as compararOpcionesEconomico,
+  sensibilidad as sensibilidadEconomico,
+  sensibilidadInstalacion as sensibilidadInstalacionEconomico,
+} from "../calc/conductor-economico.js";
 import { convertirBase, datosCalibre, calibrePorArea, CALIBRES } from "../calc/unidades-extendido.js";
 import { SISTEMAS, convertirCoordenadas } from "../calc/coordenadas.js";
 import { parseCodigoEpsg, infoSistema, convertirEntreSistemas, avisosArea } from "../calc/coordenadas-epsg.js";
@@ -883,6 +887,17 @@ const T_CONDUCTOR_ECONOMICO = {
     });
     salida.push(res("opcion_menor_costo", "Opción de menor costo total", `Opción ${r.mejor + 1} — ${etiquetas[r.mejor]}`));
     salida.push(res("sensibilidad_robusta", "La opción ganadora es la misma en todos los escenarios de sensibilidad", s.cambia ? "No" : "Sí"));
+
+    const instalacionIndicada = listaOp.map((t) => t.costo_instalacion_km !== undefined);
+    const filasInstalacion = sensibilidadInstalacionEconomico(r, base.longitudKm, instalacionIndicada);
+    filasInstalacion.forEach(({ opcion, umbralKm }) => {
+      salida.push(res(`opcion${opcion + 1}_umbral_instalacion_km`, `Opción ${opcion + 1} — diferencia de instalación necesaria para cambiar la conclusión`, umbralKm, "$/km", 0));
+    });
+    if (filasInstalacion.length) {
+      extra.notas.push(
+        "Como el costo de instalación no se indicó para alguna opción, \"opcionN_umbral_instalacion_km\" es la DIFERENCIA de costo de instalación (entre esa opción y la de menor costo) que haría cambiar cuál es la más económica; no dice cuál instalación sería más cara (eso no se sabe) ni es una estimación del costo de instalación."
+      );
+    }
     return salida;
   },
 };

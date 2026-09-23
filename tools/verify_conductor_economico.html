@@ -174,6 +174,40 @@ await seccion("conductor-economico: sensibilidad", async () => {
   ok(frontera.cambia, `en el precio de empate (${hi.toFixed(1)} $/kWh) la sensibilidad detecta que el ganador cambia`);
 });
 
+await seccion("conductor-economico: sensibilidad al costo de instalación", async () => {
+  const op0 = (o) => ({ ...o, costoInstalacionKm: 0 });
+  const r = eco.compararOpciones(BASE, [op0(OP_A), op0(OP_B), op0(OP_C)]);
+  const longitud = BASE.longitudKm;
+
+  // nadie indico instalacion: una fila por cada opcion que no es la ganadora
+  const filas1 = eco.sensibilidadInstalacion(r, longitud, [false, false, false]);
+  ok(filas1.length === 2 && filas1.every((f) => f.opcion !== r.mejor), "sin instalación indicada en ninguna: una fila por cada opción que no es la ganadora");
+  filas1.forEach((f) => cerca(f.umbralKm, r.opciones[f.opcion].diferenciaVsMejor / longitud, 1e-9, `opción ${f.opcion + 1}: umbral = diferenciaVsMejor / longitud`));
+  const costoConductorGanadorKm = r.opciones[r.mejor].costoConductores / longitud;
+  filas1.forEach((f) => cerca(f.vecesConductor, f.umbralKm / costoConductorGanadorKm, 1e-9, `opción ${f.opcion + 1}: vecesConductor = umbral / costo del conductor de la ganadora por km`));
+
+  // la ganadora Y otra opcion SI indicaron instalacion real: esa fila se excluye
+  const indicadaMejorYOtra = [false, false, false].map((_, i) => i === r.mejor || i === filas1[0].opcion);
+  const filas2 = eco.sensibilidadInstalacion(r, longitud, indicadaMejorYOtra);
+  ok(!filas2.some((f) => f.opcion === filas1[0].opcion) && filas2.length === filas1.length - 1, "si la ganadora Y la otra opción indicaron instalación real, esa fila se excluye");
+
+  // caso mixto: solo la otra opcion indico instalacion (la ganadora no) -> la fila sigue aplicando
+  const indicadaSoloOtra = [false, false, false].map((_, i) => i === filas1[0].opcion);
+  const filas3 = eco.sensibilidadInstalacion(r, longitud, indicadaSoloOtra);
+  ok(filas3.some((f) => f.opcion === filas1[0].opcion), "si solo la otra opción indicó instalación (la ganadora no), la fila sigue apareciendo");
+
+  // empate: la ganadora duplicada -> umbral 0 entre ambas (cualquier diferencia de instalación decide)
+  const rEmpate = eco.compararOpciones(BASE, [op0(OP_A), op0(OP_C), op0(OP_C)]);
+  const filasEmpate = eco.sensibilidadInstalacion(rEmpate, longitud, [false, false, false]);
+  const filaGemela = filasEmpate.find((f) => rEmpate.opciones[f.opcion].costoTotal === rEmpate.opciones[rEmpate.mejor].costoTotal);
+  ok(!!filaGemela && filaGemela.umbralKm === 0, "la opción empatada con la ganadora: el umbral entre ambas es 0");
+
+  // si las 3 opciones indicaron un costo de instalacion real, no aplica a nadie
+  const r4 = eco.compararOpciones(BASE, [OP_A, OP_B, OP_C]);
+  const filas4 = eco.sensibilidadInstalacion(r4, longitud, [true, true, true]);
+  ok(filas4.length === 0, "si las 3 opciones indicaron un costo de instalación real, no aplica a ninguna");
+});
+
 // ---------- vista ----------
 const stage = document.getElementById("stage");
 const $ = (s, r = stage) => r.querySelector(s);
@@ -311,9 +345,9 @@ await seccion("vista: fórmulas con KaTeX", async () => {
   $$(".tab-btn").find((b) => b.dataset.tab === "formulas").click();
   for (let i = 0; i < 60 && !$$("#formulas-katex .katex").length; i++) await espera(100);
   const ecuaciones = $$("#formulas-katex .formula-katex");
-  ok(window.katex && ecuaciones.length === 14, `KaTeX cargado y 14 ecuaciones dibujadas (${ecuaciones.length})`);
+  ok(window.katex && ecuaciones.length === 15, `KaTeX cargado y 15 ecuaciones dibujadas (${ecuaciones.length})`);
   ok($$("#formulas-katex .katex-error").length === 0, "ninguna ecuación con error de sintaxis");
-  ok($$("#formulas-katex .formula-etiquetas li").length === 23, `23 etiquetas descritas (${$$("#formulas-katex .formula-etiquetas li").length})`);
+  ok($$("#formulas-katex .formula-etiquetas li").length === 24, `24 etiquetas descritas (${$$("#formulas-katex .formula-etiquetas li").length})`);
   ok($("#formulas-plano").hidden, "al dibujarse las fórmulas se oculta el texto plano");
 });
 
@@ -427,6 +461,19 @@ await seccion("vista: costo de instalación opcional", async () => {
   poner(`#f-costo-inst-${ids()[0]}`, 0);
   enviar();
   ok($('[data-panel="reporte"] .report-block').textContent.includes("Costo de instalación: $ 0/km"), "un 0 escrito a propósito se muestra como $ 0/km");
+
+  // sensibilidad al costo de instalacion: aparece cuando falta el dato, desaparece cuando todas lo indican
+  ids().forEach((id) => poner(`#f-costo-inst-${id}`, ""));
+  enviar();
+  const subInst = [...$$(".result-subhead")].find((h) => texto(h).includes("Sensibilidad al costo de instalación"));
+  ok(!!subInst, "con instalación no indicada en ninguna opción, aparece el bloque de sensibilidad al costo de instalación");
+  const filasInstUi = [...subInst.nextElementSibling.nextElementSibling.querySelectorAll("tbody tr")];
+  ok(filasInstUi.length === 2, "una fila por cada opción que no es la ganadora (2 de 3)");
+  ok($('[data-panel="reporte"] .report-block').textContent.includes("Sensibilidad al costo de instalación (no incluido en el costo total):"), "también aparece en el reporte de texto");
+  ids().forEach((id) => poner(`#f-costo-inst-${id}`, 5e6));
+  enviar();
+  ok(![...$$(".result-subhead")].some((h) => texto(h).includes("Sensibilidad al costo de instalación")), "si las 3 opciones indican su costo de instalación, el bloque no aparece");
+  ok(!$('[data-panel="reporte"] .report-block').textContent.includes("Sensibilidad al costo de instalación"), "tampoco aparece en el reporte de texto");
 });
 
 await seccion("menú, ruta, acceso y service worker", async () => {
