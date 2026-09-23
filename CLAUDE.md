@@ -200,6 +200,14 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   calibre|referencia|resistencia, igual criterio que antes), `verify_cortocircuito.html` y `verify_conductor_economico.html`
   (su único helper central `llenarOpcion` se actualizó para elegir automáticamente la primera referencia disponible, lo que
   conservó casi todas las aserciones numéricas existentes sin tocarlas una por una).
+  Ajuste posterior (mismo día, pedido del usuario): la primera versión dejaba una fila de 3 columnas (Calibre | Referencia |
+  Resistencia/Área) en las 4 pantallas — se corrigió a filas de 2 columnas, reacomodando el campo vecino de Calibre en cada
+  pantalla (Pérdidas: Longitud pasa a la fila de Calibre, dejando Conductores por fase solo al final, a media fila; Regulación:
+  Conductores por fase se queda con Longitud como antes, Resistencia se empareja con RMG —ambas del catálogo, con «Manual»— y
+  Separación del haz queda sola a media fila; Cortocircuito: Área queda sola a media fila tras Calibre|Referencia; Conductor
+  económico: Conductores por fase pasa a la fila de Calibre, dejando Costo del conductor y Costo de instalación cada uno solo a
+  media fila). Un campo `<div class="field">` solo dentro de un `grid-2` ya ocupa media fila por comportamiento normal de CSS
+  Grid (no hace falta CSS nuevo). Pruebas y `ordenReferencia`/`filas(...)` actualizados en los 4 arneses.
 
 ## Conversión de unidades (`js/views/conversion-unidades.js`, `data/unidades.json`)
 

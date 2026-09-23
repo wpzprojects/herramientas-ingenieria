@@ -156,7 +156,7 @@ await seccion("vista: tarjetas y dato de partida", async () => {
 
 await seccion("vista: campos del tramo (mm, haz y distancias)", async () => {
   // Orden y ubicacion como en la calculadora normativa: fila a fila, de izquierda a derecha.
-  const ordenReferencia = ["Tipo de red", "Material / Tipo de conductor", "Longitud del tramo (km)", "Conductores por fase", "Calibre", "Referencia", "Resistencia AC a 75°C (Ω/km)", "Separación entre subconductores del haz (m)", "Radio medio geométrico (mm)", "Distancia entre fases A-B (m)", "Distancia entre fases A-C (m)", "Distancia entre fases B-C (m)"];
+  const ordenReferencia = ["Tipo de red", "Material / Tipo de conductor", "Longitud del tramo (km)", "Conductores por fase", "Calibre", "Referencia", "Resistencia AC a 75°C (Ω/km)", "Radio medio geométrico (mm)", "Separación entre subconductores del haz (m)", "Distancia entre fases A-B (m)", "Distancia entre fases A-C (m)", "Distancia entre fases B-C (m)"];
   const camposTramo = $$(".tramo-block .field").map((f) => ({ nombre: texto($(":scope > label:first-child", f)), r: f.getBoundingClientRect() }));
   const filasTramo = [];
   for (const c of camposTramo) {
@@ -165,7 +165,7 @@ await seccion("vista: campos del tramo (mm, haz y distancias)", async () => {
     else filasTramo.push([c]);
   }
   ok(camposTramo.map((c) => c.nombre).join("|") === ordenReferencia.join("|"), `orden de los campos del tramo: ${camposTramo.map((c) => c.nombre).join(" → ")}`);
-  ok(filasTramo.map((f) => f.map((c) => c.nombre).join(" | ")).join(" // ") === "Tipo de red | Material / Tipo de conductor // Longitud del tramo (km) | Conductores por fase // Calibre | Referencia | Resistencia AC a 75°C (Ω/km) // Separación entre subconductores del haz (m) | Radio medio geométrico (mm) // Distancia entre fases A-B (m) | Distancia entre fases A-C (m) | Distancia entre fases B-C (m)", "ubicación por filas: red y material; longitud y conductores por fase; calibre, referencia y resistencia; separación del haz y radio medio geométrico; y las tres distancias");
+  ok(filasTramo.map((f) => f.map((c) => c.nombre).join(" | ")).join(" // ") === "Tipo de red | Material / Tipo de conductor // Longitud del tramo (km) | Conductores por fase // Calibre | Referencia // Resistencia AC a 75°C (Ω/km) | Radio medio geométrico (mm) // Separación entre subconductores del haz (m) // Distancia entre fases A-B (m) | Distancia entre fases A-C (m) | Distancia entre fases B-C (m)", "ubicación por filas: red y material; longitud y conductores por fase; calibre y referencia; resistencia y radio medio geométrico; separación del haz sola; y las tres distancias");
   ok(filasTramo.every((f) => f.every((c, i) => i === 0 || c.r.left > f[i - 1].r.left)), "dentro de cada fila los campos van de izquierda a derecha en ese orden");
   const etiquetas = $$(".tramo-block .field > label:first-child").map(texto);
   for (const e of ["Tipo de red", "Material / Tipo de conductor", "Calibre", "Referencia", "Resistencia AC a 75°C (Ω/km)", "Longitud del tramo (km)", "Conductores por fase", "Radio medio geométrico (mm)", "Separación entre subconductores del haz (m)", "Distancia entre fases A-B (m)", "Distancia entre fases A-C (m)", "Distancia entre fases B-C (m)"]) {

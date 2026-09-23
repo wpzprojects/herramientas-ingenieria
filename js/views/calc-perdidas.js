@@ -219,13 +219,19 @@ export async function render(container) {
             <select id="f-material-${id}" required></select>
           </div>
         </div>
-        <div class="grid-3">
+        <div class="grid-2">
+          <div class="field">
+            <label for="f-longitud-${id}">Longitud del tramo (km)</label>
+            <input type="number" id="f-longitud-${id}" min="0" step="0.01" value="10" required>
+          </div>
           <div class="field">
             <label for="f-calibre-${id}">Calibre</label>
             <select id="f-calibre-${id}" required disabled>
               <option value="">Seleccione un material primero</option>
             </select>
           </div>
+        </div>
+        <div class="grid-2">
           <div class="field">
             <label for="f-referencia-${id}" data-info="${INFO_REFERENCIA}">Referencia</label>
             <select id="f-referencia-${id}" required disabled>
@@ -241,10 +247,6 @@ export async function render(container) {
           </div>
         </div>
         <div class="grid-2 ultima">
-          <div class="field">
-            <label for="f-longitud-${id}">Longitud del tramo (km)</label>
-            <input type="number" id="f-longitud-${id}" min="0" step="0.01" value="10" required>
-          </div>
           <div class="field">
             <label for="f-n-${id}" data-info="Resistencia efectiva: R conductor / # conductores por fase.">Conductores por fase</label>
             <input type="number" id="f-n-${id}" min="1" max="8" step="1" value="1" required>

@@ -99,7 +99,7 @@ export async function render(container) {
             <select id="f-material" required></select>
           </div>
         </div>
-        <div class="grid-3 ultima">
+        <div class="grid-2">
           <div class="field">
             <label for="f-calibre">Calibre</label>
             <select id="f-calibre" required disabled>
@@ -112,6 +112,8 @@ export async function render(container) {
               <option value="">Seleccione un calibre primero</option>
             </select>
           </div>
+        </div>
+        <div class="grid-2 ultima">
           <div class="field">
             <label for="f-area" data-info="En conductores aéreos es el área de aluminio (sin el alma de acero).">Área del conductor (mm²)</label>
             <div class="input-with-toggle">

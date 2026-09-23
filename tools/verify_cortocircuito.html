@@ -142,7 +142,7 @@ await seccion("vista: tarjetas y campos", async () => {
     return fs.map((f) => f.map((c) => c.n).join(" | ")).join(" // ");
   };
   const [c1, c2] = $$(".form-section");
-  ok(filas(c1) === "Tipo de red | Material / Tipo de conductor // Calibre | Referencia | Área del conductor (mm²)", `tarjeta Conductor: ${filas(c1)}`);
+  ok(filas(c1) === "Tipo de red | Material / Tipo de conductor // Calibre | Referencia // Área del conductor (mm²)", `tarjeta Conductor: ${filas(c1)}`);
   ok(filas(c2) === "Temperatura de operación (°C) | Temperatura máxima admisible en falla (°C) // Tiempo de despeje de la falla (s) | Corriente de falla a soportar (kA)", `tarjeta Condiciones: ${filas(c2)}`);
   ok($$(".input-with-toggle").length === 3 && $$(".input-with-toggle").every((w) => texto($("label.checkbox-row", w)) === "Manual"), "área y las dos temperaturas llevan la casilla «Manual» a su derecha");
 });

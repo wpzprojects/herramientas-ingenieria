@@ -289,13 +289,19 @@ export async function render(container) {
             <select id="f-material-${id}" required></select>
           </div>
         </div>
-        <div class="grid-3">
+        <div class="grid-2">
+          <div class="field">
+            <label for="f-n-${id}">Conductores por fase</label>
+            <input type="number" id="f-n-${id}" min="1" max="8" step="1" value="1" required>
+          </div>
           <div class="field">
             <label for="f-calibre-${id}">Calibre</label>
             <select id="f-calibre-${id}" required disabled>
               <option value="">Seleccione un material primero</option>
             </select>
           </div>
+        </div>
+        <div class="grid-2">
           <div class="field">
             <label for="f-referencia-${id}" data-info="${INFO_REFERENCIA}">Referencia</label>
             <select id="f-referencia-${id}" required disabled>
@@ -311,10 +317,6 @@ export async function render(container) {
           </div>
         </div>
         <div class="grid-2">
-          <div class="field">
-            <label for="f-n-${id}">Conductores por fase</label>
-            <input type="number" id="f-n-${id}" min="1" max="8" step="1" value="1" required>
-          </div>
           <div class="field">
             <label for="f-costo-cond-${id}" data-info="Precio de un solo conductor (un hilo); internamente se multiplica por las 3 fases, por el número de conductores por fase (si hay haz) y por la longitud de la línea para obtener la inversión total.">Costo del conductor ($/km)</label>
             <input type="number" id="f-costo-cond-${id}" min="0" step="any" required>
