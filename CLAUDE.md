@@ -213,6 +213,8 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   por fase → Separación del haz|Calibre → Referencia|Resistencia → RMG solo (media fila) → las 3 distancias. Solo cambia el
   orden visual de los campos en `js/views/calc-regulacion.js` (mismos ids, misma lógica); las pruebas de orden de
   `verify_regulacion.html` (`ordenReferencia`, `filas(...)`, el listado de botones «i») se actualizaron para el nuevo orden.
+  Ajuste posterior (mismo día, pedido del usuario): en Conductor económico, «Costo del conductor» y «Costo de instalación»
+  vuelven a compartir fila (quedaron cada uno solo a media fila tras el ajuste anterior; el usuario los quiere juntos).
 
 ## Conversión de unidades (`js/views/conversion-unidades.js`, `data/unidades.json`)
 

@@ -316,13 +316,11 @@ export async function render(container) {
             </div>
           </div>
         </div>
-        <div class="grid-2">
+        <div class="grid-2 ultima">
           <div class="field">
             <label for="f-costo-cond-${id}" data-info="Precio de un solo conductor (un hilo); internamente se multiplica por las 3 fases, por el número de conductores por fase (si hay haz) y por la longitud de la línea para obtener la inversión total.">Costo del conductor ($/km)</label>
             <input type="number" id="f-costo-cond-${id}" min="0" step="any" required>
           </div>
-        </div>
-        <div class="grid-2 ultima">
           <div class="field">
             <label for="f-costo-inst-${id}" data-info="Costo de la instalación (sin el suministro del conductor que ya se cuenta por separado): postes, aisladores, herrajes, mano de obra, transporte y demás. Suele ser similar entre calibres cercanos, salvo que el proyecto exija elementos de mayor capacidad o el salto de calibre sea grande, en ese caso escríbelo distinto por opción. Si se deja vacío el cálculo considerará únicamente el costo del conductor.">Costo de instalación ($/km)</label>
             <input type="number" id="f-costo-inst-${id}" min="0" step="any">
