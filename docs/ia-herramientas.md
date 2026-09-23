@@ -78,8 +78,10 @@ const T_OCUPACION = {
 
 **Tipos de herramienta** (`tipo`):
 - `calculo`: ejecuta un motor y registra una corrida (gasta 1 del presupuesto de cálculos).
-- `consulta`: lee un catálogo y devuelve filas (no calcula ni gasta presupuesto). `buscar_conductor`, `buscar_tuberia`.
+- `consulta`: lee un catálogo y devuelve filas (no calcula ni gasta presupuesto, y no deja tabla en el reporte). `buscar_conductor`, `buscar_tuberia`.
 - `barrido`: ejecuta una calculadora varias veces variando UN parámetro (hasta 40 puntos). Solo ofrece las calculadoras de `CALCULADORAS` (las 6 de Cálculos).
+- `diseno`: "meta-herramienta" que combina calculadoras (ver más abajo); recibe `ctx` completo y arma su propio registro en el reporte.
+- `ficha` (2026-09-23): registra/actualiza datos sin calcular (como `consulta`), pero SÍ debe verse en el reporte (a diferencia de `consulta`, que se descarta a propósito): `guardar_ficha_proyecto`, la única de este tipo. No gasta presupuesto; deja un marcador mínimo en `ctx.log` (`{ficha:true}`, sin entradas/resultados) que `armarTablas` ignora igual que a las consultas, porque su información vive aparte en `ctx.ficha` (ver más abajo).
 
 **Marcas opcionales de la ficha:** `opcional: true` (no forma parte del agente estándar), `grupo` (dónde aparece la casilla en Agentes; por defecto se deduce del tipo) y, en los resultados, `cifras` (cuántas cifras significativas recibe la IA).
 
@@ -87,15 +89,38 @@ const T_OCUPACION = {
 
 **Campos con lista de objetos (2026-09-19).** Un campo puede ser una lista de objetos declarando `itemCampos` (los campos de cada elemento; `esquemaDe` lo convierte en un esquema anidado para Gemini y `normalizar` valida cada elemento, con errores del tipo `tramos[2]: "longitud_km" debe ser…`). Lo usan `tramos` (pérdidas y regulación), `grupos` (ocupación) y `puntos` (coordenadas). Regla común: lo que un tramo no indica se toma del nivel superior (así una línea de 3 tramos con el mismo conductor solo repite las longitudes). Helpers en `tools.js`: `campoTramos`, `listaTramos`, `volcarTramo` (antepone «Tramo N —» a entradas y notas), `datoPartida`. Los campos de nivel superior se conservan para el caso de un solo tramo/tipo/punto, de modo que las llamadas antiguas y `barrer_parametro` siguen funcionando.
 
-## 4. Herramientas actuales (15)
+## 4. Herramientas actuales (16)
 
-| Herramienta | Tipo | Grupo en Agentes | Agente estándar |
-|---|---|---|---|
-| `calcular_perdidas`, `calcular_regulacion`, `calcular_cortocircuito`, `calcular_ampacidad_aerea`, `calcular_ampacidad_subterranea`, `calcular_ocupacion_ductos`, `calcular_conductor_economico` | calculo | Calculadoras | Sí |
-| `buscar_conductor`, `buscar_tuberia` | consulta | Catálogos | Sí |
-| `barrer_parametro` | barrido | Análisis | Sí |
-| `dimensionar_conductor`, `verificar_conductor`, `resolver_valor_limite` | diseno | Análisis | **No** (opcionales) |
-| `convertir_unidades`, `convertir_coordenadas` | calculo | Varios | **No** (opcionales) |
+| Herramienta | Tipo | Grupo en Agentes | Agente estándar | Agente riguroso |
+|---|---|---|---|---|
+| `calcular_perdidas`, `calcular_regulacion`, `calcular_cortocircuito`, `calcular_ampacidad_aerea`, `calcular_ampacidad_subterranea`, `calcular_ocupacion_ductos`, `calcular_conductor_economico` | calculo | Calculadoras | Sí | Sí |
+| `buscar_conductor`, `buscar_tuberia` | consulta | Catálogos | Sí | Sí |
+| `barrer_parametro` | barrido | Análisis | Sí | Sí |
+| `dimensionar_conductor`, `verificar_conductor`, `resolver_valor_limite` | diseno | Análisis | **No** (opcionales) | Sí |
+| `convertir_unidades`, `convertir_coordenadas` | calculo | Varios | **No** (opcionales) | Sí |
+| `guardar_ficha_proyecto` | ficha | Análisis | **No** (opcional) | Sí |
+
+**Dos agentes predefinidos (2026-09-23).** `js/ai/agentes-analisis.js` ya no tiene un único predeterminado sino
+`AGENTES_PREDETERMINADOS` (array, ambos de solo lectura, viven en el código): el **Agente estándar** de siempre
+(`HERRAMIENTAS_ESTANDAR`, calcula rápido y declara los valores por defecto como *supuesto*) y el nuevo **Agente
+riguroso** (`HERRAMIENTAS_TODAS`: las 16, incluidas las opcionales), pensado para una *memoria de cálculo
+completa y definitiva* en vez de una estimación: antes de calcular pide todos los parámetros por categoría
+(Sistema, Conductor, Instalación…), avisa explícitamente cada valor por defecto y pide confirmarlo o cambiarlo
+(en vez de asumirlo), reparte las preguntas en varias respuestas para no saturar, y registra cada categoría
+confirmada con `guardar_ficha_proyecto`. Su reporte (`PROMPT_REPORTE_RIGUROSO`, en `js/ai/analisis.js`) pide una
+estructura de memoria de cálculo formal (normativa citada, metodología, verificación de cumplimiento…),
+distinta de la del estándar (`PROMPT_REPORTE`). `ID_PREDETERMINADO`/`AGENTE_PREDETERMINADO` siguen existiendo
+como alias del estándar (compatibilidad).
+
+**`guardar_ficha_proyecto`** (2026-09-23; idea que estaba anotada como aplazada, "ficha del caso"): registra por
+categoría los parámetros que el usuario confirmó o aceptó dejar en su valor por defecto, con su origen
+(`usuario` | `defecto`); campo `parametros` con `itemCampos` (`clave`, `etiqueta`, `valor`, `unidad`, `origen`),
+mismo patrón que `tramos`/`grupos`/`puntos`. Guarda en `ctx.ficha` (un arreglo por categoría, mutado en sitio —
+igual que `ctx.log`, para que `conv.ficha = ctx.ficha` conserve la referencia entre turnos y al reabrir del
+historial). `js/ai/reporte.js` agrega `fichaHtml`/`fichaMd`, que arman la sección «Datos del proyecto» (una
+tabla por categoría) ANTES de «Cálculos ejecutados» en el reporte (Markdown, HTML exportable, impresión y
+`.docx`). Es opcional: no está en el agente estándar, solo la usa el riguroso (o un agente propio que la
+active).
 
 **`calcular_conductor_economico`** (2026-09-22; entró al agente estándar el 2026-09-23, pedido del usuario): compara entre 2 y 5 opciones de conductor de una línea nueva por su costo total actualizado (inversión + valor presente del costo de las pérdidas durante `anios`), igual que la calculadora. Reutiliza `js/calc/conductor-economico.js` (`compararOpciones`, `sensibilidad`) sin tocarlo; cada opción resuelve su conductor con el mismo `resolverConductor`/`resistencia75` que usan las demás fichas. NO entra en `CALCULADORAS` (sigue sin ofrecer barrido: su resultado es una comparación entre opciones, no un valor único que tenga sentido barrer). Devuelve por opción `opcionN_conductor/inversion/perdidas_pct/perdidas_mwh/costo_perdidas_vp/costo_total/compensa`, más `opcion_menor_costo` y `sensibilidad_robusta` (si la ganadora cambia en algún escenario de energía ±10 %, demanda ±10 % o tasa ±2 puntos).
 

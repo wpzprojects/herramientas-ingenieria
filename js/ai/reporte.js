@@ -15,7 +15,7 @@ export function armarTablas(log) {
   const grupos = new Map();
   const errores = [];
   for (const r of log) {
-    if (r.consulta) continue;
+    if (r.consulta || r.ficha) continue;
     if (r.error) {
       errores.push(r);
       continue;
@@ -67,6 +67,36 @@ export function armarTablas(log) {
 }
 
 const textoComunes = (comunes) => comunes.map((e) => `${e.etiqueta}: ${formatearValor(e.valor)}${e.unidad ? ` ${e.unidad}` : ""}`).join(" · ");
+
+const ORIGEN_TXT = { usuario: "Usuario", defecto: "Valor por defecto" };
+
+/** HTML de la seccion "Datos del proyecto" (ficha del caso, agente riguroso): una tabla por categoria. */
+export function fichaHtml(ficha) {
+  if (!ficha?.length) return "";
+  let html = '<h2 class="section-title" style="margin-top:0">Datos del proyecto</h2>';
+  for (const cat of ficha) {
+    if (!cat.parametros?.length) continue;
+    html += `<h3>${escapeHtml(cat.categoria)}</h3>`;
+    const filas = cat.parametros
+      .map((p) => `<tr><td>${escapeHtml(p.etiqueta)}</td><td class="num">${escapeHtml(p.valor)}${p.unidad ? ` ${escapeHtml(p.unidad)}` : ""}</td><td>${escapeHtml(ORIGEN_TXT[p.origen] || p.origen)}</td></tr>`)
+      .join("");
+    html += `<div class="table-wrap"><table><thead><tr><th>Parámetro</th><th class="num">Valor</th><th>Origen</th></tr></thead><tbody>${filas}</tbody></table></div>`;
+  }
+  return html;
+}
+
+/** Igual que fichaHtml pero en Markdown. */
+export function fichaMd(ficha) {
+  if (!ficha?.length) return "";
+  let md = "## Datos del proyecto\n\n";
+  for (const cat of ficha) {
+    if (!cat.parametros?.length) continue;
+    md += `### ${cat.categoria}\n\n`;
+    md += `| Parámetro | Valor | Origen |\n|---|---|---|\n`;
+    md += cat.parametros.map((p) => `| ${celdaMd(p.etiqueta)} | ${celdaMd(p.valor)}${p.unidad ? ` ${celdaMd(p.unidad)}` : ""} | ${celdaMd(ORIGEN_TXT[p.origen] || p.origen)} |`).join("\n") + "\n\n";
+  }
+  return md;
+}
 
 /** HTML de la seccion "Calculos ejecutados". `exportable` agrega bordes en linea para pegar en Word/correo. */
 export function escenariosHtml(log, { exportable = false } = {}) {
@@ -122,16 +152,17 @@ function encabezadoMd({ fecha, modelo }) {
   return `_${fecha} · Modelo: ${modelo}_\n\n`;
 }
 
-/** Reporte completo en Markdown: narrativa de la IA + tablas de escenarios + aviso. */
-export function reporteMd({ narrativa, log, fecha, modelo }) {
-  return `${narrativa ? `${narrativa.trim()}\n\n` : "# Reporte de escenarios\n\n"}${encabezadoMd({ fecha, modelo })}${escenariosMd(log)}---\n\n_${AVISO_REPORTE}_\n`;
+/** Reporte completo en Markdown: narrativa de la IA + datos del proyecto (si hay) + tablas de escenarios + aviso. */
+export function reporteMd({ narrativa, log, ficha, fecha, modelo }) {
+  return `${narrativa ? `${narrativa.trim()}\n\n` : "# Reporte de escenarios\n\n"}${encabezadoMd({ fecha, modelo })}${fichaMd(ficha)}${escenariosMd(log)}---\n\n_${AVISO_REPORTE}_\n`;
 }
 
 /** Igual que reporteMd pero en HTML autocontenido (para pegar en Word/correo). */
-export function reporteHtmlExportable({ narrativa, log, fecha, modelo }) {
+export function reporteHtmlExportable({ narrativa, log, ficha, fecha, modelo }) {
   return (
     (narrativa ? markdownAHtml(narrativa) : "<h2>Reporte de escenarios</h2>") +
     `<p><em>${escapeHtml(fecha)} · Modelo: ${escapeHtml(modelo)}</em></p>` +
+    fichaHtml(ficha) +
     escenariosHtml(log, { exportable: true }) +
     `<hr><p><em>${escapeHtml(AVISO_REPORTE)}</em></p>`
   );

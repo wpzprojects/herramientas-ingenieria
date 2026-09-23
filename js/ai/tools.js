@@ -1336,6 +1336,53 @@ const T_LIMITE = {
 
 const DISENO = [T_DIMENSIONAR, T_VERIFICAR, T_LIMITE];
 
+// ---------------------------------------------------------------- ficha del proyecto (opcional; la usa el agente riguroso)
+// No calcula ni gasta presupuesto (como "consulta"), pero SI debe persistir durante toda la conversacion y
+// aparecer en el reporte (a diferencia de "consulta", que ni se guarda): por eso tiene su propio tipo "ficha".
+
+const CAMPOS_PARAMETRO_FICHA = [
+  S("clave", "Identificador corto del parámetro, en snake_case (ej. tension_kv)", { req: true }),
+  S("etiqueta", "Nombre visible del parámetro (ej. Tensión nominal)", { req: true }),
+  S("valor", "Valor confirmado, como texto (puede ser numérico o categórico, ej. \"34.5\" o \"ACSR\")", { req: true }),
+  S("unidad", "Unidad del valor, si aplica (ej. kV)", {}),
+  S("origen", "'usuario' si el usuario lo dio o lo cambió; 'defecto' si aceptó dejar el valor por defecto de la calculadora", { req: true, enum: ["usuario", "defecto"] }),
+];
+
+const T_FICHA_PROYECTO = {
+  nombre: "guardar_ficha_proyecto",
+  tipo: "ficha",
+  titulo: "Ficha del proyecto",
+  grupo: "Análisis",
+  opcional: true,
+  descripcion:
+    "Registra o actualiza, por categoría (por ejemplo Sistema, Conductor, Instalación, Condiciones ambientales), los parámetros del " +
+    "proyecto que el usuario ya confirmó o aceptó dejar en su valor por defecto. NO calcula nada: es la memoria de los datos de entrada " +
+    "para la memoria de cálculo final, y queda registrada en el reporte como tabla «Datos del proyecto», separada de los cálculos. " +
+    "Llámala cada vez que una categoría de datos quede confirmada (se puede llamar varias veces, una por categoría, a medida que avanza " +
+    "la conversación); si se vuelve a llamar con la misma categoría y clave, el valor se actualiza.",
+  campos: [
+    S("categoria", "Nombre de la categoría de datos (ej. \"Sistema\", \"Conductor\", \"Instalación\")", { req: true }),
+    { n: "parametros", t: "array", d: "Parámetros confirmados de esta categoría", req: true, itemCampos: CAMPOS_PARAMETRO_FICHA },
+  ],
+  async ejecutar(args, ctx) {
+    const { v } = normalizar(this.campos, args);
+    let cat = ctx.ficha.find((c) => norm(c.categoria) === norm(v.categoria));
+    if (!cat) {
+      cat = { categoria: v.categoria, parametros: [] };
+      ctx.ficha.push(cat);
+    } else {
+      cat.categoria = v.categoria; // conserva el nombre mas reciente con el que se la nombro
+    }
+    for (const p of v.parametros) {
+      const i = cat.parametros.findIndex((x) => x.clave === p.clave);
+      if (i >= 0) cat.parametros[i] = p;
+      else cat.parametros.push(p);
+    }
+    ctx.log.push({ id: ctx.siguienteId++, herramienta: this.nombre, titulo: this.titulo, ficha: true });
+    return { ok: true, categoria: cat.categoria, parametros_guardados: cat.parametros.length, ficha_actual: ctx.ficha };
+  },
+};
+
 // ---------------------------------------------------------------- varios (opcionales)
 // Modulos de la seccion Varios. Son `opcional`: el agente estandar NO los usa; un agente propio los activa con su casilla.
 // Quedan fuera de CALCULADORAS, asi que el barrido de parametros tampoco los ofrece.
@@ -1555,7 +1602,9 @@ const VARIOS = [T_CONVERTIR_UNIDADES, T_CONVERTIR_COORDENADAS];
 
 // ---------------------------------------------------------------- registro y ejecucion
 
-const REGISTRO = Object.fromEntries([...CALCULADORAS, T_CONDUCTOR_ECONOMICO, T_BUSCAR_CONDUCTOR, T_BUSCAR_TUBERIA, T_BARRIDO, ...DISENO, ...VARIOS].map((t) => [t.nombre, t]));
+const REGISTRO = Object.fromEntries(
+  [...CALCULADORAS, T_CONDUCTOR_ECONOMICO, T_BUSCAR_CONDUCTOR, T_BUSCAR_TUBERIA, T_BARRIDO, ...DISENO, T_FICHA_PROYECTO, ...VARIOS].map((t) => [t.nombre, t])
+);
 
 // Cada agente elige cuales herramientas puede usar. Una herramienta con `opcional: true` no forma parte de las del
 // agente estandar (queda desmarcada hasta que un agente propio la active); `grupo` la ubica en el formulario.
@@ -1568,6 +1617,9 @@ export function catalogoHerramientas() {
 
 /** Las del agente estandar: todas salvo las opcionales. */
 export const HERRAMIENTAS_ESTANDAR = Object.freeze(Object.values(REGISTRO).filter((t) => !t.opcional).map((t) => t.nombre));
+
+/** Todas las herramientas registradas (estandar + opcionales), para agentes que deban tenerlas todas habilitadas. */
+export const HERRAMIENTAS_TODAS = Object.freeze(Object.values(REGISTRO).map((t) => t.nombre));
 
 /** Deja solo nombres que existen (sin repetidos), en el orden del registro. */
 export function herramientasValidas(nombres) {
@@ -1724,7 +1776,7 @@ export async function ejecutarLlamada(nombre, args, ctx) {
       ctx.log.push({ id: ctx.siguienteId++, herramienta: nombre, titulo: tool.titulo, consulta: true });
       return { ok: true, ...salida };
     }
-    if (tool.tipo === "diseno") return await tool.ejecutar(args, ctx);
+    if (tool.tipo === "diseno" || tool.tipo === "ficha") return await tool.ejecutar(args, ctx);
     return await ejecutarBarrido(args, ctx);
   } catch (e) {
     if (!(e instanceof ErrorHerramienta)) {
@@ -1738,9 +1790,9 @@ export async function ejecutarLlamada(nombre, args, ctx) {
   }
 }
 
-export function crearContexto(maxCalculos, logPrevio = []) {
+export function crearContexto(maxCalculos, logPrevio = [], fichaPrevia = []) {
   const siguienteId = logPrevio.reduce((m, r) => Math.max(m, r.id || 0), 0) + 1;
-  return { presupuesto: { max: maxCalculos, usado: 0 }, log: logPrevio, siguienteId };
+  return { presupuesto: { max: maxCalculos, usado: 0 }, log: logPrevio, ficha: fichaPrevia, siguienteId };
 }
 
 // ---------------------------------------------------------------- formato de valores

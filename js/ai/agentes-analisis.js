@@ -1,19 +1,17 @@
 // Agentes de "Analisis con calculadoras": cada uno es el prompt de sistema con el que trabaja Gemini, mas las
 // instrucciones del reporte, una temperatura opcional y la lista de herramientas que puede usar (js/ai/tools.js;
-// un agente guardado sin lista usa las del estandar). El agente predeterminado vive en el codigo
-// (SISTEMA_ANALISIS y PROMPT_REPORTE de analisis.js): es de solo lectura, no se guarda ni se puede borrar; se puede
-// ver y duplicar. Los agentes propios se guardan en el navegador (localStorage).
+// un agente guardado sin lista usa las del estandar). Los agentes predeterminados viven en el codigo
+// (AGENTES_PREDETERMINADOS: hoy el estandar y el riguroso): son de solo lectura, no se guardan ni se pueden
+// borrar; se pueden ver y duplicar. Los agentes propios se guardan en el navegador (localStorage).
 
-import { SISTEMA_ANALISIS, PROMPT_REPORTE } from "./analisis.js";
-import { HERRAMIENTAS_ESTANDAR, herramientasValidas } from "./tools.js";
+import { SISTEMA_ANALISIS, PROMPT_REPORTE, SISTEMA_RIGUROSO, PROMPT_REPORTE_RIGUROSO } from "./analisis.js";
+import { HERRAMIENTAS_ESTANDAR, HERRAMIENTAS_TODAS, herramientasValidas } from "./tools.js";
 
 const K_AGENTES = "ia.agentesAnalisis";
 const K_ACTIVO = "ia.agenteAnalisisActivo";
 
-export const ID_PREDETERMINADO = "analisis-estandar";
-
-export const AGENTE_PREDETERMINADO = Object.freeze({
-  id: ID_PREDETERMINADO,
+const AGENTE_ESTANDAR = Object.freeze({
+  id: "analisis-estandar",
   nombre: "Agente estándar",
   descripcion: "Reglas y reporte originales de la aplicación (solo lectura).",
   temperatura: null, // null = la de Configuracion de IA
@@ -22,6 +20,24 @@ export const AGENTE_PREDETERMINADO = Object.freeze({
   herramientas: HERRAMIENTAS_ESTANDAR,
   predefinido: true,
 });
+
+const AGENTE_RIGUROSO = Object.freeze({
+  id: "analisis-riguroso",
+  nombre: "Agente riguroso",
+  descripcion: "Pide todos los datos por categoría (avisando los valores por defecto) para una memoria de cálculo completa (solo lectura).",
+  temperatura: null,
+  instrucciones: SISTEMA_RIGUROSO,
+  reporte: PROMPT_REPORTE_RIGUROSO,
+  herramientas: HERRAMIENTAS_TODAS,
+  predefinido: true,
+});
+
+/** Los predeterminados, en el orden en que se muestran; ambos de solo lectura, viven en el codigo. */
+export const AGENTES_PREDETERMINADOS = Object.freeze([AGENTE_ESTANDAR, AGENTE_RIGUROSO]);
+
+// Alias de compatibilidad: "el" predeterminado historico es el primero (el estandar).
+export const ID_PREDETERMINADO = AGENTE_ESTANDAR.id;
+export const AGENTE_PREDETERMINADO = AGENTE_ESTANDAR;
 
 /**
  * Regla que la aplicacion agrega SIEMPRE al final de los agentes propios y que ninguna instruccion puede quitar:
@@ -50,15 +66,15 @@ function leerPropios() {
   try {
     const lista = JSON.parse(window.localStorage.getItem(K_AGENTES) || "[]");
     if (!Array.isArray(lista)) return [];
-    return lista.filter((a) => a?.id !== ID_PREDETERMINADO).map(normalizar);
+    return lista.filter((a) => !AGENTES_PREDETERMINADOS.some((p) => p.id === a?.id)).map(normalizar);
   } catch {
     return [];
   }
 }
 
-/** El predeterminado siempre va primero y siempre sale del codigo; despues, los propios. */
+/** Los predeterminados siempre van primero y siempre salen del codigo; despues, los propios. */
 export function cargarAgentes() {
-  return [AGENTE_PREDETERMINADO, ...leerPropios()];
+  return [...AGENTES_PREDETERMINADOS, ...leerPropios()];
 }
 
 /** Guarda solo los agentes propios (el predeterminado nunca se escribe). Devuelve false si no se pudo. */

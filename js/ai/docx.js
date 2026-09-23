@@ -6,7 +6,7 @@
 
 import { crearZip } from "../util/zip.js";
 import { markdownAHtml } from "./markdown.js";
-import { escenariosHtml, AVISO_REPORTE } from "./reporte.js";
+import { escenariosHtml, fichaHtml, AVISO_REPORTE } from "./reporte.js";
 
 export const MIME_DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
@@ -253,10 +253,10 @@ const nucleo = (fecha) =>
 // ---------------------------------------------------------------- documento
 
 /**
- * @param {{narrativa:string, log:object[], fecha:string, modelo:string, agente:string}} d
+ * @param {{narrativa:string, log:object[], ficha?:object[], fecha:string, modelo:string, agente:string}} d
  * @returns {Uint8Array} contenido del .docx
  */
-export function crearDocx({ narrativa, log, fecha, modelo, agente }) {
+export function crearDocx({ narrativa, log, ficha, fecha, modelo, agente }) {
   const ctx = { ultimoNum: 1, ordenadas: [], hayTabla: false };
   const nodosNarrativa = aNodos(narrativa ? markdownAHtml(narrativa) : "");
   marcarConclusiones(nodosNarrativa);
@@ -278,6 +278,7 @@ export function crearDocx({ narrativa, log, fecha, modelo, agente }) {
     parrafo(run(`${fecha} · Agente: ${agente} · Modelo: ${modelo}`, { sz: 18, color: "555555" }), { bordeAbajo: 12, despues: 240 });
 
   cuerpo += bloques(nodosNarrativa, mapaNarrativa, ctx);
+  cuerpo += bloques(aNodos(fichaHtml(ficha)), mapaEscenarios, ctx);
   cuerpo += bloques(aNodos(escenariosHtml(log)), mapaEscenarios, ctx);
   cuerpo += parrafo(run(AVISO_REPORTE, { sz: 17, color: "555555" }), { recuadro: true, antes: 360 });
 

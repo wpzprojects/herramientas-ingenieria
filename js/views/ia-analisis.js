@@ -27,7 +27,7 @@ import {
   temperaturaDe,
   herramientasDe,
 } from "../ai/agentes-analisis.js";
-import { escenariosHtml, reporteMd, reporteHtmlExportable, armarTablas, AVISO_REPORTE } from "../ai/reporte.js";
+import { escenariosHtml, fichaHtml, reporteMd, reporteHtmlExportable, armarTablas, AVISO_REPORTE } from "../ai/reporte.js";
 import * as historial from "../ai/historial.js";
 import { agregarMicrofono } from "../ai/voz.js";
 import { icon } from "../icons.js";
@@ -261,6 +261,7 @@ export async function render(container) {
       contenidos: [],
       mensajes: [],
       log: ctx.log,
+      ficha: ctx.ficha,
       reporte: "",
     };
   }
@@ -357,11 +358,11 @@ export async function render(container) {
   });
 
   // ---------- reporte ----------
-  const datosReporte = () => ({ narrativa: conv?.reporte || "", log: ctx.log, fecha: fechaLarga(), modelo: obtenerAjustes(proveedorActual()).modelo });
+  const datosReporte = () => ({ narrativa: conv?.reporte || "", log: ctx.log, ficha: ctx.ficha, fecha: fechaLarga(), modelo: obtenerAjustes(proveedorActual()).modelo });
 
   function pintarReporte() {
     const { tablas, errores } = armarTablas(ctx.log);
-    const hay = tablas.length > 0 || errores.length > 0 || !!conv?.reporte;
+    const hay = tablas.length > 0 || errores.length > 0 || ctx.ficha?.length > 0 || !!conv?.reporte;
     $("#card-reporte").hidden = !hay;
     if (!hay) return;
     const total = tablas.reduce((s, t) => s + t.total, 0);
@@ -371,7 +372,7 @@ export async function render(container) {
       : `<div class="callout callout-info no-print"><span>Aún no hay texto de reporte. Pulsa «Generar reporte con IA» para que la IA redacte el análisis a partir de los cálculos ejecutados. Las tablas de abajo ya están completas.</span></div>`;
     $("#reporte-cuerpo").innerHTML = `
       ${narrativa}
-      <div class="ia-escenarios" style="margin-top:var(--space-5)">${escenariosHtml(ctx.log)}</div>
+      <div class="ia-escenarios" style="margin-top:var(--space-5)">${fichaHtml(ctx.ficha)}${escenariosHtml(ctx.log)}</div>
       <p class="text-muted text-sm" style="margin:var(--space-4) 0 0"><em>${escapeHtml(AVISO_REPORTE)}</em></p>`;
   }
 
@@ -429,7 +430,7 @@ export async function render(container) {
       `<header class="doc-cab"><div class="doc-app">Herramientas de Ingeniería</div>` +
       (conNarrativa ? `<div class="doc-tipo">Reporte de escenarios</div>` : `<h1>Reporte de escenarios</h1>`) +
       `<p class="doc-meta">${escapeHtml(d.fecha)} · Agente: ${escapeHtml(agenteActivo().nombre)} · Modelo: ${escapeHtml(d.modelo)}</p></header>` +
-      `<div class="doc-cuerpo"><div class="doc-narrativa">${conNarrativa ? markdownAHtml(d.narrativa) : ""}</div><div class="doc-escenarios">${escenariosHtml(d.log)}</div></div>` +
+      `<div class="doc-cuerpo"><div class="doc-narrativa">${conNarrativa ? markdownAHtml(d.narrativa) : ""}</div><div class="doc-escenarios">${fichaHtml(d.ficha)}${escenariosHtml(d.log)}</div></div>` +
       `<p class="doc-aviso">${escapeHtml(AVISO_REPORTE)}</p>`;
     // «Conclusiones» (el titulo y lo que sigue hasta la proxima seccion) va resaltada en un recuadro
     const narrativa = doc.querySelector(".doc-narrativa");
@@ -494,8 +495,9 @@ export async function render(container) {
                   guardarActivo(activoId);
                   pintarBadge();
                 }
-                ctx = crearContexto(obtenerAjustes(proveedorActual()).maxCalculos, c.log || []);
+                ctx = crearContexto(obtenerAjustes(proveedorActual()).maxCalculos, c.log || [], c.ficha || []);
                 conv.log = ctx.log;
+                conv.ficha = ctx.ficha;
                 pintarChat();
                 pintarReporte();
                 mostrarVistaConv("actual"); // al abrir una conversacion se vuelve a «Actual» (y arriba queda elegido el agente de esa conversacion)
@@ -559,12 +561,14 @@ export async function render(container) {
   const botonFila = (texto, onclick, { disabled = false, ghost = false } = {}) =>
     el("button", { type: "button", class: "btn btn-sm", onclick, disabled }, texto);
 
-  // «i» junto al agente estándar (mismo cuadro que las ayudas de los campos; el cuadro va en la fila y no dentro del titulo, que recorta lo que sobra)
-  const INFO_ESTANDAR = "El agente estándar no se puede modificar, duplícalo para editar una copia.";
-  function botonInfoEstandar() {
+  // «i» junto a cada agente predefinido (mismo cuadro que las ayudas de los campos; el cuadro va en la fila y no
+  // dentro del titulo, que recorta lo que sobra). El id es por agente (no fijo): con 2+ predefinidos un id fijo
+  // quedaria duplicado en el DOM.
+  const INFO_PREDEFINIDO = "Este agente viene con la aplicación y no se puede modificar: duplícalo para editar una copia.";
+  function botonInfoEstandar(a) {
     return el("button", {
-      type: "button", class: "info-btn", "aria-label": "Más información sobre el agente estándar",
-      "aria-expanded": "false", "aria-controls": "info-agente-estandar", html: icon("infoCircle"),
+      type: "button", class: "info-btn", "aria-label": `Más información sobre ${a.nombre}`,
+      "aria-expanded": "false", "aria-controls": `info-agente-${a.id}`, html: icon("infoCircle"),
     });
   }
 
@@ -586,7 +590,7 @@ export async function render(container) {
         el("div", { class: "ia-historial-item", "data-agente": a.id }, [
           el("span", { class: "titulo", title: a.descripcion }, [
             a.nombre,
-            a.predefinido ? botonInfoEstandar() : null,
+            a.predefinido ? botonInfoEstandar(a) : null,
             a.predefinido ? el("span", { class: "badge", style: "margin-left:8px" }, "predeterminado") : null,
             enUso ? el("span", { class: "badge", style: "margin-left:8px" }, "en uso") : null,
           ]),
@@ -608,7 +612,7 @@ export async function render(container) {
               { disabled: a.predefinido }
             ),
           ]),
-          a.predefinido ? el("div", { class: "info-popover", id: "info-agente-estandar", hidden: true }, INFO_ESTANDAR) : null,
+          a.predefinido ? el("div", { class: "info-popover", id: `info-agente-${a.id}`, hidden: true }, INFO_PREDEFINIDO) : null,
         ])
       );
     }

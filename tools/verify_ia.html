@@ -226,7 +226,7 @@ const ACSR_4_0 = desnudos.find((c) => c.tipo === "ACSR" && c.calibre_awg_kcmil =
 
 await seccion("tools: esquema para Gemini", async () => {
   const decl = tools.declaraciones();
-  ok(decl.length === 15, `sin lista se declaran las 15 herramientas (${decl.length})`);
+  ok(decl.length === 16, `sin lista se declaran las 16 herramientas (${decl.length})`);
   ok(tools.declaraciones(tools.HERRAMIENTAS_ESTANDAR).length === 10, "con las del estándar se declaran 10");
   ok(decl.every((d) => d.name && d.description && d.parameters.type === "object" && Object.keys(d.parameters.properties).length > 0), "todas con descripcion y propiedades no vacias");
   ok(decl.every((d) => (d.parameters.required || []).every((r) => r in d.parameters.properties)), "required subconjunto de properties");
@@ -434,7 +434,7 @@ await seccion("tools: conversión de coordenadas con códigos EPSG, varios punto
 await seccion("tools: herramientas permitidas por agente", async () => {
   ok(tools.HERRAMIENTAS_ESTANDAR.length === 10 && Object.isFrozen(tools.HERRAMIENTAS_ESTANDAR), "el estándar habilita las 10 herramientas actuales");
   const cat = tools.catalogoHerramientas();
-  ok(cat.length === 15 && cat.every((h) => h.nombre && h.titulo && h.grupo && h.descripcion), "catálogo: 15 herramientas con título, grupo y descripción");
+  ok(cat.length === 16 && cat.every((h) => h.nombre && h.titulo && h.grupo && h.descripcion), "catálogo: 16 herramientas con título, grupo y descripción");
   ok([...new Set(cat.map((h) => h.grupo))].join() === "Calculadoras,Catálogos,Análisis,Varios", "cuatro grupos: Calculadoras, Catálogos, Análisis y Varios");
   ok(!tools.HERRAMIENTAS_ESTANDAR.includes("convertir_unidades") && !tools.HERRAMIENTAS_ESTANDAR.includes("convertir_coordenadas"), "las de Varios son opcionales: no están en el estándar");
   ok(tools.declaraciones(["calcular_perdidas", "buscar_tuberia"]).map((d) => d.name).join() === "calcular_perdidas,buscar_tuberia", "declaraciones(permitidas) solo declara esas");
@@ -893,6 +893,57 @@ await seccion("herramientas de diseño: dimensionar, verificar y buscar valor l�
   ok(tb && tb.colsVar.some((c) => c.etiqueta === "Conductor") && tb.colsRes.some((c) => c.etiqueta === "Cumple todos los criterios") && tb.filas.length === d.calibres_evaluados.length && tb.filas.some((f) => f.res.includes("Sí")) && tb.filas.some((f) => f.res.includes("No")), "en el reporte sale una tabla «Dimensionar conductor»: una fila por calibre, con «Sí / No» de cumplimiento");
 });
 
+await seccion("herramienta: ficha del proyecto (guardar_ficha_proyecto)", async () => {
+  const cat = tools.catalogoHerramientas();
+  ok(cat.find((h) => h.nombre === "guardar_ficha_proyecto")?.grupo === "Análisis", "aparece en el catálogo, grupo «Análisis»");
+  ok(!tools.HERRAMIENTAS_ESTANDAR.includes("guardar_ficha_proyecto") && tools.HERRAMIENTAS_TODAS.includes("guardar_ficha_proyecto"), "es opcional (no está en el estándar) pero sí en HERRAMIENTAS_TODAS");
+
+  const ctx = ctxNuevo();
+  ok(Array.isArray(ctx.ficha) && ctx.ficha.length === 0, "crearContexto ya trae ctx.ficha como arreglo vacío");
+
+  const p1 = { clave: "tension_kv", etiqueta: "Tensión nominal", valor: "34.5", unidad: "kV", origen: "usuario" };
+  const r1 = await tools.ejecutarLlamada("guardar_ficha_proyecto", { categoria: "Sistema", parametros: [p1] }, ctx);
+  ok(r1.ok === true && r1.categoria === "Sistema" && r1.parametros_guardados === 1, "primera llamada crea la categoría");
+  ok(ctx.ficha.length === 1 && ctx.ficha[0].categoria === "Sistema" && ctx.ficha[0].parametros.length === 1, "queda en ctx.ficha");
+  ok(ctx.presupuesto.usado === 0, "no gasta presupuesto (como una consulta)");
+  ok(ctx.log.length === 1 && ctx.log[0].ficha === true && !ctx.log[0].entradas && !ctx.log[0].resultados, "deja un marcador minimo en ctx.log, sin entradas/resultados");
+
+  // segunda categoria, y actualizar un parametro existente + agregar uno nuevo a "Sistema"
+  const r2 = await tools.ejecutarLlamada("guardar_ficha_proyecto", { categoria: "Conductor", parametros: [{ clave: "material", etiqueta: "Material", valor: "ACSR", origen: "usuario" }] }, ctx);
+  ok(r2.ok && ctx.ficha.length === 2, "una categoria nueva se agrega sin tocar la anterior");
+  const r3 = await tools.ejecutarLlamada(
+    "guardar_ficha_proyecto",
+    { categoria: "Sistema", parametros: [{ ...p1, valor: "13.2" }, { clave: "frecuencia_hz", etiqueta: "Frecuencia", valor: "60", unidad: "Hz", origen: "defecto" }] },
+    ctx
+  );
+  ok(r3.ok && ctx.ficha.length === 2, "la misma categoria no se duplica");
+  const sistema = ctx.ficha.find((c) => c.categoria === "Sistema");
+  ok(sistema.parametros.length === 2 && sistema.parametros.find((p) => p.clave === "tension_kv").valor === "13.2" && sistema.parametros.find((p) => p.clave === "frecuencia_hz").origen === "defecto", "un parametro repetido se actualiza (upsert) y uno nuevo se agrega");
+
+  // armarTablas la ignora (ni tabla ni error), igual que a las consultas
+  const reporteMod = await import("../js/ai/reporte.js");
+  const { tablas, errores } = reporteMod.armarTablas(ctx.log);
+  ok(tablas.length === 0 && errores.length === 0, "no genera tabla de calculos ni error en armarTablas");
+
+  // fichaHtml / fichaMd: una tabla por categoria, con Parametro/Valor/Origen
+  const html = reporteMod.fichaHtml(ctx.ficha);
+  ok(html.includes("Datos del proyecto") && html.includes("Sistema") && html.includes("Conductor") && html.includes("13.2") && html.includes("Valor por defecto"), "fichaHtml arma una sección con una tabla por categoría y traduce el origen");
+  const md = reporteMod.fichaMd(ctx.ficha);
+  ok(md.includes("## Datos del proyecto") && md.includes("### Sistema") && md.includes("| Parámetro | Valor | Origen |"), "fichaMd en Markdown con la misma info");
+  ok(reporteMod.fichaHtml([]) === "" && reporteMod.fichaMd(undefined) === "", "ficha vacía o ausente: no agrega nada");
+
+  // reporteMd/reporteHtmlExportable incluyen la ficha ANTES de los calculos ejecutados
+  await tools.ejecutarLlamada("calcular_perdidas", { ...LINEA, factor_carga: 0.5, resistencia_ohm_km: 0.3 }, ctx);
+  const rmd = reporteMod.reporteMd({ narrativa: "", log: ctx.log, ficha: ctx.ficha, fecha: "hoy", modelo: "m" });
+  ok(rmd.indexOf("Datos del proyecto") < rmd.indexOf("Cálculos ejecutados"), "en el reporte Markdown, «Datos del proyecto» va antes que «Cálculos ejecutados»");
+  const rhtml = reporteMod.reporteHtmlExportable({ narrativa: "", log: ctx.log, ficha: ctx.ficha, fecha: "hoy", modelo: "m" });
+  ok(rhtml.indexOf("Datos del proyecto") < rhtml.indexOf("Cálculos ejecutados"), "igual en el HTML exportable");
+
+  // crearContexto con ficha previa (reabrir una conversacion del historial)
+  const ctx2 = tools.crearContexto(60, [], ctx.ficha);
+  ok(ctx2.ficha === ctx.ficha && ctx2.ficha.length === 2, "crearContexto acepta una ficha previa y la conserva (misma referencia)");
+});
+
 await seccion("reporte en Word (.docx): paquete válido", async () => {
   const { crc32, crearZip } = await import("../js/util/zip.js");
   ok(crc32(new TextEncoder().encode("123456789")) === 0xcbf43926, "el CRC-32 de «123456789» es el valor de referencia 0xCBF43926");
@@ -1194,14 +1245,23 @@ await seccion("agentes de análisis", async () => {
   const limpiar = () => claves.forEach((k) => window.localStorage.removeItem(k));
   limpiar();
   const def = agAn.AGENTE_PREDETERMINADO;
+  const riguroso = agAn.AGENTES_PREDETERMINADOS[1];
   let lista = agAn.cargarAgentes();
-  ok(lista.length === 1 && lista[0] === def && def.predefinido && def.id === agAn.ID_PREDETERMINADO, "sin agentes propios: solo el predeterminado");
+  ok(lista.length === 2 && lista[0] === def && lista[1] === riguroso && def.predefinido && def.id === agAn.ID_PREDETERMINADO, "sin agentes propios: los 2 predeterminados (estándar primero)");
   ok(def.instrucciones === analisis.SISTEMA_ANALISIS && def.reporte === analisis.PROMPT_REPORTE, "el predeterminado usa el prompt y el reporte estándar del código");
-  ok(Object.isFrozen(def), "el predeterminado está congelado (no se puede mutar)");
+  ok(Object.isFrozen(def) && Object.isFrozen(riguroso) && Object.isFrozen(agAn.AGENTES_PREDETERMINADOS), "los predeterminados (y el array) están congelados: no se pueden mutar");
   ok(agAn.construirSistema(def) === analisis.SISTEMA_ANALISIS, "el sistema del predeterminado se envía tal cual");
   ok(/\n10\. Si te piden un cálculo, una conversión o un dato/.test(analisis.SISTEMA_ANALISIS) && analisis.SISTEMA_ANALISIS.includes("NO escribas ningún valor") && analisis.SISTEMA_ANALISIS.includes("Herramientas que puede usar"), "el estándar prohíbe escribir valores cuando falta la herramienta (regla 9) y remite a Agentes");
   ok(analisis.SISTEMA_ANALISIS.includes("REFERENCIAS DE DISEÑO") && analisis.SISTEMA_ANALISIS.includes("nunca las llames «norma»") && analisis.SISTEMA_ANALISIS.includes("«tramos»") && analisis.SISTEMA_ANALISIS.includes("corriente_falla_ka"), "el prompt estándar explica que Óptimo/Aceptable/Elevado son referencias de diseño (no norma) y cómo usar tramos, grupos y corriente de falla");
   ok(analisis.SISTEMA_ANALISIS.startsWith("Eres el asistente de análisis") && /\n9\. Da respuestas claras/.test(analisis.SISTEMA_ANALISIS) && analisis.SISTEMA_ANALISIS.includes("No las cuestiones ni las \"corrijas\"."), "las reglas 1 a 8 del estándar siguen ahí");
+
+  // agente riguroso: memoria de calculo completa, todas las herramientas
+  ok(riguroso.predefinido && riguroso.id !== def.id && riguroso.instrucciones === analisis.SISTEMA_RIGUROSO && riguroso.reporte === analisis.PROMPT_REPORTE_RIGUROSO, "el riguroso usa su propio prompt y reporte, distintos del estándar");
+  ok(riguroso.herramientas === tools.HERRAMIENTAS_TODAS && riguroso.herramientas.length > tools.HERRAMIENTAS_ESTANDAR.length, "el riguroso tiene TODAS las herramientas (más que el estándar)");
+  ok(riguroso.herramientas.includes("guardar_ficha_proyecto") && riguroso.herramientas.includes("dimensionar_conductor") && riguroso.herramientas.includes("convertir_unidades"), "incluye la ficha del proyecto, las de diseño y las de Varios");
+  ok(analisis.SISTEMA_RIGUROSO.includes("guardar_ficha_proyecto") && analisis.SISTEMA_RIGUROSO.includes("por categoría") && /varias respuestas|VARIAS respuestas/.test(analisis.SISTEMA_RIGUROSO), "el prompt riguroso pide categorías, confirmar valores por defecto y repartir en varias respuestas");
+  ok(analisis.PROMPT_REPORTE_RIGUROSO.includes("MEMORIA DE CÁLCULO") && analisis.PROMPT_REPORTE_RIGUROSO.includes("Verificación de cumplimiento"), "el reporte riguroso pide una memoria de cálculo formal, distinta de la del estándar");
+  ok(agAn.construirSistema(riguroso) === analisis.SISTEMA_RIGUROSO, "el sistema del riguroso se envía tal cual (predefinido: sin regla fija añadida aparte)");
 
   // propio: duplicar, guardar, cargar
   const copia = agAn.duplicarAgente(def);
@@ -1210,33 +1270,33 @@ await seccion("agentes de análisis", async () => {
   const nuevo = { ...agAn.nuevoAgente(), nombre: "Mío", instrucciones: "Solo tablas.", temperatura: 0.9, reporte: "" };
   ok(agAn.guardarPropios([def, copia, nuevo]) === true, "guardarPropios responde true");
   const crudo = window.localStorage.getItem("ia.agentesAnalisis");
-  ok(!crudo.includes(agAn.ID_PREDETERMINADO), "el predeterminado nunca se escribe en el almacenamiento");
+  ok(!crudo.includes(agAn.ID_PREDETERMINADO) && !crudo.includes(riguroso.id), "ningún predeterminado se escribe en el almacenamiento");
   lista = agAn.cargarAgentes();
-  ok(lista.length === 3 && lista[0].id === def.id && lista[1].instrucciones === copia.instrucciones && lista[2].temperatura === 0.9, "carga: predeterminado primero y luego los propios");
+  ok(lista.length === 4 && lista[0].id === def.id && lista[1].id === riguroso.id && lista[2].instrucciones === copia.instrucciones && lista[3].temperatura === 0.9, "carga: los 2 predeterminados primero y luego los propios");
 
-  // la regla fija se añade a los propios, no al predeterminado
-  const sistemaPropio = agAn.construirSistema(lista[1]);
+  // la regla fija se añade a los propios, no a los predefinidos
+  const sistemaPropio = agAn.construirSistema(lista[2]);
   ok(sistemaPropio.startsWith("Responde en inglés") && sistemaPropio.endsWith(agAn.REGLA_FIJA), "los agentes propios llevan la regla fija de no calcular al final");
-  ok(agAn.promptReporte(lista[2]) === analisis.PROMPT_REPORTE && agAn.promptReporte({ reporte: "Solo un párrafo." }) === "Solo un párrafo.", "reporte vacío = estándar; con texto = el del agente");
-  ok(agAn.temperaturaDe(lista[2], 0.3) === 0.9 && agAn.temperaturaDe(lista[1], 0.3) === 0.3, "temperatura del agente o la general");
+  ok(agAn.promptReporte(lista[3]) === analisis.PROMPT_REPORTE && agAn.promptReporte({ reporte: "Solo un párrafo." }) === "Solo un párrafo.", "reporte vacío = estándar; con texto = el del agente");
+  ok(agAn.temperaturaDe(lista[3], 0.3) === 0.9 && agAn.temperaturaDe(lista[2], 0.3) === 0.3, "temperatura del agente o la general");
 
   // herramientas por agente
   ok(agAn.herramientasDe(def).length === 10 && def.herramientas === tools.HERRAMIENTAS_ESTANDAR, "el predeterminado habilita las herramientas estándar");
   ok(copia.herramientas.length === 10 && !Object.isFrozen(copia.herramientas) && nuevo.herramientas.length === 10, "duplicar y crear agentes parten de las estándar (lista editable)");
   const soloDos = { ...agAn.nuevoAgente(), nombre: "Dos", instrucciones: "x", herramientas: ["buscar_tuberia", "calcular_perdidas"] };
   agAn.guardarPropios([soloDos]);
-  ok(agAn.cargarAgentes()[1].herramientas.join() === "calcular_perdidas,buscar_tuberia", "la lista de herramientas se guarda y se carga");
+  ok(agAn.cargarAgentes()[2].herramientas.join() === "calcular_perdidas,buscar_tuberia", "la lista de herramientas se guarda y se carga");
   window.localStorage.setItem("ia.agentesAnalisis", JSON.stringify([{ id: "v", nombre: "viejo", instrucciones: "a" }, { id: "w", nombre: "raro", instrucciones: "a", herramientas: ["inventada", "calcular_perdidas"] }, { id: "z", nombre: "vacio", instrucciones: "a", herramientas: [] }]));
   const cargados = agAn.cargarAgentes();
-  ok(cargados[1].herramientas.length === 10, "un agente guardado sin lista usa las herramientas estándar");
-  ok(cargados[2].herramientas.join() === "calcular_perdidas" && cargados[3].herramientas.length === 0, "nombres desconocidos se descartan; una lista vacía se respeta");
+  ok(cargados[2].herramientas.length === 10, "un agente guardado sin lista usa las herramientas estándar");
+  ok(cargados[3].herramientas.join() === "calcular_perdidas" && cargados[4].herramientas.length === 0, "nombres desconocidos se descartan; una lista vacía se respeta");
 
-  // almacenamiento manipulado: no puede suplantar ni romper el predeterminado
-  window.localStorage.setItem("ia.agentesAnalisis", JSON.stringify([{ id: agAn.ID_PREDETERMINADO, nombre: "Falso", instrucciones: "hackeado" }, { id: "x", nombre: "ok", instrucciones: "a", temperatura: 99 }]));
+  // almacenamiento manipulado: no puede suplantar ni romper los predeterminados
+  window.localStorage.setItem("ia.agentesAnalisis", JSON.stringify([{ id: agAn.ID_PREDETERMINADO, nombre: "Falso", instrucciones: "hackeado" }, { id: riguroso.id, nombre: "Falso2", instrucciones: "hackeado" }, { id: "x", nombre: "ok", instrucciones: "a", temperatura: 99 }]));
   lista = agAn.cargarAgentes();
-  ok(lista.length === 2 && lista[0] === def && lista[1].id === "x" && lista[1].temperatura === 1.5, "un guardado con el id del predeterminado se ignora y la temperatura se acota");
+  ok(lista.length === 3 && lista[0] === def && lista[1] === riguroso && lista[2].id === "x" && lista[2].temperatura === 1.5, "un guardado con el id de un predeterminado se ignora y la temperatura se acota");
   window.localStorage.setItem("ia.agentesAnalisis", "no es json");
-  ok(agAn.cargarAgentes().length === 1, "JSON corrupto -> solo el predeterminado");
+  ok(agAn.cargarAgentes().length === 2, "JSON corrupto -> solo los 2 predeterminados");
   limpiar();
 });
 

@@ -311,7 +311,40 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   resultados con `res`), marcarla `opcional` con su `grupo` y agregar sus pruebas. Cubierto por
   `tools/verify_ia.html` (secciones «agentes de análisis» y «herramientas permitidas por agente»).
 - Herramientas de DISEÑO (2026-09-20, `js/ai/tools.js`): `dimensionar_conductor`, `verificar_conductor` y `resolver_valor_limite` (tipo `diseno`, grupo «Análisis»). Son `opcional: true` POR PEDIDO DEL USUARIO: el agente estándar NO las trae y solo se habilitan en un agente propio (no cambiar eso); combinan las calculadoras existentes, sin fórmulas nuevas, y exigen que el agente tenga habilitadas las calculadoras que usan. Detalle en `docs/ia-herramientas.md` (sección 4); pruebas en `verify_ia.html`.
-- Herramientas alineadas con las pantallas (2026-09-19; plan y registro de avance en `docs/plan-ajustes-ia.md`, TERMINADO salvo el reporte de la IA, `js/ai/reporte.js`, que el usuario decidió rediseñar él con otras ideas: no tocarlo sin que lo pida). Pérdidas y regulación aceptan `tramos`, dato de partida (MW/MVA/A) y conductores por fase y devuelven la clasificación Óptimo/Aceptable/Elevado; cortocircuito acepta `corriente_falla_ka`; ocupación acepta `grupos` y da el radio 12D; ampacidad subterránea da la corriente circulante/tensión inducida en la pantalla; unidades usa `data/unidades.json`; coordenadas acepta ~500 códigos EPSG y `puntos`. Los campos de nivel superior siguen valiendo para un solo tramo/tipo/punto. Los motores de `js/calc/` no se tocaron. Detalle en `docs/ia-herramientas.md` (sección 4).
+- Herramientas alineadas con las pantallas (2026-09-19; plan y registro de avance en `docs/plan-ajustes-ia.md`, TERMINADO salvo el reporte de la IA, `js/ai/reporte.js`, que el usuario decidió rediseñar él con otras ideas: no tocarlo sin que lo pida — excepción puntual el 2026-09-23, ver el bullet del agente riguroso más abajo: el usuario SÍ pidió agregarle ahí la sección «Datos del proyecto»). Pérdidas y regulación aceptan `tramos`, dato de partida (MW/MVA/A) y conductores por fase y devuelven la clasificación Óptimo/Aceptable/Elevado; cortocircuito acepta `corriente_falla_ka`; ocupación acepta `grupos` y da el radio 12D; ampacidad subterránea da la corriente circulante/tensión inducida en la pantalla; unidades usa `data/unidades.json`; coordenadas acepta ~500 códigos EPSG y `puntos`. Los campos de nivel superior siguen valiendo para un solo tramo/tipo/punto. Los motores de `js/calc/` no se tocaron. Detalle en `docs/ia-herramientas.md` (sección 4).
+- **Agente riguroso y ficha del proyecto (2026-09-23, pedido del usuario)**: segundo agente predefinido para el Asistente
+  técnico, pensado para una MEMORIA DE CÁLCULO completa y definitiva (no una estimación como el estándar). `js/ai/analisis.js`
+  gana `SISTEMA_RIGUROSO`/`PROMPT_REPORTE_RIGUROSO` junto a los del estándar; `js/ai/agentes-analisis.js` pasa de un
+  `AGENTE_PREDETERMINADO` único a `AGENTES_PREDETERMINADOS` (array, `[estándar, riguroso]`, ambos `predefinido: true` y
+  congelados) — `AGENTE_PREDETERMINADO`/`ID_PREDETERMINADO` quedan como alias del estándar (compatibilidad; son los únicos
+  nombres que usan `ia-analisis.js` y las pruebas). El riguroso usa `HERRAMIENTAS_TODAS` (las 16, nueva exportación de
+  `tools.js` junto a `HERRAMIENTAS_ESTANDAR`): antes de calcular pide TODOS los parámetros por categoría (Sistema, Conductor,
+  Instalación…), avisa explícitamente cada valor por defecto y pide confirmarlo o cambiarlo (nunca lo asume en silencio,
+  a diferencia del estándar), reparte las preguntas en varias respuestas para no saturar, y registra cada categoría
+  confirmada con la herramienta nueva `guardar_ficha_proyecto` (idea ya anotada como aplazada, «ficha del caso»).
+  - `guardar_ficha_proyecto` (`js/ai/tools.js`) es un TIPO NUEVO, `"ficha"`: no calcula ni gasta presupuesto (como
+    `"consulta"`), pero sí debe persistir y verse en el reporte (a diferencia de `"consulta"`, que se descarta a propósito).
+    Guarda en `ctx.ficha` (arreglo por categoría, con `parametros: [{clave, etiqueta, valor, unidad, origen}]`, `origen` en
+    `"usuario"|"defecto"`); `crearContexto(max, logPrevio, fichaPrevia)` ahora también recibe y devuelve `ficha`, MUTADA EN
+    SITIO (nunca reasignada) para que `conv.ficha = ctx.ficha` conserve la referencia entre turnos y al reabrir del
+    historial, igual que ya hacía `ctx.log`/`conv.log`. Deja un marcador mínimo en `ctx.log` (`{ficha:true}`, sin
+    entradas/resultados) que `armarTablas` ignora igual que a las consultas (`if (r.consulta || r.ficha) continue`).
+    Opcional: no entra al agente estándar; sí a `HERRAMIENTAS_TODAS`. NO entra en `CALCULADORAS` (sin barrido, no aplica).
+  - Reporte (`js/ai/reporte.js`): `fichaHtml`/`fichaMd` arman la sección «Datos del proyecto» (una tabla por categoría:
+    Parámetro/Valor/Origen) y se insertan ANTES de «Cálculos ejecutados» en `reporteMd`/`reporteHtmlExportable` (ambas
+    ganaron el parámetro `ficha`); `js/views/ia-analisis.js` (`datosReporte`, `pintarReporte`, `armarDocumentoImpresion`) y
+    `js/ai/docx.js` (`crearDocx`) se actualizaron para pasarla. Si `ficha` viene vacía o `undefined` no agregan nada
+    (retrocompatible con el reporte del agente estándar, que no la usa).
+  - UI (`js/views/ia-analisis.js`): con 2 predefinidos, el id fijo `info-agente-estandar` (botón «i» + popover en
+    «Gestionar») quedaba DUPLICADO en el DOM — se corrigió a `info-agente-${a.id}` (uno por agente) y el texto
+    (`INFO_PREDEFINIDO`) se generalizó («Este agente viene con la aplicación…», ya no menciona «estándar»). El resto de la
+    vista (píldoras, «Gestionar», editor en modo «ver», `duplicar`) ya generalizaba sobre `a.predefinido`/`a.id` y no
+    necesitó más cambios.
+  - Pruebas: `tools/verify_ia.html` (secciones «herramienta: ficha del proyecto» y «agentes de análisis», actualizada a 2
+    predefinidos) y `tools/verify_ia_pantallas.html` («Asistente técnico rediseñado»: 2 píldoras/filas, popovers con id
+    propio, catálogo de 16 herramientas). De paso se corrigieron ahí los conteos que habían quedado desactualizados desde
+    que `calcular_conductor_economico` pasó a ser estándar (2026-09-23, antes de este bullet) y que `verify_ia_pantallas.html`
+    no había recibido esa actualización.
 - Explicación completa de cómo la IA usa las herramientas y de cómo agregar una nueva: `docs/ia-herramientas.md` (léelo antes de
   tocar `tools.js` o los agentes; si cambia ese comportamiento, actualízalo).
 - Bug reportado por el usuario (2026-09-22, corregido): el modelo escribía sintaxis LaTeX (`$...$`, `\text{}`) dentro de

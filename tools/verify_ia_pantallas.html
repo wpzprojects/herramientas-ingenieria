@@ -406,7 +406,7 @@ await seccion("Asistente técnico rediseñado", async () => {
   ok(ta.classList.contains("tarjeta-borde") && /Agente/.test(texto(ta.querySelector(".form-section-title"))) && !!ta.querySelector(".form-section-title .icon g path[d^='M18 4a3 3 0 0 1 3 3v8']"), "la tarjeta «Agente» de Análisis lleva el icono Message Chatbot (burbuja de conversación con carita), con relleno de 16 px y barra de título");
   ok(Math.round(ta.querySelector(".form-section-title .icon").getBoundingClientRect().width) === 18 && !ta.querySelector(".icono-agente"), "en Análisis el icono Message Chatbot tiene el tamaño normal de los iconos de barra (18 px); el 21 px es solo del robot del Corrector");
   ok(qa("#tarjeta-agente .ia-pestanas .tab-btn").map(texto).join("|") === "Agentes|Gestionar" && qa("#conv .ia-pestanas .tab-btn").map(texto).join("|") === "Actual|Historial", "pestañas «Agentes | Gestionar» en la tarjeta «Agente» y «Actual | Historial» en «Conversación», como el Corrector");
-  ok(qa("#lista-agentes .ia-chip").length === 1 && q("#lista-agentes .ia-chip").getAttribute("aria-pressed") === "true", "el agente se elige con píldoras (hoy solo el estándar, en uso)");
+  ok(qa("#lista-agentes .ia-chip").length === 2 && q("#lista-agentes .ia-chip").getAttribute("aria-pressed") === "true", "el agente se elige con píldoras (estándar y riguroso; el estándar en uso)");
   ok(getComputedStyle(q("#lista-agentes .ia-chip"), "::before").content === '"✓"', "la píldora del agente elegido lleva la ✓");
   const tabsC = q("#conv .ia-pestanas").getBoundingClientRect();
   const distEj = q("#ejemplos .ia-chip").getBoundingClientRect().top - tabsC.bottom;
@@ -490,7 +490,7 @@ await seccion("Asistente técnico rediseñado", async () => {
   const pc = q("#panel-config");
   ok(!pc.hidden && q("#vista-agentes").hidden && ta.contains(pc), "«Gestionar» muestra los agentes en la misma tarjeta");
   const filas = [...pc.querySelectorAll("#config-lista .ia-historial-item")];
-  ok(pc.firstElementChild === pc.querySelector("#config-lista") && filas.length === 1, "lo primero es la lista de agentes (el estándar)");
+  ok(pc.firstElementChild === pc.querySelector("#config-lista") && filas.length === 2, "lo primero es la lista de agentes (el estándar y el riguroso)");
   const botonesFila = [...filas[0].querySelectorAll("button.btn")];
   ok(botonesFila.map(texto).join("|") === "Ver|Editar|Duplicar|Eliminar" && botonesFila.every((b) => getComputedStyle(b).borderTopWidth !== "0px" && !b.classList.contains("btn-ghost")), "cada fila: Ver, Editar, Duplicar y Eliminar, todos con contorno (ya no hay «Usar»: se elige en «Agentes»)");
   ok(botonesFila[1].disabled && botonesFila[3].disabled, "el agente estándar no se puede editar ni eliminar");
@@ -499,8 +499,8 @@ await seccion("Asistente técnico rediseñado", async () => {
   ok(rn.top >= rl.bottom && Math.abs(rn.left - filas[0].getBoundingClientRect().left) < 12 && pc.querySelector('[data-a="nuevo"]').classList.contains("btn-primary"), "«Nuevo agente» va debajo de la lista, a la izquierda");
 
   const infoEst = filas[0].querySelector(".titulo .info-btn");
-  const cuadroEst = pc.querySelector("#info-agente-estandar");
-  ok(!!infoEst && !pc.querySelector(".ia-nota-estandar") && cuadroEst.hidden && /^El agente estándar no se puede modificar, duplícalo para editar una copia\.$/.test(cuadroEst.textContent), "la nota del agente estándar ya no es un texto fijo: va en un botón «i» junto al nombre (con coma)");
+  const cuadroEst = pc.querySelector("#info-agente-analisis-estandar");
+  ok(!!infoEst && !pc.querySelector(".ia-nota-estandar") && cuadroEst.hidden && /^Este agente viene con la aplicación y no se puede modificar: duplícalo para editar una copia\.$/.test(cuadroEst.textContent), "la nota de un agente predefinido ya no es un texto fijo: va en un botón «i» junto al nombre, con un id de popover propio por agente");
   const rBadge = filas[0].querySelector(".titulo .badge").getBoundingClientRect();
   const rInfo = infoEst.getBoundingClientRect();
   ok(rInfo.right <= rBadge.left + 1 && filas[0].querySelector(".titulo").firstChild.textContent === "Agente estándar", "el botón «i» va justo después del nombre y antes de las etiquetas («predeterminado», «en uso»)");
@@ -508,6 +508,9 @@ await seccion("Asistente técnico rediseñado", async () => {
   const abiertoEst = !cuadroEst.hidden && infoEst.getAttribute("aria-expanded") === "true" && cuadroEst.checkVisibility();
   document.body.click();
   ok(abiertoEst && cuadroEst.hidden, "el «i» abre el cuadro y tocar fuera lo cierra");
+  const infoRig = filas[1].querySelector(".titulo .info-btn");
+  const cuadroRig = pc.querySelector("#info-agente-analisis-riguroso");
+  ok(!!infoRig && !!cuadroRig && cuadroRig !== cuadroEst && infoRig.getAttribute("aria-controls") !== infoEst.getAttribute("aria-controls"), "el segundo agente predefinido (riguroso) tiene su propio botón «i» y popover, con id propio (no choca con el del estándar)");
   // --- ver el estandar
   botonesFila[0].click();
   await espera(100);
@@ -516,8 +519,8 @@ await seccion("Asistente técnico rediseñado", async () => {
   ok(filas[0].classList.contains("editando") && !!ed.querySelector(".callout-info"), "la fila queda marcada y se avisa que el estándar es de solo lectura");
   ok(ed.querySelectorAll("label[data-info]").length === 3 && ed.querySelectorAll(".hint").length === 0, "las ayudas (temperatura, herramientas, reporte) son botones «i», sin textos .hint");
   const chipsH = [...ed.querySelectorAll(".ia-chip--herr")];
-  ok(chipsH.length === 15 && !ed.querySelector("input[data-h]") && chipsH.every((c) => c.tagName === "BUTTON" && c.disabled), "las herramientas son etiquetas (botones), ya no casillas, y en solo lectura están deshabilitadas");
-  ok(chipsH.filter((c) => c.getAttribute("aria-pressed") === "true").length === 9 && chipsH.filter((c) => c.getAttribute("aria-pressed") === "false").length === 6, "el agente estándar tiene 9 marcadas (las de siempre) y 6 sin marcar (las 3 de diseño de Análisis, Conductor económico de Calculadoras y las 2 de Varios)");
+  ok(chipsH.length === 16 && !ed.querySelector("input[data-h]") && chipsH.every((c) => c.tagName === "BUTTON" && c.disabled), "las herramientas son etiquetas (botones), ya no casillas, y en solo lectura están deshabilitadas");
+  ok(chipsH.filter((c) => c.getAttribute("aria-pressed") === "true").length === 10 && chipsH.filter((c) => c.getAttribute("aria-pressed") === "false").length === 6, "el agente estándar tiene 10 marcadas (las 6 calculadoras, Conductor económico, buscar_conductor, buscar_tuberia y barrer_parametro) y 6 sin marcar (las 3 de diseño de Análisis, la ficha del proyecto y las 2 de Varios)");
   ok(["Calculadoras", "Catálogos", "Análisis", "Varios"].every((g) => ed.querySelector(`[role="group"][aria-label="${g}"]`)), "siguen agrupadas por categoría: Calculadoras, Catálogos, Análisis y Varios");
   ok(chipsH.every((c) => c.title.length > 10), "cada una conserva su descripción al pasar el cursor");
   ed.querySelector("#g-cerrar").click();
@@ -526,7 +529,7 @@ await seccion("Asistente técnico rediseñado", async () => {
   // --- duplicar, editar y usar
   filas[0].querySelectorAll("button.btn")[2].click(); // Duplicar
   await espera(150);
-  ok(pc.querySelectorAll("#config-lista .ia-historial-item").length === 2 && /Editando:/.test(texto(pc.querySelector(".ia-editor-cabecera"))) && qa(".ia-editor label[data-info]").length === 4, "«Duplicar» crea la copia y abre su editor («Editando: …», con la ayuda de las instrucciones)");
+  ok(pc.querySelectorAll("#config-lista .ia-historial-item").length === 3 && /Editando:/.test(texto(pc.querySelector(".ia-editor-cabecera"))) && qa(".ia-editor label[data-info]").length === 4, "«Duplicar» crea la copia (queda una fila más, junto a los 2 predefinidos) y abre su editor («Editando: …», con la ayuda de las instrucciones)");
   { // si los botones de UNA fila no caben junto al nombre, bajan en TODAS las filas
     const lista = pc.querySelector("#config-lista"), fs = [...lista.querySelectorAll(".ia-historial-item")];
     const abajo = (f) => { const t = f.querySelector(".titulo"), b = f.querySelector(".ia-historial-acciones"); return b.offsetTop >= t.offsetTop + t.offsetHeight; };
@@ -540,14 +543,14 @@ await seccion("Asistente técnico rediseñado", async () => {
     lista.style.width = "";
   }
   const chipsC = [...pc.querySelectorAll(".ia-chip--herr")];
-  ok(chipsC.length === 15 && chipsC.every((c) => !c.disabled), "en una copia editable las etiquetas de herramientas están activas");
+  ok(chipsC.length === 16 && chipsC.every((c) => !c.disabled), "en una copia editable las etiquetas de herramientas están activas");
   const unidades = chipsC.find((c) => /unidades/i.test(c.textContent));
   const perdidas = chipsC.find((c) => /Pérdidas/.test(c.textContent));
   ok(unidades.getAttribute("aria-pressed") === "false" && !unidades.querySelector(".ia-chip-check").checkVisibility() && perdidas.getAttribute("aria-pressed") === "true" && perdidas.querySelector(".ia-chip-check").checkVisibility(), "la ✓ solo se ve en las marcadas");
   unidades.click();
   perdidas.click();
   ok(unidades.getAttribute("aria-pressed") === "true" && unidades.querySelector(".ia-chip-check").checkVisibility() && perdidas.getAttribute("aria-pressed") === "false" && !perdidas.querySelector(".ia-chip-check").checkVisibility(), "pulsar marca o desmarca (selección múltiple) y la ✓ aparece o desaparece");
-  ok(chipsC.filter((c) => c.getAttribute("aria-pressed") === "true").length === 9, "se pueden tener varias marcadas a la vez");
+  ok(chipsC.filter((c) => c.getAttribute("aria-pressed") === "true").length === 10, "se pueden tener varias marcadas a la vez");
   // sin ninguna marcada no se guarda
   const alertaReal = window.alert;
   let avisos = [];
@@ -564,7 +567,7 @@ await seccion("Asistente técnico rediseñado", async () => {
   await espera(100);
   ok(/Cambios guardados/.test(texto(pc.querySelector("#config-msg"))) && /Mi agente/.test(texto(pc.querySelector("#config-lista"))), "guardar deja el mensaje y la lista actualizada");
   const guardadoAg = agAn.cargarAgentes().find((a) => a.nombre === "Mi agente");
-  ok(guardadoAg.herramientas.includes("convertir_unidades") && guardadoAg.herramientas.includes("calcular_perdidas") && guardadoAg.herramientas.length === 10, `lo marcado se guarda como lista de herramientas del agente (${guardadoAg.herramientas.length}: incluye convertir_unidades)`);
+  ok(guardadoAg.herramientas.includes("convertir_unidades") && guardadoAg.herramientas.includes("calcular_perdidas") && guardadoAg.herramientas.length === 11, `lo marcado se guarda como lista de herramientas del agente (${guardadoAg.herramientas.length}: incluye convertir_unidades y de nuevo calcular_perdidas)`);
   q('.ia-pestanas .tab-btn[data-vista="agentes"]').click();
   ok(!q("#vista-agentes").hidden && qa("#lista-agentes .ia-chip").map(texto).includes("Mi agente"), "el agente nuevo aparece como píldora en «Agentes»");
   qa("#lista-agentes .ia-chip").find((b) => b.textContent === "Mi agente").click();
