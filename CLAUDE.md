@@ -662,7 +662,8 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 ## Niveles de acceso: visitante / usuario / administrador (FASE 1 implementada 2026-09-19)
 
 - Decidido con el usuario: la app se abre SIN login. Un **visitante** (sin sesión, o con sesión de un correo fuera de la lista) solo tiene 3
-  módulos: Ocupación de ductos, Conductores desnudos y Distancias de seguridad (marcados `libre: true` en `sectionMenus`, `nav.js`);
+  módulos: Ocupación de ductos, Conductores desnudos y Distancias de seguridad (marcados `libre: true` en `sectionMenus`, `nav.js`),
+  y desde 2026-09-24 (3.17.0, pedido del usuario) también Pérdidas y Regulación: 5 en total;
   Varios y Funciones con IA no tienen ninguno (Codificación de entregables se quitó de los libres el 2026-09-19). El **usuario** (en `usuarios` con rol `usuario`) y el
   **administrador** (`admin`, además gestiona la lista y la clave compartida en Perfil) lo tienen todo. Solo se implementó Google; el
   inicio con Microsoft es la FASE 2 (falta que el usuario registre la app en Microsoft Entra y probar `email_verified`/tenant de Celsia;

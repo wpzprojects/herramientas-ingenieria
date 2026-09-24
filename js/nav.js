@@ -21,12 +21,12 @@ export const sectionMeta = {
   ia: { title: "Funciones con IA", subtitle: "Análisis de escenarios con calculadoras locales y herramientas de redacción." },
 };
 
-// `libre: true` = modulo que puede abrir un visitante (Ocupación de ductos, Conductores desnudos y Distancias de seguridad; Varios y Funciones con IA no tienen ninguno). Ver js/auth/permisos.js.
+// `libre: true` = modulo que puede abrir un visitante (Ocupación de ductos, Pérdidas, Regulación, Conductores desnudos y Distancias de seguridad; Varios y Funciones con IA no tienen ninguno). Ver js/auth/permisos.js.
 export const sectionMenus = {
   calculos: [
     { title: "Ocupación de ductos", desc: "Porcentaje de ocupación de ductos según NTC-2050.", icon: "ductoTerna", hash: "#/calculos/ocupacion-ductos", libre: true },
-    { title: "Pérdidas", desc: "Corriente, potencia y % de pérdidas de una línea trifásica.", icon: "alertTriangle", hash: "#/calculos/perdidas" },
-    { title: "Regulación", desc: "Caída de tensión y reactancia inductiva del conductor.", icon: "activity", hash: "#/calculos/regulacion" },
+    { title: "Pérdidas", desc: "Corriente, potencia y % de pérdidas de una línea trifásica.", icon: "alertTriangle", hash: "#/calculos/perdidas", libre: true },
+    { title: "Regulación", desc: "Caída de tensión y reactancia inductiva del conductor.", icon: "activity", hash: "#/calculos/regulacion", libre: true },
     { title: "Cortocircuito", desc: "Capacidad de corriente de cortocircuito admisible.", icon: "bolt", hash: "#/calculos/cortocircuito" },
     { title: "Ampacidad aérea", desc: "Corriente admisible de conductores aéreos (IEEE Std 738).", icon: "powerTower", hash: "#/calculos/ampacidad-aerea" },
     { title: "Ampacidad subterránea", desc: "Corriente admisible de cables en banco de ductos (IEC 60287-1-1).", icon: "underground", hash: "#/calculos/ampacidad-subterranea" },

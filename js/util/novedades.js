@@ -3,6 +3,7 @@
 // La PRIMERA entrada debe coincidir con CACHE_VERSION de sw.js (lo comprueba tools/verify_perfil.html).
 // El historial anterior a 3.16.0 se reconstruyó a partir de git el 2026-09-24 (antes solo había un contador v1…v296).
 export const NOVEDADES = [
+  { version: "3.17.0", fecha: "2026-09-24", cambios: ["Pérdidas y Regulación quedan disponibles sin iniciar sesión, como Ocupación de ductos."] },
   { version: "3.16.3", fecha: "2026-09-24", cambios: ["Ayuda: la tarjeta del desarrollador muestra la versión real de la aplicación."] },
   { version: "3.16.2", fecha: "2026-09-24", cambios: ["Regulación: el factor de potencia inicial pasa de 0.95 a 0.9, igual que en Pérdidas y Conductor económico.", "Corriente de conductores NTC 2050: se quita la nota debajo de la tabla.", "Conversión de coordenadas: los ejemplos del cuadro por lotes muestran primero los formatos con espacio."] },
   { version: "3.16.1", fecha: "2026-09-24", cambios: ["Uso sin conexión: la app descarga sola los archivos que le falten al abrir Perfil > Aplicación con internet, y si alguno no se puede descargar dice cuál.", "Al actualizar, cada archivo se descarga por separado y siempre la copia recién publicada."] },
