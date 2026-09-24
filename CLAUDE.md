@@ -386,7 +386,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   resultados con `res`), marcarla `opcional` con su `grupo` y agregar sus pruebas. Cubierto por
   `tools/verify_ia.html` (secciones «agentes de análisis» y «herramientas permitidas por agente»).
 - Herramientas de DISEÑO (2026-09-20, `js/ai/tools.js`): `dimensionar_conductor`, `verificar_conductor` y `resolver_valor_limite` (tipo `diseno`, grupo «Análisis»). Son `opcional: true` POR PEDIDO DEL USUARIO: el agente estándar NO las trae y solo se habilitan en un agente propio (no cambiar eso); combinan las calculadoras existentes, sin fórmulas nuevas, y exigen que el agente tenga habilitadas las calculadoras que usan. Detalle en `docs/ia-herramientas.md` (sección 4); pruebas en `verify_ia.html`.
-- Herramientas alineadas con las pantallas (2026-09-19; plan y registro de avance en `docs/plan-ajustes-ia.md`, TERMINADO salvo el reporte de la IA, `js/ai/reporte.js`, que el usuario decidió rediseñar él con otras ideas: no tocarlo sin que lo pida — excepción puntual el 2026-09-23, ver el bullet del agente riguroso más abajo: el usuario SÍ pidió agregarle ahí la sección «Datos del proyecto»). Pérdidas y regulación aceptan `tramos`, dato de partida (MW/MVA/A) y conductores por fase y devuelven la clasificación Óptimo/Aceptable/Elevado; cortocircuito acepta `corriente_falla_ka`; ocupación acepta `grupos` y da el radio 12D; ampacidad subterránea da la corriente circulante/tensión inducida en la pantalla; unidades usa `data/unidades.json`; coordenadas acepta ~500 códigos EPSG y `puntos`. Los campos de nivel superior siguen valiendo para un solo tramo/tipo/punto. Los motores de `js/calc/` no se tocaron. Detalle en `docs/ia-herramientas.md` (sección 4).
+- Herramientas alineadas con las pantallas (2026-09-19; plan y registro de avance en `docs/plan-ajustes-ia.md`, TERMINADO salvo el reporte de la IA, `js/ai/reporte.js`, que el usuario decidió rediseñar él con otras ideas: no tocarlo sin que lo pida — excepciones puntuales: 2026-09-23 el usuario pidió agregarle la sección «Datos del proyecto» del agente riguroso, ver ese bullet más abajo; y 2026-09-24 la corrección de la nota de referencia obsoleta, ver el bullet correspondiente). Pérdidas y regulación aceptan `tramos`, dato de partida (MW/MVA/A) y conductores por fase y devuelven la clasificación Óptimo/Aceptable/Elevado; cortocircuito acepta `corriente_falla_ka`; ocupación acepta `grupos` y da el radio 12D; ampacidad subterránea da la corriente circulante/tensión inducida en la pantalla; unidades usa `data/unidades.json`; coordenadas acepta ~500 códigos EPSG y `puntos`. Los campos de nivel superior siguen valiendo para un solo tramo/tipo/punto. Los motores de `js/calc/` no se tocaron. Detalle en `docs/ia-herramientas.md` (sección 4).
 - **Agente riguroso y ficha del proyecto (2026-09-23, pedido del usuario)**: segundo agente predefinido para el Asistente
   técnico, pensado para una MEMORIA DE CÁLCULO completa y definitiva (no una estimación como el estándar). `js/ai/analisis.js`
   gana `SISTEMA_RIGUROSO`/`PROMPT_REPORTE_RIGUROSO` junto a los del estándar; `js/ai/agentes-analisis.js` pasa de un
@@ -420,6 +420,28 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
     propio, catálogo de 16 herramientas). De paso se corrigieron ahí los conteos que habían quedado desactualizados desde
     que `calcular_conductor_economico` pasó a ser estándar (2026-09-23, antes de este bullet) y que `verify_ia_pantallas.html`
     no había recibido esa actualización.
+- **Nota de referencia obsoleta en el reporte de escenarios (2026-09-24, reportado por el usuario probando el agente
+  riguroso)**: al pedir un calibre con varias referencias sin indicar cuál (p. ej. ACSR 477, que tiene 4 en el catálogo),
+  `resolverConductor` (`js/ai/tools.js`) agrega una nota «Hay N referencias…; se usó la primera (X)…»; si LUEGO, en la misma
+  conversación, se pide ajustar el resultado con OTRA referencia explícita, esa segunda corrida no genera nota (no es
+  ambigua: el usuario la indicó), pero ambas corridas caían en la MISMA tabla de «Cálculos ejecutados» (`armarTablas` en
+  `js/ai/reporte.js` agrupa solo por nombre de herramienta) y la nota de la primera corrida se mostraba igual, como si
+  aplicara a toda la tabla — quedando desactualizada («se usó la primera» ya no es cierto para las filas con la otra
+  referencia). Diagnóstico confirmado con un subagente de investigación: el bug NO estaba en `tools.js` (cada corrida
+  genera su nota, o ninguna, de forma independiente y correcta) sino en cómo `armarTablas` fusionaba las notas de todas
+  las corridas del grupo por texto (`Set`) sin relacionarlas con qué fila las originó. Se le propusieron al usuario dos
+  arreglos (separar en tablas distintas por referencia, o atribuir la nota a filas concretas) y los rechazó los dos por
+  complejidad; pidió en su lugar que la nota se «revise y actualice sola» diciendo cuántas y cuáles referencias se usaron
+  realmente. Implementado en `js/ai/reporte.js` (`notasDelGrupo`, `PATRON_NOTA_AMBIGUEDAD`, `listaConY`): al armar las
+  notas de un grupo, las que calzan con el patrón de ambigüedad de `resolverConductor` («Hay N referencias/construcciones…»)
+  se separan de las demás; si la entrada `conductor` (que TODAS las calculadoras que usan `resolverConductor` registran
+  con esa misma clave) tomó más de un valor distinto en las corridas del grupo, se descartan esas notas crudas y se
+  reemplazan por una sola: «Este calibre tiene varias referencias en el catálogo; en estos escenarios se usaron N: A, B
+  (y C…).» — si todas las corridas del grupo terminaron usando la MISMA referencia (aunque alguna fuera ambigua), la nota
+  original se deja tal cual porque sigue siendo exacta. Es genérico: aplica a cualquier calculadora que use
+  `resolverConductor` (Pérdidas, Regulación, Cortocircuito, Conductor económico, Ampacidad aérea), no solo a Ampacidad
+  aérea del ejemplo. Pruebas: sección nueva «reporte: la nota de referencia ambigua se actualiza si el grupo usa varias»
+  en `tools/verify_ia.html` (incluye el caso de que NO cambie cuando todas las corridas comparten referencia).
 - Explicación completa de cómo la IA usa las herramientas y de cómo agregar una nueva: `docs/ia-herramientas.md` (léelo antes de
   tocar `tools.js` o los agentes; si cambia ese comportamiento, actualízalo).
 - Bug reportado por el usuario (2026-09-22, corregido): el modelo escribía sintaxis LaTeX (`$...$`, `\text{}`) dentro de

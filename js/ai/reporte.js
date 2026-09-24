@@ -10,6 +10,31 @@ const MAX_FILAS = 200;
 
 const nombreColumna = (c) => (c.unidad ? `${c.etiqueta} (${c.unidad})` : c.etiqueta);
 
+/** "A", "A y B" o "A, B y C". */
+const listaConY = (xs) => (xs.length <= 1 ? xs.join("") : `${xs.slice(0, -1).join(", ")} y ${xs.at(-1)}`);
+
+// Las notas de ambiguedad de referencia/construccion que agrega resolverConductor (js/ai/tools.js) dicen "se usó la
+// primera": eso es correcto para UNA corrida, pero queda obsoleto si otra corrida del mismo grupo (misma calculadora)
+// usó una referencia distinta (p. ej. el usuario pidió despues "ajusta con la siguiente referencia"). En vez de mostrar
+// el texto crudo (que solo describiria la primera corrida), se detecta y se reemplaza por una nota que nombra TODAS las
+// referencias realmente usadas en el grupo.
+const PATRON_NOTA_AMBIGUEDAD = /^Hay \d+ (?:referencias|construcciones)/;
+
+/**
+ * Notas de un grupo (mismas calculadora): deduplica el texto crudo, salvo la nota de ambigüedad de referencia/
+ * construcción, que se recalcula mirando el conductor REALMENTE usado en cada corrida del grupo, no solo el de
+ * la primera (ver PATRON_NOTA_AMBIGUEDAD arriba).
+ */
+function notasDelGrupo(corridas, valorDe, meta) {
+  const crudas = [...new Set(corridas.flatMap((c) => c.notas || []))];
+  const ambiguas = crudas.filter((n) => PATRON_NOTA_AMBIGUEDAD.test(n));
+  const normales = crudas.filter((n) => !PATRON_NOTA_AMBIGUEDAD.test(n));
+  if (!ambiguas.length) return normales;
+  const conductores = meta.has("conductor") ? [...new Set(corridas.map((c) => valorDe(c, "conductor")).filter(Boolean))] : [];
+  if (conductores.length <= 1) return [...normales, ...ambiguas]; // una sola referencia en todo el grupo: la nota sigue siendo exacta
+  return [...normales, `Este calibre tiene varias referencias en el catálogo; en estos escenarios se usaron ${conductores.length}: ${listaConY(conductores)}.`];
+}
+
 /** Agrupa las corridas exitosas por calculadora y separa entradas variables de constantes. */
 export function armarTablas(log) {
   const grupos = new Map();
@@ -60,7 +85,7 @@ export function armarTablas(log) {
         }),
       })),
       supuestos: [...new Set(g.corridas.flatMap((c) => c.supuestos || []))],
-      notas: [...new Set(g.corridas.flatMap((c) => c.notas || []))],
+      notas: notasDelGrupo(corridas, valorDe, meta),
     });
   }
   return { tablas, errores };

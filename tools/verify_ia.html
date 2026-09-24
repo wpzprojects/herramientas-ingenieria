@@ -1091,6 +1091,30 @@ await seccion("reporte: tablas de escenarios", async () => {
   ok(full.startsWith("# Mi reporte") && full.includes("Reporte generado con asistencia de IA"), "reporte completo incluye narrativa y aviso");
 });
 
+await seccion("reporte: la nota de referencia ambigua se actualiza si el grupo usa varias", async () => {
+  // Caso reportado por el usuario: ACSR 477 tiene 4 referencias; primero se calcula sin indicarla (usa la
+  // primera, Pelican, y avisa la ambiguedad) y luego se pide con otra referencia explicita (Hawk). La nota final
+  // del grupo NO debe seguir diciendo "se usó la primera (Pelican)": debe nombrar las 2 realmente usadas.
+  const base = { tipo: "ACSR", calibre: "477", ta_c: 25, tc_c: 75 };
+  const ctx = ctxNuevo();
+  await tools.ejecutarLlamada("calcular_ampacidad_aerea", base, ctx);
+  ok(ctx.log[0].notas.some((n) => /se usó la primera \(Pelican/.test(n)), "primera corrida (sin referencia): trae la nota de ambigüedad con Pelican");
+  await tools.ejecutarLlamada("calcular_ampacidad_aerea", { ...base, referencia: "Hawk (26/7)" }, ctx);
+  ok(!ctx.log[1].notas?.length, "segunda corrida (referencia explícita, Hawk): no genera nota (no es ambigua)");
+  const { tablas } = reporte.armarTablas(ctx.log);
+  const amp = tablas.find((t) => t.titulo === "Ampacidad aérea");
+  ok(amp.total === 2, "las 2 corridas quedan en la misma tabla (misma calculadora)");
+  ok(!amp.notas.some((n) => /se usó la primera/.test(n)), "la nota cruda de «se usó la primera» ya NO aparece en el grupo (quedaría obsoleta para la fila de Hawk)");
+  ok(amp.notas.some((n) => /varias referencias/.test(n) && /Pelican \(18\/1\)/.test(n) && /Hawk \(26\/7\)/.test(n)), `en su lugar, una nota nombra las 2 referencias realmente usadas: ${JSON.stringify(amp.notas)}`);
+
+  // si las dos corridas terminan usando la MISMA referencia (aunque una fue ambigua), la nota original se conserva tal cual
+  const ctx2 = ctxNuevo();
+  await tools.ejecutarLlamada("calcular_ampacidad_aerea", base, ctx2);
+  await tools.ejecutarLlamada("calcular_ampacidad_aerea", { ...base, ta_c: 35 }, ctx2); // mismo conductor (Pelican, por defecto), solo cambia ta_c
+  const amp2 = reporte.armarTablas(ctx2.log).tablas.find((t) => t.titulo === "Ampacidad aérea");
+  ok(amp2.notas.some((n) => /se usó la primera \(Pelican/.test(n)) && !amp2.notas.some((n) => /varias referencias/.test(n)), "si todas las corridas terminan con la misma referencia, la nota original (sin reescribir) sigue siendo exacta");
+});
+
 await seccion("analisis: bucle con herramientas (Gemini simulado)", async () => {
   const ajustes = { modelo: "m", temperatura: 0.3, maxRondas: 4, maxCalculos: 60 };
   const conv = { contenidos: [] };
