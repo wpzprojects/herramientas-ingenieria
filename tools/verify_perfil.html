@@ -276,6 +276,9 @@ await seccion("pestaña Aplicación", async () => {
   ok(nuevos.every((f) => shell.includes(f)), "los cinco módulos nuevos están en el APP_SHELL");
   limpiar();
   stage.innerHTML = "";
+  // la tarjeta del desarrollador en Ayuda usa la misma versión (antes tenía un "1.0.0" fijo)
+  const ayuda = await (await fetch("../js/views/ayuda.js")).text();
+  ok(!/APP_VERSION = "\d/.test(ayuda) && /APP_VERSION = NOVEDADES\[0\]\.version/.test(ayuda), "Ayuda toma la versión de novedades.js (no un número escrito a mano)");
 });
 
 restaurarLS();

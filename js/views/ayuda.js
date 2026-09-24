@@ -6,9 +6,10 @@ import { icon } from "../icons.js";
 import { sectionMenus, sectionMeta } from "../nav.js";
 import { estadoAcceso } from "../auth/acceso.js";
 import { itemHabilitado, TEXTO_BLOQUEADO } from "../auth/permisos.js";
+import { NOVEDADES } from "../util/novedades.js";
 
 const SECCIONES = ["calculos", "catalogos", "normatividad", "ia", "varios"];
-const APP_VERSION = "1.0.0";
+const APP_VERSION = NOVEDADES[0].version; // la misma de sw.js (x.y.z; ver js/util/novedades.js)
 
 // Descripciones largas (2-3 renglones) para la pantalla de Ayuda: explican QUE
 // hace la herramienta y PARA QUE sirve, a diferencia de item.desc (una linea
