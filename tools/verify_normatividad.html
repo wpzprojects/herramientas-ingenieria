@@ -248,7 +248,7 @@ await seccion("Corriente NTC 2050: tabla partida (encabezado fijo + cuerpo con s
   const filaEnElTope = cuerpo.scrollTop + alturaEnc;
   ok(Math.abs(filaEnElTope - (alturaCompleta - alturaFilaEsperada)) < 2, `al hacer scroll hasta el final, la ÚLTIMA fila queda pegada arriba del cuerpo (junto al encabezado), no varada a medio viewport (fila en el tope: ${Math.round(filaEnElTope)} px, se esperaba ${Math.round(alturaCompleta - alturaFilaEsperada)} px)`);
 
-  ok(texto($(".tabla-partida__aviso")).length > 20, "hay un aviso corto explicando que se puede desplazar y tocar para ver la tabla completa");
+  ok(!$(".tabla-partida__aviso") && !/desplázate dentro de la tabla/.test(stage.textContent), "sin nota debajo de la tabla (el usuario la quitó el 2026-09-24: no hace falta la aclaración)");
 
   // llamar la limpieza no debe tronar (aunque se llame más de una vez, p. ej. si el router la invoca y luego se navega otra vez)
   limpiar();

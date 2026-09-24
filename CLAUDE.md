@@ -32,6 +32,9 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   Pérdidas conserva su propio orden (calibre|resistencia antes de longitud|conductores), no tocarlo. El motor
   `js/calc/regulacion.js` y la herramienta de la IA NO se tocan. Lógica en `js/calc/regulacion-tramos.js`; pruebas en
   `tools/verify_regulacion.html`. Las dos fórmulas de caída (`√3·I·Z·L·100/(V·1000)` y `P[kW]·L·K`) son equivalentes (verificado).
+  Valores iniciales del dato de partida (2026-09-24, pedido del usuario): FP **0.9** (antes 0.95, igual que Pérdidas y
+  Conductor económico), y por coherencia 9.9 MW = **11 MVA** = **184.1 A** a 34.5 kV (antes 10.42 MVA y 174.4 A). En
+  `verify_regulacion.html` las pruebas de la vista usan `FP_VISTA`/`E1V`; las del motor siguen con su propio FP 0.95.
 - Código compartido para las próximas calculadoras: `js/calc/circuito.js` (dato de partida, `clasificarPorUmbrales`,
   `sugerirCalibre` con `campo`) y `js/util/resultados-ui.js` (tarjeta con pestañas, `reporteHtml` con negrita, panel de fórmulas
   y `activarPestanas`, que además alinea la columna de símbolos midiendo el más ancho: `--ancho-simbolo`). Etiquetas: siempre

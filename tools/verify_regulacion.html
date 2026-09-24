@@ -65,6 +65,9 @@ function esperado({ V, Pmw, fp, L, R, rmgMm, dab, dac, dbc }) {
 const BASE = { tensionLineaKv: 34.5, potenciaActivaMw: 9.9, factorPotencia: 0.95 };
 const TRAMO = { resistenciaOhmKm: R0, rmgMm: RMG0, longitudKm: 5.2, dabM: 2, dacM: 2.84, dbcM: 0.84, numConductoresPorFase: 1 };
 const E1 = esperado({ V: 34.5, Pmw: 9.9, fp: 0.95, L: 5.2, R: R0, rmgMm: RMG0, dab: 2, dac: 2.84, dbc: 0.84 });
+// la pantalla arranca con FP 0.9 (2026-09-24, pedido del usuario; antes 0.95): las pruebas de la vista usan E1V
+const FP_VISTA = 0.9;
+const E1V = esperado({ V: 34.5, Pmw: 9.9, fp: FP_VISTA, L: 5.2, R: R0, rmgMm: RMG0, dab: 2, dac: 2.84, dbc: 0.84 });
 
 await seccion("regulacion-tramos: logica", async () => {
   const uno = tr.calcularRegulacionTramos(BASE, [TRAMO]);
@@ -203,13 +206,13 @@ await seccion("vista: campos del tramo (mm, haz y distancias)", async () => {
 
 await seccion("vista: un tramo, cálculo y resultados", async () => {
   calcular();
-  cerca(valorDe("Corriente"), E1.I, 0.006, "resultado: corriente");
-  cerca(valorDe("Potencia aparente"), E1.S, 0.006, "resultado: potencia aparente (MVA)");
+  cerca(valorDe("Corriente"), E1V.I, 0.006, "resultado: corriente");
+  cerca(valorDe("Potencia aparente"), E1V.S, 0.006, "resultado: potencia aparente (MVA)");
   cerca(valorDe("Potencia activa"), 9.9, 0.006, "resultado: potencia activa (MW)");
-  cerca(valorDe("Caída de tensión"), E1.pct, 0.006, `resultado: caída de tensión (${E1.pct.toFixed(4)} %)`);
-  cerca(valorDe("Constante de regulación"), E1.K, 5e-8, "resultado: constante de regulación");
+  cerca(valorDe("Caída de tensión"), E1V.pct, 0.006, `resultado: caída de tensión (${E1V.pct.toFixed(4)} %)`);
+  cerca(valorDe("Constante de regulación"), E1V.K, 5e-8, "resultado: constante de regulación");
   const badge = $(".badge", metrica("Caída de tensión"));
-  ok(badge && texto(badge) === "Óptimo" && badge.classList.contains("badge-success"), `con ${E1.pct.toFixed(2)} % la etiqueta es «${texto(badge)}»`);
+  ok(badge && texto(badge) === "Óptimo" && badge.classList.contains("badge-success"), `con ${E1V.pct.toFixed(2)} % la etiqueta es «${texto(badge)}»`);
   ok(texto($("#resultado-wrap")).includes("Referencias de diseño: hasta 5% óptimo · hasta 10% aceptable.") && !texto($("#resultado-wrap")).includes("(no son un límite"), "las referencias se muestran como «Referencias de diseño: hasta 5% óptimo · hasta 10% aceptable.» (sin paréntesis)");
   ok(!/norma/i.test(texto($("#resultado-wrap"))), "en los resultados no aparece la palabra «norma» ni «normativo» en ninguna parte");
   ok(!$$(".result-panel svg, .result-gauge").length, "sin gráficos");
@@ -226,9 +229,9 @@ await seccion("vista: un tramo, cálculo y resultados", async () => {
   poner("#f-n-0", "2");
   poner("#f-sephaz-0", "0.4");
   calcular();
-  const eh = esperado({ V: 34.5, Pmw: 9.9, fp: 0.95, L: 5.2, R: R0 / 2, rmgMm: Math.sqrt(RMG0 * 400), dab: 2, dac: 2.84, dbc: 0.84 });
+  const eh = esperado({ V: 34.5, Pmw: 9.9, fp: FP_VISTA, L: 5.2, R: R0 / 2, rmgMm: Math.sqrt(RMG0 * 400), dab: 2, dac: 2.84, dbc: 0.84 });
   cerca(valorDe("Caída de tensión"), eh.pct, 0.006, `2 conductores por fase, separación 0.4 m: caída ${eh.pct.toFixed(4)} %`);
-  ok(valorDe("Caída de tensión") < E1.pct, "el haz baja la caída de tensión");
+  ok(valorDe("Caída de tensión") < E1V.pct, "el haz baja la caída de tensión");
   poner("#f-n-0", "1");
 
   // por encima de 10 %: «Elevado»
@@ -244,15 +247,15 @@ await seccion("vista: un tramo, cálculo y resultados", async () => {
 
 await seccion("vista: dato de partida aparente y corriente", async () => {
   elegir("#f-modo", "aparente");
-  poner("#f-aparente", "10.42");
+  poner("#f-aparente", "11");
   calcular();
-  cerca(valorDe("Potencia activa"), 10.42 * 0.95, 0.006, "desde potencia aparente: P = S·FP");
-  cerca(valorDe("Potencia aparente"), 10.42, 0.006, "desde potencia aparente: vuelve a dar 10.42 MVA");
+  cerca(valorDe("Potencia activa"), 11 * FP_VISTA, 0.006, "desde potencia aparente: P = S·FP");
+  cerca(valorDe("Potencia aparente"), 11, 0.006, "desde potencia aparente: vuelve a dar 11 MVA");
   elegir("#f-modo", "corriente");
-  poner("#f-corriente", "174.4");
+  poner("#f-corriente", "184.1");
   calcular();
-  cerca(valorDe("Corriente"), 174.4, 0.006, "desde corriente: vuelve a dar 174.4 A");
-  cerca(valorDe("Potencia activa"), (Math.sqrt(3) * 34.5 * 174.4 * 0.95) / 1000, 0.006, "desde corriente: P = √3·V·I·FP / 1000");
+  cerca(valorDe("Corriente"), 184.1, 0.006, "desde corriente: vuelve a dar 184.1 A");
+  cerca(valorDe("Potencia activa"), (Math.sqrt(3) * 34.5 * 184.1 * FP_VISTA) / 1000, 0.006, "desde corriente: P = √3·V·I·FP / 1000");
   elegir("#f-modo", "potencia");
 });
 
@@ -281,15 +284,15 @@ await seccion("vista: varios tramos", async () => {
   const cat2 = desnudos.find((c) => c.tipo === "AAAC" && c.calibre_awg_kcmil === fila2);
   ok($("#f-calibre-1").value === fila2, `el segundo tramo elige el calibre ${fila2}`);
   calcular();
-  const e2 = esperado({ V: 34.5, Pmw: 9.9, fp: 0.95, L: 3, R: cat2.r_ac_75c_ohm_km, rmgMm: cat2.radio_medio_geometrico_mm, dab: 1.6, dac: 2.7, dbc: 1.1 });
-  cerca(valorDe("Caída de tensión total"), E1.pct + e2.pct, 0.006, "dos tramos: caída total = suma de los tramos, cada uno con su geometría");
+  const e2 = esperado({ V: 34.5, Pmw: 9.9, fp: FP_VISTA, L: 3, R: cat2.r_ac_75c_ohm_km, rmgMm: cat2.radio_medio_geometrico_mm, dab: 1.6, dac: 2.7, dbc: 1.1 });
+  cerca(valorDe("Caída de tensión total"), E1V.pct + e2.pct, 0.006, "dos tramos: caída total = suma de los tramos, cada uno con su geometría");
   const filas = $$(".tabla-resultado tbody tr");
   ok(filas.length === 3 && filas[2].classList.contains("total-row"), "tabla por tramo: dos filas y una de total");
-  cerca(parseFloat(texto(filas[0].querySelectorAll("td")[4])), E1.pct, 0.006, "tabla: % del tramo 1");
+  cerca(parseFloat(texto(filas[0].querySelectorAll("td")[4])), E1V.pct, 0.006, "tabla: % del tramo 1");
   cerca(parseFloat(texto(filas[1].querySelectorAll("td")[4])), e2.pct, 0.006, "tabla: % del tramo 2");
-  cerca(parseFloat(texto(filas[0].querySelectorAll("td")[3])), E1.K, 5e-8, "tabla: constante K del tramo 1");
+  cerca(parseFloat(texto(filas[0].querySelectorAll("td")[3])), E1V.K, 5e-8, "tabla: constante K del tramo 1");
   cerca(parseFloat(texto(filas[1].querySelectorAll("td")[3])), e2.K, 5e-8, "tabla: constante K del tramo 2");
-  cerca(parseFloat(texto(filas[2].querySelectorAll("td")[1])), E1.pct + e2.pct, 0.006, "tabla: total");
+  cerca(parseFloat(texto(filas[2].querySelectorAll("td")[1])), E1V.pct + e2.pct, 0.006, "tabla: total");
   ok(!$$(".result-subhead").some((s) => texto(s).includes("Comparación con otros calibres")) && !metrica("Constante de regulación"), "con varios tramos no hay comparación de calibres ni una sola constante K (cada tramo tiene la suya)");
 
   // quitar el primer tramo
@@ -339,10 +342,10 @@ await seccion("vista: estructura del reporte (se copia y se pega)", async () => 
 
   // dato de partida distinto de la potencia activa: la potencia activa se calcula y va en resultados
   elegir("#f-modo", "aparente");
-  poner("#f-aparente", "10.42");
+  poner("#f-aparente", "11");
   const b = leer();
   const sb = secciones(b);
-  ok(tiene(sb.params, "Dato de partida: Potencia aparente (10.42 MVA)") && !tiene(sb.params, "Potencia activa:") && tiene(sb.res, "Potencia activa: 9.90 MW"), "desde potencia aparente: la potencia activa calculada va en los resultados");
+  ok(tiene(sb.params, "Dato de partida: Potencia aparente (11.00 MVA)") && !tiene(sb.params, "Potencia activa:") && tiene(sb.res, "Potencia activa: 9.90 MW"), "desde potencia aparente: la potencia activa calculada va en los resultados");
   elegir("#f-modo", "potencia");
 
   // dos tramos, el segundo con 2 conductores por fase

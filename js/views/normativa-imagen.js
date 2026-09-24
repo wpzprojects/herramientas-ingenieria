@@ -78,7 +78,6 @@ function montarTablaPartida(host, op) {
         <div class="tabla-partida__cuerpo-inner"><img src="${rutaImg(op.img)}" alt="${op.label}"></div>
       </div>
     </div>
-    <p class="tabla-partida__aviso">El encabezado queda fijo; desplázate dentro de la tabla para ver el resto de las filas. Toca la imagen para verla completa.</p>
   `;
 
   const encImg = host.querySelector(".tabla-partida__encabezado img");

@@ -347,7 +347,8 @@ await seccion("pantalla: convertir por lotes", async () => {
   const nota = $("#campo-lote .hint");
   ok(texto(nota) === "Ingresar datos por lotes. Cada línea debe ser una pareja de coordenadas separadas." && nota.getBoundingClientRect().top >= ta.bottom - 0.5, "la nota va debajo del cuadro con el texto pedido");
   const ejemplos = $("#f-lote").placeholder.split(String.fromCharCode(10));
-  ok(ejemplos[0] === "Ejemplos válidos:" && ejemplos.length === 5 && ejemplos.slice(1).every((l) => { const r = epsg.parsearPareja(l); return r.x === (l.includes(",0817") || l.includes("-74.0817") ? -74.0817 : NaN) && r.y === 4.6097; }), "el cuadro muestra 4 ejemplos válidos (espacio, punto y coma, coma y espacio con coma decimal; sin la línea de comillas, que igual se lee) y todos se leen como -74.0817 y 4.6097");
+  ok(ejemplos[0] === "Ejemplos válidos:" && ejemplos.length === 5 && ejemplos.slice(1).every((l) => { const r = epsg.parsearPareja(l); return r.x === (l.includes(",0817") || l.includes("-74.0817") ? -74.0817 : NaN) && r.y === 4.6097; }), "el cuadro muestra 4 ejemplos válidos (espacio, espacio con coma decimal, punto y coma y coma, en ese orden; sin la línea de comillas, que igual se lee) y todos se leen como -74.0817 y 4.6097");
+  ok(ejemplos.slice(1).join(" | ") === "-74.0817 4.6097 | -74,0817 4,6097 | -74,0817;4,6097 | -74.0817,4.6097", `orden pedido por el usuario (el de coma decimal y espacio en la fila 2): ${ejemplos.slice(1).join(" | ")}`);
   ok(texto($("#label-lote")) === "Longitud y latitud (grados)" && !$("#f-x").required && $("#f-lote").required, "etiqueta «Longitud y latitud» y solo el cuadro es obligatorio");
 
   // 4326 -> 3116, con una linea vacia, una mala y un punto fuera del area

@@ -117,7 +117,7 @@ await seccion("las seis calculadoras arrancan con los valores por defecto person
   const reg = await import("../js/views/calc-regulacion.js");
   stage.innerHTML = "";
   await reg.render(stage);
-  ok(stage.querySelector("#f-tension").value === "34.5" && stage.querySelector("#f-fp").value === "0.95", "sin valores personales, Regulación sigue con 34.5 kV y FP 0.95");
+  ok(stage.querySelector("#f-tension").value === "34.5" && stage.querySelector("#f-fp").value === "0.9", "sin valores personales, Regulación sigue con 34.5 kV y FP 0.9");
   stage.innerHTML = "";
 });
 

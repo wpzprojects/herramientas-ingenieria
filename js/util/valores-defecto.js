@@ -12,7 +12,7 @@ export const GRUPOS = [
     donde: "Pérdidas, Regulación, Conductor económico y Ampacidad subterránea",
     campos: [
       { clave: "tension", etiqueta: "Tensión de línea (kV)", inicial: "34.5", min: 0, step: 0.01, en: { perdidas: "#f-tension", regulacion: "#f-tension", "conductor-economico": "#f-tension", "ampacidad-subterranea": "#f-tension" }, info: "En Ampacidad subterránea solo se aplica hasta 46 kV (el máximo de esa calculadora)." },
-      { clave: "fp", etiqueta: "Factor de potencia", inicial: "0.9 (Regulación 0.95)", min: 0, max: 1, step: 0.01, en: { perdidas: "#f-fp", regulacion: "#f-fp", "conductor-economico": "#f-fp" } },
+      { clave: "fp", etiqueta: "Factor de potencia", inicial: "0.9", min: 0, max: 1, step: 0.01, en: { perdidas: "#f-fp", regulacion: "#f-fp", "conductor-economico": "#f-fp" } },
       { clave: "fc", etiqueta: "Factor de carga (Fc)", inicial: "0.4", min: 0, max: 1, step: 0.0001, en: { perdidas: "#f-fc", "conductor-economico": "#f-fc" } },
     ],
   },

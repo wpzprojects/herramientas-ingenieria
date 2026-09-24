@@ -156,15 +156,15 @@ export async function render(container) {
           </div>
           <div class="field" id="wrap-aparente" hidden>
             <label for="f-aparente">Potencia aparente (MVA)</label>
-            <input type="number" id="f-aparente" min="0" step="0.01" value="10.42">
+            <input type="number" id="f-aparente" min="0" step="0.01" value="11">
           </div>
           <div class="field" id="wrap-corriente" hidden>
             <label for="f-corriente">Corriente (A)</label>
-            <input type="number" id="f-corriente" min="0" step="0.1" value="174.4">
+            <input type="number" id="f-corriente" min="0" step="0.1" value="184.1">
           </div>
           <div class="field">
             <label for="f-fp">Factor de potencia</label>
-            <input type="number" id="f-fp" min="0" max="1" step="0.01" value="0.95" required>
+            <input type="number" id="f-fp" min="0" max="1" step="0.01" value="0.9" required>
           </div>
         </div>
       </div>
