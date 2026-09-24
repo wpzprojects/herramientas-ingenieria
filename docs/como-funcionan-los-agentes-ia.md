@@ -29,33 +29,11 @@ un número esté en su rango, que no falte un campo obligatorio, etc.), escritas
 quien programó la app. No es "otro agente" ni una segunda IA revisando a la primera; es la función
 `normalizar()` de `js/ai/tools.js`, una rutina fija que corre siempre igual.
 
-```
- 1. El usuario escribe una pregunta en el chat
-              │
-              ▼
- 2. El modelo (Gemini / OpenAI / Claude, según lo configurado) la lee junto con el
-    historial de la conversación y la lista de herramientas que ese agente puede usar
-              │
-              ├── Puede responder directo con texto (no necesitó calcular nada)
-              │
-              └── Puede pedir ejecutar una o varias herramientas
-                          │
-                          ▼
- 3. CÓDIGO (sin IA) valida los datos que pidió el modelo: tipos, rangos, campos
-    obligatorios, valores por defecto — igual de estricto que un formulario web
-              │
-              ▼
- 4. Si los datos son válidos, se llama al MISMO motor de cálculo que usan las pantallas
-    normales (js/calc/*.js) — es la fuente única de verdad, no hay una copia para la IA
-              │
-              ▼
- 5. El resultado (números exactos) se guarda como una "corrida": queda en una tabla que
-    se ve en pantalla y en el reporte, SIN pasar por el texto del modelo
-              │
-              ▼
- 6. El resultado vuelve al modelo, que lo interpreta, compara, y redacta la respuesta
-    final en lenguaje natural (o pide otra herramienta más, si hace falta)
-```
+![Diagrama de flujo: 1) el usuario escribe una pregunta, 2) el modelo (IA) decide si responde con texto o pide ejecutar una herramienta, 3) el código de la aplicación valida los datos sin IA, 4) se llama al motor de cálculo real, 5) el resultado se guarda en una tabla, 6) el modelo (IA) redacta la respuesta final — con un ciclo de vuelta al paso 2 si hace falta otra herramienta, y ambos caminos terminan mostrando la respuesta al usuario.](img/flujo-agentes-ia.svg)
+
+El modelo (recuadros azules, "IA") es el único que decide y redacta; los recuadros grises (código
+de la aplicación) son reglas fijas que no cambian de una conversación a otra — igual que la
+validación de cualquier formulario web.
 
 Si los datos que mandó el modelo no son válidos, la app no revienta: le devuelve un mensaje
 de error claro ("falta tal dato", "el rango permitido es de X a Y") y el modelo reintenta con
