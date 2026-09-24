@@ -442,6 +442,19 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   `resolverConductor` (Pérdidas, Regulación, Cortocircuito, Conductor económico, Ampacidad aérea), no solo a Ampacidad
   aérea del ejemplo. Pruebas: sección nueva «reporte: la nota de referencia ambigua se actualiza si el grupo usa varias»
   en `tools/verify_ia.html` (incluye el caso de que NO cambie cuando todas las corridas comparten referencia).
+- **Redacción impersonal en la memoria del agente riguroso (2026-09-24, pedido del usuario probando el agente)**: la
+  sección «3. Datos de entrada» de la memoria generada decía cosas como «...confirmados previamente por el usuario...»
+  — lenguaje de interfaz de software, fuera de lugar en un documento que se presenta como memoria de cálculo de
+  ingeniería. `PROMPT_REPORTE_RIGUROSO` (`js/ai/analisis.js`) pedía explícitamente «aclara en general qué vino del
+  usuario y qué se dejó en su valor por defecto»; se cambió a pedir la misma distinción (dato específico del proyecto
+  vs. valor por defecto) en VOZ IMPERSONAL, sin mencionar «el usuario» ni a ningún actor (el usuario eligió esta opción
+  entre tres propuestas; descartó nombrar «el interesado»/«el solicitante» — términos válidos en memorias de cálculo
+  tradicionales pero que igual nombran a alguien externo — y descartó también quitar la aclaración por completo).
+  Ejemplo del texto que debería salir ahora: «Los parámetros del sistema y del entorno se establecieron para este
+  proyecto, adoptando por defecto las condiciones base de la norma IEEE Std 738 para el viento, la radiación solar, la
+  absortividad y la emisividad...». Es un ajuste de PROMPT (texto que lee el modelo), no de código determinista: no hay
+  forma de verificarlo con una prueba automática (la redacción exacta la decide el modelo); queda pendiente que el
+  usuario lo confirme generando otra memoria.
 - Explicación completa de cómo la IA usa las herramientas y de cómo agregar una nueva: `docs/ia-herramientas.md` (léelo antes de
   tocar `tools.js` o los agentes; si cambia ese comportamiento, actualízalo).
 - Bug reportado por el usuario (2026-09-22, corregido): el modelo escribía sintaxis LaTeX (`$...$`, `\text{}`) dentro de

@@ -59,7 +59,7 @@ export const PROMPT_REPORTE_RIGUROSO = `Genera ahora la MEMORIA DE CÁLCULO form
 ## 2. Normativa y referencias aplicadas
 (solo las normas/estándares realmente usados en esta memoria; no cites los que no aplicaron)
 ## 3. Datos de entrada
-(NO repitas la tabla completa de la ficha del proyecto, la aplicación ya la adjunta; resume solo lo esencial y aclara en general qué vino del usuario y qué se dejó en su valor por defecto)
+(NO repitas la tabla completa de la ficha del proyecto, la aplicación ya la adjunta; resume solo lo esencial y aclara en general qué se estableció como dato específico del proyecto y qué se adoptó en su valor por defecto — en voz impersonal, sin mencionar "el usuario" ni a ningún actor: esto es una memoria de cálculo formal, no la bitácora de una conversación)
 ## 4. Metodología
 (qué calculadoras se usaron y por qué, en pocas frases, sin fórmulas en LaTeX)
 ## 5. Resultados
