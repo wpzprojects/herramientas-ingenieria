@@ -545,6 +545,45 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   app vs solo módulos sensibles), vigencia del permiso offline (recomendado 14 días) y aviso por
   correo (recomendado: sin correo al inicio).
 
+## Persistencia de navegación (`js/util/persistencia-calculo.js`)
+
+- Patrón ya usado por las 7 calculadoras (2026-09-24, extendido por pedido del usuario tras preguntarle si convenía):
+  un `Map()` en MEMORIA (no `localStorage`), indexado por ruta; el router (`js/router.js`) llama a la función
+  `antesDeSalir` que devuelva `render()` justo antes de desmontar la vista. Sobrevive a navegar dentro de la SPA,
+  NO a un recargue de página (es lo pedido). Antes de agregarlo a una vista nueva, revisar si el análisis sigue
+  vigente: no tiene sentido en pantallas de configuración cuyos campos ya reflejan un ajuste guardado aparte
+  (Perfil, Configuración de IA), solo en formularios «de una sola pasada» que el usuario puede llenar a medias.
+- **Conversión de unidades y de coordenadas** (`js/views/conversion-unidades.js`, `conversion-coordenadas.js`):
+  eran formularios «de cálculo de una vez» iguales en espíritu a las calculadoras pero sin ninguna protección;
+  ahora usan el mismo patrón (rutas `/varios/conversion-unidades` y `/varios/conversion-coordenadas`). En
+  coordenadas, restaurar el modo EPSG exige cuidado con el orden: el listener de `chk-todos` es async (carga
+  proj4 y el catálogo con `await`); al restaurar se dispara su evento `change` y, ya que `dispatchEvent` no
+  espera esa promesa, el código que sigue corre igual antes de que resuelva — por eso los valores de
+  `f-epsg-origen`/`f-epsg-destino` guardados se escriben DESPUÉS de disparar el evento (si no, el propio
+  handler los pisaría con el valor de la lista de 7 sistemas). `conversion-coordenadas.js` no era `async
+  function render` y no hacía falta serlo: basta con devolver la función `antesDeSalir` al final.
+- **Pantallas de IA (Asistente técnico y Corrector de redacción)**: NO se guarda cada campo como en un
+  formulario — la conversación (mensajes, cálculos ejecutados) ya se auto-guarda en IndexedDB
+  (`js/ai/historial.js`) tras cada turno completo, sin acción explícita del usuario; lo único que faltaba era
+  que, al volver a la pantalla, no se retomaba sola (quedaba en blanco) y el texto sin enviar de la caja se
+  perdía siempre. Se guardan solo DOS cosas por ruta (`/ia/analisis`, `/ia/redaccion`): el `id` de la
+  conversación activa y el borrador de la caja de texto; al volver, si hay `convId` se reabre con
+  `historial.obtener(id)` (la misma función que ya usaba el botón «Abrir» del historial: se extrajo a una
+  función compartida `cargarConversacion(c, {desplazar})` para no duplicar la lógica — con `desplazar: true`
+  solo en el clic explícito de «Abrir», nunca en la restauración automática, para no reintroducir el
+  desplazamiento automático que el usuario ya había pedido quitar en 2026-09-21). Se investigó si hacía falta
+  además un mecanismo para no perder la respuesta cuando el usuario navega fuera MIENTRAS la IA está
+  generando: no hace falta uno nuevo — `historial.guardar(conv)` ya se llama sobre el objeto `conv` del cierre
+  antiguo sin importar si el DOM sigue montado (manipular nodos DOM desprendidos no lanza error, solo no se ve),
+  así que el turno igual queda guardado; lo único que faltaba era, justamente, la restauración automática ya
+  agregada. **Aviso para quien pruebe esto**: `historial.obtener()`/`historial.guardar()` (IndexedDB) pueden
+  QUEDARSE COLGADOS (promesa que nunca resuelve ni rechaza) en el Edge headless de este entorno si se
+  `await`an directamente en un arnés de pruebas — es una limitación ya documentada del navegador de pruebas
+  (ver `tools/verify_ia_pantallas.html`, «el conteo usa IndexedDB, que el navegador de pruebas no siempre da»):
+  no usar eso como señal de un bug real. La restauración del borrador (sin IndexedDB) sí se verificó
+  headless con éxito; la reapertura automática de la conversación se verificó por revisión de código (reutiliza
+  exactamente la ruta de «Abrir», ya probada) y quedará confirmada a mano por el usuario.
+
 ## Convenciones de UI/CSS
 
 - Iconos (`js/icons.js`): SVG inline propios, sin CDN (requisito de offline). El estilo

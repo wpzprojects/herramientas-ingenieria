@@ -7,7 +7,9 @@
 import { loadData, distinct, escapeHtml } from "../util/format.js";
 import { convertirUnidad } from "../calc/unidades.js";
 import { convertirBase, CALIBRES, datosCalibre, calibrePorArea } from "../calc/unidades-extendido.js";
+import { guardarEstado, leerEstado } from "../util/persistencia-calculo.js";
 
+const RUTA = "/varios/conversion-unidades";
 const CALIBRE_AWG = "calibre";
 const MM2 = "mm2";
 
@@ -201,4 +203,39 @@ export async function render(container) {
   });
 
   llenarCategorias();
+
+  // ---------- restaurar lo que habia si se volvio de otra seccion (no sobrevive a un recargue) ----------
+  const guardado = leerEstado(RUTA);
+  if (guardado) {
+    if (guardado.completo) {
+      chk.checked = true;
+      chk.dispatchEvent(new Event("change"));
+    }
+    if (guardado.categoria) {
+      selCategoria.value = guardado.categoria;
+      selCategoria.dispatchEvent(new Event("change"));
+    }
+    if (guardado.origen) {
+      selOrigen.value = guardado.origen;
+      selOrigen.dispatchEvent(new Event("change"));
+    }
+    if (guardado.destino) selDestino.value = guardado.destino;
+    if (guardado.valor !== undefined) fValor.value = guardado.valor;
+    if (guardado.calibre) selCalibre.value = guardado.calibre;
+  }
+
+  // El router llama a esto justo antes de salir de la pantalla (ver js/router.js), para que lo
+  // escrito no se pierda al volver de otra sección; una recarga de la app si lo reinicia.
+  function antesDeSalir() {
+    guardarEstado(RUTA, {
+      completo: chk.checked,
+      categoria: selCategoria.value,
+      origen: selOrigen.value,
+      destino: selDestino.value,
+      valor: fValor.value,
+      calibre: selCalibre.value,
+    });
+  }
+
+  return antesDeSalir;
 }

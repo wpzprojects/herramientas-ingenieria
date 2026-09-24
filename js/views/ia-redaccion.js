@@ -14,6 +14,7 @@ import { verificarAcceso } from "../ai/ui-clave.js";
 import * as historial from "../ai/historial.js";
 import { agregarMicrofono } from "../ai/voz.js";
 import { icon } from "../icons.js";
+import { guardarEstado, leerEstado } from "../util/persistencia-calculo.js";
 import {
   TONOS,
   cargarAgentes,
@@ -25,6 +26,7 @@ import {
   importarAgentesJson,
 } from "../ai/agentes.js";
 
+const RUTA = "/ia/redaccion";
 const K_ACTIVO = "ia.agenteActivo";
 const MAX_CARACTERES = 30000;
 
@@ -345,6 +347,18 @@ export async function render(container) {
 
   fTexto.addEventListener("input", ajustarAlto);
 
+  /** Deja `conv` como la conversacion activa y repinta el chat. Lo usan el boton «Abrir» del historial y la
+   * restauracion automatica al volver a esta pantalla (persistencia de navegacion). */
+  function cargarConversacion(c, { desplazar = false } = {}) {
+    conv = c;
+    if (agentes.some((a) => a.id === c.agenteId)) {
+      activoId = c.agenteId;
+      guardarActivo(activoId);
+    }
+    pintarConversacion();
+    if (desplazar) alFinal();
+  }
+
   // ---------- historial ----------
   const panelHistorial = $("#panel-historial");
   async function pintarHistorial() {
@@ -369,15 +383,9 @@ export async function render(container) {
               type: "button",
               class: "btn btn-sm",
               onclick: () => {
-                conv = c;
-                if (agentes.some((a) => a.id === c.agenteId)) {
-                  activoId = c.agenteId;
-                  guardarActivo(activoId);
-                  pintarAgentes();
-                }
-                pintarConversacion();
+                cargarConversacion(c, { desplazar: true });
+                pintarAgentes();
                 mostrarVistaConv("actual"); // al abrir una conversacion se vuelve a «Actual» (y arriba queda elegido el agente de esa conversacion)
-                alFinal();
               },
             },
             "Abrir"
@@ -667,4 +675,25 @@ export async function render(container) {
   }
 
   pintarAgentes();
+
+  // ---------- restaurar lo que habia si se volvio de otra seccion (no sobrevive a un recargue) ----------
+  // Solo se recuerdan el borrador de la caja y el id de la conversacion activa (no cada mensaje: eso ya vive en el
+  // historial, guardado automaticamente tras cada turno). Al volver, se reabre sola en vez de quedar en blanco.
+  const guardado = leerEstado(RUTA);
+  if (guardado?.convId) {
+    const c = await historial.obtener(guardado.convId);
+    if (c) {
+      cargarConversacion(c);
+      pintarAgentes();
+    }
+  }
+  if (guardado?.borrador) fTexto.value = guardado.borrador;
+  ajustarAlto();
+
+  // El router llama a esto justo antes de salir de la pantalla (ver js/router.js).
+  function antesDeSalir() {
+    guardarEstado(RUTA, { convId: conv?.id ?? null, borrador: fTexto.value });
+  }
+
+  return antesDeSalir;
 }

@@ -11,7 +11,9 @@ import { fmt, loadData, escapeHtml } from "../util/format.js";
 import { SISTEMAS, convertirCoordenadas } from "../calc/coordenadas.js";
 import { cargarProj4 } from "../util/proj4.js";
 import { parseCodigoEpsg, infoSistema, convertirEntreSistemas, avisosArea, numeroFlexible, parsearPareja, avisoOrdenInvertido } from "../calc/coordenadas-epsg.js";
+import { guardarEstado, leerEstado } from "../util/persistencia-calculo.js";
 
+const RUTA = "/varios/conversion-coordenadas";
 const WGS84 = SISTEMAS[0];
 const MARGEN = 'style="margin-top: var(--space-4);"';
 
@@ -208,6 +210,24 @@ export function render(container) {
   fEpsgDestino.addEventListener("input", actualizar);
   aplicarModos();
 
+  // ---------- restaurar lo que habia si se volvio de otra seccion (no sobrevive a un recargue) ----------
+  const guardado = leerEstado(RUTA);
+  if (guardado) {
+    fX.value = guardado.x ?? "";
+    fY.value = guardado.y ?? "";
+    fLote.value = guardado.lote ?? "";
+    if (guardado.lotes === "true") btnLotes.dataset.lotes = "true";
+    if (guardado.origen) selOrigen.value = guardado.origen;
+    if (guardado.destino) selDestino.value = guardado.destino;
+    if (guardado.todos) {
+      chkTodos.checked = true;
+      chkTodos.dispatchEvent(new Event("change")); // dispara la carga async de proj4; lo sincrono de arriba ya corrio al volver aqui
+      fEpsgOrigen.value = guardado.epsgOrigen ?? "";
+      fEpsgDestino.value = guardado.epsgDestino ?? "";
+    }
+    aplicarModos();
+  }
+
   /**
    * Convierte un punto en el modo actual. Devuelve {x, y, esGeoDestino, avisos} o lanza Error con un mensaje en español.
    * (En el modo de la lista el calculo es el del motor original; los avisos salen de las areas de uso del catalogo.)
@@ -306,4 +326,22 @@ export function render(container) {
       </div>
       ${avisosHtml(resumen)}`;
   });
+
+  // El router llama a esto justo antes de salir de la pantalla (ver js/router.js), para que lo
+  // escrito no se pierda al volver de otra sección; una recarga de la app si lo reinicia.
+  function antesDeSalir() {
+    guardarEstado(RUTA, {
+      todos: chkTodos.checked,
+      origen: selOrigen.value,
+      destino: selDestino.value,
+      epsgOrigen: fEpsgOrigen.value,
+      epsgDestino: fEpsgDestino.value,
+      lotes: btnLotes.dataset.lotes,
+      x: fX.value,
+      y: fY.value,
+      lote: fLote.value,
+    });
+  }
+
+  return antesDeSalir;
 }

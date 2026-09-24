@@ -33,7 +33,9 @@ import { agregarMicrofono } from "../ai/voz.js";
 import { icon } from "../icons.js";
 import { copiarTexto } from "../util/portapapeles.js";
 import { crearDocx, MIME_DOCX } from "../ai/docx.js";
+import { guardarEstado, leerEstado } from "../util/persistencia-calculo.js";
 
+const RUTA = "/ia/analisis";
 const EJEMPLOS = [
   "Compara las pérdidas de una línea de 34.5 kV, 9.9 MW, factor de potencia 0.95 y 5.2 km con ACSR 4/0, 266.8 y 477, con factor de carga 0.56.",
   "¿Cómo varía la caída de tensión de esa misma línea si la longitud va de 2 a 12 km con ACSR 4/0?",
@@ -466,6 +468,22 @@ export async function render(container) {
     window.print();
   });
 
+  /** Deja `conv` como la conversacion activa (recalcula ctx a partir de su log/ficha) y repinta chat+reporte. Lo usan
+   * el boton «Abrir» del historial y la restauracion automatica al volver a esta pantalla (persistencia de navegacion). */
+  function cargarConversacion(c, { desplazar = false } = {}) {
+    conv = c;
+    if (c.agenteId && agentes.some((a) => a.id === c.agenteId)) {
+      activoId = c.agenteId; // la conversacion se sigue con el agente que se uso al empezarla
+      guardarActivo(activoId);
+    }
+    ctx = crearContexto(obtenerAjustes(proveedorActual()).maxCalculos, c.log || [], c.ficha || []);
+    conv.log = ctx.log;
+    conv.ficha = ctx.ficha;
+    pintarChat();
+    pintarReporte();
+    if (desplazar) chat.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   // ---------- historial ----------
   const panelHistorial = $("#panel-historial");
   async function pintarHistorial() {
@@ -489,19 +507,9 @@ export async function render(container) {
               type: "button",
               class: "btn btn-sm",
               onclick: () => {
-                conv = c;
-                if (c.agenteId && agentes.some((a) => a.id === c.agenteId)) {
-                  activoId = c.agenteId; // la conversacion se sigue con el agente que se uso al empezarla
-                  guardarActivo(activoId);
-                  pintarBadge();
-                }
-                ctx = crearContexto(obtenerAjustes(proveedorActual()).maxCalculos, c.log || [], c.ficha || []);
-                conv.log = ctx.log;
-                conv.ficha = ctx.ficha;
-                pintarChat();
-                pintarReporte();
+                cargarConversacion(c, { desplazar: true });
+                pintarBadge();
                 mostrarVistaConv("actual"); // al abrir una conversacion se vuelve a «Actual» (y arriba queda elegido el agente de esa conversacion)
-                chat.scrollIntoView({ behavior: "smooth", block: "start" });
               },
             },
             "Abrir"
@@ -783,5 +791,26 @@ export async function render(container) {
   pintarBadge();
   pintarEjemplos();
   pintarChat();
+
+  // ---------- restaurar lo que habia si se volvio de otra seccion (no sobrevive a un recargue) ----------
+  // Solo se recuerdan el borrador de la caja y el id de la conversacion activa (no cada mensaje: eso ya vive en el
+  // historial, guardado automaticamente tras cada turno). Al volver, se reabre sola en vez de quedar en blanco.
+  const guardado = leerEstado(RUTA);
+  if (guardado?.borrador) fPregunta.value = guardado.borrador;
+  if (guardado?.convId) {
+    const c = await historial.obtener(guardado.convId);
+    if (c) {
+      cargarConversacion(c);
+      pintarBadge();
+    }
+  }
+  ajustarAlto();
+
+  // El router llama a esto justo antes de salir de la pantalla (ver js/router.js).
+  function antesDeSalir() {
+    guardarEstado(RUTA, { convId: conv?.id ?? null, borrador: fPregunta.value });
+  }
+
+  return antesDeSalir;
 }
 
