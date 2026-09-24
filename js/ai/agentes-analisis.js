@@ -13,7 +13,7 @@ const K_ACTIVO = "ia.agenteAnalisisActivo";
 const AGENTE_ESTANDAR = Object.freeze({
   id: "analisis-estandar",
   nombre: "Agente estándar",
-  descripcion: "Reglas y reporte originales de la aplicación (solo lectura).",
+  descripcion: "Uso general: consultas rápidas, comparaciones y estimaciones. Calcula de inmediato, asume valores por defecto razonables cuando falta un dato secundario y los declara como supuestos (solo lectura).",
   temperatura: null, // null = la de Configuracion de IA
   instrucciones: SISTEMA_ANALISIS,
   reporte: PROMPT_REPORTE,
@@ -24,7 +24,7 @@ const AGENTE_ESTANDAR = Object.freeze({
 const AGENTE_RIGUROSO = Object.freeze({
   id: "analisis-riguroso",
   nombre: "Agente riguroso",
-  descripcion: "Pide todos los datos por categoría (avisando los valores por defecto) para una memoria de cálculo completa (solo lectura).",
+  descripcion: "Para memorias de cálculo definitivas: antes de calcular pide y confirma todos los datos por categoría, avisa cada valor por defecto y no asume nada en silencio (solo lectura).",
   temperatura: null,
   instrucciones: SISTEMA_RIGUROSO,
   reporte: PROMPT_REPORTE_RIGUROSO,
