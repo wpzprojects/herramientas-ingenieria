@@ -5,6 +5,7 @@
 import { icon } from "../icons.js";
 import { escapeHtml } from "./format.js";
 import { NOVEDADES } from "./novedades.js";
+import { resumenOrigen } from "./catalogos-remotos.js";
 
 const ESPERA_MS = 3000;
 const fechaCorta = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString("es-CO", { dateStyle: "medium" });
@@ -64,6 +65,7 @@ export function pintarAplicacion(box) {
       <dt>Versión instalada</dt><dd data-version>Consultando…</dd>
       <dt>Uso sin conexión</dt><dd data-offline>Consultando…</dd>
       <dt>Conexión</dt><dd data-red></dd>
+      <dt>Catálogos</dt><dd data-catalogos></dd>
     </dl>
     <div class="btn-row"><button type="button" class="btn btn-primary btn-con-icono" data-buscar>${icon("refresh")} Buscar actualización</button></div>
     <div data-msg></div>
@@ -82,6 +84,10 @@ export function pintarAplicacion(box) {
     $("[data-red]").textContent = navigator.onLine === false ? "Sin conexión a internet" : "En línea";
   };
   pintarRed();
+  const o = resumenOrigen();
+  $("[data-catalogos]").textContent = !o.deServidor
+    ? "Los que trae la app (aún no se ha descargado una versión del servidor)."
+    : `${o.deServidor === o.total ? "Del servidor" : `${o.deServidor} de ${o.total} del servidor; el resto, los que trae la app`}${o.ultimaFecha ? ` (actualizados el ${new Date(o.ultimaFecha).toLocaleDateString("es-CO", { dateStyle: "medium" })})` : ""}.`;
   window.addEventListener("online", pintarRed);
   window.addEventListener("offline", pintarRed);
 

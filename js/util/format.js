@@ -1,6 +1,8 @@
 // Utilidades de formato equivalentes a Text(valor, "#.00", "en-US") de Power Fx,
 // y helpers pequeños de DOM/datos usados por todas las vistas.
 
+import { usarServidor, datosDelServidor } from "./catalogos-remotos.js";
+
 // Necesario porque algunos valores de catalogo traen caracteres que rompen
 // HTML si se interpolan crudos en un atributo (ej. diametro_nominal de
 // tuberias.json trae comillas dobles como simbolo de pulgadas: 1/2").
@@ -57,14 +59,28 @@ export function debounce(fn, delay = 200) {
 }
 
 const dataCache = new Map();
+// Los catálogos editables se toman primero de la copia del servidor guardada en el dispositivo (gana el servidor; ver
+// js/util/catalogos-remotos.js); si no hay, de data/ (los de fábrica).
 export async function loadData(name) {
   if (dataCache.has(name)) return dataCache.get(name);
+  if (usarServidor()) {
+    const delServidor = datosDelServidor(name);
+    if (delServidor) {
+      dataCache.set(name, delServidor);
+      return delServidor;
+    }
+  }
   const base = window.__BASE_PATH__ || "";
   const res = await fetch(`${base}data/${name}.json`);
   if (!res.ok) throw new Error(`No se pudo cargar data/${name}.json`);
   const json = await res.json();
   dataCache.set(name, json);
   return json;
+}
+
+/** Olvida lo que loadData tenía en memoria para `name` (llegó una versión nueva del servidor): la próxima pantalla la usa. */
+export function olvidarDato(name) {
+  dataCache.delete(name);
 }
 
 /**

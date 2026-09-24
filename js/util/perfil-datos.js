@@ -9,6 +9,8 @@ import { todas, importar, borrarTodo, contar } from "../ai/historial.js";
 import { AJUSTES_POR_DEFECTO } from "../ai/config.js";
 import { aplicarTema } from "./tema.js";
 import { CLAVE_DEFECTOS } from "./valores-defecto.js";
+import { NOMBRES_EDITABLES, PREFIJO_COPIA } from "./catalogos-remotos.js";
+import { olvidarDato } from "./format.js";
 
 const PROVEEDORES = Object.keys(AJUSTES_POR_DEFECTO);
 const claveApi = (p) => (p === "gemini" ? "ia.apiKey" : `ia.apiKey.${p}`);
@@ -93,6 +95,17 @@ export const CATEGORIAS = [
     nombre: "Valores por defecto de las calculadoras",
     respaldo: true,
     claves: [CLAVE_DEFECTOS],
+  },
+  {
+    id: "catalogos",
+    nombre: "Catálogos descargados del servidor",
+    respaldo: false, // son del servidor: se vuelven a descargar solos
+    claves: NOMBRES_EDITABLES.map((n) => PREFIJO_COPIA + n),
+    detalle: async () => {
+      const n = NOMBRES_EDITABLES.filter((x) => leer(PREFIJO_COPIA + x) !== null).length;
+      return n ? `${n} de ${NOMBRES_EDITABLES.length}` : "Ninguno (se usan los que trae la app)";
+    },
+    despues: () => NOMBRES_EDITABLES.forEach(olvidarDato),
   },
   {
     id: "apariencia",

@@ -180,5 +180,25 @@ export function crearBackendFirebase(firebaseConfig) {
         throw err instanceof ErrorAcceso ? err : traducir(err);
       }
     },
+
+    // Catalogo + su entrada en el indice, en un solo lote (o quedan los dos, o ninguno).
+    async publicarCatalogo(nombre, { datos, huellaFabrica }) {
+      try {
+        const { fs, db } = await cargar();
+        const yo = await correoActual();
+        const version = Date.now();
+        const lote = fs.writeBatch(db);
+        lote.set(fs.doc(db, "catalogos", nombre), { datos, version });
+        lote.set(
+          fs.doc(db, "catalogos", "_indice"),
+          { catalogos: { [nombre]: { version, huellaFabrica, actualizadoPor: yo, fecha: fs.serverTimestamp() } }, fecha: fs.serverTimestamp() },
+          { merge: true }
+        );
+        await lote.commit();
+        return version;
+      } catch (err) {
+        throw err instanceof ErrorAcceso ? err : traducir(err);
+      }
+    },
   };
 }

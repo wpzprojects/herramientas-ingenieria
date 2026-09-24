@@ -39,7 +39,15 @@ tools/                                     # scripts de extraccion/verificacion 
 
 ## Catálogos de datos
 
-Los `data/*.json` son la **fuente de verdad** de los catálogos y se editan directamente. Se generaron una sola vez desde el `.msapp` de la app original de Power Apps; ese archivo (y las capturas de pantalla de `APP_PowerApps/`) se retiró del repositorio el 2026-09-19 porque la app ya no depende de él, pero **sigue en el historial de git**.
+Los `data/*.json` son los catálogos **de fábrica** (vienen con la app y se editan directamente en el repositorio). Desde la versión 3.18.0, cinco de ellos (conductores desnudos, semiaislados y XLPE, tuberías y resoluciones) se pueden **publicar en el servidor** (Firestore), y la app usa siempre la versión del servidor si existe:
+
+- Al abrir con internet, la app lee un índice pequeño en `catalogos/_indice` (1 lectura) y descarga solo los catálogos cuya versión cambió; los guarda en el dispositivo. Sin internet, o si el servidor no responde, sigue con la última copia descargada o con los de fábrica: nunca queda sin datos.
+- La lectura es pública (los visitantes usan calculadoras que dependen de los catálogos) y se hace con la API REST de Firestore, sin cargar el SDK. Solo el administrador escribe (reglas en `firebase/firestore.rules`).
+- **Gana siempre el servidor.** Por eso, cuando se corrige un `data/*.json` en el repositorio, el cambio NO llega a nadie hasta que el administrador lo publica: en **Perfil → Catálogos** se ve «Cambiaron desde la última publicación» y se usa «Publicar de nuevo».
+- Pasos manuales la primera vez: publicar las reglas nuevas en la consola de Firebase (Firestore → Reglas → Publicar) y, como administrador, **Perfil → Catálogos → «Publicar todos los de la app»**.
+- La edición registro por registro (agregar, editar, desactivar) es la fase 2, aún no implementada.
+
+Se generaron una sola vez desde el `.msapp` de la app original de Power Apps; ese archivo (y las capturas de pantalla de `APP_PowerApps/`) se retiró del repositorio el 2026-09-19 porque la app ya no depende de él, pero **sigue en el historial de git**.
 
 `tools/extract_data.py` quedó **obsoleto**: solo se conserva como registro de cómo se sanearon los datos. Si algún día hubiera que regenerar los catálogos desde el original, se restaura `APP_PowerApps/` desde el historial (`git log --diff-filter=D --oneline -- "APP_PowerApps/Herramientas (offline).msapp"` da el commit del borrado; luego `git checkout <commit>^ -- APP_PowerApps`), se descomprime el `.msapp` (es un .zip) en `APP_PowerApps/_extracted/` y se ejecuta `python tools/extract_data.py`. Ese script no regenera `data/factores-conversion.json`, que se transcribió a mano.
 

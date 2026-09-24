@@ -5,6 +5,8 @@
 
 import { ErrorAcceso, ROLES, normalizarCorreo, correoValido } from "./backend.js";
 
+const CATALOGOS_CONOCIDOS = ["conductores-desnudos", "conductores-semiaislados", "conductores-xlpe", "tuberias", "resoluciones"];
+
 /**
  * @param {object} [o]
  * @param {{email:string, rol:'admin'|'usuario'}[]} [o.usuarios]
@@ -18,6 +20,7 @@ export function crearBackendMock({ usuarios = [], sesion = null, cuentaAlIniciar
   const personales = new Map();
   let compartida = claveCompartida;
   let actual = sesion;
+  const servidor = { indice: {}, documentos: {} }; // catalogos publicados
   const oyentes = new Set();
   const espera = () => new Promise((r) => setTimeout(r, 0));
 
@@ -114,6 +117,20 @@ export function crearBackendMock({ usuarios = [], sesion = null, cuentaAlIniciar
       if (clave) personales.set(correo(), clave);
       else personales.delete(correo());
     },
+
+    // Catalogos: el mock guarda lo publicado en `servidor` (el mismo objeto que lee el lector simulado de las pruebas,
+    // ver lectorDesdeMock en js/util/catalogos-remotos.js). Replica las reglas: solo admin, nombre conocido, tamaño.
+    async publicarCatalogo(nombre, { datos, huellaFabrica }) {
+      await espera();
+      requerirAdmin();
+      if (!CATALOGOS_CONOCIDOS.includes(nombre)) throw new ErrorAcceso("Catálogo desconocido.", "permiso");
+      if (typeof datos !== "string" || datos.length >= 1000000) throw new ErrorAcceso("El catálogo no es válido o es demasiado grande.", "permiso");
+      const version = Math.max(Date.now(), (servidor.indice[nombre]?.version || 0) + 1);
+      servidor.documentos[nombre] = { datos, version };
+      servidor.indice[nombre] = { version, huellaFabrica, actualizadoPor: correo(), fecha: new Date().toISOString() };
+      return version;
+    },
+    servidor,
 
     // ---- solo para pruebas: cambiar de cuenta sin pasar por el login ----
     _entrarComo(usuario) {

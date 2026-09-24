@@ -245,7 +245,7 @@ await seccion("pestaña Aplicación", async () => {
   const limpiar = A.pintarAplicacion(box);
   ok(typeof limpiar === "function", "devuelve una función de limpieza (quita los avisos de conexión)");
   ok(/Aplicación/.test(texto(box.querySelector(".form-section-title"))) && !!box.querySelector(".form-section-title .icon"), "barra de título con icono");
-  ok(box.querySelectorAll(".pf-lista dt").length === 3 && /En línea|Sin conexión/.test(texto(box.querySelector("[data-red]"))), "muestra versión, uso sin conexión y estado de la conexión");
+  ok(box.querySelectorAll(".pf-lista dt").length === 4 && /En línea|Sin conexión/.test(texto(box.querySelector("[data-red]"))) && texto(box.querySelector("[data-catalogos]")).length > 10, "muestra versión, uso sin conexión, estado de la conexión y de dónde vienen los catálogos");
   for (let i = 0; i < 160 && /Consultando/.test(texto(box.querySelector("[data-version]"))); i++) await espera(100);
   const v = texto(box.querySelector("[data-version]"));
   ok(/^\d+\.\d+\.\d+$/.test(v) || v === "No disponible", `la versión se llena (desde el service worker, o «No disponible» si no hay): ${v}`);

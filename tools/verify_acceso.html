@@ -305,9 +305,9 @@ await seccion("pantalla de Perfil rediseñada", async () => {
   ok(/Acceso desde \d/.test(texto(q(".dev-header"))) && !/\d:\d\d/.test(texto(q(".dev-header"))), "muestra desde cuándo tiene acceso (fecha de la última confirmación, sin la hora)");
   ok(/Acceso desde \d[\d/]+\. Disponible hasta \d[\d/]+ y se renueva cada vez que abres la app con internet\./.test(texto(q(".dev-header"))) && qa(".dev-header p.text-muted").length === 1, "seguido, en el mismo párrafo: «Acceso desde … Disponible hasta … y se renueva cada vez que abres la app con internet.»");
   const pest = qa(".ca-tabs .tab-btn").map(texto);
-  ok(pest.join("|") === "Usuarios|Apariencia|Calculadoras|Datos|Aplicación", `el administrador ve cinco pestañas (la clave de Gemini se trasladó a Funciones con IA → Configuración): ${pest.join(", ")}`);
+  ok(pest.join("|") === "Usuarios|Catálogos|Apariencia|Calculadoras|Datos|Aplicación", `el administrador ve seis pestañas (la clave de Gemini se trasladó a Funciones con IA → Configuración): ${pest.join(", ")}`);
   ok(!q("#ca-tab-usuarios").hidden && q("#ca-tab-apariencia").hidden, "empieza en «Usuarios»");
-  qa(".ca-tabs .tab-btn")[1].click();
+  qa(".ca-tabs .tab-btn")[2].click();
   ok(q("#ca-tab-usuarios").hidden && !q("#ca-tab-apariencia").hidden, "la pestaña «Apariencia» cambia el panel");
   qa(".ca-tabs .tab-btn")[0].click();
   const filas = qa("#ca-filas tr");

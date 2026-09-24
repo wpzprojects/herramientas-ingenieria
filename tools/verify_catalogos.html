@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>verify_catalogos</title>
+<!--
+  Pruebas de los catálogos servidos desde el servidor (js/util/catalogos-remotos.js, perfil-catalogos.js y loadData).
+  Usa el backend simulado (js/auth/backend-mock.js) y un lector simulado: NUNCA toca el Firestore real.
+
+  Uso (desde la raiz del proyecto):
+    python -m http.server 8000
+    abrir http://localhost:8000/tools/verify_catalogos.html   -> lista PASS/FAIL
+  o en modo consola:
+    msedge --headless --dump-dom --virtual-time-budget=40000 http://localhost:8000/tools/verify_catalogos.html
+-->
+<style>body{font-family:ui-monospace,Consolas,monospace;font-size:13px;padding:12px}#stage{position:absolute;left:-9999px;width:1000px}</style>
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+<pre id="out"></pre>
+<div id="stage"></div>
+<script type="module">
+window.__BASE_PATH__ = "../";
+const out = document.getElementById("out");
+let fallos = 0;
+let total = 0;
+function ok(cond, msg) {
+  total++;
+  if (!cond) fallos++;
+  out.textContent += `${cond ? "PASS" : "FAIL"} ${msg}\n`;
+}
+async function seccion(nombre, fn) {
+  out.textContent += `\n== ${nombre}\n`;
+  try {
+    await fn();
+  } catch (err) {
+    fallos++;
+    total++;
+    out.textContent += `FAIL excepcion en "${nombre}": ${err && err.stack ? err.stack : err}\n`;
+  }
+}
+const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+const stage = document.getElementById("stage");
+const texto = (e) => (e ? e.textContent.replace(/\s+/g, " ").trim() : "");
+const respaldoLS = { ...localStorage };
+const restaurarLS = () => {
+  localStorage.clear();
+  for (const [k, v] of Object.entries(respaldoLS)) localStorage.setItem(k, v);
+};
+
+const R = await import("../js/util/catalogos-remotos.js");
+const F = await import("../js/util/format.js");
+const { crearBackendMock } = await import("../js/auth/backend-mock.js");
+const ADMIN = { email: "jefe@empresa.com", nombre: "Jefe" };
+const YO = { email: "ana@empresa.com", nombre: "Ana" };
+const usuarios = [{ email: ADMIN.email, rol: "admin" }, { email: YO.email, rol: "usuario" }];
+
+// lector simulado que cuenta las lecturas (para comprobar que solo se descarga lo que cambió)
+function lectorContado(mock) {
+  const base = R.lectorDesdeMock(mock);
+  const l = { lecturasIndice: 0, descargas: [], falla: false };
+  l.indice = async () => { l.lecturasIndice++; if (l.falla) throw new Error("sin servidor"); return base.indice(); };
+  l.catalogo = async (n) => { l.descargas.push(n); if (l.falla) throw new Error("sin servidor"); return base.catalogo(n); };
+  return l;
+}
+const limpiar = () => { R.borrarCopias(); R.NOMBRES_EDITABLES.forEach(F.olvidarDato); };
+
+await seccion("lectura REST: formato de Firestore", async () => {
+  const indice = R.parsearIndiceRest({ fields: { catalogos: { mapValue: { fields: {
+    tuberias: { mapValue: { fields: { version: { integerValue: "1727190000000" }, huellaFabrica: { stringValue: "abc" }, actualizadoPor: { stringValue: "jefe@empresa.com" }, fecha: { timestampValue: "2026-09-24T12:00:00Z" } } } },
+    inventado: { mapValue: { fields: { version: { integerValue: "5" } } } },
+  } } }, fecha: { timestampValue: "2026-09-24T12:00:00Z" } } });
+  ok(JSON.stringify(indice) === JSON.stringify({ tuberias: { version: 1727190000000, huellaFabrica: "abc", actualizadoPor: "jefe@empresa.com", fecha: "2026-09-24T12:00:00Z" } }), `lee el índice y descarta catálogos desconocidos (${JSON.stringify(indice)})`);
+  const cat = R.parsearCatalogoRest({ fields: { datos: { stringValue: '[{"a":1}]' }, version: { integerValue: "7" } } });
+  ok(cat.datos === '[{"a":1}]' && cat.version === 7, "lee los datos (texto) y la versión de un catálogo");
+  ok(JSON.stringify(R.parsearIndiceRest({})) === "{}", "un índice vacío no rompe nada");
+});
+
+await seccion("huella de los datos de fábrica", async () => {
+  const a = await R.huella([{ x: 1, y: "ñ" }]);
+  const b = await R.huella(JSON.parse('[\r\n  { "x": 1,\r\n    "y": "ñ" }\r\n]'));
+  ok(/^[0-9a-f]{64}$/.test(a) && a === b, "es SHA-256 y no cambia con espacios ni fines de línea (CRLF)");
+  ok(a !== (await R.huella([{ x: 2, y: "ñ" }])), "cambia si cambia un dato");
+  const { datos } = await R.cargarFabrica("tuberias");
+  ok(Array.isArray(datos) && datos.length === 43, `carga el catálogo de fábrica (${datos.length} tuberías)`);
+});
+
+await seccion("sin nada publicado se usan los de fábrica", async () => {
+  limpiar();
+  const mock = crearBackendMock({ usuarios, sesion: ADMIN });
+  const l = lectorContado(mock);
+  R.usarLector(l);
+  const r = await R.sincronizarCatalogos();
+  ok(r.actualizados.length === 0 && r.error === null && l.descargas.length === 0, "sincronizar no descarga nada");
+  window.__USAR_CATALOGOS_SERVIDOR__ = true;
+  const t = await F.loadData("tuberias");
+  ok(t.length === 43 && t[0].tipo === "PVC rígido sch.40", "loadData devuelve el catálogo de fábrica");
+  ok(R.resumenOrigen().deServidor === 0, "el resumen dice que no hay copias del servidor");
+});
+
+await seccion("publicar, sincronizar y usar la copia del servidor", async () => {
+  limpiar();
+  const mock = crearBackendMock({ usuarios, sesion: ADMIN });
+  const l = lectorContado(mock);
+  R.usarLector(l);
+  const { datos } = await R.cargarFabrica("tuberias");
+  const editado = datos.map((f, i) => (i === 0 ? { ...f, diametro_interno_min_mm: 99.9 } : f));
+  await mock.publicarCatalogo("tuberias", { datos: R.textoCompacto(editado), huellaFabrica: await R.huella(datos) });
+  ok(!!mock.servidor.indice.tuberias && mock.servidor.indice.tuberias.actualizadoPor === ADMIN.email, "el administrador publica: queda en el índice con su correo");
+
+  window.__USAR_CATALOGOS_SERVIDOR__ = true;
+  F.olvidarDato("tuberias");
+  const r = await R.sincronizarCatalogos();
+  ok(r.actualizados.join() === "tuberias" && l.descargas.join() === "tuberias", "sincronizar descarga solo el catálogo publicado");
+  ok(R.infoCopia("tuberias")?.version === mock.servidor.indice.tuberias.version, "guarda la copia con su versión");
+  r.actualizados.forEach(F.olvidarDato);
+  ok((await F.loadData("tuberias"))[0].diametro_interno_min_mm === 99.9, "loadData usa la copia del servidor (gana el servidor)");
+  ok((await F.loadData("conductores-xlpe")).length === 195, "los catálogos no publicados siguen saliendo de fábrica");
+
+  const antes = l.descargas.length;
+  const r2 = await R.sincronizarCatalogos();
+  ok(r2.actualizados.length === 0 && l.descargas.length === antes && l.lecturasIndice === 2, "si la versión no cambió, solo se lee el índice (no se vuelve a descargar)");
+
+  l.falla = true;
+  const r3 = await R.sincronizarCatalogos();
+  F.olvidarDato("tuberias");
+  ok(r3.error && (await F.loadData("tuberias"))[0].diametro_interno_min_mm === 99.9, "si el servidor falla, se sigue con la copia guardada");
+  l.falla = false;
+
+  // un catálogo dañado en el servidor no reemplaza al que ya se tiene
+  mock.servidor.documentos.tuberias = { datos: "{no es json", version: Date.now() + 5 };
+  mock.servidor.indice.tuberias.version = mock.servidor.documentos.tuberias.version;
+  await R.sincronizarCatalogos();
+  F.olvidarDato("tuberias");
+  ok((await F.loadData("tuberias"))[0].diametro_interno_min_mm === 99.9, "un catálogo dañado en el servidor se ignora");
+
+  // sin la marca, los arneses (__BASE_PATH__) usan siempre los de fábrica
+  window.__USAR_CATALOGOS_SERVIDOR__ = undefined;
+  F.olvidarDato("tuberias");
+  ok((await F.loadData("tuberias"))[0].diametro_interno_min_mm !== 99.9 && !R.usarServidor(), "los arneses de pruebas usan siempre los de fábrica (resultados estables)");
+  window.__USAR_CATALOGOS_SERVIDOR__ = true;
+
+  R.borrarCopias();
+  F.olvidarDato("tuberias");
+  ok((await F.loadData("tuberias"))[0].diametro_interno_min_mm !== 99.9 && R.resumenOrigen().deServidor === 0, "al borrar las copias vuelven los de fábrica");
+});
+
+await seccion("solo el administrador publica", async () => {
+  const mock = crearBackendMock({ usuarios, sesion: YO });
+  let error = null;
+  try {
+    await mock.publicarCatalogo("tuberias", { datos: "[]", huellaFabrica: "x" });
+  } catch (e) {
+    error = e;
+  }
+  ok(error && error.tipo === "permiso", "un usuario normal no puede publicar");
+  mock._entrarComo(ADMIN);
+  error = null;
+  try {
+    await mock.publicarCatalogo("usuarios", { datos: "[]", huellaFabrica: "x" });
+  } catch (e) {
+    error = e;
+  }
+  ok(error && error.tipo === "permiso", "ni el administrador puede escribir un catálogo desconocido");
+  const reglas = await (await fetch("../firebase/firestore.rules")).text();
+  ok(/match \/catalogos\/\{id\}/.test(reglas) && /allow read: if true;/.test(reglas) && /allow write: if esAdmin\(\) &&/.test(reglas), "las reglas de Firestore: lectura pública y escritura solo del administrador");
+  ok(R.NOMBRES_EDITABLES.every((n) => reglas.includes(`'${n}'`)), "las reglas conocen los 5 catálogos");
+});
+
+await seccion("pestaña Catálogos del administrador", async () => {
+  limpiar();
+  const { pintarCatalogosAdmin } = await import("../js/util/perfil-catalogos.js");
+  const mock = crearBackendMock({ usuarios, sesion: ADMIN });
+  R.usarLector(R.lectorDesdeMock(mock));
+  window.__USAR_CATALOGOS_SERVIDOR__ = true;
+  stage.innerHTML = `<div class="card tarjeta-borde form-section" id="box"></div>`;
+  const box = stage.querySelector("#box");
+  let preguntas = 0;
+  pintarCatalogosAdmin(box, mock, { confirmar: () => (preguntas++, true) });
+  for (let i = 0; i < 60 && !box.querySelector("[data-publicar]"); i++) await espera(100);
+  const filas = [...box.querySelectorAll("[data-filas] tr")];
+  ok(filas.length === 5 && filas.every((tr) => /No publicado/.test(tr.textContent)), "lista los 5 catálogos, todos «No publicado» al principio");
+  ok(!!box.querySelector(".form-section-title .icon") && /Catálogos en el servidor/.test(texto(box.querySelector(".form-section-title"))), "barra de título con icono");
+  box.querySelector('[data-publicar="resoluciones"]').click();
+  for (let i = 0; i < 60 && !/Se publicó/.test(texto(box.querySelector("[data-msg]"))); i++) await espera(100);
+  ok(preguntas === 1 && !!mock.servidor.indice.resoluciones, "«Publicar» pide confirmación y publica ese catálogo");
+  for (let i = 0; i < 40 && !/Iguales a lo publicado/.test(texto(box.querySelector('[data-cat="resoluciones"]'))); i++) await espera(100);
+  ok(/jefe@empresa.com/.test(texto(box.querySelector('[data-cat="resoluciones"]'))) && /Iguales a lo publicado/.test(texto(box.querySelector('[data-cat="resoluciones"]'))), "la fila muestra quién lo publicó y que coincide con los datos de la app");
+  ok(R.infoCopia("resoluciones") !== null, "y este dispositivo ya tiene la copia del servidor");
+  // si los de fábrica cambian después de publicar, se avisa
+  mock.servidor.indice.resoluciones.huellaFabrica = "otra";
+  pintarCatalogosAdmin(box, mock, { confirmar: () => true });
+  for (let i = 0; i < 60 && !/Cambiaron/.test(texto(box.querySelector('[data-cat="resoluciones"]'))); i++) await espera(100);
+  ok(/Cambiaron desde la última publicación/.test(texto(box.querySelector('[data-cat="resoluciones"]'))) && /Publicar de nuevo/.test(texto(box.querySelector('[data-cat="resoluciones"]'))), "avisa cuando los datos de la app cambiaron desde la última publicación");
+  stage.innerHTML = "";
+});
+
+await seccion("Perfil > Aplicación y Datos", async () => {
+  const { pintarAplicacion } = await import("../js/util/perfil-aplicacion.js");
+  stage.innerHTML = `<div id="box"></div>`;
+  let limpiarApp = pintarAplicacion(stage.querySelector("#box"));
+  ok(/Del servidor|1 de 5 del servidor/.test(texto(stage.querySelector("[data-catalogos]"))), `Aplicación dice de dónde vienen los catálogos: ${texto(stage.querySelector("[data-catalogos]"))}`);
+  limpiarApp();
+  R.borrarCopias();
+  limpiarApp = pintarAplicacion(stage.querySelector("#box"));
+  ok(/Los que trae la app/.test(texto(stage.querySelector("[data-catalogos]"))), "sin copias: «Los que trae la app»");
+  limpiarApp();
+  const P = await import("../js/util/perfil-datos.js");
+  const cat = P.CATEGORIAS.find((c) => c.id === "catalogos");
+  ok(cat && !cat.respaldo && cat.claves.length === 5, "Datos: categoría «Catálogos descargados del servidor», fuera del respaldo");
+  stage.innerHTML = "";
+});
+
+limpiar();
+R.usarLector(null);
+window.__USAR_CATALOGOS_SERVIDOR__ = undefined;
+restaurarLS();
+out.textContent += `\nRESULT: ${fallos ? "FAIL" : "OK"} (${total - fallos}/${total})\n`;
+</script>
+</body>
+</html>

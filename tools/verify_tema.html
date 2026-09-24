@@ -187,8 +187,8 @@ await seccion("pestaña Apariencia en Perfil", async () => {
   await dibujar({ email: "ana@empresa.com", nombre: "Ana", foto: "" });
   ok(qa(".ca-tabs .tab-btn").map(texto).join("|") === "Apariencia|Calculadoras|Datos|Aplicación", "el usuario normal ve «Apariencia | Calculadoras | Datos | Aplicación» (la clave de Gemini se trasladó a Funciones con IA → Configuración)");
   await dibujar({ email: "jefe@empresa.com", nombre: "Jefe", foto: "" });
-  ok(qa(".ca-tabs .tab-btn").map(texto).join("|") === "Usuarios|Apariencia|Calculadoras|Datos|Aplicación", "el administrador ve «Usuarios | Apariencia | Calculadoras | Datos | Aplicación»");
-  qa(".ca-tabs .tab-btn")[1].click();
+  ok(qa(".ca-tabs .tab-btn").map(texto).join("|") === "Usuarios|Catálogos|Apariencia|Calculadoras|Datos|Aplicación", "el administrador ve «Usuarios | Catálogos | Apariencia | Calculadoras | Datos | Aplicación»");
+  qa(".ca-tabs .tab-btn")[2].click();
   ok(!q("#ca-tab-apariencia").hidden && q("#ca-tab-usuarios").hidden && !!q("#ca-apariencia .form-section-title .icon"), "la pestaña abre su tarjeta con barra de título e icono");
   const bloques = qa(".ap-tema");
   ok(bloques.map((b) => texto(b.querySelector("h3"))).join("|") === "Tema oscuro|Tema claro", "hay un bloque por tema: oscuro y claro");

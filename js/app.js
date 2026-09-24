@@ -3,6 +3,8 @@ import { sidebarLinks, perfilLink } from "./nav.js";
 import { iniciarAcceso, alCambiarAcceso } from "./auth/acceso.js";
 import { aplicarTema, colorMeta } from "./util/tema.js";
 import { initRouter } from "./router.js";
+import { sincronizarCatalogos } from "./util/catalogos-remotos.js";
+import { olvidarDato } from "./util/format.js";
 
 const shell = document.getElementById("app-shell");
 const sidebar = document.getElementById("sidebar");
@@ -153,6 +155,12 @@ document.addEventListener("click", (e) => {
   lightboxImg.alt = trigger.alt || "";
   lightbox.hidden = false;
 });
+
+// --- Catálogos publicados en el servidor (ver js/util/catalogos-remotos.js): se revisan al abrir y al volver la conexión.
+// La pantalla abierta no cambia a mitad de uso; la versión nueva se ve al abrir la siguiente.
+const sincronizar = () => sincronizarCatalogos().then(({ actualizados }) => actualizados.forEach(olvidarDato));
+window.addEventListener("load", sincronizar);
+window.addEventListener("online", sincronizar);
 
 // --- Service worker (offline / instalable) ---
 if ("serviceWorker" in navigator) {

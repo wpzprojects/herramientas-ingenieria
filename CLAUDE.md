@@ -11,7 +11,8 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - `js/calc/*.js`: motores de cálculo puros, sin DOM, 1:1 con las fórmulas del original
   en Power Apps. No mezclar lógica de UI aquí.
 - `js/views/*.js`: un módulo por pantalla, exporta `async function render(container, params)`.
-- Los datos de catálogos (`data/*.json`) son la fuente de verdad y se editan directamente: el `.msapp` original de Power Apps
+- Los datos de catálogos (`data/*.json`) son los «de fábrica» y se editan directamente (OJO: desde 3.18.0 cinco de ellos se
+  publican en el servidor y GANA el servidor; ver «Catálogos desde el servidor»): el `.msapp` original de Power Apps
   se retiró del repo el 2026-09-19 (sigue en el historial de git) y `tools/extract_data.py` quedó obsoleto (ver README,
   «Catálogos de datos», por si hubiera que regenerarlos).
 - Antes de tocar `js/calc/*.js`, revisar si hay un script en `tools/verify_*.py`
@@ -236,6 +237,44 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   además el cálculo de `fila2` en «vista: varios tramos», que ya no podía asumir que el calibre en `selectedIndex = 4`
   coincidiera con el orden crudo del JSON: ahora usa el mismo `distinct()` de producción), `verify_cortocircuito.html`,
   `verify_conductor_economico.html`, `verify_ampacidad_aerea.html` y `verify_ia.html`.
+
+## Catálogos desde el servidor (fase 1 implementada 2026-09-24, versión 3.18.0; fase 2 PENDIENTE)
+
+- Decidido con el usuario: los catálogos editables viven en **Firestore** (no en Railway: la app ya usa Firebase, las reglas
+  de «solo admin» ya existían, y Railway sería un servidor más que mantener y un punto de falla más; Railway/Pages solo
+  sirven la app). La app trae los de fábrica (`data/*.json`) y **gana SIEMPRE el servidor** (decisión del usuario: lo
+  del servidor está más al día). Sin internet o sin servidor: última copia descargada, o los de fábrica.
+- Alcance: `conductores-desnudos`, `conductores-semiaislados`, `conductores-xlpe`, `tuberias` y `resoluciones` (el usuario
+  agregó resoluciones). Unidades, EPSG, codificación y construcción de cable siguen solo de fábrica.
+- Firestore: `catalogos/{nombre}` = `{ datos (JSON en texto), version }`; `catalogos/_indice` = `{ catalogos: { nombre: {
+  version, huellaFabrica, actualizadoPor, fecha } }, fecha }`. Cada catálogo es UN documento (el mayor, desnudos, pesa
+  ~250 KB compacto; límite 1 MB) para gastar poco del plan gratuito: al abrir la app se lee solo el índice (1 lectura) y
+  se descarga un catálogo solo si cambió su versión (`version` = `Date.now()` al publicar). Reglas: lectura pública
+  (`allow read: if true`: los visitantes usan Ocupación/Pérdidas/Regulación), escritura solo `esAdmin()` con forma y
+  tamaño validados. Hay que PUBLICAR las reglas en la consola de Firebase cuando cambien.
+- `js/util/catalogos-remotos.js`: lectura con la API REST de Firestore (sin SDK; `lectorRest`, parseo en
+  `parsearIndiceRest`/`parsearCatalogoRest`), copia local en `localStorage["catalogo.servidor.<nombre>"]`,
+  `sincronizarCatalogos()` (nunca rechaza; un catálogo dañado en el servidor se ignora), `huella()` = SHA-256 del JSON
+  compacto (no cambia con CRLF/sangría) para detectar «los de fábrica cambiaron desde la última publicación» sin tener
+  que numerar nada a mano. `app.js` sincroniza al cargar y al volver la conexión y llama `olvidarDato()` de lo que llegó
+  (la pantalla abierta no cambia a mitad de uso). `loadData()` (`format.js`) pregunta primero `datosDelServidor()`.
+- IMPORTANTE para pruebas: `usarServidor()` = `window.__USAR_CATALOGOS_SERVIDOR__ ?? !window.__BASE_PATH__`, o sea, los
+  arneses de `tools/` (que fijan `__BASE_PATH__`) usan SIEMPRE los de fábrica: sus resultados no dependen de lo publicado.
+  Solo `tools/verify_catalogos.html` lo activa, con el backend simulado (`backend-mock.js` gana `publicarCatalogo` y
+  `servidor`) y `lectorDesdeMock`: nunca toca el Firestore real.
+- Escritura: `backend.publicarCatalogo(nombre, {datos, huellaFabrica})` (lote: catálogo + su entrada del índice).
+  Pantalla: **Perfil → Catálogos** (solo admin, junto a Usuarios; `js/util/perfil-catalogos.js`): por catálogo, quién lo
+  publicó y cuándo, «Iguales a lo publicado» / «Cambiaron desde la última publicación», «Publicar» / «Publicar de nuevo»
+  (en la fase 1 hace también de «Restablecer a los de fábrica») y «Publicar todos los de la app». **Consecuencia que el
+  usuario aceptó**: una corrección en `data/*.json` NO llega a nadie hasta que el admin la publica; por eso el aviso.
+  Perfil → Aplicación dice de dónde vienen los catálogos; Perfil → Datos tiene la categoría «Catálogos descargados del
+  servidor» (fuera del respaldo).
+- **Fase 2 (pendiente, no empezar sin el usuario)**: en la ficha de un registro, Editar y Eliminar (mejor «desactivar»);
+  en la tabla, «Agregar registro»; solo el admin. Formulario generado de los campos, validaciones (números, obligatorios,
+  `nombre_clave` único), historial de cambios con deshacer, exportar el catálogo editado a JSON. ANTES hay que darle `id`
+  fijo a `tuberias.json` (hoy usa la posición, `conIdPorPosicion`: borrar una fila correría las demás).
+- Aclarado con el usuario: hacer privado el repo y servir desde Railway oculta el CÓDIGO en GitHub, no la app: quien
+  tenga el enlace la abre y su navegador descarga el JS y los catálogos. Ocultarla exigiría pedir sesión antes de cargar.
 
 ## Conversión de unidades (`js/views/conversion-unidades.js`, `data/unidades.json`)
 

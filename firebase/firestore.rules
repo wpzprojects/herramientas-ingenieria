@@ -7,6 +7,11 @@ rules_version = '2';
 //   usuarios/{correo}                { rol: 'admin' | 'usuario', agregadoPor, fecha }   (el ID es el correo en minusculas)
 //   usuarios/{correo}/secretos/gemini { clave }                                          (clave personal de Gemini)
 //   ajustes/gemini                    { clave, actualizadoPor, fecha }                   (clave compartida de Gemini)
+//   catalogos/{nombre}                { datos, version }                                 (catalogo completo: JSON en texto)
+//   catalogos/_indice                 { catalogos: { nombre: { version, huellaFabrica, actualizadoPor, fecha } }, fecha }
+//
+// Catalogos (2026-09-24): los LEE cualquiera, sin sesion (los visitantes usan calculadoras que dependen de ellos; la app
+// los lee con la API REST, sin cargar el SDK) y solo los ESCRIBE un administrador. Ver js/util/catalogos-remotos.js.
 //
 // Quien tiene acceso: cualquier correo VERIFICADO por Google que tenga un documento en /usuarios.
 // El primer administrador se crea a mano en la consola (la consola ignora estas reglas).
@@ -62,6 +67,26 @@ service cloud.firestore {
     match /ajustes/{doc} {
       allow read: if esUsuario();
       allow write: if esAdmin();
+    }
+
+    // Catalogos editables: lectura publica, escritura solo del admin y solo con la forma esperada.
+    function catalogoConocido(id) {
+      return id in ['conductores-desnudos', 'conductores-semiaislados', 'conductores-xlpe', 'tuberias', 'resoluciones'];
+    }
+
+    match /catalogos/{id} {
+      allow read: if true;
+      allow write: if esAdmin() && (
+        (id == '_indice'
+          && request.resource.data.keys().hasOnly(['catalogos', 'fecha'])
+          && request.resource.data.catalogos is map
+          && request.resource.data.catalogos.keys().hasOnly(['conductores-desnudos', 'conductores-semiaislados', 'conductores-xlpe', 'tuberias', 'resoluciones']))
+        || (catalogoConocido(id)
+          && request.resource.data.keys().hasOnly(['datos', 'version'])
+          && request.resource.data.datos is string
+          && request.resource.data.datos.size() < 1000000
+          && request.resource.data.version is int)
+      );
     }
   }
 }

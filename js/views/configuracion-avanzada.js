@@ -18,6 +18,7 @@ import { PREDETERMINADO, leerColores, guardarColor, ajustarBase } from "../util/
 import { pintarAplicacion } from "../util/perfil-aplicacion.js";
 import { pintarDatos } from "../util/perfil-datos.js";
 import { pintarCalculadoras } from "../util/perfil-calculadoras.js";
+import { pintarCatalogosAdmin } from "../util/perfil-catalogos.js";
 
 const fecha = (ms) => (ms ? new Date(ms).toLocaleDateString("es-CO", { dateStyle: "medium" }) : "—");
 const mensajeDe = (e) => (e instanceof ErrorAcceso ? e.message : `Error inesperado: ${e?.message || e}`);
@@ -166,7 +167,7 @@ export async function render(container, params = {}) {
     const esAdmin = perfil.rol === "admin";
     // el administrador ve Usuarios; todos los autorizados ven el resto (ajustes personales, por dispositivo)
     const pestanas = [
-      ...(esAdmin ? [["usuarios", "Usuarios"]] : []),
+      ...(esAdmin ? [["usuarios", "Usuarios"], ["catalogos", "Catálogos"]] : []),
       ["apariencia", "Apariencia"],
       ["calculadoras", "Calculadoras"],
       ["datos", "Datos"],
@@ -207,7 +208,10 @@ export async function render(container, params = {}) {
         }
       });
     }
-    if (esAdmin) pintarUsuarios(perfil);
+    if (esAdmin) {
+      pintarUsuarios(perfil);
+      pintarCatalogosAdmin(cuerpo.querySelector("#ca-catalogos"), b);
+    }
     pintarApariencia();
     pintarCalculadoras(cuerpo.querySelector("#ca-calculadoras"));
     pintarDatos(cuerpo.querySelector("#ca-datos"));

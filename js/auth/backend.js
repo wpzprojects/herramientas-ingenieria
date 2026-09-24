@@ -15,6 +15,9 @@
 //   guardarClaveCompartida(clave|null) -> guarda o borra                                  (solo admin)
 //   leerClavePersonal()                -> string | null                                   (solo el propio usuario)
 //   guardarClavePersonal(clave|null)   -> guarda o borra                                  (solo el propio usuario)
+//   publicarCatalogo(nombre, {datos, huellaFabrica}) -> version (numero)                  (solo admin)
+//                                         `datos` = el catalogo en texto JSON. Leer los catalogos NO pasa por aqui: es
+//                                         publico y se hace con la API REST (js/util/catalogos-remotos.js)
 //
 // La SEGURIDAD real la aplica el servidor (reglas de Firestore, ver firebase/firestore.rules):
 // este codigo del navegador es publico y no se puede confiar en el. Aqui solo se decide que
