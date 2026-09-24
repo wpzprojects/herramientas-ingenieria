@@ -4,7 +4,7 @@
 // para lo que no estuviera precacheado.
 
 // Versión de la app (x.y.z; ver js/util/novedades.js): cada publicación la sube, y con ella se renueva la cache.
-const CACHE_VERSION = "3.16.0";
+const CACHE_VERSION = "3.16.1";
 const CACHE_NAME = `herramientas-ingenieria-${CACHE_VERSION}`;
 
 const SCOPE = self.registration.scope;
@@ -154,13 +154,25 @@ const APP_SHELL = [
   "vendor/katex/fonts/KaTeX_Typewriter-Regular.woff2",
 ].map(u);
 
+// Archivos del shell que aun no estan en la cache.
+async function faltantes(cache) {
+  const guardados = new Set((await cache.keys()).map((r) => r.url));
+  return APP_SHELL.filter((url) => !guardados.has(url));
+}
+
+// Descarga cada archivo por separado (si uno falla, los demas igual quedan guardados; antes, con cache.addAll, un solo
+// fallo dejaba la version nueva sin NADA en la cache) y siempre del servidor (cache: "reload"), no de la cache HTTP del
+// navegador, que podia devolver la copia de la version anterior durante unos minutos.
+function descargar(cache, urls) {
+  return Promise.allSettled(urls.map((url) => cache.add(new Request(url, { cache: "reload" }))));
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(CACHE_NAME)
-      .then((cache) => cache.addAll(APP_SHELL))
+      .then((cache) => descargar(cache, APP_SHELL))
       .then(() => self.skipWaiting())
-      .catch((err) => console.warn("[sw] fallo precacheando el shell completo:", err))
   );
 });
 
@@ -173,18 +185,25 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// Perfil > Aplicacion pregunta la version y cuantos archivos del shell faltan en la cache (lista sin conexion).
+// Perfil > Aplicacion pregunta la version y que archivos del shell faltan en la cache (lista sin conexion). Con
+// `completar: true` (la pagina lo pide si hay internet) antes intenta descargar los que falten.
 self.addEventListener("message", (event) => {
   if (event.data?.tipo !== "estado" || !event.ports[0]) return;
   event.waitUntil(
-    caches
-      .open(CACHE_NAME)
-      .then((cache) => cache.keys())
-      .then((keys) => {
-        const guardados = new Set(keys.map((r) => r.url));
-        const faltan = APP_SHELL.filter((url) => !guardados.has(url)).length;
-        event.ports[0].postMessage({ version: CACHE_VERSION, total: APP_SHELL.length, faltan });
-      })
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+      let lista = await faltantes(cache);
+      if (lista.length && event.data.completar) {
+        await descargar(cache, lista);
+        lista = await faltantes(cache);
+      }
+      event.ports[0].postMessage({
+        version: CACHE_VERSION,
+        total: APP_SHELL.length,
+        faltan: lista.length,
+        faltantes: lista.map((url) => url.slice(SCOPE.length) || "página de inicio"),
+      });
+    })()
   );
 });
 

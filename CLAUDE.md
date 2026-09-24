@@ -536,8 +536,13 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   llaman a los motores de `js/calc/*.js`. Si cambia la firma de un motor, actualizar su adaptador
   en `tools.js` y correr `tools/verify_ia.html` (arnés en el navegador, ver su encabezado).
 - No fijar nombres de modelo en el código (cambian): se listan desde la API en Configuración.
-- En `sw.js`, `cache.addAll` falla completo si un archivo de `APP_SHELL` no existe: al agregar
-  o borrar archivos, actualizar la lista y subir `CACHE_VERSION`.
+- En `sw.js`, al agregar o borrar archivos del shell, actualizar `APP_SHELL` y subir `CACHE_VERSION`. Desde 3.16.1 la
+  instalación ya NO usa `cache.addAll` (un solo archivo que fallara dejaba la versión nueva con la cache vacía, y en
+  `install` el error se tragaba): descarga cada archivo por separado con `cache: "reload"` (siempre la copia del
+  servidor, no la de la cache HTTP del navegador, que en GitHub Pages dura 10 min y podía traer la versión anterior).
+  Los que falten se completan cuando Perfil > Aplicación pregunta el estado con `completar: true` (con internet), y la
+  respuesta trae `faltantes` (rutas) para mostrar cuáles. Reportado por el usuario: «faltan 1 de 141» estando en línea
+  y con la última versión; los 141 archivos respondían bien en GitHub Pages.
 - Si `bash` de Git no encuentra `ls/sed/python`, usar PowerShell (`python` sí está en el PATH ahí).
   Para leer resultados de `verify_ia.html`: en Bash sirve `msedge --headless --dump-dom ... | python -c` (con el servidor en
   segundo plano); en PowerShell hace falta `Start-Process -RedirectStandardOutput` (la salida de `--dump-dom` no se captura con `&`).

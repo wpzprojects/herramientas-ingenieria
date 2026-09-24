@@ -15,17 +15,18 @@ const version = (v) => `
   </div>`;
 const ESPERA_INSTALACION_MS = 60000;
 
-/** Pregunta su estado a un service worker; null si no responde a tiempo. */
-export function consultarEstado(sw) {
+/** Pregunta su estado a un service worker; null si no responde a tiempo. Con `completar`, el SW antes descarga los
+ *  archivos que le falten (por eso espera más). */
+export function consultarEstado(sw, { completar = false } = {}) {
   if (!sw) return Promise.resolve(null);
   return new Promise((resolve) => {
     const canal = new MessageChannel();
-    const t = setTimeout(() => resolve(null), ESPERA_MS);
+    const t = setTimeout(() => resolve(null), completar ? ESPERA_INSTALACION_MS : ESPERA_MS);
     canal.port1.onmessage = (e) => {
       clearTimeout(t);
       resolve(e.data || null);
     };
-    sw.postMessage({ tipo: "estado" }, [canal.port2]);
+    sw.postMessage({ tipo: "estado", completar }, [canal.port2]);
   });
 }
 
@@ -91,9 +92,12 @@ export function pintarAplicacion(box) {
       return;
     }
     $("[data-version]").textContent = e.version;
-    $("[data-offline]").textContent = e.faltan
-      ? `Incompleto: faltan ${e.faltan} de ${e.total} archivos. Abre la app con internet para completarlo.`
-      : `Lista: los ${e.total} archivos de la app están guardados en este dispositivo.`;
+    const cuales = (e.faltantes || []).slice(0, 5).join(", ") + ((e.faltantes || []).length > 5 ? "…" : "");
+    $("[data-offline]").textContent = !e.faltan
+      ? `Lista: los ${e.total} archivos de la app están guardados en este dispositivo.`
+      : navigator.onLine === false
+        ? `Incompleto: faltan ${e.faltan} de ${e.total} archivos${cuales ? ` (${cuales})` : ""}. Se completa sola la próxima vez que abras esta pestaña con internet.`
+        : `Incompleto: ${e.faltan === 1 ? "no se pudo" : "no se pudieron"} descargar ${e.faltan} de ${e.total} archivos${cuales ? ` (${cuales})` : ""}. Vuelve a abrir esta pestaña en un momento para reintentarlo.`;
   };
 
   let reg = null;
@@ -104,7 +108,8 @@ export function pintarAplicacion(box) {
       const listo = await Promise.race([navigator.serviceWorker.ready, new Promise((r) => setTimeout(() => r(null), 8000))]);
       if (listo) reg = listo;
     }
-    pintarEstado(await consultarEstado(reg?.active || navigator.serviceWorker?.controller));
+    // con internet, el SW descarga antes lo que le falte (así «Uso sin conexión» se repara solo)
+    pintarEstado(await consultarEstado(reg?.active || navigator.serviceWorker?.controller, { completar: navigator.onLine !== false }));
   })();
 
   btn.addEventListener("click", async () => {

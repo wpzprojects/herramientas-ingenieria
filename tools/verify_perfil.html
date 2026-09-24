@@ -262,6 +262,15 @@ await seccion("pestaña Aplicación", async () => {
   ok(!!box.querySelector("[data-buscar]") && !!box.querySelector("[data-buscar] svg"), "botón «Buscar actualización» con icono");
   const sw = await (await fetch("../sw.js")).text();
   ok(/addEventListener\("message"/.test(sw) && /tipo !== "estado"/.test(sw), "el service worker responde el mensaje «estado»");
+  let sintaxis = true;
+  try {
+    new Function(sw); // solo lo analiza, no lo ejecuta: el navegador de pruebas no llega a instalar el service worker
+  } catch (e) {
+    sintaxis = String(e);
+  }
+  ok(sintaxis === true, `sw.js no tiene errores de sintaxis${sintaxis === true ? "" : ": " + sintaxis}`);
+  ok(!/cache\.addAll\(/.test(sw) && /cache: "reload"/.test(sw) && /Promise\.allSettled/.test(sw), "instala archivo por archivo y pidiendo siempre la copia del servidor (sin cache.addAll)");
+  ok(/completar/.test(sw) && /faltantes:/.test(sw), "con «completar» descarga lo que falte y dice cuáles faltan");
   const shell = [...sw.matchAll(/^\s*"([^"]+)",\s*$/gm)].map((m) => m[1]);
   const nuevos = ["js/util/valores-defecto.js", "js/util/perfil-aplicacion.js", "js/util/perfil-datos.js", "js/util/perfil-calculadoras.js", "js/util/novedades.js"];
   ok(nuevos.every((f) => shell.includes(f)), "los cinco módulos nuevos están en el APP_SHELL");
