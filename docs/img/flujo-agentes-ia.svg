@@ -1,34 +1,36 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 720" font-family="system-ui, -apple-system, Segoe UI, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 730" font-family="system-ui, -apple-system, Segoe UI, Arial, sans-serif">
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" fill="#555555"/>
     </marker>
   </defs>
 
-  <rect x="0" y="0" width="700" height="720" fill="#ffffff"/>
+  <rect x="0" y="0" width="700" height="730" fill="#ffffff"/>
 
   <!-- ===== flechas y lineas (debajo de las cajas) ===== -->
   <!-- 1 -> 2 -->
   <line x1="280" y1="76" x2="280" y2="104" stroke="#555555" stroke-width="2" marker-end="url(#arrow)"/>
   <!-- 2 -> rama A (responde directo) -->
   <line x1="430" y1="141" x2="468" y2="141" stroke="#555555" stroke-width="2" marker-end="url(#arrow)"/>
-  <!-- 2 -> 3 -->
+  <!-- 2 -> 3, con la explicacion de COMO le pasa los datos -->
   <line x1="280" y1="176" x2="280" y2="204" stroke="#555555" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="450" y="183" font-size="11.5" fill="#666666">pide ejecutar una función</text>
+  <text x="450" y="197" font-size="11.5" fill="#666666">con los datos (JSON)</text>
   <!-- 3 -> 4 -->
-  <line x1="280" y1="266" x2="280" y2="294" stroke="#555555" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="280" y1="284" x2="280" y2="310" stroke="#555555" stroke-width="2" marker-end="url(#arrow)"/>
   <!-- 4 -> 5 -->
-  <line x1="280" y1="356" x2="280" y2="384" stroke="#555555" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="280" y1="372" x2="280" y2="398" stroke="#555555" stroke-width="2" marker-end="url(#arrow)"/>
   <!-- 5 -> 6 -->
-  <line x1="280" y1="446" x2="280" y2="474" stroke="#555555" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="280" y1="460" x2="280" y2="486" stroke="#555555" stroke-width="2" marker-end="url(#arrow)"/>
   <!-- 6 -> fin -->
-  <line x1="280" y1="546" x2="280" y2="598" stroke="#555555" stroke-width="2" marker-end="url(#arrow)"/>
-  <!-- rama A -> fin (codo) -->
-  <polyline points="570,169 570,628 432,628" fill="none" stroke="#555555" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="280" y1="558" x2="280" y2="608" stroke="#555555" stroke-width="2" marker-end="url(#arrow)"/>
+  <!-- rama A -> fin (codo, se corre a la derecha para no cruzar la etiqueta de abajo) -->
+  <polyline points="600,169 600,215 660,215 660,638 432,638" fill="none" stroke="#555555" stroke-width="2" marker-end="url(#arrow)"/>
   <!-- vuelta de 6 a 2 (repite si el modelo pide otra herramienta) -->
-  <path d="M130,511 C40,511 40,141 128,141" fill="none" stroke="#888888" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
-  <rect x="4" y="300" width="72" height="34" fill="#ffffff"/>
-  <text x="40" y="313" text-anchor="middle" font-size="11" fill="#666666">si hace falta</text>
-  <text x="40" y="327" text-anchor="middle" font-size="11" fill="#666666">otra herramienta</text>
+  <path d="M130,523 C40,523 40,141 128,141" fill="none" stroke="#888888" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+  <rect x="4" y="315" width="72" height="34" fill="#ffffff"/>
+  <text x="40" y="328" text-anchor="middle" font-size="11" fill="#666666">si hace falta</text>
+  <text x="40" y="342" text-anchor="middle" font-size="11" fill="#666666">otra herramienta</text>
 
   <!-- ===== cajas ===== -->
 
@@ -48,35 +50,36 @@
   <text x="570" y="136" text-anchor="middle" font-size="13.5" fill="#1d3f8f">Responde con texto</text>
   <text x="570" y="153" text-anchor="middle" font-size="13.5" fill="#1d3f8f">(no calculó nada)</text>
 
-  <!-- 3. codigo valida -->
-  <rect x="130" y="206" width="300" height="60" rx="10" fill="#eef1f4" stroke="#6b7785" stroke-width="1.5"/>
-  <text x="280" y="230" text-anchor="middle" font-size="15" fill="#33404d">3. Código valida los datos</text>
-  <text x="280" y="249" text-anchor="middle" font-size="12.5" fill="#5a6672">(sin IA, como un formulario)</text>
+  <!-- 3. codigo de la aplicacion valida -->
+  <rect x="130" y="206" width="300" height="78" rx="10" fill="#eef1f4" stroke="#6b7785" stroke-width="1.5"/>
+  <text x="280" y="230" text-anchor="middle" font-size="14.5" fill="#33404d">3. Código de la aplicación</text>
+  <text x="280" y="249" text-anchor="middle" font-size="14.5" fill="#33404d">valida los datos</text>
+  <text x="280" y="267" text-anchor="middle" font-size="12" fill="#5a6672">(sin IA, como un formulario)</text>
 
   <!-- 4. motor calcula -->
-  <rect x="130" y="296" width="300" height="60" rx="10" fill="#eef1f4" stroke="#6b7785" stroke-width="1.5"/>
-  <text x="280" y="320" text-anchor="middle" font-size="15" fill="#33404d">4. Se llama al motor de</text>
-  <text x="280" y="339" text-anchor="middle" font-size="15" fill="#33404d">cálculo real (js/calc/*.js)</text>
+  <rect x="130" y="312" width="300" height="60" rx="10" fill="#eef1f4" stroke="#6b7785" stroke-width="1.5"/>
+  <text x="280" y="336" text-anchor="middle" font-size="15" fill="#33404d">4. Se llama al motor de</text>
+  <text x="280" y="355" text-anchor="middle" font-size="15" fill="#33404d">cálculo real (js/calc/*.js)</text>
 
   <!-- 5. guarda resultado -->
-  <rect x="130" y="386" width="300" height="60" rx="10" fill="#eef1f4" stroke="#6b7785" stroke-width="1.5"/>
-  <text x="280" y="410" text-anchor="middle" font-size="15" fill="#33404d">5. El resultado se guarda</text>
-  <text x="280" y="429" text-anchor="middle" font-size="12.5" fill="#5a6672">(queda en una tabla)</text>
+  <rect x="130" y="400" width="300" height="60" rx="10" fill="#eef1f4" stroke="#6b7785" stroke-width="1.5"/>
+  <text x="280" y="424" text-anchor="middle" font-size="15" fill="#33404d">5. El resultado se guarda</text>
+  <text x="280" y="443" text-anchor="middle" font-size="12.5" fill="#5a6672">(queda en una tabla)</text>
 
   <!-- 6. modelo redacta (IA) -->
-  <rect x="130" y="476" width="300" height="70" rx="10" fill="#e6f0ff" stroke="#2f6fed" stroke-width="1.5"/>
-  <text x="280" y="504" text-anchor="middle" font-size="15" fill="#1d3f8f">6. El modelo (IA) redacta</text>
-  <text x="280" y="524" text-anchor="middle" font-size="15" fill="#1d3f8f">la respuesta final</text>
-  <rect x="392" y="482" width="30" height="18" rx="4" fill="#2f6fed"/>
-  <text x="407" y="495" text-anchor="middle" font-size="11" fill="#ffffff" font-weight="bold">IA</text>
+  <rect x="130" y="488" width="300" height="70" rx="10" fill="#e6f0ff" stroke="#2f6fed" stroke-width="1.5"/>
+  <text x="280" y="516" text-anchor="middle" font-size="15" fill="#1d3f8f">6. El modelo (IA) redacta</text>
+  <text x="280" y="536" text-anchor="middle" font-size="15" fill="#1d3f8f">la respuesta final</text>
+  <rect x="392" y="494" width="30" height="18" rx="4" fill="#2f6fed"/>
+  <text x="407" y="507" text-anchor="middle" font-size="11" fill="#ffffff" font-weight="bold">IA</text>
 
   <!-- fin -->
-  <rect x="130" y="600" width="300" height="56" rx="10" fill="#e8f7ee" stroke="#2f9e58" stroke-width="1.5"/>
-  <text x="280" y="633" text-anchor="middle" font-size="15" fill="#1f6b3a">Se muestra la respuesta al usuario</text>
+  <rect x="130" y="610" width="300" height="56" rx="10" fill="#e8f7ee" stroke="#2f9e58" stroke-width="1.5"/>
+  <text x="280" y="643" text-anchor="middle" font-size="15" fill="#1f6b3a">Se muestra la respuesta al usuario</text>
 
   <!-- leyenda -->
-  <rect x="150" y="678" width="20" height="20" rx="4" fill="#e6f0ff" stroke="#2f6fed" stroke-width="2"/>
-  <text x="178" y="692" font-size="13" fill="#333333">El modelo (IA)</text>
-  <rect x="330" y="678" width="20" height="20" rx="4" fill="#eef1f4" stroke="#6b7785" stroke-width="2"/>
-  <text x="358" y="692" font-size="13" fill="#333333">Código de la aplicación (sin IA)</text>
+  <rect x="150" y="690" width="20" height="20" rx="4" fill="#e6f0ff" stroke="#2f6fed" stroke-width="2"/>
+  <text x="178" y="704" font-size="13" fill="#333333">El modelo (IA)</text>
+  <rect x="330" y="690" width="20" height="20" rx="4" fill="#eef1f4" stroke="#6b7785" stroke-width="2"/>
+  <text x="358" y="704" font-size="13" fill="#333333">Código de la aplicación (sin IA)</text>
 </svg>
