@@ -37,7 +37,7 @@ export function calcularRmgHaz(rmgMm, n, separacionM) {
  *          numConductoresPorFase?:number, separacionHazM?:number}[]} tramos
  *        resistenciaOhmKm y rmgMm son los de UN conductor; con N conductores por fase la resistencia efectiva es R/N y el RMG el del haz.
  * @returns {{corriente:number, potenciaS:number, potenciaQ:number,
- *            tramos:{numero:number, resistenciaEfectivaOhmKm:number, rmgEfectivoMm:number, constanteRegulacion:number, caidaTensionPct:number}[],
+ *            tramos:{numero:number, resistenciaEfectivaOhmKm:number, rmgEfectivoMm:number, reactanciaInductiva:number, impedanciaEfectiva:number, constanteRegulacion:number, caidaTensionPct:number}[],
  *            caidaTensionPct:number}}
  */
 export function calcularRegulacionTramos(base, tramos) {
@@ -57,7 +57,7 @@ export function calcularRegulacionTramos(base, tramos) {
       dbcM: t.dbcM,
     });
     comunes ??= r;
-    filas.push({ numero: i + 1, resistenciaEfectivaOhmKm, rmgEfectivoMm, constanteRegulacion: r.constanteRegulacion, caidaTensionPct: r.caidaTensionPct });
+    filas.push({ numero: i + 1, resistenciaEfectivaOhmKm, rmgEfectivoMm, reactanciaInductiva: r.reactanciaInductiva, impedanciaEfectiva: r.impedanciaEfectiva, constanteRegulacion: r.constanteRegulacion, caidaTensionPct: r.caidaTensionPct });
   });
   return {
     corriente: comunes.corriente,

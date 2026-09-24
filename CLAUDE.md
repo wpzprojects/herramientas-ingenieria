@@ -33,6 +33,10 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   Pérdidas conserva su propio orden (calibre|resistencia antes de longitud|conductores), no tocarlo. El motor
   `js/calc/regulacion.js` y la herramienta de la IA NO se tocan. Lógica en `js/calc/regulacion-tramos.js`; pruebas en
   `tools/verify_regulacion.html`. Las dos fórmulas de caída (`√3·I·Z·L·100/(V·1000)` y `P[kW]·L·K`) son equivalentes (verificado).
+  Reactancia inductiva (Xl) e impedancia efectiva (Z) de cada tramo (2026-09-24, pedido del usuario): SOLO en el reporte,
+  en RESULTADOS, justo antes de «Constante de regulación» (4 decimales, Ω/km); NO como métricas en pantalla. Salen del
+  motor sin tocarlo (`regulacion-tramos.js` ahora las pasa por tramo). Se quitó la nota de Fórmulas que decía que no se
+  mostraban «igual que en la aplicación original».
   Valores iniciales del dato de partida (2026-09-24, pedido del usuario): FP **0.9** (antes 0.95, igual que Pérdidas y
   Conductor económico), y por coherencia 9.9 MW = **11 MVA** = **184.1 A** a 34.5 kV (antes 10.42 MVA y 174.4 A). En
   `verify_regulacion.html` las pruebas de la vista usan `FP_VISTA`/`E1V`; las del motor siguen con su propio FP 0.95.
@@ -77,6 +81,11 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   cumplimiento, área mínima y calibre sugerido en RESULTADOS. Esa lógica vive en `js/calc/cortocircuito-calibre.js`; el motor
   `js/calc/cortocircuito.js` y la herramienta de la IA NO se tocan. De la Calculadora Normativa NO se copió (a propósito): λ y k1
   editables, la forma simplificada I = A·k/√t con la Tabla B1.4 ni el gráfico del margen térmico. Pruebas: `tools/verify_cortocircuito.html`.
+  k₁ (2026-09-24, verificado en la literatura a pedido del usuario) = constante térmica del material para cortocircuito de la
+  ecuación ADIABÁTICA de ICEA P-32-382 (todo el calor queda en el conductor; depende del calor específico y la
+  resistividad), en A·√s/mm² y con log10: ICEA da (I/A)²·t = 0,0297·log10(…) en cobre y 0,0125 en aluminio con A en
+  circular mils → √0,0297 × 1973,5 ≈ 340 (la app usa 341) y √0,0125 × 1973,5 ≈ 221 (la app usa 224, heredado del
+  original; no se cambió el motor). En las notas de Fórmulas se quitó «Con «Manual» se pueden modificar».
 - Ampacidad aérea (2026-09-19) sigue el mismo patrón. Tres tarjetas: «Conductor» (icono `conductorCableado`; tipo | calibre, referencia |
   diámetro con «Manual», resistencia 25 °C | 75 °C con «Manual»), «Condiciones de operación» (icono Tabler `wind`; temperatura
   ambiente | máxima del conductor, viento | ángulo, elevación) y «Radiación solar y superficie» (icono Tabler `sunTabler`, distinto

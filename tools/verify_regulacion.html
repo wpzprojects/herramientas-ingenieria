@@ -336,6 +336,17 @@ await seccion("vista: estructura del reporte (se copia y se pega)", async () => 
     ok(tiene(sa.res, inicio), `resultados incluye «${inicio}»`);
   }
   ok(!tiene(sa.res, "Tensión de línea") && !tiene(sa.res, "Calibre") && !tiene(sa.res, "Distancia entre fases") && !tiene(sa.res, "Longitud del tramo"), "los datos de entrada no se repiten en los resultados");
+  // reactancia inductiva e impedancia efectiva (2026-09-24, pedido del usuario): solo en el reporte, antes de la constante
+  const pos = (l, inicio) => l.findIndex((x) => x.trim().startsWith(inicio));
+  const iXl = pos(sa.res, "Reactancia inductiva:");
+  const iZ = pos(sa.res, "Impedancia efectiva:");
+  ok(iXl > pos(sa.res, "RMG equivalente del haz") && iZ === iXl + 1 && pos(sa.res, "Constante de regulación") === iZ + 1, "reactancia inductiva e impedancia efectiva van en resultados, justo antes de la constante de regulación");
+  const eX = esperado({ V: 34.5, Pmw: 9.9, fp: FP_VISTA, L: 5.2, R: ACSR_4_0.r_ac_75c_ohm_km, rmgMm: ACSR_4_0.radio_medio_geometrico_mm, dab: 2, dac: 2.84, dbc: 0.84 });
+  const zEsperada = ACSR_4_0.r_ac_75c_ohm_km * FP_VISTA + eX.Xl * Math.sin(Math.acos(FP_VISTA));
+  cerca(parseFloat(sa.res[iXl].split(":")[1]), eX.Xl, 6e-5, `reporte: reactancia inductiva (${sa.res[iXl].trim()})`);
+  cerca(parseFloat(sa.res[iZ].split(":")[1]), zEsperada, 6e-5, `reporte: impedancia efectiva (${sa.res[iZ].trim()})`);
+  ok(/Ω\/km$/.test(sa.res[iXl]) && /Ω\/km$/.test(sa.res[iZ]), "con su unidad (Ω/km)");
+  ok(!metrica("Reactancia inductiva") && !metrica("Impedancia efectiva"), "no aparecen como métricas del resultado en pantalla (solo en el reporte)");
   const negritas = $$('[data-panel="reporte"] .report-block strong');
   const pesos = negritas.map((e) => parseInt(getComputedStyle(e).fontWeight, 10));
   ok(negritas.map((e) => e.textContent).join("|") === "CÁLCULO DE REGULACIÓN|PARÁMETROS DE ENTRADA:|RESULTADOS:" && pesos.every((w) => w >= 700), `las tres etiquetas están en negrita (${pesos.join(", ")}) y solo ellas`);

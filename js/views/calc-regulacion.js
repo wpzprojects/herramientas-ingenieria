@@ -87,9 +87,7 @@ const FORMULAS_NOTA = `El circuito puede tener varios tramos (cada uno con su co
 
 Con más de un conductor por fase, la resistencia efectiva es R/N y el radio medio geométrico es el equivalente del haz (subconductores idénticos, equiespaciados en un polígono regular).
 
-La caída de tensión de cada tramo también puede calcularse como P·L·K, con P en kW y L en km (es la misma expresión escrita de otra forma).
-
-La reactancia inductiva y la impedancia efectiva son valores intermedios del cálculo: no se muestran en el resultado ni en el reporte, igual que en la aplicación original.`;
+La caída de tensión de cada tramo también puede calcularse como P·L·K, con P en kW y L en km (es la misma expresión escrita de otra forma).`;
 
 // Texto plano de respaldo si KaTeX no se puede cargar.
 const FORMULAS_TEXTO = `I = (P·1000) / (√3·V·cos φ)               [A]
@@ -636,6 +634,8 @@ export async function render(container) {
       `Tramo ${t.numero}:`,
       `  Resistencia efectiva (R/N): ${fmt(t.resistenciaEfectivaOhmKm)} Ω/km`,
       `  RMG equivalente del haz: ${fmt(t.rmgEfectivoMm)} mm`,
+      `  Reactancia inductiva: ${fmt(t.reactanciaInductiva, 4)} Ω/km`,
+      `  Impedancia efectiva: ${fmt(t.impedanciaEfectiva, 4)} Ω/km`,
       `  Constante de regulación: ${fmt(t.constanteRegulacion, 7)}`,
       `  Caída de tensión del tramo: ${fmtPercent(t.caidaTensionPct)}`,
     ].join("\n"));

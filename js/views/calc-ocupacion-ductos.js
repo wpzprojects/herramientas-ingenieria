@@ -58,13 +58,13 @@ const FORMULAS_ETIQUETAS = [
   { tex: String.raw`R_c`, texto: "Radio de curvatura (12 veces el diámetro exterior del conductor) [mm]" },
 ];
 
-const FORMULAS_NOTA = `El ducto puede llevar varios tipos de conductor (por ejemplo, una terna de un calibre y otra de otro): el área ocupada es la suma de las áreas de todos los conductores y el límite depende del número TOTAL de conductores.
+const FORMULAS_NOTA = `El ducto puede llevar varios tipos de conductor (por ejemplo, dos ternas de diferente calibre): el área ocupada es la suma de las áreas de todos los conductores y el límite depende del número TOTAL de conductores.
 
 El radio de curvatura de cada tipo de conductor es 12 veces su diámetro exterior (12D).
 
 El riesgo de atascamiento durante el halado se evalúa solo cuando en total hay exactamente 3 conductores del mismo diámetro; con diámetros distintos no se calcula.
 
-Con «Catálogo» el diámetro es el exterior total del cable XLPE de media tensión (incluye aislamiento y chaqueta). Como en la aplicación original, el área del círculo usa π ≈ 3.1416.`;
+Con «Catálogo» el diámetro es el exterior total del cable XLPE de media tensión (incluye aislamiento y chaqueta). El área del círculo usa π ≈ 3.1416.`;
 
 // Texto plano de respaldo si KaTeX no se puede cargar.
 const FORMULAS_TEXTO = `Ac,i = (π/4)·di²     — área de un conductor del tipo i

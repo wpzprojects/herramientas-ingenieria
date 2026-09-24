@@ -44,7 +44,7 @@ const FORMULAS_ETIQUETAS = [
   { tex: "T_2", texto: "Temperatura máxima admisible en falla [°C]" },
   { tex: "t", texto: "Tiempo de despeje de la falla [s]" },
   { tex: String.raw`\lambda`, texto: "Constante del material (temperatura de resistencia cero) [°C]" },
-  { tex: "k_1", texto: "Constante del material" },
+  { tex: "k_1", texto: "Constante térmica del material para cortocircuito (depende de su calor específico y resistividad; ecuación adiabática de ICEA P-32-382) [A·√s/mm²]" },
 ];
 
 const FORMULAS_NOTA = `El logaritmo es en base 10.
@@ -53,7 +53,7 @@ En red aérea todos los tipos del catálogo (ACSR, AAAC, ACAR, AAC, ACSS) se cal
 
 Si se indica la corriente de falla a soportar, el calibre sugerido es el de menor área, del mismo tipo y material elegidos, cuya capacidad de cortocircuito iguala o supera esa corriente (equivale a tener un área mayor o igual a A_min).
 
-Valores por defecto: temperatura de operación de 75 °C en red aérea y 90 °C en subterránea, y temperatura máxima en falla de 250 °C. Con «Manual» se pueden modificar.`;
+Valores por defecto: temperatura de operación de 75 °C en red aérea y 90 °C en subterránea, y temperatura máxima en falla de 250 °C.`;
 
 // Texto plano de respaldo si KaTeX no se puede cargar.
 const FORMULAS_TEXTO = `I_CC = A · k1 · √( log10((T2+λ)/(T1+λ)) / t ) / 1000     [kA]
