@@ -226,6 +226,28 @@ await seccion("Corriente NTC 2050: tabla partida (encabezado fijo + cuerpo con s
   const inner = $(".tabla-partida__cuerpo-inner");
   ok(inner.style.marginTop === `-${Math.round(alturaEnc)}px`, "el cuerpo se desplaza hacia arriba justo lo que mide el encabezado recortado: la primera fila visible al abrir es la primera fila de datos, no el título");
 
+  // el ancho de la barra de scroll (si la hay) se compensa en el encabezado para que las columnas no queden mas angostas que las del cuerpo
+  const anchoBarra = cuerpo.offsetWidth - cuerpo.clientWidth;
+  ok(encWrap.style.paddingRight === `${anchoBarra}px`, `el encabezado compensa el ancho de la barra de scroll del cuerpo (${anchoBarra} px) con el mismo padding-right, así las columnas quedan alineadas`);
+  const rEnc = encImg.getBoundingClientRect();
+  const rCuerpo = cuerpoImg.getBoundingClientRect();
+  ok(Math.abs(rEnc.width - rCuerpo.width) < 1 && Math.abs(rEnc.left - rCuerpo.left) < 1 && Math.abs(rEnc.right - rCuerpo.right) < 1, `encabezado y cuerpo renderizan la imagen exactamente al mismo ancho y en la misma posición horizontal (encabezado ${Math.round(rEnc.width)} px, cuerpo ${Math.round(rCuerpo.width)} px)`);
+
+  // sin espacio/borde entre el encabezado y el cuerpo: deben quedar pegados, como si fuera una sola imagen
+  const rEncWrap = encWrap.getBoundingClientRect();
+  const rCuerpoWrap = cuerpo.getBoundingClientRect();
+  ok(Math.abs(rCuerpoWrap.top - rEncWrap.bottom) < 0.5, `el cuerpo va PEGADO al encabezado, sin espacio entre los dos (separación ${(rCuerpoWrap.top - rEncWrap.bottom).toFixed(1)} px)`);
+
+  // se puede subir hasta que la ULTIMA fila quede pegada arriba del cuerpo (no a medio viewport)
+  cuerpo.scrollTop = cuerpo.scrollHeight;
+  const alturaFilaEsperada = Math.round(alturaCompleta * 0.0266);
+  const margenSobrante = cuerpo.scrollHeight - cuerpo.scrollTop - cuerpo.clientHeight;
+  ok(Math.abs(margenSobrante) < 1, `el scroll llega hasta el final sin quedar corto (sobran ${margenSobrante.toFixed(1)} px)`);
+  // en scrollTop, la fila de imagen que queda arriba del viewport es (scrollTop + alturaEnc): al final debe ser justo
+  // donde empieza la ÚLTIMA fila (alturaCompleta - alturaFila), ni antes (se ve a medio viewport) ni después (ya no hay imagen)
+  const filaEnElTope = cuerpo.scrollTop + alturaEnc;
+  ok(Math.abs(filaEnElTope - (alturaCompleta - alturaFilaEsperada)) < 2, `al hacer scroll hasta el final, la ÚLTIMA fila queda pegada arriba del cuerpo (junto al encabezado), no varada a medio viewport (fila en el tope: ${Math.round(filaEnElTope)} px, se esperaba ${Math.round(alturaCompleta - alturaFilaEsperada)} px)`);
+
   ok(texto($(".tabla-partida__aviso")).length > 20, "hay un aviso corto explicando que se puede desplazar y tocar para ver la tabla completa");
 
   // llamar la limpieza no debe tronar (aunque se llame más de una vez, p. ej. si el router la invoca y luego se navega otra vez)

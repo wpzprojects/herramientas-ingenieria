@@ -752,6 +752,25 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   `tools/` (servidos desde una ruta distinta a la raíz). Pruebas: sección nueva «Corriente NTC 2050: tabla partida» en
   `tools/verify_normatividad.html` (fracción recortada ≈30%, cuerpo con scroll y alto fijo, desplazamiento exacto, aviso
   visible, limpieza sin errores) y las secciones existentes de ese arnés se ajustaron a la nueva estructura.
+  **Ajuste posterior, mismo día (3 problemas que el usuario encontró probándola)**: (1) el cuerpo con scroll perdía ancho
+  frente al encabezado por la barra de scroll nativa (~15-17px en Windows sin touch), corriendo las columnas hacia la
+  izquierda — se corrigió midiendo `cuerpo.offsetWidth - cuerpo.clientWidth` y aplicando ese mismo valor como
+  `padding-right` al contenedor del encabezado (`encWrap`), que en `montarTablaPartida` ahora hace DOS pasadas: mide y
+  aplica el recorte, mide la barra y aplica el padding, y vuelve a medir/aplicar una vez más (el padding-right reduce el
+  ancho — y por tanto el alto, `height:auto` — de la imagen del encabezado, así que hay que recalcular con el ancho ya
+  final). (2) Había un espacio visible entre encabezado y cuerpo (`margin-top`/`border-top` en `.tabla-partida__cuerpo`,
+  CSS) que rompía la ilusión de una sola tabla continua: se quitaron los dos, quedan pegados. (3) Al llegar al final del
+  scroll, las últimas filas se quedaban varadas a medio viewport (rodeadas de fondo oscuro abajo) sin poder subir hasta
+  quedar pegadas al encabezado — el usuario lo pidió así explícitamente («que también se quiere») y sugirió agregar
+  espacio en blanco al final; se agregó un `filaFraccion` nuevo a `partida` (alto de UNA fila de datos como fracción de
+  la imagen, medido igual que `fraccion`: se detectaron las líneas horizontales reales de la zona de datos con Python/
+  Pillow, promedio ~57.8px de 2177px = 0.0266) y `cuerpoInner` gana `padding-bottom: altoCuerpo - alturaFila` (no
+  `altoCuerpo` completo: eso sobrepasaba y dejaba la pantalla TOTALMENTE en blanco al hacer scroll hasta el fondo, un
+  primer intento descartado tras verificarlo visualmente) — así el scroll máximo deja la ÚLTIMA fila pegada arriba del
+  cuerpo (junto al encabezado) con el resto del viewport en blanco debajo, en vez de cortarse a medio camino o pasarse a
+  vacío. Pruebas nuevas en la misma sección de `verify_normatividad.html`: compensación exacta del padding-right, mismo
+  ancho/posición horizontal de las dos imágenes, cero separación entre encabezado y cuerpo, y la posición exacta de la
+  última fila tras `cuerpo.scrollTop = cuerpo.scrollHeight` (58/58 pruebas en total).
 - Conversión de coordenadas (2026-09-19): además del conversor de los 7 sistemas (`js/calc/coordenadas.js`, motor original propio: NO
   tocarlo, lo usa también la IA), la casilla «Habilitar todos los sistemas de coordenadas» reemplaza, EN EL MISMO formulario,
   las dos listas por dos campos de código EPSG (entrada y salida) para convertir entre cualquier par de ~509 códigos EPSG (los de Colombia —MAGNA-SIRGAS, Bogotá 1975, Origen Nacional, las 32 cuadrículas urbanas de las ciudades— y los

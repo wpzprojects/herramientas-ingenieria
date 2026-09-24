@@ -56,7 +56,10 @@ const TEMAS = {
         img: "assets/normativa/capacidad-corriente-conductores-ntc.jpg",
         // Encabezado (titulo + bancos de conductos + fila de unidades) = ~30% de la altura de la imagen,
         // medido sobre el archivo real (linea que separa la fila "AWG/kcmil..." de la primera fila de datos).
-        partida: { fraccion: 0.3, altoCuerpo: 420 },
+        // filaFraccion = alto de UNA fila de datos, tambien medido sobre el archivo real (promedio de las
+        // lineas horizontales de la zona de datos, ~57.8px de 2177px de alto): deja subir el cuerpo hasta que
+        // la ULTIMA fila quede pegada al encabezado, sin pasarse a una pantalla completamente en blanco.
+        partida: { fraccion: 0.3, filaFraccion: 0.0266, altoCuerpo: 420 },
       },
     ],
   },
@@ -67,7 +70,7 @@ const TEMAS = {
 // contenedor exterior (no en cada <img>), asi que tocar cualquiera de las dos partes abre la imagen COMPLETA
 // en la lightbox, nunca un recorte.
 function montarTablaPartida(host, op) {
-  const { fraccion, altoCuerpo = 420 } = op.partida;
+  const { fraccion, filaFraccion = 0, altoCuerpo = 420 } = op.partida;
   host.innerHTML = `
     <div class="tabla-partida" data-lightbox="${rutaImg(op.img)}">
       <div class="tabla-partida__encabezado"><img src="${rutaImg(op.img)}" alt="${op.label} (encabezado)"></div>
@@ -80,14 +83,34 @@ function montarTablaPartida(host, op) {
 
   const encImg = host.querySelector(".tabla-partida__encabezado img");
   const encWrap = host.querySelector(".tabla-partida__encabezado");
+  const cuerpo = host.querySelector(".tabla-partida__cuerpo");
   const cuerpoInner = host.querySelector(".tabla-partida__cuerpo-inner");
 
-  function ajustar() {
-    const alturaTotal = encImg.getBoundingClientRect().height;
-    if (!alturaTotal) return;
+  // Aplica el recorte del encabezado y dos ajustes mas: espacio en blanco al final (para poder subir la
+  // ULTIMA fila hasta que quede pegada al encabezado, no a medio viewport) y compensacion del ancho de la
+  // barra de scroll del cuerpo (si la hay: en Windows sin mouse/touch suele medir ~15-17px), para que sus
+  // columnas no queden mas angostas que las del encabezado.
+  function aplicar(alturaTotal) {
     const alturaEnc = Math.round(alturaTotal * fraccion);
+    const alturaFila = Math.round(alturaTotal * filaFraccion);
     encWrap.style.height = `${alturaEnc}px`;
     cuerpoInner.style.marginTop = `-${alturaEnc}px`;
+    // Deja subir hasta que la ULTIMA fila quede pegada arriba (una fila de alto visible + el resto en
+    // blanco), en vez de quedarse a medio viewport sin poder alinearla con el encabezado.
+    cuerpoInner.style.paddingBottom = `${Math.max(altoCuerpo - alturaFila, 0)}px`;
+    return alturaEnc;
+  }
+
+  function ajustar() {
+    let alturaTotal = encImg.getBoundingClientRect().height;
+    if (!alturaTotal) return;
+    aplicar(alturaTotal);
+    // El padding-right que sigue reduce el ancho (y por tanto el alto) de la imagen del encabezado: se
+    // vuelve a medir y aplicar una vez mas para que el recorte quede exacto con el ancho final.
+    const anchoBarra = cuerpo.offsetWidth - cuerpo.clientWidth;
+    encWrap.style.paddingRight = `${anchoBarra}px`;
+    alturaTotal = encImg.getBoundingClientRect().height;
+    if (alturaTotal) aplicar(alturaTotal);
   }
 
   if (encImg.complete) ajustar();
