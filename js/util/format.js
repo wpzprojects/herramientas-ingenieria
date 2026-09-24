@@ -84,12 +84,17 @@ export function olvidarDato(name) {
 }
 
 /**
- * Copia de las filas de un catalogo que no trae `id` (p. ej. tuberias.json), con un `id` = posicion (1, 2, 3...). Sirve para
- * abrir la ficha de detalle (#/catalogos/:familia/:id). No modifica los datos cacheados que usan las calculadoras.
+ * Copia de las filas de un catalogo que no trae `id`, con un `id` = posicion (1, 2, 3...). Sirve para abrir la ficha de
+ * detalle (#/catalogos/:familia/:id). No modifica los datos cacheados que usan las calculadoras. Desde 3.19.0
+ * tuberias.json ya trae `id` fijo (= su posicion de entonces, asi los enlaces no cambiaron): esto queda solo de
+ * respaldo para una copia del servidor publicada antes de eso (ver `conIdSiFalta`).
  */
 export function conIdPorPosicion(rows) {
   return rows.map((r, i) => ({ ...r, id: String(i + 1) }));
 }
+
+/** Las filas tal cual si todas traen `id`; si no, con `id` = posicion. */
+export const conIdSiFalta = (rows) => (rows.every((r) => r.id !== undefined && r.id !== null) ? rows : conIdPorPosicion(rows));
 
 /**
  * Valores distintos de `key` en `rows`. Por defecto se ordenan como texto (orden natural, numérico dentro del texto).

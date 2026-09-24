@@ -1,7 +1,9 @@
 // Catalogo filtrable de resoluciones del sector electrico (CREG y afines).
 // data/resoluciones.json: { id, resolucion, fecha (año), objeto, resumen }.
 
-import { fmt, loadData, distinct, debounce } from "../util/format.js";
+import { loadData, distinct, debounce, escapeHtml } from "../util/format.js";
+import { CAMPOS_RESOLUCION } from "./detalle-resolucion.js";
+import { esAdministrador, esquemaDe, agregarRegistro, guardarCatalogo, abrirEditor, botonesAdmin } from "../util/edicion-catalogo.js";
 
 export async function render(container) {
   const rows = await loadData("resoluciones");
@@ -11,6 +13,7 @@ export async function render(container) {
     <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/normatividad">Normatividad</a> <span>/</span> <span>Resoluciones</span></div>
     <h1 class="page-title">Resoluciones del sector</h1>
 
+    <div id="res-lista">
     <div class="toolbar">
       <div class="field search">
         <label for="f-buscar">Buscar</label>
@@ -20,7 +23,7 @@ export async function render(container) {
         <label for="f-anio">Año</label>
         <select id="f-anio">
           <option value="">Todos</option>
-          ${anios.map((a) => `<option value="${a}">${a}</option>`).join("")}
+          ${anios.map((a) => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join("")}
         </select>
       </div>
     </div>
@@ -38,7 +41,43 @@ export async function render(container) {
         <tbody id="tbody-resoluciones"></tbody>
       </table>
     </div>
+    </div>
+    <div id="res-editor"></div>
   `;
+
+  // Administrador: «Agregar registro» (se publica de inmediato; ver js/util/edicion-catalogo.js)
+  if (esAdministrador()) {
+    const lista = container.querySelector("#res-lista");
+    const editor = container.querySelector("#res-editor");
+    lista.before(
+      botonesAdmin([
+        {
+          accion: "agregar",
+          icono: "plus",
+          texto: "Agregar registro",
+          clase: "btn-primary",
+          alHacer: (e) => {
+            const acciones = e.currentTarget.parentElement;
+            lista.hidden = acciones.hidden = true;
+            abrirEditor(editor, {
+              titulo: "Agregar resolución",
+              esquema: esquemaDe(rows, CAMPOS_RESOLUCION),
+              textoConfirmar: "¿Agregar esta resolución? Se publica de inmediato para todos los usuarios.",
+              alCancelar: () => {
+                editor.innerHTML = "";
+                lista.hidden = acciones.hidden = false;
+              },
+              alGuardar: async (registro) => {
+                const { filas, id } = agregarRegistro(rows, registro);
+                await guardarCatalogo("resoluciones", filas, `Agregó «${registro.resolucion}»`);
+                location.hash = `#/normatividad/resoluciones/${id}`;
+              },
+            });
+          },
+        },
+      ])
+    );
+  }
 
   const fBuscar = container.querySelector("#f-buscar");
   const fAnio = container.querySelector("#f-anio");
@@ -63,17 +102,17 @@ export async function render(container) {
     tbody.innerHTML = filtradas
       .map(
         (r) => `
-      <tr class="clickable" data-id="${r.id}">
-        <td>${r.resolucion}</td>
-        <td>${r.fecha}</td>
-        <td class="wrap">${r.objeto}</td>
+      <tr class="clickable" data-id="${escapeHtml(r.id)}">
+        <td>${escapeHtml(r.resolucion)}</td>
+        <td>${escapeHtml(r.fecha)}</td>
+        <td class="wrap">${escapeHtml(r.objeto)}</td>
       </tr>`
       )
       .join("");
 
     tbody.querySelectorAll("tr.clickable").forEach((tr) => {
       tr.addEventListener("click", () => {
-        location.hash = `#/normatividad/resoluciones/${tr.dataset.id}`;
+        location.hash = `#/normatividad/resoluciones/${encodeURIComponent(tr.dataset.id)}`;
       });
     });
   }

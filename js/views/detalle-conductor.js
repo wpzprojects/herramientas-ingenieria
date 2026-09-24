@@ -4,9 +4,11 @@
 // campo id es numerico, en los otros dos es string tipo "001" - por eso la
 // busqueda siempre compara con String(row.id) === id.
 
-import { el, fmt, loadData, conIdPorPosicion } from "../util/format.js";
+import { el, fmt, loadData, conIdSiFalta } from "../util/format.js";
+import { esAdministrador, esquemaDe, reemplazarRegistro, quitarRegistro, guardarCatalogo, abrirEditor, botonesAdmin } from "../util/edicion-catalogo.js";
 
-const CONFIG = {
+// Exportado: la lista (catalogo-conductores.js) lo usa para el formulario de «Agregar registro».
+export const CONFIG = {
   desnudos: {
     dataFile: "conductores-desnudos",
     tituloFamilia: "Conductores desnudos",
@@ -85,7 +87,7 @@ const CONFIG = {
     dataFile: "tuberias",
     tituloFamilia: "Tuberías",
     nombreSingular: "Tubería",
-    prepararFilas: conIdPorPosicion,
+    prepararFilas: conIdSiFalta,
     titulo: (row) => `${row.tipo} — ${row.diametro_nominal}`,
     campos: [
       { key: "tipo", label: "Tipo" },
@@ -100,7 +102,7 @@ const CONFIG = {
   },
 };
 
-function tituloDeFila(cfg, row) {
+export function tituloDeFila(cfg, row) {
   if (cfg.titulo) return cfg.titulo(row);
   if (cfg.titleField && row[cfg.titleField] !== null && row[cfg.titleField] !== undefined && row[cfg.titleField] !== "") {
     return String(row[cfg.titleField]);
@@ -167,5 +169,49 @@ export async function render(container, params) {
     lista.append(el("div", { class: "detail-row" }, [el("span", { class: "k" }, f.label), el("span", { class: "v" }, display)]));
   });
 
-  container.append(el("div", { class: "card detail-list-card" }, lista));
+  const zona = el("div", {});
+  zona.append(el("div", { class: "card detail-list-card" }, lista));
+  container.append(zona);
+
+  // Administrador: Editar / Eliminar (se publican de inmediato; ver js/util/edicion-catalogo.js)
+  if (!esAdministrador()) return;
+  const volver = async () => {
+    container.innerHTML = "";
+    await render(container, params);
+  };
+  zona.prepend(
+    botonesAdmin([
+      {
+        accion: "editar",
+        icono: "pencil",
+        texto: "Editar",
+        alHacer: () =>
+          abrirEditor(zona, {
+            titulo: `Editar ${titulo}`,
+            esquema: esquemaDe(rows, cfg.campos),
+            valores: row,
+            textoConfirmar: `¿Guardar los cambios de «${titulo}»? Se publican de inmediato para todos los usuarios.`,
+            alCancelar: volver,
+            alGuardar: async (registro) => {
+              await guardarCatalogo(cfg.dataFile, reemplazarRegistro(rows, row.id, registro), `Editó «${titulo}»`);
+              await volver();
+            },
+          }),
+      },
+      {
+        accion: "eliminar",
+        icono: "trash",
+        texto: "Eliminar",
+        alHacer: async () => {
+          if (!confirm(`¿Eliminar «${titulo}» del catálogo? Se publica de inmediato para todos; si fue un error, se recupera desde el historial en Perfil > Catálogos.`)) return;
+          try {
+            await guardarCatalogo(cfg.dataFile, quitarRegistro(rows, row.id), `Eliminó «${titulo}»`);
+            location.hash = `#/catalogos/${params.familia}`;
+          } catch (err) {
+            zona.prepend(el("div", { class: "callout callout-danger" }, el("span", {}, `No se pudo eliminar: ${err?.message || err}`)));
+          }
+        },
+      },
+    ])
+  );
 }

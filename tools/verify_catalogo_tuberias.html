@@ -188,10 +188,11 @@ await seccion("los catálogos de conductores siguen igual", async () => {
   await lista.render(stage, { familia: "no-existe" });
   ok(texto($(".empty-state h2")) === "Catálogo no reconocido", "una familia desconocida sigue mostrando «Catálogo no reconocido»");
   limpiar();
-  // la calculadora de ocupacion usa el mismo archivo: los datos cacheados no llevan `id`
+  // desde 3.19.0 tuberias.json trae `id` fijo (= su posición de antes, así los enlaces a las fichas no cambiaron)
   const fmt = await import("../js/util/format.js");
   const datos = await fmt.loadData("tuberias");
-  ok(!("id" in datos[0]), "los datos que usa la calculadora de Ocupación de ductos no se modifican (no reciben `id`)");
+  ok(datos.every((t, i) => t.id === i + 1), "cada tubería trae su id fijo, igual a su posición (los enlaces a las fichas siguen siendo los mismos)");
+  ok(fmt.conIdSiFalta(datos) === datos && fmt.conIdSiFalta([{ a: 1 }, { a: 2 }])[1].id === "2", "con id se usan tal cual; una copia antigua sin id (publicada antes) recibe la posición");
 });
 
 await seccion("service worker y otros archivos", async () => {

@@ -106,6 +106,7 @@ const valorRest = (v) => {
   if ("doubleValue" in v) return Number(v.doubleValue);
   if ("stringValue" in v) return v.stringValue;
   if ("timestampValue" in v) return v.timestampValue;
+  if ("arrayValue" in v) return (v.arrayValue.values || []).map(valorRest);
   if ("mapValue" in v) return Object.fromEntries(Object.entries(v.mapValue.fields || {}).map(([k, x]) => [k, valorRest(x)]));
   if ("nullValue" in v) return null;
   return undefined;
@@ -116,7 +117,11 @@ export function parsearIndiceRest(doc) {
   const cats = valorRest(doc?.fields?.catalogos) || {};
   const out = {};
   for (const [nombre, v] of Object.entries(cats)) {
-    if (esEditable(nombre) && v && Number.isFinite(v.version)) out[nombre] = { version: v.version, huellaFabrica: v.huellaFabrica || "", actualizadoPor: v.actualizadoPor || "", fecha: v.fecha || null };
+    if (!esEditable(nombre) || !v || !Number.isFinite(v.version)) continue;
+    const historial = (Array.isArray(v.historial) ? v.historial : [])
+      .filter((h) => h && Number.isFinite(h.version))
+      .map((h) => ({ version: h.version, fecha: h.fecha || null, actualizadoPor: h.actualizadoPor || "", cambio: h.cambio || "" }));
+    out[nombre] = { version: v.version, huellaFabrica: v.huellaFabrica || "", actualizadoPor: v.actualizadoPor || "", fecha: v.fecha || null, cambio: v.cambio || "", historial };
   }
   return out;
 }

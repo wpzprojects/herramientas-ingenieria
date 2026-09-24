@@ -45,7 +45,7 @@ Los `data/*.json` son los catálogos **de fábrica** (vienen con la app y se edi
 - La lectura es pública (los visitantes usan calculadoras que dependen de los catálogos) y se hace con la API REST de Firestore, sin cargar el SDK. Solo el administrador escribe (reglas en `firebase/firestore.rules`).
 - **Gana siempre el servidor.** Por eso, cuando se corrige un `data/*.json` en el repositorio, el cambio NO llega a nadie hasta que el administrador lo publica: en **Perfil → Catálogos** se ve «Cambiaron desde la última publicación» y se usa «Publicar de nuevo».
 - Pasos manuales la primera vez: publicar las reglas nuevas en la consola de Firebase (Firestore → Reglas → Publicar) y, como administrador, **Perfil → Catálogos → «Publicar todos los de la app»**.
-- La edición registro por registro (agregar, editar, desactivar) es la fase 2, aún no implementada.
+- **Edición (3.19.0):** el administrador ve «Agregar registro» en la lista de cada catálogo (y de resoluciones) y «Editar» / «Eliminar» en cada ficha. Cada cambio se publica de inmediato para todos. El servidor guarda las **últimas 10 versiones** de cada catálogo: en **Perfil → Catálogos** se ven con fecha, autor y qué cambió, y «Volver a esta versión» deshace un error. Si se publican de nuevo los datos que trae la app, las ediciones se reemplazan (quedan en el historial).
 
 Se generaron una sola vez desde el `.msapp` de la app original de Power Apps; ese archivo (y las capturas de pantalla de `APP_PowerApps/`) se retiró del repositorio el 2026-09-19 porque la app ya no depende de él, pero **sigue en el historial de git**.
 

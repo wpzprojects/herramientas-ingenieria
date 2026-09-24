@@ -8,7 +8,9 @@ rules_version = '2';
 //   usuarios/{correo}/secretos/gemini { clave }                                          (clave personal de Gemini)
 //   ajustes/gemini                    { clave, actualizadoPor, fecha }                   (clave compartida de Gemini)
 //   catalogos/{nombre}                { datos, version }                                 (catalogo completo: JSON en texto)
-//   catalogos/_indice                 { catalogos: { nombre: { version, huellaFabrica, actualizadoPor, fecha } }, fecha }
+//   catalogos/_indice                 { catalogos: { nombre: { version, huellaFabrica, actualizadoPor, fecha, cambio,
+//                                                               historial: [{ version, fecha, actualizadoPor, cambio }] } }, fecha }
+//   catalogos_historial/{nombre}__{version} { nombre, datos, version }                 (ultimas 10 versiones, solo admin)
 //
 // Catalogos (2026-09-24): los LEE cualquiera, sin sesion (los visitantes usan calculadoras que dependen de ellos; la app
 // los lee con la API REST, sin cargar el SDK) y solo los ESCRIBE un administrador. Ver js/util/catalogos-remotos.js.
@@ -87,6 +89,19 @@ service cloud.firestore {
           && request.resource.data.datos.size() < 1000000
           && request.resource.data.version is int)
       );
+    }
+
+    // Historial de versiones de cada catalogo (ultimas 10; la lista con fecha, autor y cambio vive en _indice). Solo
+    // el administrador lo ve y lo escribe. El id es <nombre>__<version>.
+    match /catalogos_historial/{id} {
+      allow read, delete: if esAdmin();
+      allow create: if esAdmin()
+        && request.resource.data.keys().hasOnly(['nombre', 'datos', 'version'])
+        && catalogoConocido(request.resource.data.nombre)
+        && request.resource.data.version is int
+        && id == request.resource.data.nombre + '__' + string(request.resource.data.version)
+        && request.resource.data.datos is string
+        && request.resource.data.datos.size() < 1000000;
     }
   }
 }

@@ -71,7 +71,7 @@ await seccion("lectura REST: formato de Firestore", async () => {
     tuberias: { mapValue: { fields: { version: { integerValue: "1727190000000" }, huellaFabrica: { stringValue: "abc" }, actualizadoPor: { stringValue: "jefe@empresa.com" }, fecha: { timestampValue: "2026-09-24T12:00:00Z" } } } },
     inventado: { mapValue: { fields: { version: { integerValue: "5" } } } },
   } } }, fecha: { timestampValue: "2026-09-24T12:00:00Z" } } });
-  ok(JSON.stringify(indice) === JSON.stringify({ tuberias: { version: 1727190000000, huellaFabrica: "abc", actualizadoPor: "jefe@empresa.com", fecha: "2026-09-24T12:00:00Z" } }), `lee el índice y descarta catálogos desconocidos (${JSON.stringify(indice)})`);
+  ok(JSON.stringify(indice) === JSON.stringify({ tuberias: { version: 1727190000000, huellaFabrica: "abc", actualizadoPor: "jefe@empresa.com", fecha: "2026-09-24T12:00:00Z", cambio: "", historial: [] } }), `lee el índice y descarta catálogos desconocidos (${JSON.stringify(indice)})`);
   const cat = R.parsearCatalogoRest({ fields: { datos: { stringValue: '[{"a":1}]' }, version: { integerValue: "7" } } });
   ok(cat.datos === '[{"a":1}]' && cat.version === 7, "lee los datos (texto) y la versión de un catálogo");
   ok(JSON.stringify(R.parsearIndiceRest({})) === "{}", "un índice vacío no rompe nada");
@@ -185,8 +185,8 @@ await seccion("pestaña Catálogos del administrador", async () => {
   box.querySelector('[data-publicar="resoluciones"]').click();
   for (let i = 0; i < 60 && !/Se publicó/.test(texto(box.querySelector("[data-msg]"))); i++) await espera(100);
   ok(preguntas === 1 && !!mock.servidor.indice.resoluciones, "«Publicar» pide confirmación y publica ese catálogo");
-  for (let i = 0; i < 40 && !/Iguales a lo publicado/.test(texto(box.querySelector('[data-cat="resoluciones"]'))); i++) await espera(100);
-  ok(/jefe@empresa.com/.test(texto(box.querySelector('[data-cat="resoluciones"]'))) && /Iguales a lo publicado/.test(texto(box.querySelector('[data-cat="resoluciones"]'))), "la fila muestra quién lo publicó y que coincide con los datos de la app");
+  for (let i = 0; i < 40 && !/Sin cambios desde que se publicaron/.test(texto(box.querySelector('[data-cat="resoluciones"]'))); i++) await espera(100);
+  ok(/jefe@empresa.com/.test(texto(box.querySelector('[data-cat="resoluciones"]'))) && /Sin cambios desde que se publicaron/.test(texto(box.querySelector('[data-cat="resoluciones"]'))), "la fila muestra quién lo publicó y que los datos de la app no cambiaron desde entonces");
   ok(R.infoCopia("resoluciones") !== null, "y este dispositivo ya tiene la copia del servidor");
   // si los de fábrica cambian después de publicar, se avisa
   mock.servidor.indice.resoluciones.huellaFabrica = "otra";
@@ -211,6 +211,190 @@ await seccion("Perfil > Aplicación y Datos", async () => {
   ok(cat && !cat.respaldo && cat.claves.length === 5, "Datos: categoría «Catálogos descargados del servidor», fuera del respaldo");
   stage.innerHTML = "";
 });
+
+// ===================== fase 2: edición por el administrador =====================
+const E = await import("../js/util/edicion-catalogo.js");
+const B = await import("../js/auth/backend.js");
+const ACC = await import("../js/auth/acceso.js");
+const confirmOriginal = window.confirm;
+window.confirm = () => true;
+// deja el acceso como el de `usuario` (con la sesión del backend simulado)
+async function comoCuenta(mock, cuenta) {
+  mock._entrarComo(cuenta);
+  B.usarBackend(mock);
+  ACC.reiniciarAccesoParaPruebas();
+  await ACC.revalidar();
+}
+const esperarQue = async (cond, ms = 6000) => {
+  for (let t = 0; t < ms && !cond(); t += 50) await espera(50);
+  return cond();
+};
+
+await seccion("historial de versiones en el servidor (últimas 10)", async () => {
+  const mock = crearBackendMock({ usuarios, sesion: ADMIN });
+  // una versión «de la fase 1» (sin historial) y luego 11 publicaciones más
+  mock.servidor.documentos.tuberias = { datos: '[{"id":1,"tipo":"viejo"}]', version: 5 };
+  mock.servidor.indice.tuberias = { version: 5, huellaFabrica: "h", actualizadoPor: ADMIN.email, fecha: "2026-09-24T00:00:00Z" };
+  for (let i = 1; i <= 11; i++) await mock.publicarCatalogo("tuberias", { datos: `[{"id":1,"n":${i}}]`, huellaFabrica: "h", cambio: `cambio ${i}` });
+  const h = mock.servidor.indice.tuberias.historial;
+  ok(h.length === 10 && h[0].cambio === "cambio 11" && h[9].cambio === "cambio 2", `guarda solo las últimas 10 versiones, de la más nueva a la más vieja (${h.length})`);
+  const guardadas = Object.keys(mock.servidor.historial).filter((k) => k.startsWith("tuberias__"));
+  ok(guardadas.length === 10 && !mock.servidor.historial["tuberias__5"], `borra del servidor las versiones que salen del historial (${guardadas.length} documentos)`);
+  const mock2 = crearBackendMock({ usuarios, sesion: ADMIN });
+  mock2.servidor.documentos.tuberias = { datos: '[{"id":1,"tipo":"fase1"}]', version: 7 };
+  mock2.servidor.indice.tuberias = { version: 7, huellaFabrica: "h", actualizadoPor: ADMIN.email, fecha: "2026-09-24T00:00:00Z" };
+  await mock2.publicarCatalogo("tuberias", { datos: "[]", huellaFabrica: "h", cambio: "nuevo" });
+  ok(mock2.servidor.indice.tuberias.historial.length === 2 && (await mock2.leerVersionHistorial("tuberias", 7)) === '[{"id":1,"tipo":"fase1"}]', "una versión publicada antes de existir el historial se copia a él para poder volver a ella");
+  mock2._entrarComo(YO);
+  let err = null;
+  try {
+    await mock2.leerVersionHistorial("tuberias", 7);
+  } catch (e) {
+    err = e;
+  }
+  ok(err?.tipo === "permiso", "un usuario normal no puede leer el historial");
+  const reglas = await (await fetch("../firebase/firestore.rules")).text();
+  ok(/match \/catalogos_historial\/\{id\}/.test(reglas) && /allow read, delete: if esAdmin\(\);/.test(reglas), "las reglas: el historial solo lo ve y lo borra el administrador");
+  const idx = R.parsearIndiceRest({ fields: { catalogos: { mapValue: { fields: { tuberias: { mapValue: { fields: { version: { integerValue: "9" }, cambio: { stringValue: "Editó X" }, historial: { arrayValue: { values: [{ mapValue: { fields: { version: { integerValue: "9" }, cambio: { stringValue: "Editó X" }, actualizadoPor: { stringValue: "a@b.co" }, fecha: { stringValue: "2026-09-24T10:00:00Z" } } } }] } } } } } } } } } });
+  ok(idx.tuberias.cambio === "Editó X" && idx.tuberias.historial.length === 1 && idx.tuberias.historial[0].actualizadoPor === "a@b.co", "la lectura REST trae el último cambio y el historial");
+});
+
+await seccion("edición: esquema, validación e id de registros nuevos", async () => {
+  const { CONFIG } = await import("../js/views/detalle-conductor.js");
+  const desnudos = (await R.cargarFabrica("conductores-desnudos")).datos;
+  const esq = E.esquemaDe(desnudos, CONFIG.desnudos.campos);
+  const de = (k) => esq.find((c) => c.key === k);
+  ok(esq[0].key === "tipo" && de("codigo") && de("codigo").label === "codigo" && !de("id"), "el formulario sigue el orden de la ficha y agrega los campos que la ficha no muestra (codigo), sin el id");
+  ok(de("r_ac_75c_ohm_km").tipo === "numero" && de("r_ac_75c_ohm_km").requerido && de("r_ac_75c_ohm_km").min === 0, "la resistencia es un número obligatorio y no negativo (deducido de los datos)");
+  ok(de("nombre_clave").tipo === "texto" && de("clase").requerido === false, "los textos son texto; un campo que a veces viene vacío es opcional");
+  const { errores, registro } = E.validarRegistro(esq, { tipo: "ACSR", nombre_clave: "Prueba", calibre_awg_kcmil: "4/0", r_ac_75c_ohm_km: "0,3679", area_seccion_aluminio_mm2: "abc", masa_kg_km: "-5" });
+  ok(registro.r_ac_75c_ohm_km === 0.3679, "acepta coma decimal (0,3679 → 0.3679)");
+  ok(/número/.test(errores.area_seccion_aluminio_mm2) && /negativo/.test(errores.masa_kg_km) && /obligatorio/.test(errores.r_ac_25c_ohm_km), "marca el texto donde va un número, los negativos y los obligatorios vacíos");
+  ok(!errores.clase && registro.clase === null, "un opcional vacío queda como vacío (null)");
+  const res = E.esquemaDe([{ id: 1, resolucion: "CREG 1", fecha: 2020, objeto: "x", resumen: "y" }], [{ key: "fecha", label: "Año", entero: true }, { key: "resumen", label: "Resumen", largo: true }]);
+  ok(/entero/.test(E.validarRegistro(res, { fecha: "2020.5", resolucion: "a", objeto: "b", resumen: "c" }).errores.fecha) && res.find((c) => c.key === "resumen").tipo === "largo", "el año debe ser entero y el resumen es un texto largo");
+  ok(E.nuevoId([{ id: "001" }, { id: "342" }]) === "343" && E.nuevoId([{ id: "007" }]) === "008" && E.nuevoId([{ id: 1 }, { id: 16 }]) === 17, "el id nuevo sigue el formato de los existentes («001» o número)");
+  const base = [{ id: 1, a: 1, b: 2 }, { id: 2, a: 3, b: 4 }];
+  const { filas, id } = E.agregarRegistro(base, { b: 9, a: 8 });
+  ok(id === 3 && JSON.stringify(filas[2]) === '{"id":3,"a":8,"b":9}', "agregar pone el registro al final con el orden de campos de los demás");
+  ok(JSON.stringify(E.reemplazarRegistro(base, "2", { b: 5 })[1]) === '{"id":2,"a":3,"b":5}' && E.quitarRegistro(base, 1).length === 1, "editar cambia solo ese registro y eliminar lo quita");
+});
+
+await seccion("edición en las pantallas (administrador)", async () => {
+  limpiar();
+  window.__USAR_CATALOGOS_SERVIDOR__ = true;
+  const mock = crearBackendMock({ usuarios, sesion: ADMIN });
+  R.usarLector(R.lectorDesdeMock(mock));
+  const detalle = await import("../js/views/detalle-conductor.js");
+  const lista = await import("../js/views/catalogo-conductores.js");
+  const $ = (s) => stage.querySelector(s);
+
+  await comoCuenta(mock, YO);
+  stage.innerHTML = "";
+  await detalle.render(stage, { familia: "tuberias", id: "3" });
+  ok(!$("[data-accion]"), "un usuario normal no ve Editar ni Eliminar");
+
+  await comoCuenta(mock, ADMIN);
+  stage.innerHTML = "";
+  await detalle.render(stage, { familia: "tuberias", id: "3" });
+  ok(!!$('[data-accion="editar"]') && !!$('[data-accion="eliminar"]'), "el administrador ve Editar y Eliminar en la ficha");
+  $('[data-accion="editar"]').click();
+  ok(!!$(".ed-form") && $("#ed-diametro_interno_min_mm").value !== "", "Editar abre el formulario con los valores del registro");
+  $("#ed-diametro_interno_min_mm").value = "abc";
+  $(".ed-form").requestSubmit();
+  await espera(50);
+  ok(!$('[data-error="diametro_interno_min_mm"]').hidden && !mock.servidor.indice.tuberias, "un dato inválido se marca y no se publica nada");
+  $("#ed-diametro_interno_min_mm").value = "12,34";
+  $(".ed-form").requestSubmit();
+  await esperarQue(() => !!mock.servidor.indice.tuberias && !$(".ed-form"));
+  const pub = JSON.parse(mock.servidor.documentos.tuberias.datos);
+  ok(pub.find((t) => t.id === 3).diametro_interno_min_mm === 12.34 && pub.length === 43, "Guardar publica el catálogo con ese registro cambiado (y los demás intactos)");
+  ok(/Editó «/.test(mock.servidor.indice.tuberias.cambio), `queda el cambio en el historial: ${mock.servidor.indice.tuberias.cambio}`);
+  ok(/12[.,]34/.test(stage.textContent) && R.infoCopia("tuberias")?.version === mock.servidor.indice.tuberias.version, "la ficha se vuelve a pintar con el valor nuevo y este dispositivo queda al día");
+
+  // conflicto: el servidor cambió mientras se editaba
+  $('[data-accion="editar"]').click();
+  await mock.publicarCatalogo("tuberias", { datos: mock.servidor.documentos.tuberias.datos, huellaFabrica: "h", cambio: "otro administrador" });
+  $(".ed-form").requestSubmit();
+  await esperarQue(() => /cambió en el servidor/.test(texto($(".ed-form [data-msg]"))));
+  ok(/cambió en el servidor mientras editabas/.test(texto($(".ed-form [data-msg]"))), "si otro cambió el catálogo mientras se editaba, no se sobrescribe y se avisa");
+
+  // eliminar
+  stage.innerHTML = "";
+  await detalle.render(stage, { familia: "tuberias", id: "43" });
+  $('[data-accion="eliminar"]').click();
+  await esperarQue(() => location.hash === "#/catalogos/tuberias");
+  ok(JSON.parse(mock.servidor.documentos.tuberias.datos).length === 42 && location.hash === "#/catalogos/tuberias", "Eliminar quita el registro, publica y vuelve a la lista");
+
+  // agregar desde la lista
+  stage.innerHTML = "";
+  await lista.render(stage, { familia: "tuberias" });
+  ok(!!$('[data-accion="agregar"]'), "la lista muestra «Agregar registro» al administrador");
+  $('[data-accion="agregar"]').click();
+  ok($(".toolbar").hidden && !!$(".ed-form") && $("#ed-tipo").value === "", "Agregar abre un formulario vacío en lugar de la tabla");
+  $("#ed-tipo").value = "PVC prueba";
+  $("#ed-diametro_nominal").value = '9"';
+  $("#ed-diametro_interno_min_mm").value = "200";
+  $(".ed-form").requestSubmit();
+  await esperarQue(() => /#\/catalogos\/tuberias\/\d+/.test(location.hash));
+  const nuevas = JSON.parse(mock.servidor.documentos.tuberias.datos);
+  const nueva = nuevas.at(-1);
+  // id = el mayor + 1: como se acababa de borrar la 43, se reutiliza (limitación aceptada, ver CLAUDE.md)
+  ok(nueva.tipo === "PVC prueba" && nueva.id === 43 && location.hash === "#/catalogos/tuberias/43", `el registro nuevo se publica con id = mayor + 1 (43) y se abre su ficha (${location.hash})`);
+  ok(Object.keys(nueva).join() === Object.keys(nuevas[0]).join(), "con los mismos campos, en el mismo orden, que los demás");
+
+  // resoluciones: agregar con texto que parece código → se muestra como texto
+  const resLista = await import("../js/views/resoluciones.js");
+  const resDet = await import("../js/views/detalle-resolucion.js");
+  stage.innerHTML = "";
+  await resLista.render(stage);
+  $('[data-accion="agregar"]').click();
+  $("#ed-resolucion").value = "CREG <img src=x onerror=window.__xss=1>";
+  $("#ed-fecha").value = "2026";
+  $("#ed-objeto").value = "Prueba";
+  $("#ed-resumen").value = "<script>window.__xss=1<\/script> texto";
+  $(".ed-form").requestSubmit();
+  await esperarQue(() => /#\/normatividad\/resoluciones\/\d+/.test(location.hash));
+  const idRes = location.hash.split("/").pop();
+  stage.innerHTML = "";
+  await resDet.render(stage, { id: idRes });
+  await espera(100);
+  ok(!stage.querySelector("img") && !stage.querySelector("script") && /onerror/.test(stage.textContent) && !window.__xss, "un texto con código se muestra como texto (no se ejecuta)");
+  ok(!!$('[data-accion="editar"]'), "la ficha de la resolución también tiene Editar y Eliminar");
+  stage.innerHTML = "";
+  await resLista.render(stage);
+  ok(!stage.querySelector("tbody img") && /onerror/.test(texto(stage.querySelector("tbody"))), "y en la lista de resoluciones también");
+  stage.innerHTML = "";
+});
+
+await seccion("Perfil > Catálogos: historial y volver a una versión", async () => {
+  limpiar();
+  const { pintarCatalogosAdmin } = await import("../js/util/perfil-catalogos.js");
+  const mock = crearBackendMock({ usuarios, sesion: ADMIN });
+  R.usarLector(R.lectorDesdeMock(mock));
+  const { datos } = await R.cargarFabrica("resoluciones");
+  const h = await R.huella(datos);
+  await mock.publicarCatalogo("resoluciones", { datos: R.textoCompacto(datos), huellaFabrica: h, cambio: "Publicó los datos que trae la app" });
+  const v1 = mock.servidor.indice.resoluciones.version;
+  await mock.publicarCatalogo("resoluciones", { datos: R.textoCompacto(datos.slice(1)), huellaFabrica: h, cambio: "Eliminó «CREG 025»" });
+  stage.innerHTML = `<div id="box"></div>`;
+  const box = stage.querySelector("#box");
+  pintarCatalogosAdmin(box, mock, { confirmar: () => true });
+  await esperarQue(() => !!box.querySelector('[data-historial="resoluciones"]'));
+  const hist = box.querySelector('[data-historial="resoluciones"]');
+  ok(!!hist && hist.querySelectorAll("li").length === 2 && /Actual/.test(texto(hist.querySelector("li"))), "muestra el historial con la versión actual marcada");
+  ok(/Eliminó «CREG 025»/.test(texto(box.querySelector('[data-cat="resoluciones"]'))), "la fila dice cuál fue el último cambio");
+  hist.querySelector(`[data-restaurar="resoluciones"][data-version="${v1}"]`).click();
+  await esperarQue(() => /volvió a la versión/.test(texto(box.querySelector("[data-msg]"))));
+  ok(JSON.parse(mock.servidor.documentos.resoluciones.datos).length === 16 && /Volvió a la versión/.test(mock.servidor.indice.resoluciones.cambio), "«Volver a esta versión» publica esa versión (vuelve la resolución eliminada)");
+  ok(mock.servidor.indice.resoluciones.historial.length === 3, "y la versión que se reemplazó queda en el historial");
+  stage.innerHTML = "";
+});
+
+window.confirm = confirmOriginal;
+B.usarBackend(null);
+ACC.reiniciarAccesoParaPruebas();
+location.hash = "";
 
 limpiar();
 R.usarLector(null);

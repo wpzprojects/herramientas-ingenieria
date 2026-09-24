@@ -1,5 +1,6 @@
 [
   {
+    "id": 1,
     "tipo": "PVC rígido sch.40",
     "diametro_nominal": "1/2\"",
     "diametro_exterior_min_pulg": 0.84,
@@ -10,6 +11,7 @@
     "peso_min_kg": 3.612
   },
   {
+    "id": 2,
     "tipo": "PVC rígido sch.40",
     "diametro_nominal": "3/4\"",
     "diametro_exterior_min_pulg": 1.05,
@@ -20,6 +22,7 @@
     "peso_min_kg": null
   },
   {
+    "id": 3,
     "tipo": "PVC rígido sch.40",
     "diametro_nominal": "1\"",
     "diametro_exterior_min_pulg": 1.315,
@@ -30,6 +33,7 @@
     "peso_min_kg": null
   },
   {
+    "id": 4,
     "tipo": "PVC rígido sch.40",
     "diametro_nominal": "1 1/4\"",
     "diametro_exterior_min_pulg": 1.66,
@@ -40,6 +44,7 @@
     "peso_min_kg": null
   },
   {
+    "id": 5,
     "tipo": "PVC rígido sch.40",
     "diametro_nominal": "1 1/2\"",
     "diametro_exterior_min_pulg": 1.9,
@@ -50,6 +55,7 @@
     "peso_min_kg": null
   },
   {
+    "id": 6,
     "tipo": "PVC rígido sch.40",
     "diametro_nominal": "2\"",
     "diametro_exterior_min_pulg": 2.375,
@@ -60,6 +66,7 @@
     "peso_min_kg": null
   },
   {
+    "id": 7,
     "tipo": "PVC rígido sch.40",
     "diametro_nominal": "2 1/2\"",
     "diametro_exterior_min_pulg": null,
@@ -70,6 +77,7 @@
     "peso_min_kg": null
   },
   {
+    "id": 8,
     "tipo": "PVC rígido sch.40",
     "diametro_nominal": "3\"",
     "diametro_exterior_min_pulg": null,
@@ -80,6 +88,7 @@
     "peso_min_kg": null
   },
   {
+    "id": 9,
     "tipo": "PVC rígido sch.40",
     "diametro_nominal": "4\"",
     "diametro_exterior_min_pulg": null,
@@ -90,6 +99,7 @@
     "peso_min_kg": null
   },
   {
+    "id": 10,
     "tipo": "PVC Tipo TDP",
     "diametro_nominal": "3\"",
     "diametro_exterior_min_pulg": 3.5,
@@ -100,6 +110,7 @@
     "peso_min_kg": 4.01
   },
   {
+    "id": 11,
     "tipo": "PVC Tipo TDP",
     "diametro_nominal": "4\"",
     "diametro_exterior_min_pulg": 4.3,
@@ -110,6 +121,7 @@
     "peso_min_kg": 5.52
   },
   {
+    "id": 12,
     "tipo": "PVC Tipo TDP",
     "diametro_nominal": "6\"",
     "diametro_exterior_min_pulg": 6.62,
@@ -120,6 +132,7 @@
     "peso_min_kg": 12.47
   },
   {
+    "id": 13,
     "tipo": "PVC Tipo TDP",
     "diametro_nominal": "8\"",
     "diametro_exterior_min_pulg": 8.4,
@@ -130,6 +143,7 @@
     "peso_min_kg": 17
   },
   {
+    "id": 14,
     "tipo": "PVC tipo EB y DB",
     "diametro_nominal": "3\"",
     "diametro_exterior_min_pulg": 3.5,
@@ -140,6 +154,7 @@
     "peso_min_kg": 4.01
   },
   {
+    "id": 15,
     "tipo": "PVC tipo EB y DB",
     "diametro_nominal": "4\"",
     "diametro_exterior_min_pulg": 4.3,
@@ -150,6 +165,7 @@
     "peso_min_kg": 5.52
   },
   {
+    "id": 16,
     "tipo": "PVC tipo EB y DB",
     "diametro_nominal": "6\"",
     "diametro_exterior_min_pulg": 6.62,
@@ -160,6 +176,7 @@
     "peso_min_kg": 12.47
   },
   {
+    "id": 17,
     "tipo": "Metálico intermedio IMC",
     "diametro_nominal": "1/2\"",
     "diametro_exterior_min_pulg": 0.81,
@@ -170,6 +187,7 @@
     "peso_min_kg": 2.641
   },
   {
+    "id": 18,
     "tipo": "Metálico intermedio IMC",
     "diametro_nominal": "3/4\"",
     "diametro_exterior_min_pulg": 1.024,
@@ -180,6 +198,7 @@
     "peso_min_kg": 3.612
   },
   {
+    "id": 19,
     "tipo": "Metálico intermedio IMC",
     "diametro_nominal": "1\"",
     "diametro_exterior_min_pulg": 1.285,
@@ -190,6 +209,7 @@
     "peso_min_kg": 5.134
   },
   {
+    "id": 20,
     "tipo": "Metálico intermedio IMC",
     "diametro_nominal": "1 1/4\"",
     "diametro_exterior_min_pulg": 1.63,
@@ -200,6 +220,7 @@
     "peso_min_kg": 6.616
   },
   {
+    "id": 21,
     "tipo": "Metálico intermedio IMC",
     "diametro_nominal": "1 1/2\"",
     "diametro_exterior_min_pulg": 1.875,
@@ -210,6 +231,7 @@
     "peso_min_kg": 8.07
   },
   {
+    "id": 22,
     "tipo": "Metálico intermedio IMC",
     "diametro_nominal": "2\"",
     "diametro_exterior_min_pulg": 2.352,
@@ -220,6 +242,7 @@
     "peso_min_kg": 10.739
   },
   {
+    "id": 23,
     "tipo": "Metálico intermedio IMC",
     "diametro_nominal": "2  1/2\"",
     "diametro_exterior_min_pulg": 2.847,
@@ -230,6 +253,7 @@
     "peso_min_kg": 18.67
   },
   {
+    "id": 24,
     "tipo": "Metálico intermedio IMC",
     "diametro_nominal": "3\"",
     "diametro_exterior_min_pulg": 3.466,
@@ -240,6 +264,7 @@
     "peso_min_kg": 22.923
   },
   {
+    "id": 25,
     "tipo": "Metálico intermedio IMC",
     "diametro_nominal": "4\"",
     "diametro_exterior_min_pulg": 4.456,
@@ -250,6 +275,7 @@
     "peso_min_kg": 29.677
   },
   {
+    "id": 26,
     "tipo": "Metálico intermedio IMC",
     "diametro_nominal": "6\"",
     "diametro_exterior_min_pulg": 6.625,
@@ -260,6 +286,7 @@
     "peso_min_kg": 72.411
   },
   {
+    "id": 27,
     "tipo": "Metálico eléctrico EMT",
     "diametro_nominal": "3/4\"",
     "diametro_exterior_min_pulg": 0.922,
@@ -270,6 +297,7 @@
     "peso_min_kg": 1.97
   },
   {
+    "id": 28,
     "tipo": "Metálico eléctrico EMT",
     "diametro_nominal": "1\"",
     "diametro_exterior_min_pulg": 1.163,
@@ -280,6 +308,7 @@
     "peso_min_kg": 2.9
   },
   {
+    "id": 29,
     "tipo": "Metálico eléctrico EMT",
     "diametro_nominal": "1 1/4\"",
     "diametro_exterior_min_pulg": 1.51,
@@ -290,6 +319,7 @@
     "peso_min_kg": 4.31
   },
   {
+    "id": 30,
     "tipo": "Metálico eléctrico EMT",
     "diametro_nominal": "1 1/2\"",
     "diametro_exterior_min_pulg": 1.74,
@@ -300,6 +330,7 @@
     "peso_min_kg": 4.99
   },
   {
+    "id": 31,
     "tipo": "Metálico eléctrico EMT",
     "diametro_nominal": "2\"",
     "diametro_exterior_min_pulg": 2.197,
@@ -310,6 +341,7 @@
     "peso_min_kg": 6.35
   },
   {
+    "id": 32,
     "tipo": "Metálico eléctrico EMT",
     "diametro_nominal": "3\"",
     "diametro_exterior_min_pulg": 3.5,
@@ -320,6 +352,7 @@
     "peso_min_kg": 11.34
   },
   {
+    "id": 33,
     "tipo": "Metálico eléctrico EMT",
     "diametro_nominal": "4\"",
     "diametro_exterior_min_pulg": 4.5,
@@ -330,6 +363,7 @@
     "peso_min_kg": 16.78
   },
   {
+    "id": 34,
     "tipo": "Metálico rígido RIGID",
     "diametro_nominal": "1/2\"",
     "diametro_exterior_min_pulg": 0.84,
@@ -340,6 +374,7 @@
     "peso_min_kg": 3.807
   },
   {
+    "id": 35,
     "tipo": "Metálico rígido RIGID",
     "diametro_nominal": "3/4\"",
     "diametro_exterior_min_pulg": 1.05,
@@ -350,6 +385,7 @@
     "peso_min_kg": 5.173
   },
   {
+    "id": 36,
     "tipo": "Metálico rígido RIGID",
     "diametro_nominal": "1\"",
     "diametro_exterior_min_pulg": 1.315,
@@ -360,6 +396,7 @@
     "peso_min_kg": 7.6
   },
   {
+    "id": 37,
     "tipo": "Metálico rígido RIGID",
     "diametro_nominal": "1 1/4\"",
     "diametro_exterior_min_pulg": 1.66,
@@ -370,6 +407,7 @@
     "peso_min_kg": 10.442
   },
   {
+    "id": 38,
     "tipo": "Metálico rígido RIGID",
     "diametro_nominal": "1 1/2\"",
     "diametro_exterior_min_pulg": 1.9,
@@ -380,6 +418,7 @@
     "peso_min_kg": 12.471
   },
   {
+    "id": 39,
     "tipo": "Metálico rígido RIGID",
     "diametro_nominal": "2\"",
     "diametro_exterior_min_pulg": 2.375,
@@ -390,6 +429,7 @@
     "peso_min_kg": 16.142
   },
   {
+    "id": 40,
     "tipo": "Metálico rígido RIGID",
     "diametro_nominal": "2 1/2\"",
     "diametro_exterior_min_pulg": 2.875,
@@ -400,6 +440,7 @@
     "peso_min_kg": 26.514
   },
   {
+    "id": 41,
     "tipo": "Metálico rígido RIGID",
     "diametro_nominal": "3\"",
     "diametro_exterior_min_pulg": 3.5,
@@ -410,6 +451,7 @@
     "peso_min_kg": 31.816
   },
   {
+    "id": 42,
     "tipo": "Metálico rígido RIGID",
     "diametro_nominal": "4\"",
     "diametro_exterior_min_pulg": 4.5,
@@ -420,6 +462,7 @@
     "peso_min_kg": 43.477
   },
   {
+    "id": 43,
     "tipo": "Metálico rígido RIGID",
     "diametro_nominal": "6\"",
     "diametro_exterior_min_pulg": 6.625,

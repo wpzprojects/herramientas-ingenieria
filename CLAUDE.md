@@ -269,10 +269,40 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   usuario aceptó**: una corrección en `data/*.json` NO llega a nadie hasta que el admin la publica; por eso el aviso.
   Perfil → Aplicación dice de dónde vienen los catálogos; Perfil → Datos tiene la categoría «Catálogos descargados del
   servidor» (fuera del respaldo).
-- **Fase 2 (pendiente, no empezar sin el usuario)**: en la ficha de un registro, Editar y Eliminar (mejor «desactivar»);
-  en la tabla, «Agregar registro»; solo el admin. Formulario generado de los campos, validaciones (números, obligatorios,
-  `nombre_clave` único), historial de cambios con deshacer, exportar el catálogo editado a JSON. ANTES hay que darle `id`
-  fijo a `tuberias.json` (hoy usa la posición, `conIdPorPosicion`: borrar una fila correría las demás).
+- **Fase 2 (hecha 2026-09-24, versión 3.19.0)**. Decisiones del usuario (elegidas entre opciones): cada «Guardar» se
+  **publica de inmediato** (con confirmación), **Eliminar borra** el registro (se recupera desde el historial), y se
+  guardan las **últimas 10 versiones** por catálogo. Solo el admin ve los botones (`esAdministrador()` =
+  `estadoAcceso().nivel === "admin"`); la seguridad real son las reglas.
+  - `js/util/edicion-catalogo.js`: `esquemaDe(filas, campos)` arma el formulario con los campos de la ficha (`CONFIG` de
+    `detalle-conductor.js`, ahora exportado junto con `tituloDeFila`; `CAMPOS_RESOLUCION` en `detalle-resolucion.js`) MÁS
+    los que traiga el archivo y la ficha no muestre (p. ej. `codigo`, con su nombre técnico), para no perder datos; tipo
+    número/texto, obligatorio y «no negativo» se DEDUCEN de los datos existentes (`entero`/`largo` se marcan a mano).
+    `validarRegistro` (coma decimal aceptada), `nuevoId` (= mayor + 1, en el formato de los demás: «001» o número; OJO:
+    si se borra el de mayor id, el siguiente nuevo lo REUTILIZA — limitación aceptada, evitarla exigiría un contador
+    en el servidor), `agregarRegistro`/`reemplazarRegistro`/`quitarRegistro` (conservan el orden de las claves),
+    `guardarCatalogo` (antes de publicar compara la versión del servidor con la copia local: si otro la cambió mientras
+    se editaba, NO sobrescribe, sincroniza y pide repetir), `abrirEditor` (formulario en una tarjeta, errores bajo cada
+    campo) y `botonesAdmin`. No hay unicidad de `nombre_clave`: en desnudos y semiaislados ya hay repetidos legítimos.
+  - Pantallas: ficha de conductor/tubería y de resolución → Editar / Eliminar; lista de catálogo y de resoluciones →
+    «Agregar registro» (arriba de los filtros; el formulario reemplaza la tabla mientras se edita).
+  - Historial: `catalogos_historial/{nombre}__{version}` (datos) + la lista (versión, fecha ISO, autor, `cambio`) dentro
+    de la entrada del índice (1 lectura para verla). `publicarCatalogo(nombre, {datos, huellaFabrica, cambio})` hace todo
+    en un lote: si la versión publicada no estaba en el historial (las de la fase 1), la copia antes; borra las que pasen
+    de 10. `leerVersionHistorial` (solo admin). Perfil → Catálogos muestra el último cambio, el historial plegado y
+    «Volver a esta versión» (publica esa versión; la actual queda en el historial). «Publicar de nuevo» (los de la app)
+    avisa que reemplaza también las ediciones. La huella de fábrica NO cambia al editar (sigue siendo la base publicada).
+  - `tuberias.json` ya trae `id` fijo (1…43 = su posición de antes, así los enlaces a las fichas no cambiaron);
+    `conIdSiFalta` (format.js) solo pone la posición si una copia del servidor antigua no lo trae.
+  - SEGURIDAD: las vistas de Resoluciones metían los textos del JSON en `innerHTML` sin escapar; con datos editables y
+    publicados a todos eso era una inyección de código posible: ahora todo pasa por `escapeHtml` (probado con un texto
+    `<img onerror>`/`<script>`). Las calculadoras ya escapaban. Al agregar pantallas que muestren datos de catálogos:
+    SIEMPRE escapar (o usar `el()`, que usa texto).
+  - Pruebas: `tools/verify_catalogos.html` (68: historial y poda, lectura REST del historial, esquema/validación/id,
+    pantallas como admin y como usuario, conflicto, eliminar, agregar, resoluciones con código, volver a una versión).
+    Truco del arnés: un texto `</script>` dentro del script de una página HTML lo cierra: escribir `<\/script>`.
+    Para ver el error real de un arnés que no imprime nada: `msedge --headless --enable-logging=stderr --v=0
+    --dump-dom … 2>&1 >/dev/null | grep -i uncaught`.
+  - Pendiente (no pedido): exportar el catálogo editado a JSON para llevarlo al repositorio como nuevo «de fábrica».
 - Aclarado con el usuario: hacer privado el repo y servir desde Railway oculta el CÓDIGO en GitHub, no la app: quien
   tenga el enlace la abre y su navegador descarga el JS y los catálogos. Ocultarla exigiría pedir sesión antes de cargar.
 

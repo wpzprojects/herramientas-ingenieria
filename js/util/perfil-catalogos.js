@@ -27,7 +27,7 @@ export function pintarCatalogosAdmin(box, backend, { confirmar = (t) => confirm(
   async function publicar(lista) {
     for (const c of lista) {
       const f = fabrica[c.nombre];
-      await backend.publicarCatalogo(c.nombre, { datos: textoCompacto(f.datos), huellaFabrica: f.huella });
+      await backend.publicarCatalogo(c.nombre, { datos: textoCompacto(f.datos), huellaFabrica: f.huella, cambio: "Publicó los datos que trae la app" });
     }
     const { actualizados } = await sincronizarCatalogos(); // la copia de este dispositivo también queda al día
     actualizados.forEach(olvidarDato);
@@ -49,20 +49,58 @@ export function pintarCatalogosAdmin(box, backend, { confirmar = (t) => confirm(
     }
     $("[data-filas]").innerHTML = CATALOGOS_EDITABLES.map((c) => {
       const m = indice[c.nombre];
-      const servidor = m ? `${escapeHtml(fecha(m.fecha) || "Publicado")}${m.actualizadoPor ? ` · ${escapeHtml(m.actualizadoPor)}` : ""}` : `<span class="text-muted">No publicado</span>`;
-      const estado = !m ? "—" : m.huellaFabrica === fabrica[c.nombre].huella ? "Iguales a lo publicado" : `<span class="badge badge-warning">Cambiaron desde la última publicación</span>`;
+      const servidor = m
+        ? `${escapeHtml(fecha(m.fecha) || "Publicado")}${m.actualizadoPor ? ` · ${escapeHtml(m.actualizadoPor)}` : ""}${m.cambio ? `<br><span class="text-muted text-sm">${escapeHtml(m.cambio)}</span>` : ""}`
+        : `<span class="text-muted">No publicado</span>`;
+      const estado = !m ? "—" : m.huellaFabrica === fabrica[c.nombre].huella ? "Sin cambios desde que se publicaron" : `<span class="badge badge-warning">Cambiaron desde la última publicación</span>`;
+      const hist = m?.historial?.length
+        ? `<tr data-historial="${c.nombre}"><td colspan="4"><details><summary class="text-sm">Historial de ${escapeHtml(c.titulo)} (${m.historial.length} ${m.historial.length === 1 ? "versión" : "versiones"})</summary>
+            <ul class="pf-historial">${m.historial
+              .map(
+                (h) => `<li><span>${escapeHtml(fecha(h.fecha))}</span><span class="text-muted">${escapeHtml(h.actualizadoPor)}</span><span>${escapeHtml(h.cambio || "")}</span>${
+                  h.version === m.version ? '<span class="badge">Actual</span>' : `<button type="button" class="btn btn-sm" data-restaurar="${c.nombre}" data-version="${h.version}" data-fecha="${escapeHtml(fecha(h.fecha))}">Volver a esta versión</button>`
+                }</li>`
+              )
+              .join("")}</ul></details></td></tr>`
+        : "";
       return `<tr data-cat="${c.nombre}"><td>${escapeHtml(c.titulo)}</td><td>${servidor}</td><td>${estado}</td>
-        <td style="text-align:right"><button type="button" class="btn btn-sm" data-publicar="${c.nombre}">${m ? "Publicar de nuevo" : "Publicar"}</button></td></tr>`;
+        <td style="text-align:right"><button type="button" class="btn btn-sm" data-publicar="${c.nombre}">${m ? "Publicar de nuevo" : "Publicar"}</button></td></tr>${hist}`;
     }).join("");
+    for (const b of box.querySelectorAll("[data-restaurar]")) {
+      b.addEventListener("click", () => {
+        const c = CATALOGOS_EDITABLES.find((x) => x.nombre === b.dataset.restaurar);
+        if (!confirmar(`¿Volver «${c.titulo}» a la versión del ${b.dataset.fecha}? Se publica de inmediato para todos; la versión actual queda en el historial.`)) return;
+        restaurar(c, Number(b.dataset.version), b.dataset.fecha, b);
+      });
+    }
     $("[data-todos]").disabled = false;
     for (const b of box.querySelectorAll("[data-publicar]")) {
       b.addEventListener("click", () => {
         const c = CATALOGOS_EDITABLES.find((x) => x.nombre === b.dataset.publicar);
         const texto = indice[c.nombre]
-          ? `¿Reemplazar el catálogo «${c.titulo}» del servidor por el que trae la app? Todos los usuarios lo recibirán al abrir la app.`
+          ? `¿Reemplazar el catálogo «${c.titulo}» del servidor por el que trae la app? Si se editó desde la app, esas ediciones se reemplazan (quedan en el historial). Todos los usuarios lo recibirán al abrir la app.`
           : `¿Publicar en el servidor el catálogo «${c.titulo}» que trae la app?`;
         if (confirmar(texto)) ejecutar([c], b);
       });
+    }
+  }
+
+  async function restaurar(c, version, cuando, boton) {
+    const botones = [...box.querySelectorAll("button")];
+    botones.forEach((x) => (x.disabled = true));
+    boton.textContent = "Restaurando…";
+    try {
+      const datos = await backend.leerVersionHistorial(c.nombre, version);
+      if (typeof datos !== "string") throw new Error("esa versión ya no está en el historial.");
+      await backend.publicarCatalogo(c.nombre, { datos, huellaFabrica: indice[c.nombre].huellaFabrica, cambio: `Volvió a la versión del ${cuando}` });
+      const { actualizados } = await sincronizarCatalogos();
+      actualizados.forEach(olvidarDato);
+      aviso("success", `«${c.titulo}» volvió a la versión del ${cuando}.`);
+    } catch (e) {
+      aviso("danger", `No se pudo restaurar: ${e?.message || e}`);
+    } finally {
+      botones.forEach((x) => (x.disabled = false));
+      await pintar();
     }
   }
 
@@ -87,7 +125,7 @@ export function pintarCatalogosAdmin(box, backend, { confirmar = (t) => confirm(
   $("[data-todos]").addEventListener("click", (e) => {
     const hay = CATALOGOS_EDITABLES.some((c) => indice[c.nombre]);
     const texto = hay
-      ? "¿Publicar los 5 catálogos que trae la app? Los que ya están en el servidor se reemplazan, y todos los usuarios los recibirán al abrir la app."
+      ? "¿Publicar los 5 catálogos que trae la app? Los que ya están en el servidor se reemplazan (también las ediciones hechas desde la app, que quedan en el historial), y todos los usuarios los recibirán al abrir la app."
       : "¿Publicar en el servidor los 5 catálogos que trae la app?";
     if (confirmar(texto)) ejecutar(CATALOGOS_EDITABLES, e.currentTarget);
   });

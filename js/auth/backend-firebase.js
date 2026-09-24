@@ -9,6 +9,7 @@ import { ErrorAcceso, normalizarCorreo, correoValido, ROLES } from "./backend.js
 import { FIREBASE_SDK_VERSION } from "./firebase-config.js";
 
 const CDN = `https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}`;
+const MAX_HISTORIAL = 10; // versiones que se guardan por catalogo (decidido con el usuario)
 
 function traducir(err) {
   const c = String(err?.code || "");
@@ -181,21 +182,48 @@ export function crearBackendFirebase(firebaseConfig) {
       }
     },
 
-    // Catalogo + su entrada en el indice, en un solo lote (o quedan los dos, o ninguno).
-    async publicarCatalogo(nombre, { datos, huellaFabrica }) {
+    // Catalogo + su copia en el historial + su entrada en el indice, en un solo lote (o queda todo, o nada). El historial
+    // guarda las ultimas MAX_HISTORIAL versiones; si la version publicada aun no estaba en el (publicada antes de que
+    // existiera el historial), se copia primero para poder volver a ella.
+    async publicarCatalogo(nombre, { datos, huellaFabrica, cambio = "" }) {
       try {
         const { fs, db } = await cargar();
         const yo = await correoActual();
         const version = Date.now();
+        const fecha = new Date().toISOString();
+        const refIndice = fs.doc(db, "catalogos", "_indice");
+        const actual = (await fs.getDoc(refIndice)).data()?.catalogos?.[nombre] || null;
         const lote = fs.writeBatch(db);
+        let historial = Array.isArray(actual?.historial) ? actual.historial : [];
+        if (actual && !historial.some((h) => h.version === actual.version)) {
+          const previo = await fs.getDoc(fs.doc(db, "catalogos", nombre));
+          if (previo.exists()) {
+            lote.set(fs.doc(db, "catalogos_historial", `${nombre}__${actual.version}`), { nombre, datos: previo.data().datos, version: actual.version });
+            const f = actual.fecha?.toDate?.().toISOString?.() || fecha;
+            historial = [{ version: actual.version, fecha: f, actualizadoPor: actual.actualizadoPor || "", cambio: actual.cambio || "Publicación anterior" }, ...historial];
+          }
+        }
+        historial = [{ version, fecha, actualizadoPor: yo, cambio }, ...historial];
+        for (const h of historial.slice(MAX_HISTORIAL)) lote.delete(fs.doc(db, "catalogos_historial", `${nombre}__${h.version}`));
         lote.set(fs.doc(db, "catalogos", nombre), { datos, version });
+        lote.set(fs.doc(db, "catalogos_historial", `${nombre}__${version}`), { nombre, datos, version });
         lote.set(
-          fs.doc(db, "catalogos", "_indice"),
-          { catalogos: { [nombre]: { version, huellaFabrica, actualizadoPor: yo, fecha: fs.serverTimestamp() } }, fecha: fs.serverTimestamp() },
+          refIndice,
+          { catalogos: { [nombre]: { version, huellaFabrica, actualizadoPor: yo, fecha: fs.serverTimestamp(), cambio, historial: historial.slice(0, MAX_HISTORIAL) } }, fecha: fs.serverTimestamp() },
           { merge: true }
         );
         await lote.commit();
         return version;
+      } catch (err) {
+        throw err instanceof ErrorAcceso ? err : traducir(err);
+      }
+    },
+
+    async leerVersionHistorial(nombre, version) {
+      try {
+        const { fs, db } = await cargar();
+        const s = await fs.getDoc(fs.doc(db, "catalogos_historial", `${nombre}__${version}`));
+        return s.exists() ? s.data().datos : null;
       } catch (err) {
         throw err instanceof ErrorAcceso ? err : traducir(err);
       }

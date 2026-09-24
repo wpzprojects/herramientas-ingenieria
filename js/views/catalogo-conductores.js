@@ -4,7 +4,9 @@
 // el archivo de datos, los filtros disponibles y las columnas de la tabla -
 // toda esa diferencia vive en CONFIG, la logica de filtrado/render es unica.
 
-import { el, loadData, distinct, debounce, conIdPorPosicion } from "../util/format.js";
+import { el, loadData, distinct, debounce, conIdSiFalta } from "../util/format.js";
+import { CONFIG as FICHA, tituloDeFila } from "./detalle-conductor.js";
+import { esAdministrador, esquemaDe, agregarRegistro, guardarCatalogo, abrirEditor, botonesAdmin } from "../util/edicion-catalogo.js";
 
 const CONFIG = {
   desnudos: {
@@ -63,7 +65,7 @@ const CONFIG = {
     dataFile: "tuberias",
     titulo: "Tuberías",
     textoVacio: "No se encontraron tuberías con los filtros seleccionados.",
-    prepararFilas: conIdPorPosicion,
+    prepararFilas: conIdSiFalta,
     filtros: [{ key: "tipo", label: "Tipo de tubería" }],
     busqueda: ["diametro_nominal"],
     columnas: [
@@ -152,6 +154,39 @@ export async function render(container, params) {
 
   const resultsWrap = el("div", {});
   container.append(resultsWrap);
+
+  // Administrador: «Agregar registro» (se publica de inmediato; ver js/util/edicion-catalogo.js)
+  if (esAdministrador()) {
+    const ficha = FICHA[params.familia];
+    const editorZona = el("div", {});
+    const acciones = botonesAdmin([
+      {
+        accion: "agregar",
+        icono: "plus",
+        texto: "Agregar registro",
+        clase: "btn-primary",
+        alHacer: () => {
+          toolbar.hidden = resultsWrap.hidden = acciones.hidden = true;
+          abrirEditor(editorZona, {
+            titulo: `Agregar a ${cfg.titulo}`,
+            esquema: esquemaDe(rows, ficha.campos),
+            textoConfirmar: `¿Agregar este registro a ${cfg.titulo}? Se publica de inmediato para todos los usuarios.`,
+            alCancelar: () => {
+              editorZona.innerHTML = "";
+              toolbar.hidden = resultsWrap.hidden = acciones.hidden = false;
+            },
+            alGuardar: async (registro) => {
+              const { filas, id } = agregarRegistro(rows, registro);
+              await guardarCatalogo(cfg.dataFile, filas, `Agregó «${tituloDeFila(ficha, registro)}»`);
+              location.hash = `#/catalogos/${params.familia}/${id}`;
+            },
+          });
+        },
+      },
+    ]);
+    toolbar.before(acciones);
+    container.append(editorZona);
+  }
 
   function renderResults(filtered) {
     resultsWrap.innerHTML = "";

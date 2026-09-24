@@ -3,6 +3,7 @@
 // La PRIMERA entrada debe coincidir con CACHE_VERSION de sw.js (lo comprueba tools/verify_perfil.html).
 // El historial anterior a 3.16.0 se reconstruyó a partir de git el 2026-09-24 (antes solo había un contador v1…v296).
 export const NOVEDADES = [
+  { version: "3.19.0", fecha: "2026-09-24", cambios: ["El administrador puede agregar, editar y eliminar registros de los catálogos de conductores, tuberías y resoluciones; los cambios se publican de inmediato para todos.", "Perfil > Catálogos guarda las últimas 10 versiones de cada catálogo y permite volver a cualquiera de ellas."] },
   { version: "3.18.0", fecha: "2026-09-24", cambios: ["Los catálogos (conductores, tuberías y resoluciones) se pueden actualizar desde el servidor sin publicar una versión nueva de la app; sin internet se usa la última copia descargada.", "Perfil: el administrador publica los catálogos en la pestaña Catálogos."] },
   { version: "3.17.0", fecha: "2026-09-24", cambios: ["Pérdidas y Regulación quedan disponibles sin iniciar sesión, como Ocupación de ductos."] },
   { version: "3.16.3", fecha: "2026-09-24", cambios: ["Ayuda: la tarjeta del desarrollador muestra la versión real de la aplicación."] },

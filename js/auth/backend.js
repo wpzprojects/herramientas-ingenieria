@@ -15,7 +15,9 @@
 //   guardarClaveCompartida(clave|null) -> guarda o borra                                  (solo admin)
 //   leerClavePersonal()                -> string | null                                   (solo el propio usuario)
 //   guardarClavePersonal(clave|null)   -> guarda o borra                                  (solo el propio usuario)
-//   publicarCatalogo(nombre, {datos, huellaFabrica}) -> version (numero)                  (solo admin)
+//   publicarCatalogo(nombre, {datos, huellaFabrica, cambio}) -> version (numero)          (solo admin; guarda la version
+//                                         en el historial, maximo 10 por catalogo)
+//   leerVersionHistorial(nombre, version) -> datos (texto) | null                         (solo admin)
 //                                         `datos` = el catalogo en texto JSON. Leer los catalogos NO pasa por aqui: es
 //                                         publico y se hace con la API REST (js/util/catalogos-remotos.js)
 //

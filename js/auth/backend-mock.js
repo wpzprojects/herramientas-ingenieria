@@ -5,6 +5,7 @@
 
 import { ErrorAcceso, ROLES, normalizarCorreo, correoValido } from "./backend.js";
 
+const MAX_HISTORIAL = 10;
 const CATALOGOS_CONOCIDOS = ["conductores-desnudos", "conductores-semiaislados", "conductores-xlpe", "tuberias", "resoluciones"];
 
 /**
@@ -20,7 +21,7 @@ export function crearBackendMock({ usuarios = [], sesion = null, cuentaAlIniciar
   const personales = new Map();
   let compartida = claveCompartida;
   let actual = sesion;
-  const servidor = { indice: {}, documentos: {} }; // catalogos publicados
+  const servidor = { indice: {}, documentos: {}, historial: {} }; // catalogos publicados
   const oyentes = new Set();
   const espera = () => new Promise((r) => setTimeout(r, 0));
 
@@ -120,15 +121,30 @@ export function crearBackendMock({ usuarios = [], sesion = null, cuentaAlIniciar
 
     // Catalogos: el mock guarda lo publicado en `servidor` (el mismo objeto que lee el lector simulado de las pruebas,
     // ver lectorDesdeMock en js/util/catalogos-remotos.js). Replica las reglas: solo admin, nombre conocido, tamaño.
-    async publicarCatalogo(nombre, { datos, huellaFabrica }) {
+    async publicarCatalogo(nombre, { datos, huellaFabrica, cambio = "" }) {
       await espera();
       requerirAdmin();
       if (!CATALOGOS_CONOCIDOS.includes(nombre)) throw new ErrorAcceso("Catálogo desconocido.", "permiso");
       if (typeof datos !== "string" || datos.length >= 1000000) throw new ErrorAcceso("El catálogo no es válido o es demasiado grande.", "permiso");
-      const version = Math.max(Date.now(), (servidor.indice[nombre]?.version || 0) + 1);
+      const actual = servidor.indice[nombre];
+      const version = Math.max(Date.now(), (actual?.version || 0) + 1);
+      const fecha = new Date().toISOString();
+      let historial = actual?.historial || [];
+      if (actual && !historial.some((h) => h.version === actual.version) && servidor.documentos[nombre]) {
+        servidor.historial[`${nombre}__${actual.version}`] = { nombre, datos: servidor.documentos[nombre].datos, version: actual.version };
+        historial = [{ version: actual.version, fecha: actual.fecha, actualizadoPor: actual.actualizadoPor, cambio: actual.cambio || "Publicación anterior" }, ...historial];
+      }
+      historial = [{ version, fecha, actualizadoPor: correo(), cambio }, ...historial];
+      for (const h of historial.slice(MAX_HISTORIAL)) delete servidor.historial[`${nombre}__${h.version}`];
       servidor.documentos[nombre] = { datos, version };
-      servidor.indice[nombre] = { version, huellaFabrica, actualizadoPor: correo(), fecha: new Date().toISOString() };
+      servidor.historial[`${nombre}__${version}`] = { nombre, datos, version };
+      servidor.indice[nombre] = { version, huellaFabrica, actualizadoPor: correo(), fecha, cambio, historial: historial.slice(0, MAX_HISTORIAL) };
       return version;
+    },
+    async leerVersionHistorial(nombre, version) {
+      await espera();
+      requerirAdmin();
+      return servidor.historial[`${nombre}__${version}`]?.datos ?? null;
     },
     servidor,
 
