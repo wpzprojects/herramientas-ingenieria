@@ -561,8 +561,18 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - Pruebas en este entorno: `python -m http.server` solo se mantiene con `run_in_background` (con `&` se cae); Edge headless no
   baja de ~500px de ancho (no sirve para medir celular); el tool de Bash convierte las secuencias de escape con doble barra
   invertida (saltos de línea y unicode) dentro de los heredocs de Python: escribir los scripts de edición con Write a un archivo (o usar Edit). Borrar los `_test_*.html` temporales.
-- Cada cambio en archivos del shell exige subir `CACHE_VERSION` de `sw.js` (hoy v231); en el celular hay que cerrar la app y
-  abrirla dos veces para ver la versión nueva.
+- **Versión de la app `x.y.z` (desde 2026-09-24, pedido del usuario; antes era un contador `v1`…`v296`)**: `CACHE_VERSION`
+  de `sw.js` ES la versión visible (se conservó el nombre para no desactualizar los documentos que lo citan). Cada
+  publicación que cambie un archivo del shell la sube: **z** = correcciones y ajustes menores, **y** = funcionalidad nueva
+  o mejora visible (z vuelve a 0), **x** = cambio grande: sección nueva, rediseño general o algo que deja de ser compatible
+  (y y z vuelven a 0). La decide Claude en cada commit con ese criterio y la dice en el mensaje final; el usuario puede
+  corregirla. Al subir la versión, agregar su entrada ARRIBA de todo en `js/util/novedades.js` (versión, fecha y cambios
+  en lenguaje de usuario, sin detalles técnicos); si solo se corrige algo, basta subir la `z` y sumar una línea a su
+  entrada. `tools/verify_perfil.html` falla si la primera novedad no coincide con `sw.js` o si el orden está mal. Se
+  arrancó en **3.16.0**: el historial anterior se reconstruyó desde git (1.0.0 migración web 22-ago, 2.0.0 IA + login
+  18-sep, 3.0.0 rediseño de calculadoras 19-sep, y una `y` por cada funcionalidad posterior). Documentos (`docs/*.md`,
+  README) solos no suben versión (no están en el shell). En el celular, «Buscar actualización» (Perfil > Aplicación)
+  instala la versión nueva; sin él hay que cerrar y abrir la app dos veces.
 
 ## Acceso con Google (menú lateral → «Perfil», `js/auth/*`, `firebase/firestore.rules`)
 

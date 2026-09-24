@@ -296,6 +296,10 @@ button { font-family: inherit; }
 .pf-grupo { margin: var(--space-4) 0 var(--space-2); font-size: 1rem; }
 .pf-grupo .text-sm { font-weight: 400; }
 .pf-datos td:first-child { font-weight: 600; }
+.pf-version-cab { margin: var(--space-3) 0 var(--space-1); }
+.pf-version ul { margin: 0; padding-left: var(--space-5); font-size: 0.92rem; }
+.pf-anteriores { margin-top: var(--space-3); }
+.pf-anteriores summary { cursor: pointer; color: var(--accent); font-weight: 600; font-size: 0.92rem; }
 .pf-datos th, .pf-datos td { white-space: normal; } /* en celular el nombre baja de línea y la papelera queda a la vista */
 .pf-datos td:last-child { width: 1%; } /* tarjeta «Aplicación» bajo el inicio de sesión (visitantes) */
 .ca-sola { margin-top: var(--space-4); }

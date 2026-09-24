@@ -4,8 +4,15 @@
 
 import { icon } from "../icons.js";
 import { escapeHtml } from "./format.js";
+import { NOVEDADES } from "./novedades.js";
 
 const ESPERA_MS = 3000;
+const fechaCorta = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString("es-CO", { dateStyle: "medium" });
+const version = (v) => `
+  <div class="pf-version">
+    <p class="pf-version-cab"><strong>${escapeHtml(v.version)}</strong> <span class="text-muted text-sm">· ${escapeHtml(fechaCorta(v.fecha))}</span></p>
+    <ul>${v.cambios.map((c) => `<li>${escapeHtml(c)}</li>`).join("")}</ul>
+  </div>`;
 const ESPERA_INSTALACION_MS = 60000;
 
 /** Pregunta su estado a un service worker; null si no responde a tiempo. */
@@ -58,7 +65,10 @@ export function pintarAplicacion(box) {
       <dt>Conexión</dt><dd data-red></dd>
     </dl>
     <div class="btn-row"><button type="button" class="btn btn-primary btn-con-icono" data-buscar>${icon("refresh")} Buscar actualización</button></div>
-    <div data-msg></div>`;
+    <div data-msg></div>
+    <h3 class="pf-grupo">Novedades</h3>
+    ${version(NOVEDADES[0])}
+    <details class="pf-anteriores"><summary>Versiones anteriores</summary>${NOVEDADES.slice(1).map(version).join("")}</details>`;
 
   const $ = (s) => box.querySelector(s);
   const btn = $("[data-buscar]");

@@ -248,13 +248,23 @@ await seccion("pestaña Aplicación", async () => {
   ok(box.querySelectorAll(".pf-lista dt").length === 3 && /En línea|Sin conexión/.test(texto(box.querySelector("[data-red]"))), "muestra versión, uso sin conexión y estado de la conexión");
   for (let i = 0; i < 160 && /Consultando/.test(texto(box.querySelector("[data-version]"))); i++) await espera(100);
   const v = texto(box.querySelector("[data-version]"));
-  ok(/^v\d+$/.test(v) || v === "No disponible", `la versión se llena (desde el service worker, o «No disponible» si no hay): ${v}`);
+  ok(/^\d+\.\d+\.\d+$/.test(v) || v === "No disponible", `la versión se llena (desde el service worker, o «No disponible» si no hay): ${v}`);
+  // versión x.y.z y novedades
+  const { NOVEDADES } = await import("../js/util/novedades.js");
+  const swTexto = await (await fetch("../sw.js")).text();
+  const versionSw = swTexto.match(/const CACHE_VERSION = "([^"]+)"/)?.[1];
+  ok(/^\d+\.\d+\.\d+$/.test(versionSw || ""), `la versión de sw.js tiene formato x.y.z (${versionSw})`);
+  ok(NOVEDADES[0]?.version === versionSw, `la primera entrada de Novedades es la versión publicada (${NOVEDADES[0]?.version} = ${versionSw}): al subir la versión, agregar sus novedades`);
+  const partes = (s) => s.split(".").map(Number);
+  const mayor = (a, b) => { const [p, q] = [partes(a), partes(b)]; for (let i = 0; i < 3; i++) if (p[i] !== q[i]) return p[i] > q[i]; return false; };
+  ok(NOVEDADES.every((n, i) => /^\d+\.\d+\.\d+$/.test(n.version) && /^\d{4}-\d{2}-\d{2}$/.test(n.fecha) && n.cambios.length > 0 && (i === 0 || mayor(NOVEDADES[i - 1].version, n.version))), "cada versión tiene fecha y cambios, de la más nueva a la más vieja, sin repetidas");
+  ok(texto(box.querySelector(".pf-version-cab")).startsWith(NOVEDADES[0].version) && box.querySelectorAll(".pf-anteriores .pf-version").length === NOVEDADES.length - 1 && !box.querySelector(".pf-anteriores").open, "muestra las novedades de la versión actual y las anteriores plegadas");
   ok(!!box.querySelector("[data-buscar]") && !!box.querySelector("[data-buscar] svg"), "botón «Buscar actualización» con icono");
   const sw = await (await fetch("../sw.js")).text();
   ok(/addEventListener\("message"/.test(sw) && /tipo !== "estado"/.test(sw), "el service worker responde el mensaje «estado»");
   const shell = [...sw.matchAll(/^\s*"([^"]+)",\s*$/gm)].map((m) => m[1]);
-  const nuevos = ["js/util/valores-defecto.js", "js/util/perfil-aplicacion.js", "js/util/perfil-datos.js", "js/util/perfil-calculadoras.js"];
-  ok(nuevos.every((f) => shell.includes(f)), "los cuatro módulos nuevos están en el APP_SHELL");
+  const nuevos = ["js/util/valores-defecto.js", "js/util/perfil-aplicacion.js", "js/util/perfil-datos.js", "js/util/perfil-calculadoras.js", "js/util/novedades.js"];
+  ok(nuevos.every((f) => shell.includes(f)), "los cinco módulos nuevos están en el APP_SHELL");
   limpiar();
   stage.innerHTML = "";
 });
