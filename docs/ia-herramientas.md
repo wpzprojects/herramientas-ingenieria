@@ -2,6 +2,9 @@
 
 Guía de la pantalla **Funciones con IA → Asistente técnico**. Explica qué pasa desde que el usuario escribe hasta que aparece la respuesta, cómo se "presenta" cada calculadora a la IA, cómo se decide qué puede usar cada agente y qué hacer para agregar una herramienta nueva. Estado a 2026-09-19.
 
+> Si solo necesitas explicarle el flujo a alguien (sin entrar al código), hay un resumen de una
+> hoja en `docs/como-funcionan-los-agentes-ia.md`. Este documento es la referencia completa.
+
 ## 1. La idea en una frase
 
 **La IA nunca calcula.** Gemini solo decide *qué herramienta usar y con qué datos*; los números salen de los mismos motores (`js/calc/*.js`) y catálogos (`data/*.json`) que usan las pantallas de Cálculos. La IA después interpreta esos resultados y redacta.
