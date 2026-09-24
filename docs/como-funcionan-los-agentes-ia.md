@@ -4,6 +4,11 @@ Explicación corta del flujo, pensada para presentarla a alguien que no ha visto
 Si necesitas el detalle completo (todas las herramientas, cómo agregar una nueva, límites y
 pruebas), eso está en `docs/ia-herramientas.md`; este documento es el resumen de entrada.
 
+También hay una versión en PDF (`docs/como-funcionan-los-agentes-ia.pdf`, mismo contenido,
+formato de una página imprimible) para compartir directamente sin pasar por el `.md`. Si se
+edita este archivo, regenerar el PDF con Edge headless (`--print-to-pdf`), como se hace con los
+reportes de la IA — ver la sección "Verificación visual de cambios de UI" de `CLAUDE.md`.
+
 ## La idea en una frase
 
 **El modelo de IA nunca calcula.** Solo decide *qué herramienta usar y con qué datos*. Los
