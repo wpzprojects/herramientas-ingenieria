@@ -5,6 +5,11 @@
 // Un tema puede llevar una `nota`: texto normativo que se muestra como nota al pie, debajo del visor (ver .nota-pie en app.css).
 
 // Los titulos de «Distancias de seguridad» (numeral + descripcion) son los de la app original de Power Apps (Selector_Tablas).
+// Prefijo de ruta (igual que js/util/format.js, katex.js, proj4.js): en la app real (servida desde la raiz) queda vacio; solo
+// lo necesitan los arneses de pruebas de tools/, que fijan window.__BASE_PATH__ = "../" para que las imagenes SI se descarguen
+// de verdad (algunas pruebas de la tabla partida miden el alto real de la imagen cargada, no solo el atributo src).
+const rutaImg = (src) => `${window.__BASE_PATH__ || ""}${src}`;
+
 const TEMAS = {
   "distancias-seguridad": {
     titulo: "Distancias de seguridad",
@@ -46,10 +51,60 @@ const TEMAS = {
     titulo: "Corriente de conductores NTC 2050",
     selector: false,
     opciones: [
-      { label: "Capacidad de corriente de conductores", img: "assets/normativa/capacidad-corriente-conductores-ntc.jpg" },
+      {
+        label: "Capacidad de corriente de conductores",
+        img: "assets/normativa/capacidad-corriente-conductores-ntc.jpg",
+        // Encabezado (titulo + bancos de conductos + fila de unidades) = ~30% de la altura de la imagen,
+        // medido sobre el archivo real (linea que separa la fila "AWG/kcmil..." de la primera fila de datos).
+        partida: { fraccion: 0.3, altoCuerpo: 420 },
+      },
     ],
   },
 };
+
+// Encabezado fijo (recortado con overflow:hidden) + cuerpo con scroll, ambos mostrando la MISMA imagen a la
+// misma escala para que las columnas coincidan; ver .tabla-partida en app.css. `data-lightbox` va en el
+// contenedor exterior (no en cada <img>), asi que tocar cualquiera de las dos partes abre la imagen COMPLETA
+// en la lightbox, nunca un recorte.
+function montarTablaPartida(host, op) {
+  const { fraccion, altoCuerpo = 420 } = op.partida;
+  host.innerHTML = `
+    <div class="tabla-partida" data-lightbox="${rutaImg(op.img)}">
+      <div class="tabla-partida__encabezado"><img src="${rutaImg(op.img)}" alt="${op.label} (encabezado)"></div>
+      <div class="tabla-partida__cuerpo" style="max-height:${altoCuerpo}px">
+        <div class="tabla-partida__cuerpo-inner"><img src="${rutaImg(op.img)}" alt="${op.label}"></div>
+      </div>
+    </div>
+    <p class="tabla-partida__aviso">El encabezado queda fijo; desplázate dentro de la tabla para ver el resto de las filas. Toca la imagen para verla completa.</p>
+  `;
+
+  const encImg = host.querySelector(".tabla-partida__encabezado img");
+  const encWrap = host.querySelector(".tabla-partida__encabezado");
+  const cuerpoInner = host.querySelector(".tabla-partida__cuerpo-inner");
+
+  function ajustar() {
+    const alturaTotal = encImg.getBoundingClientRect().height;
+    if (!alturaTotal) return;
+    const alturaEnc = Math.round(alturaTotal * fraccion);
+    encWrap.style.height = `${alturaEnc}px`;
+    cuerpoInner.style.marginTop = `-${alturaEnc}px`;
+  }
+
+  if (encImg.complete) ajustar();
+  else encImg.addEventListener("load", ajustar, { once: true });
+
+  let temporizador;
+  const alRedimensionar = () => {
+    clearTimeout(temporizador);
+    temporizador = setTimeout(ajustar, 120);
+  };
+  window.addEventListener("resize", alRedimensionar);
+
+  return () => {
+    clearTimeout(temporizador);
+    window.removeEventListener("resize", alRedimensionar);
+  };
+}
 
 export async function render(container, params) {
   const tema = TEMAS[params?.tema];
@@ -88,34 +143,58 @@ export async function render(container, params) {
     const sel = wrap.querySelector("#sel-tabla");
     const frame = wrap.querySelector("#frame-imagen");
 
+    let limpiezaActual = null;
     function pintarImagen(idx) {
+      limpiezaActual?.();
+      limpiezaActual = null;
       const op = tema.opciones[idx];
-      frame.innerHTML = `<img src="${op.img}" data-lightbox="${op.img}" alt="${op.label}">`;
+      if (op.partida) {
+        frame.classList.remove("image-frame"); // .tabla-partida ya trae su propio borde/relleno
+        limpiezaActual = montarTablaPartida(frame, op);
+      } else {
+        frame.classList.add("image-frame");
+        frame.innerHTML = `<img src="${rutaImg(op.img)}" data-lightbox="${rutaImg(op.img)}" alt="${op.label}">`;
+      }
     }
 
     sel.addEventListener("change", () => pintarImagen(Number(sel.value)));
     pintarImagen(0);
+
+    // Nota al pie: debajo del visor, siempre visible (no depende de la tabla elegida).
+    if (tema.nota) {
+      wrap.insertAdjacentHTML("beforeend", `<p class="nota-pie"><strong>${tema.nota.titulo}</strong> ${tema.nota.texto}</p>`);
+    }
+    return () => limpiezaActual?.();
   } else {
     // Con varias imagenes van lado a lado (2 columnas); con una sola (Corriente NTC 2050) ocupa todo el ancho, como los demas visores.
     wrap.innerHTML = `
       <div${tema.opciones.length > 1 ? ' class="grid-2"' : ""}>
         ${tema.opciones
           .map(
-            (op) => `
+            (op, i) => `
           <div>
             <h3 class="section-title">${op.label}</h3>
-            <div class="image-frame">
-              <img src="${op.img}" data-lightbox="${op.img}" alt="${op.label}">
-            </div>
+            ${
+              op.partida
+                ? `<div data-partida="${i}"></div>`
+                : `<div class="image-frame"><img src="${rutaImg(op.img)}" data-lightbox="${rutaImg(op.img)}" alt="${op.label}"></div>`
+            }
           </div>`
           )
           .join("")}
       </div>
     `;
-  }
 
-  // Nota al pie: debajo del visor, siempre visible (no depende de la tabla elegida).
-  if (tema.nota) {
-    wrap.insertAdjacentHTML("beforeend", `<p class="nota-pie"><strong>${tema.nota.titulo}</strong> ${tema.nota.texto}</p>`);
+    const limpiezas = [];
+    wrap.querySelectorAll("[data-partida]").forEach((host) => {
+      const op = tema.opciones[Number(host.dataset.partida)];
+      limpiezas.push(montarTablaPartida(host, op));
+    });
+
+    // Nota al pie: debajo del visor, siempre visible (no depende de la tabla elegida).
+    if (tema.nota) {
+      wrap.insertAdjacentHTML("beforeend", `<p class="nota-pie"><strong>${tema.nota.titulo}</strong> ${tema.nota.texto}</p>`);
+    }
+    return () => limpiezas.forEach((fn) => fn());
   }
 }

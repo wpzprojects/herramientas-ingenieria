@@ -50,6 +50,7 @@ const { render } = await import("../js/views/normativa-imagen.js");
 const nav = await import("../js/nav.js");
 const existe = async (ruta) => (await fetch(`../${ruta}`, { method: "HEAD" })).ok;
 const cargarTema = async (tema) => { stage.innerHTML = ""; await render(stage, { tema }); };
+const esperarCarga = async (img, intentos = 100) => { for (let i = 0; i < intentos && !img.complete; i++) await new Promise((r) => setTimeout(r, 20)); };
 
 await seccion("Enterramiento de ductos: nota al pie", async () => {
   await cargarTema("enterramiento-ductos");
@@ -101,7 +102,7 @@ await seccion("Distancias de seguridad: títulos «Tabla — descripción»", as
   for (let i = 0; i < sel.options.length; i++) {
     sel.value = String(i);
     sel.dispatchEvent(new Event("change", { bubbles: true }));
-    imgs.push($("#frame-imagen img").getAttribute("src"));
+    imgs.push($("#frame-imagen img").getAttribute("src").replace(/^\.\.\//, "")); // este arnes sirve las imagenes con window.__BASE_PATH__ ("../")
   }
   ok(imgs.join("|") === ["1-a", "2-a", "3-a", "4-a", "4-b", "5-b", "5-c"].map((n) => `assets/normativa/tabla-3-10-${n}.jpg`).concat("assets/normativa/tabla-3-22-1-c.jpg").join("|"), "cada título abre la imagen de su tabla");
 });
@@ -146,10 +147,10 @@ await seccion("todos los visores ocupan el ancho disponible", async () => {
   await cargarTema("distancias-seguridad");
   ok(Math.abs($("#frame-imagen").getBoundingClientRect().width - $("#imagenes-wrap").getBoundingClientRect().width) < 1, "Distancias de seguridad: el visor ocupa todo el ancho");
   await cargarTema("corriente-ntc");
-  const f = $(".image-frame").getBoundingClientRect();
+  const f = $(".tabla-partida").getBoundingClientRect();
   const w = $("#imagenes-wrap").getBoundingClientRect();
   ok(Math.abs(f.width - w.width) < 1 && Math.abs(f.left - w.left) < 1, `Corriente de conductores NTC 2050: el visor ocupa todo el ancho (${Math.round(f.width)} de ${Math.round(w.width)} px), igual que los otros`);
-  ok(!$("#imagenes-wrap > .grid-2") && texto($(".section-title")) === "Capacidad de corriente de conductores" && !!$(".image-frame img"), "sigue con su título y su imagen, sin la rejilla de 2 columnas");
+  ok(!$("#imagenes-wrap > .grid-2") && texto($(".section-title")) === "Capacidad de corriente de conductores" && !!$(".tabla-partida"), "sigue con su título y su tabla partida, sin la rejilla de 2 columnas");
   await cargarTema("zona-servidumbre");
   const marcos = $$(".image-frame").map((e) => e.getBoundingClientRect());
   const w2 = $("#imagenes-wrap").getBoundingClientRect();
@@ -191,15 +192,54 @@ await seccion("los demás temas no cambian", async () => {
   await cargarTema("zona-servidumbre");
   ok($$(".image-frame img").length === 2 && !$(".nota-pie"), "Zona de servidumbre: 2 imágenes lado a lado y sin nota");
   await cargarTema("corriente-ntc");
-  ok($$(".image-frame img").length === 1 && !$(".nota-pie"), "Corriente de conductores NTC 2050: 1 imagen y sin nota");
+  ok($$(".tabla-partida img").length === 2 && !$(".nota-pie"), "Corriente de conductores NTC 2050: tabla partida (2 copias de la imagen: encabezado + cuerpo) y sin nota");
   await cargarTema("no-existe");
   ok(texto($(".empty-state h2")) === "Tema no encontrado", "un tema desconocido sigue mostrando «Tema no encontrado»");
+});
+
+await seccion("Corriente NTC 2050: tabla partida (encabezado fijo + cuerpo con scroll)", async () => {
+  const limpiar = await render(stage, { tema: "corriente-ntc" });
+  ok(typeof limpiar === "function", "render() devuelve una función de limpieza (quita el listener de resize al salir de la pantalla)");
+
+  const cont = $(".tabla-partida");
+  ok(!!cont, "existe el contenedor .tabla-partida");
+  ok(cont.getAttribute("data-lightbox").endsWith("assets/normativa/capacidad-corriente-conductores-ntc.jpg"), "data-lightbox del CONTENEDOR apunta a la imagen completa");
+
+  const encImg = $(".tabla-partida__encabezado img");
+  const cuerpoImg = $(".tabla-partida__cuerpo img");
+  ok(!encImg.hasAttribute("data-lightbox") && !cuerpoImg.hasAttribute("data-lightbox"), "las imágenes internas NO llevan su propio data-lightbox: heredan el del contenedor, así que tocar cualquiera de las dos abre siempre la imagen COMPLETA (nunca un recorte)");
+  ok(encImg.getAttribute("src").endsWith("capacidad-corriente-conductores-ntc.jpg") && cuerpoImg.getAttribute("src") === encImg.getAttribute("src"), "encabezado y cuerpo muestran la MISMA imagen (para que las columnas coincidan en escala)");
+
+  await esperarCarga(encImg);
+  await new Promise((r) => setTimeout(r, 80)); // deja correr el listener "load" -> ajustar()
+
+  const encWrap = $(".tabla-partida__encabezado");
+  const alturaEnc = encWrap.getBoundingClientRect().height;
+  const alturaCompleta = encImg.getBoundingClientRect().height; // el <img> no se autorrecorta: su altura sigue siendo la de la imagen ENTERA
+  ok(alturaEnc > 0 && alturaEnc < alturaCompleta, `el encabezado queda recortado (${Math.round(alturaEnc)} px) frente a la imagen completa (${Math.round(alturaCompleta)} px)`);
+  ok(Math.abs(alturaEnc / alturaCompleta - 0.3) < 0.03, `la fracción recortada es ~30 %, medida sobre la línea real que separa el encabezado de la primera fila de datos (${(alturaEnc / alturaCompleta * 100).toFixed(1)} %)`);
+
+  const cuerpo = $(".tabla-partida__cuerpo");
+  ok(getComputedStyle(cuerpo).overflowY === "auto", "el cuerpo tiene scroll vertical propio");
+  ok(cuerpo.getBoundingClientRect().height <= 420.5, `el cuerpo no pasa del alto fijo configurado, 420 px (mide ${Math.round(cuerpo.getBoundingClientRect().height)} px)`);
+
+  const inner = $(".tabla-partida__cuerpo-inner");
+  ok(inner.style.marginTop === `-${Math.round(alturaEnc)}px`, "el cuerpo se desplaza hacia arriba justo lo que mide el encabezado recortado: la primera fila visible al abrir es la primera fila de datos, no el título");
+
+  ok(texto($(".tabla-partida__aviso")).length > 20, "hay un aviso corto explicando que se puede desplazar y tocar para ver la tabla completa");
+
+  // llamar la limpieza no debe tronar (aunque se llame más de una vez, p. ej. si el router la invoca y luego se navega otra vez)
+  limpiar();
+  limpiar();
+  ok(true, "la función de limpieza se puede llamar más de una vez sin error");
+  stage.innerHTML = "";
 });
 
 await seccion("todas las imágenes existen y están precacheadas", async () => {
   const sw = await (await fetch("../sw.js")).text();
   const listaSw = [...sw.matchAll(/^\s*"([^"]+)",\s*$/gm)].map((m) => m[1]);
   const usadas = new Set();
+  const sinBase = (src) => src.replace(/^\.\.\//, ""); // las imagenes se sirven con window.__BASE_PATH__ ("../") en este arnes; el APP_SHELL usa rutas relativas a la raiz
   for (const tema of ["distancias-seguridad", "zona-servidumbre", "enterramiento-ductos", "corriente-ntc"]) {
     await cargarTema(tema);
     // se recorren todas las opciones del selector (si hay)
@@ -208,10 +248,11 @@ await seccion("todas las imágenes existen y están precacheadas", async () => {
       for (let i = 0; i < sel.options.length; i++) {
         sel.value = String(i);
         sel.dispatchEvent(new Event("change", { bubbles: true }));
-        usadas.add($("#frame-imagen img").getAttribute("src"));
+        usadas.add(sinBase($("#frame-imagen img").getAttribute("src")));
       }
     } else {
-      $$(".image-frame img").forEach((im) => usadas.add(im.getAttribute("src")));
+      $$(".image-frame img").forEach((im) => usadas.add(sinBase(im.getAttribute("src"))));
+      $$(".tabla-partida img").forEach((im) => usadas.add(sinBase(im.getAttribute("src"))));
     }
   }
   const lista = [...usadas];

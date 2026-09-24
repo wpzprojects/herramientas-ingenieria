@@ -656,6 +656,17 @@ td.wrap, th.wrap { white-space: normal; }
 .nota-pie strong { color: var(--text); }
 .image-frame img { max-width: 100%; height: auto; border-radius: var(--radius-sm); cursor: zoom-in; display: block; margin: 0 auto; }
 
+/* Tabla partida: misma imagen dos veces (encabezado fijo recortado + cuerpo con scroll), ver normativa-imagen.js. */
+.tabla-partida {
+  border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-elevated);
+  padding: var(--space-2); cursor: zoom-in; overflow: hidden;
+}
+.tabla-partida__encabezado { overflow: hidden; }
+.tabla-partida__encabezado img,
+.tabla-partida__cuerpo img { display: block; width: 100%; height: auto; }
+.tabla-partida__cuerpo { overflow-y: auto; border-top: 1px solid var(--border); margin-top: var(--space-2); }
+.tabla-partida__aviso { margin: var(--space-2) 0 0; font-size: 0.78rem; line-height: 1.4; color: var(--text-muted); text-align: center; }
+
 .lightbox {
   position: fixed; inset: 0; background: rgba(6, 10, 16, 0.86);
   display: flex; align-items: center; justify-content: center; padding: var(--space-5);

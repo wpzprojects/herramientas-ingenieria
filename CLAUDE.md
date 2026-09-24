@@ -727,6 +727,31 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   angosta el desplegable cerrado corta los títulos largos: se probó repetir el título completo debajo del campo y el usuario lo
   RECHAZÓ (2026-09-19); no volver a ponerlo (el desplegable abierto sí muestra el título completo).
   Al agregar/quitar imágenes de `assets/normativa/` recordar el `APP_SHELL`. Pruebas: `tools/verify_normatividad.html`.
+- **Tabla partida: encabezado fijo + cuerpo con scroll (2026-09-24, idea del usuario mirando «Corriente de conductores NTC
+  2050»)**: esa imagen es una tabla ancha con muchas filas; al hacer scroll para comparar una fila de abajo, el encabezado
+  (calibre/metal/área/resistencia…) ya no se ve. Como es una sola imagen plana (no HTML), no hay forma de "congelar" filas
+  de verdad — la solución es mostrar la MISMA imagen dos veces dentro de `.tabla-partida` (`js/views/normativa-imagen.js`,
+  `montarTablaPartida`; CSS en `app.css`): arriba, `.tabla-partida__encabezado` con `overflow:hidden` y una altura en px
+  calculada por JS (mide la imagen ENTERA renderizada — el `<img>` con `width:100%;height:auto` no se autorrecorta, así que
+  su alto siempre es el de la imagen completa a ese ancho — y la recorta a una fracción); abajo, `.tabla-partida__cuerpo`
+  con `overflow-y:auto` y alto fijo (420px), con un `<div class="tabla-partida__cuerpo-inner">` que lleva la MISMA imagen
+  desplazada hacia arriba (`margin-top` negativo, igual a la altura del encabezado) para que el scroll arranque justo en
+  la primera fila de datos. Como ambas copias tienen el mismo ancho, las columnas quedan alineadas sin sincronizar nada.
+  Se recalcula en `resize` (debounced 120ms); el `render()` de esta vista ahora devuelve una función de limpieza (patrón
+  `antesDeSalir` del router) que quita ese listener al salir de la pantalla. El campo `partida: {fraccion, altoCuerpo}` es
+  OPCIONAL por opción en `TEMAS`: hoy solo lo tiene «Corriente de conductores NTC 2050» (`fraccion: 0.3`, medido en el
+  archivo real con Python/Pillow: es la línea que separa la fila «AWG/kcmil…» de la primera fila de datos, a 30% de la
+  altura total de la imagen — NO hay ninguna línea roja en el archivo, esa la dibujó el usuario a mano sobre una captura
+  para explicar la idea); las demás tablas de Normatividad siguen como imagen simple. **El bug de la lightbox que el
+  usuario anticipó NO ocurrió**: `data-lightbox` va en el contenedor `.tabla-partida` (no en cada `<img>` interno), y como
+  el listener global de `js/app.js` es delegado (`e.target.closest("[data-lightbox]")`), tocar cualquiera de las dos partes
+  (encabezado recortado o cuerpo con scroll) abre siempre la imagen COMPLETA en la lightbox. De paso se agregó `rutaImg()`
+  en `normativa-imagen.js` (mismo patrón `window.__BASE_PATH__` que `format.js`/`katex.js`/`proj4.js`): antes esta vista
+  nunca lo necesitaba porque ninguna prueba dependía de que la imagen cargara de verdad; las pruebas nuevas de la tabla
+  partida sí miden el alto real de la imagen renderizada, así que hacía falta que cargara también en los arneses de
+  `tools/` (servidos desde una ruta distinta a la raíz). Pruebas: sección nueva «Corriente NTC 2050: tabla partida» en
+  `tools/verify_normatividad.html` (fracción recortada ≈30%, cuerpo con scroll y alto fijo, desplazamiento exacto, aviso
+  visible, limpieza sin errores) y las secciones existentes de ese arnés se ajustaron a la nueva estructura.
 - Conversión de coordenadas (2026-09-19): además del conversor de los 7 sistemas (`js/calc/coordenadas.js`, motor original propio: NO
   tocarlo, lo usa también la IA), la casilla «Habilitar todos los sistemas de coordenadas» reemplaza, EN EL MISMO formulario,
   las dos listas por dos campos de código EPSG (entrada y salida) para convertir entre cualquier par de ~509 códigos EPSG (los de Colombia —MAGNA-SIRGAS, Bogotá 1975, Origen Nacional, las 32 cuadrículas urbanas de las ciudades— y los
