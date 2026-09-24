@@ -455,6 +455,45 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   absortividad y la emisividad...». Es un ajuste de PROMPT (texto que lee el modelo), no de código determinista: no hay
   forma de verificarlo con una prueba automática (la redacción exacta la decide el modelo); queda pendiente que el
   usuario lo confirme generando otra memoria.
+- **Refinamiento de los dos agentes de análisis inspirado en "Ulises" (2026-09-24)**: el usuario compartió un análisis
+  propio (con ayuda de IA) de un video demo de "Ulises" (Atera IA/Celsia), un agente de prefactibilidad energética en
+  Teams con un patrón similar al nuestro (LLM separado del motor de cálculo). De 10 patrones identificados se
+  implementaron 4 (los demás quedaron descartados o pendientes de decisión futura — no están en el código, no
+  buscarlos): entradas con procedencia, validación de datos atípicos, confirmación final antes de calcular, y
+  sensibilidad proactiva — esta última **solo para el agente ESTÁNDAR**, decisión explícita del usuario: el riguroso
+  produce una memoria DEFINITIVA sobre lo ya confirmado, así que reabrirla con un barrido "por si acaso" contradice su
+  propósito (`js/ai/analisis.js`, regla 9 de `SISTEMA_RIGUROSO`, lo dice explícitamente: "NO uses barrer_parametro como
+  análisis de sensibilidad exploratorio sobre datos ya confirmados").
+  - **Origen "estimado" en la ficha del proyecto** (`js/ai/tools.js`, `CAMPOS_PARAMETRO_FICHA`): tercer valor del campo
+    `origen` de `guardar_ficha_proyecto`, además de `usuario`/`defecto` — para cuando el riguroso propone un valor con
+    su propio criterio de ingeniería (ni lo dio el usuario ni hay un valor por defecto claro en la calculadora, p. ej.
+    una resistividad de suelo típica). Exige un campo nuevo `justificacion` (de dónde sale el criterio). `js/ai/reporte.js`
+    (`origenTexto`, reemplaza el uso directo de `ORIGEN_TXT`) lo muestra en la tabla «Datos del proyecto» como
+    «Estimación (justificación)». `SISTEMA_RIGUROSO` regla 4 instruye usarlo (con la palabra "estimación", nunca en
+    silencio ni como si fuera un dato firme) y la regla 6 actualiza el enum que debe pasarle a `guardar_ficha_proyecto`.
+    `PROMPT_REPORTE_RIGUROSO` (secciones 3 y 9) también menciona las estimaciones, no solo usuario/defecto.
+  - **Revisar datos atípicos antes de calcular** (`SISTEMA_RIGUROSO` regla 7, nueva): si un valor confirmado por el
+    usuario es técnicamente válido pero luce raro (temperatura, elevación, tensión o antigüedad fuera de lo usual),
+    comentárselo y pedir que lo confirme antes de seguir, en vez de darlo por bueno en silencio.
+  - **Confirmación final antes de calcular** (`SISTEMA_RIGUROSO` regla 8, ampliada): además de confirmar por categoría
+    (ya existía), justo antes de ejecutar el cálculo definitivo debe resumir en un solo mensaje TODOS los parámetros
+    que va a usar (agrupados, con su origen) y pedir el visto bueno final.
+  - **Sensibilidad proactiva, solo estándar** (`SISTEMA_ANALISIS` regla 2, ampliada): además de usar `barrer_parametro`
+    cuando se lo pidan, debe ofrecerlo/correrlo por iniciativa propia cuando un dato de entrada sea incierto o el
+    resultado quede cerca de un umbral/clasificación, identificando qué variable mueve más el resultado y cerrando con
+    qué conviene confirmar o medir en campo. `barrer_parametro` ya era una herramienta no-opcional (disponible a ambos
+    agentes desde antes): el cambio es de PROMPT (cuándo usarla por decisión propia), no de qué herramientas tiene cada
+    uno.
+  - Los 6 patrones NO implementados (dominio de validez del modelo, entregable autoverificado, biblioteca de casos
+    previos, dato crítico primero, y los dos de "errores a evitar" que ya no aplicaban a nuestra arquitectura) se
+    descartaron por no encajar con motores de fórmula cerrada (no regresiones) y exports deterministas (no arriesgan
+    nombres de archivo), o quedaron como decisión de producto pendiente (biblioteca de casos, compartida vs. local):
+    no hay nada de eso en el código ni hace falta buscarlo.
+  - Pruebas: `tools/verify_ia.html`, sección «herramienta: ficha del proyecto» (origen «estimado» con justificación,
+    un origen inválido se rechaza) y nuevas aserciones en «agentes de análisis» (reglas nuevas del riguroso y del
+    estándar, presentes en los prompts). Como son cambios de PROMPT (texto que interpreta el modelo, no código
+    determinista), las pruebas solo verifican que la instrucción está en el texto — no pueden verificar que el modelo
+    la siga; eso lo confirma el usuario probando los agentes.
 - Explicación completa de cómo la IA usa las herramientas y de cómo agregar una nueva: `docs/ia-herramientas.md` (léelo antes de
   tocar `tools.js` o los agentes; si cambia ese comportamiento, actualízalo).
 - Bug reportado por el usuario (2026-09-22, corregido): el modelo escribía sintaxis LaTeX (`$...$`, `\text{}`) dentro de

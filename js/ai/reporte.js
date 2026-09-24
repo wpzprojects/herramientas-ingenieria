@@ -93,7 +93,13 @@ export function armarTablas(log) {
 
 const textoComunes = (comunes) => comunes.map((e) => `${e.etiqueta}: ${formatearValor(e.valor)}${e.unidad ? ` ${e.unidad}` : ""}`).join(" · ");
 
-const ORIGEN_TXT = { usuario: "Usuario", defecto: "Valor por defecto" };
+const ORIGEN_TXT = { usuario: "Usuario", defecto: "Valor por defecto", estimado: "Estimación" };
+
+/** Texto de la celda «Origen»: para 'estimado' agrega la justificación entre paréntesis, si vino. */
+const origenTexto = (p) => {
+  const base = ORIGEN_TXT[p.origen] || p.origen;
+  return p.origen === "estimado" && p.justificacion ? `${base} (${p.justificacion})` : base;
+};
 
 /** HTML de la seccion "Datos del proyecto" (ficha del caso, agente riguroso): una tabla por categoria. */
 export function fichaHtml(ficha) {
@@ -103,7 +109,7 @@ export function fichaHtml(ficha) {
     if (!cat.parametros?.length) continue;
     html += `<h3>${escapeHtml(cat.categoria)}</h3>`;
     const filas = cat.parametros
-      .map((p) => `<tr><td>${escapeHtml(p.etiqueta)}</td><td class="num">${escapeHtml(p.valor)}${p.unidad ? ` ${escapeHtml(p.unidad)}` : ""}</td><td>${escapeHtml(ORIGEN_TXT[p.origen] || p.origen)}</td></tr>`)
+      .map((p) => `<tr><td>${escapeHtml(p.etiqueta)}</td><td class="num">${escapeHtml(p.valor)}${p.unidad ? ` ${escapeHtml(p.unidad)}` : ""}</td><td>${escapeHtml(origenTexto(p))}</td></tr>`)
       .join("");
     html += `<div class="table-wrap"><table><thead><tr><th>Parámetro</th><th class="num">Valor</th><th>Origen</th></tr></thead><tbody>${filas}</tbody></table></div>`;
   }
@@ -118,7 +124,7 @@ export function fichaMd(ficha) {
     if (!cat.parametros?.length) continue;
     md += `### ${cat.categoria}\n\n`;
     md += `| Parámetro | Valor | Origen |\n|---|---|---|\n`;
-    md += cat.parametros.map((p) => `| ${celdaMd(p.etiqueta)} | ${celdaMd(p.valor)}${p.unidad ? ` ${celdaMd(p.unidad)}` : ""} | ${celdaMd(ORIGEN_TXT[p.origen] || p.origen)} |`).join("\n") + "\n\n";
+    md += cat.parametros.map((p) => `| ${celdaMd(p.etiqueta)} | ${celdaMd(p.valor)}${p.unidad ? ` ${celdaMd(p.unidad)}` : ""} | ${celdaMd(origenTexto(p))} |`).join("\n") + "\n\n";
   }
   return md;
 }

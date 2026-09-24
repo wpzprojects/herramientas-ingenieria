@@ -960,6 +960,21 @@ await seccion("herramienta: ficha del proyecto (guardar_ficha_proyecto)", async 
   // crearContexto con ficha previa (reabrir una conversacion del historial)
   const ctx2 = tools.crearContexto(60, [], ctx.ficha);
   ok(ctx2.ficha === ctx.ficha && ctx2.ficha.length === 2, "crearContexto acepta una ficha previa y la conserva (misma referencia)");
+
+  // origen "estimado" (agente riguroso, 2026-09-24): un tercer origen ademas de usuario/defecto, con justificacion
+  const ctx3 = ctxNuevo();
+  const rEst = await tools.ejecutarLlamada(
+    "guardar_ficha_proyecto",
+    { categoria: "Instalación", parametros: [{ clave: "resistividad_suelo", etiqueta: "Resistividad del suelo", valor: "100", unidad: "Ω·m", origen: "estimado", justificacion: "valor típico de suelo arcilloso húmedo" }] },
+    ctx3
+  );
+  ok(rEst.ok === true, "acepta origen 'estimado' con justificacion");
+  const htmlEst = reporteMod.fichaHtml(ctx3.ficha);
+  ok(htmlEst.includes("Estimación (valor típico de suelo arcilloso húmedo)"), `fichaHtml muestra la estimacion con su justificacion entre parentesis: ${htmlEst.match(/Estimación[^<]*/)?.[0]}`);
+  const mdEst = reporteMod.fichaMd(ctx3.ficha);
+  ok(mdEst.includes("Estimación (valor típico de suelo arcilloso húmedo)"), "fichaMd igual");
+  const rBad = await tools.ejecutarLlamada("guardar_ficha_proyecto", { categoria: "X", parametros: [{ clave: "y", etiqueta: "Y", valor: "1", origen: "adivinado" }] }, ctxNuevo());
+  ok(rBad.ok === false, "un origen fuera del enum (usuario/defecto/estimado) se rechaza");
 });
 
 await seccion("reporte en Word (.docx): paquete válido", async () => {
@@ -1302,6 +1317,14 @@ await seccion("agentes de análisis", async () => {
   ok(riguroso.herramientas === tools.HERRAMIENTAS_TODAS && riguroso.herramientas.length > tools.HERRAMIENTAS_ESTANDAR.length, "el riguroso tiene TODAS las herramientas (más que el estándar)");
   ok(riguroso.herramientas.includes("guardar_ficha_proyecto") && riguroso.herramientas.includes("dimensionar_conductor") && riguroso.herramientas.includes("convertir_unidades"), "incluye la ficha del proyecto, las de diseño y las de Varios");
   ok(analisis.SISTEMA_RIGUROSO.includes("guardar_ficha_proyecto") && analisis.SISTEMA_RIGUROSO.includes("por categoría") && /varias respuestas|VARIAS respuestas/.test(analisis.SISTEMA_RIGUROSO), "el prompt riguroso pide categorías, confirmar valores por defecto y repartir en varias respuestas");
+  // 2026-09-24: origen "estimado" con justificación, revisar datos atípicos, confirmación final antes de calcular, y
+  // sensibilidad exploratoria SOLO para el estándar (el riguroso no la usa: su memoria es definitiva).
+  ok(analisis.SISTEMA_RIGUROSO.includes('"estimado"') && analisis.SISTEMA_RIGUROSO.includes("justificacion"), "el riguroso conoce el tercer origen «estimado» y que exige justificación");
+  ok(/atípico|fuera de lo usual/.test(analisis.SISTEMA_RIGUROSO), "el riguroso revisa valores atípicos antes de dar una categoría por buena");
+  ok(/resume en un solo mensaje TODOS los parámetros/.test(analisis.SISTEMA_RIGUROSO), "el riguroso pide una confirmación final de todos los parámetros justo antes de calcular");
+  ok(/NO uses barrer_parametro como análisis de sensibilidad exploratorio/.test(analisis.SISTEMA_RIGUROSO), "el riguroso NO usa la sensibilidad exploratoria (queda solo para el estándar)");
+  ok(/ofrece o corre barrer_parametro por iniciativa propia/.test(analisis.SISTEMA_ANALISIS), "el estándar sí ofrece/corre sensibilidad por iniciativa propia con datos inciertos o cerca de un umbral");
+  ok(analisis.PROMPT_REPORTE_RIGUROSO.includes("estimación de ingeniería"), "la memoria riguroso también resume las estimaciones (no solo usuario/defecto) en Datos de entrada y en Supuestos");
   ok(analisis.PROMPT_REPORTE_RIGUROSO.includes("MEMORIA DE CÁLCULO") && analisis.PROMPT_REPORTE_RIGUROSO.includes("Verificación de cumplimiento"), "el reporte riguroso pide una memoria de cálculo formal, distinta de la del estándar");
   ok(agAn.construirSistema(riguroso) === analisis.SISTEMA_RIGUROSO, "el sistema del riguroso se envía tal cual (predefinido: sin regla fija añadida aparte)");
 

@@ -1360,7 +1360,12 @@ const CAMPOS_PARAMETRO_FICHA = [
   S("etiqueta", "Nombre visible del parámetro (ej. Tensión nominal)", { req: true }),
   S("valor", "Valor confirmado, como texto (puede ser numérico o categórico, ej. \"34.5\" o \"ACSR\")", { req: true }),
   S("unidad", "Unidad del valor, si aplica (ej. kV)", {}),
-  S("origen", "'usuario' si el usuario lo dio o lo cambió; 'defecto' si aceptó dejar el valor por defecto de la calculadora", { req: true, enum: ["usuario", "defecto"] }),
+  S(
+    "origen",
+    "'usuario' si el usuario lo dio o lo cambió; 'defecto' si aceptó dejar el valor por defecto de la calculadora; 'estimado' si NINGUNA de las dos anteriores aplica y tú, con tu propio criterio de ingeniería, propusiste el valor (ej. una eficiencia típica de un equipo antiguo) — en ese caso 'justificacion' es obligatoria",
+    { req: true, enum: ["usuario", "defecto", "estimado"] }
+  ),
+  S("justificacion", "Solo con origen 'estimado': de dónde sale el criterio (norma, rango típico de la industria, caso similar ya visto en la conversación)", {}),
 ];
 
 const T_FICHA_PROYECTO = {
@@ -1371,7 +1376,8 @@ const T_FICHA_PROYECTO = {
   opcional: true,
   descripcion:
     "Registra o actualiza, por categoría (por ejemplo Sistema, Conductor, Instalación, Condiciones ambientales), los parámetros del " +
-    "proyecto que el usuario ya confirmó o aceptó dejar en su valor por defecto. NO calcula nada: es la memoria de los datos de entrada " +
+    "proyecto que el usuario ya confirmó, aceptó dejar en su valor por defecto, o que quedaron como una estimación de ingeniería " +
+    "justificada (ver el campo 'origen' de cada parámetro). NO calcula nada: es la memoria de los datos de entrada " +
     "para la memoria de cálculo final, y queda registrada en el reporte como tabla «Datos del proyecto», separada de los cálculos. " +
     "Llámala cada vez que una categoría de datos quede confirmada (se puede llamar varias veces, una por categoría, a medida que avanza " +
     "la conversación); si se vuelve a llamar con la misma categoría y clave, el valor se actualiza.",
