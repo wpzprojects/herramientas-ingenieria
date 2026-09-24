@@ -78,6 +78,6 @@ herramientas habilitadas) desde la pestaña **Agentes** de cada pantalla de IA.
 
 ## Para ir más a fondo
 
-`docs/ia-herramientas.md` tiene el detalle completo: las 16 herramientas actuales una por una,
-cómo se valida cada dato, cómo agregar una herramienta nueva, y los límites conocidos del
-sistema.
+`docs/ia-herramientas.md` (o su versión en PDF, `docs/ia-herramientas.pdf`) tiene el detalle
+completo: las 16 herramientas actuales una por una, cómo se valida cada dato, cómo agregar una
+herramienta nueva, y los límites conocidos del sistema.

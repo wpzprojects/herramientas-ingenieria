@@ -61,6 +61,10 @@ await seccion("markdown", async () => {
   const x = markdownAHtml("<script>alert(1)<\/script> [x](javascript:alert(1)) [ok](https://a.com)");
   ok(!x.includes("<script") && !x.includes("href=\"javascript"), "escapa HTML y bloquea javascript:");
   ok(x.includes('href="https://a.com"'), "enlace https permitido");
+  // 2026-09-24: un asterisco suelto dentro de `codigo` (glob, p. ej. js/calc/*.js) no debe emparejarse con
+  // el de otro `codigo` mas adelante en el mismo parrafo (eso comia los asteriscos y ponia <em> de mas)
+  const g = markdownAHtml("motores (`js/calc/*.js`) y catálogos (`data/*.json`) de la app.");
+  ok(g.includes("<code>js/calc/*.js</code>") && g.includes("<code>data/*.json</code>") && !g.includes("<em>"), `los asteriscos dentro de dos \`codigo\` en el mismo párrafo no se interpretan como cursiva: ${g}`);
 });
 
 await seccion("gemini (mock)", async () => {

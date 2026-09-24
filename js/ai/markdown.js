@@ -7,10 +7,16 @@ import { escapeHtml } from "../util/format.js";
 
 function inline(texto) {
   let s = escapeHtml(texto);
-  s = s.replace(/`([^`]+)`/g, "<code>$1</code>");
+  // El contenido de `codigo` se saca a un lado ANTES de negrita/cursiva/enlaces: si no, un asterisco
+  // suelto dentro de un `codigo` (p. ej. "js/calc/*.js") se puede emparejar con otro asterisco suelto
+  // de otro `codigo` mas adelante en el mismo parrafo y todo lo de en medio queda envuelto en <em>,
+  // comiendose los asteriscos originales.
+  const codigos = [];
+  s = s.replace(/`([^`]+)`/g, (_, c) => `\u0000${codigos.push(c) - 1}\u0000`);
   s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
   s = s.replace(/(^|[^*])\*([^*\s][^*]*)\*(?!\*)/g, "$1<em>$2</em>");
   s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  s = s.replace(/\u0000(\d+)\u0000/g, (_, i) => `<code>${codigos[+i]}</code>`);
   return s;
 }
 

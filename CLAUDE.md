@@ -496,6 +496,26 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
     la siga; eso lo confirma el usuario probando los agentes.
 - Explicación completa de cómo la IA usa las herramientas y de cómo agregar una nueva: `docs/ia-herramientas.md` (léelo antes de
   tocar `tools.js` o los agentes; si cambia ese comportamiento, actualízalo).
+- **Documentos para explicarle esto a alguien que no ve el código (2026-09-24, pedido del usuario)**: `docs/como-funcionan-los-agentes-ia.md`
+  es un resumen de una hoja (flujo, garantías, qué es un agente) y `docs/ia-herramientas.md` es la referencia técnica completa; los dos
+  se enlazan entre sí. AMBOS tienen versión en PDF junto al `.md` (`docs/como-funcionan-los-agentes-ia.pdf`, `docs/ia-herramientas.pdf`),
+  generada con el mismo método que ya usa el reporte de Análisis: Edge headless (`--print-to-pdf`) sobre una página de prueba que
+  reutiliza `markdownAHtml` (`js/ai/markdown.js`) y el CSS `.doc-impresion`/`@page` de `app.css` (ver el bullet de «Imprimir / PDF» más
+  arriba). Si se edita cualquiera de los dos `.md`, hay que regenerar su PDF a mano (no hay build step que lo automatice); el script de
+  la página de prueba no se guarda (es un `_test_*.html` temporal, se borra después de usarlo). El resumen de una hoja tiene además un
+  diagrama SVG propio (`docs/img/flujo-agentes-ia.svg`, cajas con color: azul = el modelo/IA, gris = «código de la aplicación» —nombre
+  elegido por el usuario en vez de solo «código»—, con la etiqueta en la flecha 2→3 explicando el mecanismo de function calling); como
+  `markdownAHtml` no soporta sintaxis de imagen (`![alt](src)`), la página de prueba de ESE PDF la intercepta aparte (parte el markdown
+  en la línea de la imagen e inserta un `<img>` real) — no se le agregó soporte de imágenes al renderizador compartido, porque lo usan
+  también las respuestas reales de la IA y no hacía falta ahí.
+  **Bug encontrado y corregido de paso (2026-09-24, real, no solo del PDF)**: `inline()` en `markdown.js` sustituía primero los
+  `` `código` `` por `<code>` y LUEGO aplicaba las expresiones regulares de negrita/cursiva sobre el HTML ya armado; si un párrafo tenía
+  DOS fragmentos de código con un asterisco suelto cada uno (p. ej. `` `js/calc/*.js` `` y `` `data/*.json` `` en la misma frase, un caso
+  real de `docs/ia-herramientas.md`), la expresión de cursiva emparejaba esos dos asteriscos sueltos y envolvía TODO lo de en medio en
+  `<em>`, comiéndose los asteriscos originales. Esto podía pasarle a cualquier respuesta real de la IA con ese patrón, no solo a este
+  documento. Arreglado sacando el contenido de cada `` `código` `` a un arreglo aparte (con un marcador `\u0000N\u0000`) ANTES de negrita/
+  cursiva/enlaces, y devolviéndolo al final — así ya no hay asteriscos sueltos de código visibles para esas expresiones. Prueba nueva en
+  la sección «markdown» de `tools/verify_ia.html` que reproduce el caso exacto.
 - Bug reportado por el usuario (2026-09-22, corregido): el modelo escribía sintaxis LaTeX (`$...$`, `\text{}`) dentro de
   respuestas y reportes de Análisis; `js/ai/markdown.js` no la interpreta (no hay integración con KaTeX ahí, solo en la
   pestaña «Fórmulas» de cada calculadora) y se veía como código crudo. Se agregó la regla 11 al `SISTEMA_ANALISIS`
