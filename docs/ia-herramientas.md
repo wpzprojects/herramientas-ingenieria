@@ -1,6 +1,6 @@
 # Cómo usa la IA las calculadoras (herramientas, agentes y filtro)
 
-Guía de la pantalla **Funciones con IA → Asistente técnico**. Explica qué pasa desde que el usuario escribe hasta que aparece la respuesta, cómo se "presenta" cada calculadora a la IA, cómo se decide qué puede usar cada agente y qué hacer para agregar una herramienta nueva. Estado a 2026-09-19.
+Guía de la pantalla **Funciones con IA → Asistente técnico**. Explica qué pasa desde que el usuario escribe hasta que aparece la respuesta, cómo se "presenta" cada calculadora a la IA, cómo se decide qué puede usar cada agente y qué hacer para agregar una herramienta nueva. Estado a 2026-09-24.
 
 > Si solo necesitas explicarle el flujo a alguien (sin entrar al código), hay un resumen de una
 > hoja en `docs/como-funcionan-los-agentes-ia.md`. Este documento es la referencia completa.
@@ -12,11 +12,15 @@ visual de cambios de UI" de `CLAUDE.md`.
 
 ## 1. La idea en una frase
 
-**La IA nunca calcula.** Gemini solo decide *qué herramienta usar y con qué datos*; los números salen de los mismos motores (`js/calc/*.js`) y catálogos (`data/*.json`) que usan las pantallas de Cálculos. La IA después interpreta esos resultados y redacta.
+**La IA nunca calcula.** El modelo (Gemini, OpenAI o Claude, según el proveedor configurado en Configuración de IA) solo decide *qué herramienta usar y con qué datos*; los números salen de los mismos motores (`js/calc/*.js`) y catálogos (`data/*.json`) que usan las pantallas de Cálculos. La IA después interpreta esos resultados y redacta.
 
-Esto se llama *function calling*: la app le describe a Gemini un conjunto de funciones, Gemini responde "quiero llamar a `calcular_perdidas` con estos datos", la app la ejecuta y le devuelve el resultado.
+Esto se llama *function calling*: la app le describe al modelo un conjunto de funciones; el modelo responde "quiero llamar a `calcular_perdidas` con estos datos"; la app la ejecuta y le devuelve el resultado. Los tres proveedores usan este mismo mecanismo, cada uno con su propio formato de mensaje (`js/ai/gemini.js`, `openai.js`, `anthropic.js`, unificados por `js/ai/proveedores.js`).
 
 ## 2. Recorrido de una pregunta
+
+![Flujo simplificado: el usuario pregunta, el modelo decide, el código valida y llama al motor de cálculo, el resultado se guarda, el modelo redacta la respuesta final.](img/flujo-agentes-ia.svg)
+
+Vista rápida arriba (mismo diagrama del resumen de una hoja); el detalle técnico —archivos, funciones y los 5 pasos internos de `ejecutarLlamada`— sigue abajo:
 
 ```
 Usuario escribe            js/views/ia-analisis.js   enviar()
@@ -25,7 +29,7 @@ Usuario escribe            js/views/ia-analisis.js   enviar()
 ejecutarTurno              js/ai/analisis.js          bucle de rondas (máx. 8 por pregunta)
         │  envía: prompt del agente + historial + herramientas permitidas
         ▼
-Gemini                     js/ai/gemini.js            generar()
+El modelo                  js/ai/proveedores.js        generar()
         │
         ├── responde texto ─────────────────────────► fin: se muestra la respuesta
         │
@@ -37,15 +41,15 @@ Gemini                     js/ai/gemini.js            generar()
           2. normalizar(): valida tipos, rangos, obligatorios, valores por defecto
           3. calcular(): traduce los datos y llama al motor de js/calc/
           4. guarda una "corrida" en ctx.log (entradas, supuestos, resultados)
-          5. devuelve a Gemini { ok, resultados, supuestos, notas }
+          5. devuelve al modelo { ok, resultados, supuestos, notas }
                  │
-                 └── vuelta al paso de Gemini con los resultados
+                 └── vuelta al paso del modelo con los resultados
 ```
 
 Detalles que importan:
 
-- **Errores que la IA puede corregir.** Si los datos son inválidos, `ejecutarLlamada` **no lanza excepción**: devuelve `{ ok:false, error }` con un mensaje claro (qué falta, qué rango se permite, qué opciones existen) y Gemini reintenta con datos corregidos.
-- **Límites por pregunta** (Funciones con IA → Configuración): `maxRondas` (idas y vueltas con Gemini, por defecto 8) y `maxCalculos` (cálculos individuales, por defecto 60). Un barrido de 10 puntos gasta 10. Si se agotan las rondas, se le pide un cierre sin más herramientas.
+- **Errores que la IA puede corregir.** Si los datos son inválidos, `ejecutarLlamada` **no lanza excepción**: devuelve `{ ok:false, error }` con un mensaje claro (qué falta, qué rango se permite, qué opciones existen) y el modelo reintenta con datos corregidos.
+- **Límites por pregunta** (Funciones con IA → Configuración): `maxRondas` (idas y vueltas con el modelo, por defecto 8) y `maxCalculos` (cálculos individuales, por defecto 60). Un barrido de 10 puntos gasta 10. Si se agotan las rondas, se le pide un cierre sin más herramientas.
 - **Progreso en pantalla.** `ejecutarTurno` emite eventos (`herramienta` al empezar, `herramienta-fin` con `ok` al terminar) y la vista dibuja las etiquetas `⚙ Regulación…` → `✓ Regulación`. Los títulos salen del campo `titulo` de cada herramienta.
 - **Las tablas no las escribe la IA.** La sección "Cálculos ejecutados" y el reporte se dibujan con las *corridas* de `ctx.log` (`js/ai/reporte.js`). La IA solo aporta la narrativa. Por eso la IA no repite las tablas completas (regla 7 del prompt).
 
@@ -55,8 +59,8 @@ No hay archivo de configuración aparte: cada herramienta es un objeto JavaScrip
 
 | Parte | Para qué sirve |
 |---|---|
-| `nombre`, `titulo`, `descripcion` | Lo que Gemini lee para decidir si la usa (`descripcion`) y la etiqueta que ve el usuario (`titulo`). |
-| `campos` | Los parámetros que Gemini puede enviar. De aquí se generan **el esquema que recibe Gemini** (`esquemaDe`) y **la validación de lo que devuelva** (`normalizar`). |
+| `nombre`, `titulo`, `descripcion` | Lo que el modelo lee para decidir si la usa (`descripcion`) y la etiqueta que ve el usuario (`titulo`). |
+| `campos` | Los parámetros que el modelo puede enviar. De aquí se generan **el esquema que recibe el modelo** (`esquemaDe`) y **la validación de lo que devuelva** (`normalizar`). |
 | `calcular(v, extra)` | El puente al motor: traduce los nombres de la IA a los del motor, busca en catálogos, aplica valores por defecto y llama a `js/calc/`. |
 | Resultados | Lista de `res(clave, etiqueta, valor, unidad, decimales)` que devuelve `calcular`. Sus etiquetas salen en las tablas y las lee la IA. |
 
@@ -93,9 +97,14 @@ const T_OCUPACION = {
 
 **Marcas opcionales de la ficha:** `opcional: true` (no forma parte del agente estándar), `grupo` (dónde aparece la casilla en Agentes; por defecto se deduce del tipo) y, en los resultados, `cifras` (cuántas cifras significativas recibe la IA).
 
-**Precisión hacia la IA.** Los números que recibe Gemini se redondean a **6 cifras significativas** (`redondear`). Para coordenadas y conversiones se usan 12 (`cifras`), porque con 6 un Este de 4 881 143 m quedaría con metros de error. La tabla que ve el usuario usa el valor completo.
+**Precisión hacia la IA.** Los números que recibe el modelo se redondean a **6 cifras significativas** (`redondear`). Para coordenadas y conversiones se usan 12 (`cifras`), porque con 6 un Este de 4 881 143 m quedaría con metros de error. La tabla que ve el usuario usa el valor completo.
 
-**Campos con lista de objetos (2026-09-19).** Un campo puede ser una lista de objetos declarando `itemCampos` (los campos de cada elemento; `esquemaDe` lo convierte en un esquema anidado para Gemini y `normalizar` valida cada elemento, con errores del tipo `tramos[2]: "longitud_km" debe ser…`). Lo usan `tramos` (pérdidas y regulación), `grupos` (ocupación) y `puntos` (coordenadas). Regla común: lo que un tramo no indica se toma del nivel superior (así una línea de 3 tramos con el mismo conductor solo repite las longitudes). Helpers en `tools.js`: `campoTramos`, `listaTramos`, `volcarTramo` (antepone «Tramo N —» a entradas y notas), `datoPartida`. Los campos de nivel superior se conservan para el caso de un solo tramo/tipo/punto, de modo que las llamadas antiguas y `barrer_parametro` siguen funcionando.
+**Campos con lista de objetos (2026-09-19).** Un campo puede ser una lista de objetos declarando `itemCampos`:
+- `esquemaDe` convierte esos campos en un esquema anidado para el modelo, y `normalizar` valida cada elemento (errores del tipo `tramos[2]: "longitud_km" debe ser…`).
+- Lo usan `tramos` (pérdidas y regulación), `grupos` (ocupación) y `puntos` (coordenadas).
+- Regla común: lo que un tramo no indica se toma del nivel superior (así una línea de 3 tramos con el mismo conductor solo repite las longitudes).
+- Helpers en `tools.js`: `campoTramos`, `listaTramos`, `volcarTramo` (antepone «Tramo N —» a entradas y notas), `datoPartida`.
+- Los campos de nivel superior se conservan para el caso de un solo tramo/tipo/punto, de modo que las llamadas antiguas y `barrer_parametro` siguen funcionando.
 
 ## 4. Herramientas actuales (16)
 
@@ -109,28 +118,35 @@ const T_OCUPACION = {
 | `guardar_ficha_proyecto` | ficha | Análisis | **No** (opcional) | Sí |
 
 **Dos agentes predefinidos (2026-09-23).** `js/ai/agentes-analisis.js` ya no tiene un único predeterminado sino
-`AGENTES_PREDETERMINADOS` (array, ambos de solo lectura, viven en el código): el **Agente estándar** de siempre
-(`HERRAMIENTAS_ESTANDAR`, calcula rápido y declara los valores por defecto como *supuesto*) y el nuevo **Agente
-riguroso** (`HERRAMIENTAS_TODAS`: las 16, incluidas las opcionales), pensado para una *memoria de cálculo
-completa y definitiva* en vez de una estimación: antes de calcular pide todos los parámetros por categoría
-(Sistema, Conductor, Instalación…), avisa explícitamente cada valor por defecto y pide confirmarlo o cambiarlo
-(en vez de asumirlo), reparte las preguntas en varias respuestas para no saturar, y registra cada categoría
-confirmada con `guardar_ficha_proyecto`. Su reporte (`PROMPT_REPORTE_RIGUROSO`, en `js/ai/analisis.js`) pide una
-estructura de memoria de cálculo formal (normativa citada, metodología, verificación de cumplimiento…),
-distinta de la del estándar (`PROMPT_REPORTE`). `ID_PREDETERMINADO`/`AGENTE_PREDETERMINADO` siguen existiendo
-como alias del estándar (compatibilidad).
+`AGENTES_PREDETERMINADOS` (array, ambos de solo lectura, viven en el código):
 
-**`guardar_ficha_proyecto`** (2026-09-23; idea que estaba anotada como aplazada, "ficha del caso"): registra por
-categoría los parámetros que el usuario confirmó o aceptó dejar en su valor por defecto, con su origen
-(`usuario` | `defecto`); campo `parametros` con `itemCampos` (`clave`, `etiqueta`, `valor`, `unidad`, `origen`),
-mismo patrón que `tramos`/`grupos`/`puntos`. Guarda en `ctx.ficha` (un arreglo por categoría, mutado en sitio —
-igual que `ctx.log`, para que `conv.ficha = ctx.ficha` conserve la referencia entre turnos y al reabrir del
-historial). `js/ai/reporte.js` agrega `fichaHtml`/`fichaMd`, que arman la sección «Datos del proyecto» (una
-tabla por categoría) ANTES de «Cálculos ejecutados» en el reporte (Markdown, HTML exportable, impresión y
-`.docx`). Es opcional: no está en el agente estándar, solo la usa el riguroso (o un agente propio que la
-active).
+- **Agente estándar** (de siempre): usa `HERRAMIENTAS_ESTANDAR`, calcula rápido y declara los valores por defecto como *supuesto*.
+- **Agente riguroso** (nuevo): usa `HERRAMIENTAS_TODAS` (las 16, incluidas las opcionales). Pensado para una *memoria de cálculo completa y definitiva* en vez de una estimación:
+  - Antes de calcular pide todos los parámetros por categoría (Sistema, Conductor, Instalación…).
+  - Avisa explícitamente cada valor por defecto y pide confirmarlo o cambiarlo (nunca lo asume en silencio).
+  - Si asume algo con su propio criterio (sin dato del usuario ni valor por defecto claro), lo marca como origen `estimado` y exige una `justificacion` (norma, rango típico, caso similar).
+  - Reparte las preguntas en varias respuestas para no saturar al usuario.
+  - Registra cada categoría confirmada con `guardar_ficha_proyecto`.
+  - Antes de calcular, revisa si algún dato luce atípico (aunque sea válido) y lo confirma con el usuario.
+  - Justo antes del cálculo definitivo, resume TODOS los parámetros y pide la confirmación final.
+  - Su reporte (`PROMPT_REPORTE_RIGUROSO`, en `js/ai/analisis.js`) pide una estructura de memoria de cálculo formal (normativa citada, metodología, verificación de cumplimiento…), distinta de la del estándar (`PROMPT_REPORTE`).
+- `ID_PREDETERMINADO`/`AGENTE_PREDETERMINADO` siguen existiendo como alias del estándar (compatibilidad).
 
-**`calcular_conductor_economico`** (2026-09-22; entró al agente estándar el 2026-09-23, pedido del usuario): compara entre 2 y 5 opciones de conductor de una línea nueva por su costo total actualizado (inversión + valor presente del costo de las pérdidas durante `anios`), igual que la calculadora. Reutiliza `js/calc/conductor-economico.js` (`compararOpciones`, `sensibilidad`) sin tocarlo; cada opción resuelve su conductor con el mismo `resolverConductor`/`resistencia75` que usan las demás fichas. NO entra en `CALCULADORAS` (sigue sin ofrecer barrido: su resultado es una comparación entre opciones, no un valor único que tenga sentido barrer). Devuelve por opción `opcionN_conductor/inversion/perdidas_pct/perdidas_mwh/costo_perdidas_vp/costo_total/compensa`, más `opcion_menor_costo` y `sensibilidad_robusta` (si la ganadora cambia en algún escenario de energía ±10 %, demanda ±10 % o tasa ±2 puntos). Cuando el costo de instalación no se indicó en alguna opción (o en la ganadora), también agrega `opcionN_umbral_instalacion_km` por cada opción no ganadora afectada (`sensibilidadInstalacion` en `conductor-economico.js`, 2026-09-23): la DIFERENCIA de costo de instalación ($/km) que haría cambiar la conclusión — no una estimación ni una dirección (no dice cuál instalación sería más cara, porque no se sabe); una nota se lo aclara al modelo para que no invente una dirección.
+**`guardar_ficha_proyecto`** (2026-09-23; idea que estaba anotada como aplazada, "ficha del caso"):
+
+- Registra por categoría los parámetros que el usuario confirmó, aceptó dejar en su valor por defecto, o que quedaron como una estimación de ingeniería justificada — campo `origen`: `usuario` | `defecto` | `estimado` (este último exige `justificacion`, agregado 2026-09-24).
+- Campo `parametros` con `itemCampos` (`clave`, `etiqueta`, `valor`, `unidad`, `origen`, `justificacion`), mismo patrón que `tramos`/`grupos`/`puntos`.
+- Guarda en `ctx.ficha` (un arreglo por categoría, mutado en sitio — igual que `ctx.log`, para que `conv.ficha = ctx.ficha` conserve la referencia entre turnos y al reabrir del historial).
+- `js/ai/reporte.js` agrega `fichaHtml`/`fichaMd`, que arman la sección «Datos del proyecto» (una tabla por categoría, con el origen "Estimación (justificación)" cuando aplica) ANTES de «Cálculos ejecutados» en el reporte (Markdown, HTML exportable, impresión y `.docx`).
+- Es opcional: no está en el agente estándar, solo la usa el riguroso (o un agente propio que la active).
+
+**`calcular_conductor_economico`** (2026-09-22; entró al agente estándar el 2026-09-23, pedido del usuario):
+
+- Compara entre 2 y 5 opciones de conductor de una línea nueva por su costo total actualizado (inversión + valor presente del costo de las pérdidas durante `anios`), igual que la calculadora.
+- Reutiliza `js/calc/conductor-economico.js` (`compararOpciones`, `sensibilidad`) sin tocarlo; cada opción resuelve su conductor con el mismo `resolverConductor`/`resistencia75` que usan las demás fichas.
+- NO entra en `CALCULADORAS` (sigue sin ofrecer barrido: su resultado es una comparación entre opciones, no un valor único que tenga sentido barrer).
+- Devuelve por opción `opcionN_conductor/inversion/perdidas_pct/perdidas_mwh/costo_perdidas_vp/costo_total/compensa`, más `opcion_menor_costo` y `sensibilidad_robusta` (si la ganadora cambia en algún escenario de energía ±10 %, demanda ±10 % o tasa ±2 puntos).
+- Cuando el costo de instalación no se indicó en alguna opción (o en la ganadora), también agrega `opcionN_umbral_instalacion_km` por cada opción no ganadora afectada (`sensibilidadInstalacion` en `conductor-economico.js`, 2026-09-23): la DIFERENCIA de costo de instalación ($/km) que haría cambiar la conclusión — no una estimación ni una dirección (no dice cuál instalación sería más cara, porque no se sabe); una nota se lo aclara al modelo para que no invente una dirección.
 
 Las de Varios no entran en el barrido de parámetros.
 
@@ -165,8 +181,8 @@ Un **agente** es: nombre, descripción, prompt de sistema (`instrucciones`), ins
 
 **El filtro es de código, no solo de prompt.** Hay tres capas:
 
-1. `declaraciones(permitidas)` (`tools.js`): a Gemini solo se le describen las herramientas del agente. El barrido solo ofrece las calculadoras permitidas y desaparece si no hay ninguna.
-2. `ejecutarLlamada` con `ctx.permitidas`: si Gemini pide una herramienta no habilitada, se rechaza con "no está habilitada para este agente" y no se ejecuta nada.
+1. `declaraciones(permitidas)` (`tools.js`): al modelo solo se le describen las herramientas del agente. El barrido solo ofrece las calculadoras permitidas y desaparece si no hay ninguna.
+2. `ejecutarLlamada` con `ctx.permitidas`: si el modelo pide una herramienta no habilitada, se rechaza con "no está habilitada para este agente" y no se ejecuta nada.
 3. Imports: `tools.js` importa únicamente los motores que expone. Lo que no está ahí no es alcanzable.
 
 **Refuerzo por prompt (regla 10 del estándar):** si piden algo para lo que no hay herramienta, la IA no debe escribir ningún valor y debe remitir a Agentes. Es una instrucción al modelo: reduce el riesgo pero no lo elimina. Las tres capas anteriores garantizan que una herramienta no habilitada **nunca se ejecuta**, pero no impiden que el modelo escriba en su texto un número inventado; por eso existe esta regla y por eso conviene revisar la etiqueta `✓` de la herramienta y la sección "Cálculos ejecutados" cuando importe que un número provenga de un cálculo.
@@ -207,16 +223,17 @@ Secciones relacionadas con este tema: *tools: esquema para Gemini*, *tools: Vari
 - **Formato numérico en las respuestas de la IA:** no está normalizado; la IA puede escribir miles con coma o con punto. La app muestra los números con punto decimal y sin separador de miles.
 - **No fijar nombres de modelo en el código:** se listan desde la API en Configuración.
 - **Las fórmulas replican la app original** (Power Apps); algunas decisiones son intencionales (ver la sección "Decisiones de migración" del README).
-- **La clave de Gemini** es del propio usuario (guardada en su navegador) o, si el administrador la configuró, viene del servidor y solo vive en memoria. Ver README, "Acceso con Google y Firebase".
+- **La clave del proveedor de IA** es del propio usuario (guardada en su navegador). Solo Gemini admite además una clave del servidor (configurada por el administrador, vive solo en memoria); OpenAI y Claude son siempre BYOK local. Ver README, "Acceso con Google y Firebase".
 
 ## 9. Dónde está cada cosa
 
 | Archivo | Contenido |
 |---|---|
-| `js/ai/tools.js` | Fichas de las herramientas, esquema para Gemini, validación, ejecución, filtro por agente. |
-| `js/ai/analisis.js` | Bucle de conversación con Gemini, prompt estándar (`SISTEMA_ANALISIS`) y del reporte (`PROMPT_REPORTE`). |
-| `js/ai/agentes-analisis.js` | Agentes: estándar, propios, herramientas por agente, `REGLA_FIJA`. |
-| `js/ai/gemini.js` | Cliente REST de Gemini. |
+| `js/ai/tools.js` | Fichas de las herramientas, esquema para el modelo, validación, ejecución, filtro por agente. |
+| `js/ai/analisis.js` | Bucle de conversación con el modelo, prompt estándar (`SISTEMA_ANALISIS`) y del reporte (`PROMPT_REPORTE`), y los del riguroso (`SISTEMA_RIGUROSO`/`PROMPT_REPORTE_RIGUROSO`). |
+| `js/ai/agentes-analisis.js` | Agentes: los 2 predefinidos, propios, herramientas por agente, `REGLA_FIJA`. |
+| `js/ai/proveedores.js` | Registro de proveedores (Gemini/OpenAI/Claude): metadatos y cuál está activo. |
+| `js/ai/gemini.js`, `openai.js`, `anthropic.js` | Cliente REST de cada proveedor, mismo contrato (`generar()`, `listarModelos()`…). |
 | `js/ai/reporte.js` | Tablas de "Cálculos ejecutados" y reporte a partir de las corridas. |
 | `js/ai/historial.js` | Conversaciones guardadas (IndexedDB), incluidas sus corridas. |
 | `js/views/ia-analisis.js` | Pantalla: chat, etiquetas de progreso, formulario de agentes. |

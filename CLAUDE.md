@@ -516,6 +516,18 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   documento. Arreglado sacando el contenido de cada `` `código` `` a un arreglo aparte (con un marcador `\u0000N\u0000`) ANTES de negrita/
   cursiva/enlaces, y devolviéndolo al final — así ya no hay asteriscos sueltos de código visibles para esas expresiones. Prueba nueva en
   la sección «markdown» de `tools/verify_ia.html` que reproduce el caso exacto.
+  **Ajuste de legibilidad de `docs/ia-herramientas.md` (2026-09-24, pedido del usuario: "no trae diagrama de flujo, revisa
+  legibilidad")**: se le agregó el MISMO diagrama SVG del resumen corto al inicio de la sección 2 (antes del detalle técnico en
+  ASCII, que se conserva); se actualizaron las menciones de «Gemini» a «el modelo» donde el texto describe el mecanismo genérico
+  (válido para los 3 proveedores desde el trabajo multi-proveedor), dejando «Gemini» solo donde es literal (nombre de archivo,
+  nombre de sección de prueba); se agregó una fila para `openai.js`/`anthropic.js` en la tabla «Dónde está cada cosa»; y los tres
+  párrafos más densos de la sección 4 (agentes predefinidos, `guardar_ficha_proyecto`, `calcular_conductor_economico`) se
+  reescribieron como listas — de paso se les agregó la mención del origen `estimado` que había quedado desactualizada. **Trampa
+  encontrada al hacerlo**: `markdownAHtml` (`js/ai/markdown.js`) NO soporta continuar un ítem de lista en la siguiente línea (una
+  viñeta `- texto` que sigue en la línea de abajo sin otro `-` NO se une: la siguiente línea cae como párrafo aparte, cortando la
+  viñeta a la mitad). Cada viñeta debe ir en una sola línea del `.md`, por larga que quede (mismo estilo que las demás viñetas ya
+  existentes en el archivo, p. ej. las de «Herramientas de diseño»); los párrafos normales (fuera de listas) sí se pueden partir en
+  varias líneas de fuente sin problema. Se regeneró el PDF (14 páginas) y se verificó visualmente tras corregirlo.
 - Bug reportado por el usuario (2026-09-22, corregido): el modelo escribía sintaxis LaTeX (`$...$`, `\text{}`) dentro de
   respuestas y reportes de Análisis; `js/ai/markdown.js` no la interpreta (no hay integración con KaTeX ahí, solo en la
   pestaña «Fórmulas» de cada calculadora) y se veía como código crudo. Se agregó la regla 11 al `SISTEMA_ANALISIS`
