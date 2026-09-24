@@ -22,6 +22,13 @@ exacto para que lo interprete y redacte la respuesta.
 
 ## El flujo, paso a paso
 
+En este diagrama solo hay UN paso con inteligencia artificial: el paso 2 y el 6 (el modelo). Todo
+lo demás — pasos 3, 4 y 5 — es **código normal de la aplicación, sin ningún modelo de IA
+involucrado**: las mismas reglas de validación que tendría cualquier formulario web (revisar que
+un número esté en su rango, que no falte un campo obligatorio, etc.), escritas de antemano por
+quien programó la app. No es "otro agente" ni una segunda IA revisando a la primera; es la función
+`normalizar()` de `js/ai/tools.js`, una rutina fija que corre siempre igual.
+
 ```
  1. El usuario escribe una pregunta en el chat
               │
@@ -34,8 +41,8 @@ exacto para que lo interprete y redacte la respuesta.
               └── Puede pedir ejecutar una o varias herramientas
                           │
                           ▼
- 3. La app valida los datos que pidió el modelo (tipos, rangos, campos obligatorios,
-    valores por defecto) — igual de estricto que un formulario de la app
+ 3. CÓDIGO (sin IA) valida los datos que pidió el modelo: tipos, rangos, campos
+    obligatorios, valores por defecto — igual de estricto que un formulario web
               │
               ▼
  4. Si los datos son válidos, se llama al MISMO motor de cálculo que usan las pantallas
