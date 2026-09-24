@@ -305,7 +305,7 @@ await seccion("pantalla de Perfil rediseñada", async () => {
   ok(/Acceso desde \d/.test(texto(q(".dev-header"))) && !/\d:\d\d/.test(texto(q(".dev-header"))), "muestra desde cuándo tiene acceso (fecha de la última confirmación, sin la hora)");
   ok(/Acceso desde \d[\d/]+\. Disponible hasta \d[\d/]+ y se renueva cada vez que abres la app con internet\./.test(texto(q(".dev-header"))) && qa(".dev-header p.text-muted").length === 1, "seguido, en el mismo párrafo: «Acceso desde … Disponible hasta … y se renueva cada vez que abres la app con internet.»");
   const pest = qa(".ca-tabs .tab-btn").map(texto);
-  ok(pest.join("|") === "Usuarios|Apariencia", `el administrador ve dos pestañas (la clave de Gemini se trasladó a Funciones con IA → Configuración): ${pest.join(", ")}`);
+  ok(pest.join("|") === "Usuarios|Apariencia|Calculadoras|Datos|Aplicación", `el administrador ve cinco pestañas (la clave de Gemini se trasladó a Funciones con IA → Configuración): ${pest.join(", ")}`);
   ok(!q("#ca-tab-usuarios").hidden && q("#ca-tab-apariencia").hidden, "empieza en «Usuarios»");
   qa(".ca-tabs .tab-btn")[1].click();
   ok(q("#ca-tab-usuarios").hidden && !q("#ca-tab-apariencia").hidden, "la pestaña «Apariencia» cambia el panel");
@@ -349,8 +349,12 @@ await seccion("pantalla de Perfil rediseñada", async () => {
 
   // ---- usuario normal: solo apariencia, sin lista de correos ni clave (ya no vive en Perfil)
   await dibujar({ usuarios: semilla(), sesion: YO });
-  ok(qa(".ca-tabs .tab-btn").map(texto).join("|") === "Apariencia" && !q("#ca-usuarios") && !q("#ca-clave"), "un usuario normal ve solo la pestaña «Apariencia»: ni la lista de correos ni la clave de Gemini (trasladada a Funciones con IA → Configuración)");
+  ok(qa(".ca-tabs .tab-btn").map(texto).join("|") === "Apariencia|Calculadoras|Datos|Aplicación" && !q("#ca-usuarios") && !q("#ca-clave"), "un usuario normal ve Apariencia, Calculadoras, Datos y Aplicación: ni la lista de correos ni la clave de Gemini (trasladada a Funciones con IA → Configuración)");
   ok(!/jefe@empresa.com/.test(marco.textContent), "y no ve los correos de los demás");
+  ok(q("#ca-libre").hidden && !!q("#ca-aplicacion .form-section-title") && /Aplicación/.test(texto(q("#ca-aplicacion .form-section-title"))), "con acceso, «Aplicación» es una pestaña y no se repite la tarjeta suelta de los visitantes");
+  ok(!!q("#ca-calculadoras [data-clave='tension']") && !!q("#ca-datos [data-respaldar]"), "las pestañas Calculadoras y Datos traen su contenido");
+  await abrirPestana({ usuarios: semilla(), sesion: YO }, "aplicacion");
+  ok(qa(".ca-tabs .tab-btn.active").map(texto).join() === "Aplicación" && !q("#ca-tab-aplicacion").hidden, "«/perfil/aplicacion» abre Aplicación");
 
   // ---- sin autorizacion y sin sesion
   await dibujar({ usuarios: semilla(), sesion: EXTRANO });
@@ -359,6 +363,12 @@ await seccion("pantalla de Perfil rediseñada", async () => {
   ok(/Inicia sesión para habilitar todos los módulos/.test(texto(q(".ia-gate"))) && !!q("[data-login] svg") && /Iniciar sesión con Google/.test(texto(q("[data-login]"))), "sin sesión: texto nuevo y botón de Google con su icono");
   ok(!/Acceso restringido/.test(marco.textContent), "ya no dice «Acceso restringido»");
   ok(/Sin iniciar sesión puedes usar algunas funcionalidades\. Con una cuenta autorizada se habilitan todos los módulos\./.test(texto(q(".ia-gate"))), "la explicación es corta: «Sin iniciar sesión puedes usar algunas funcionalidades. Con una cuenta autorizada se habilitan todos los módulos.»");
+  // un visitante también ve «Aplicación» (actualizar la app le sirve igual), como tarjeta suelta bajo el inicio de sesión
+  ok(!q("#ca-libre").hidden && /Aplicación/.test(texto(q("#ca-aplicacion-libre .form-section-title"))) && !!q("#ca-aplicacion-libre [data-buscar]") && !q(".ca-tabs"), "sin sesión: tarjeta «Aplicación» con «Buscar actualización» debajo del inicio de sesión (sin pestañas)");
+  const rGate = q(".ia-gate").getBoundingClientRect();
+  const rApp = q("#ca-aplicacion-libre").getBoundingClientRect();
+  ok(rApp.top - rGate.bottom > 8, `y separada del inicio de sesión (${Math.round(rApp.top - rGate.bottom)} px)`);
+  ok(!q("#ca-calculadoras") && !q("#ca-datos"), "un visitante no ve Calculadoras ni Datos");
 });
 
 await seccion("Configuración de IA: clave de Gemini en el servidor (trasladada de Perfil)", async () => {

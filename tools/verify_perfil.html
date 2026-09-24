@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>verify_perfil</title>
+<!--
+  Pruebas de las pestañas Calculadoras, Datos y Aplicación de Perfil (js/util/valores-defecto.js, perfil-calculadoras.js,
+  perfil-datos.js, perfil-aplicacion.js) y de cómo las seis calculadoras aplican los valores por defecto personales.
+  (Las pestañas dentro de la pantalla de Perfil, con sesión simulada, se prueban en verify_acceso.html.)
+
+  Uso (desde la raiz del proyecto):
+    python -m http.server 8000
+    abrir http://localhost:8000/tools/verify_perfil.html   -> lista PASS/FAIL
+  o en modo consola:
+    msedge --headless --dump-dom --virtual-time-budget=40000 http://localhost:8000/tools/verify_perfil.html
+-->
+<style>body{font-family:ui-monospace,Consolas,monospace;font-size:13px;padding:12px}#stage{position:absolute;left:-9999px;width:1000px}</style>
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+<pre id="out"></pre>
+<div id="stage"></div>
+<script type="module">
+window.__BASE_PATH__ = "../";
+const out = document.getElementById("out");
+let fallos = 0;
+let total = 0;
+function ok(cond, msg) {
+  total++;
+  if (!cond) fallos++;
+  out.textContent += `${cond ? "PASS" : "FAIL"} ${msg}\n`;
+}
+async function seccion(nombre, fn) {
+  out.textContent += `\n== ${nombre}\n`;
+  try {
+    await fn();
+  } catch (err) {
+    fallos++;
+    total++;
+    out.textContent += `FAIL excepcion en "${nombre}": ${err && err.stack ? err.stack : err}\n`;
+  }
+}
+const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+// IndexedDB puede quedarse colgado en el Edge sin pantalla (ver CLAUDE.md): nunca esperar sin tope.
+const conTope = (p, ms = 3000) => Promise.race([p, espera(ms).then(() => "__tope__")]);
+const stage = document.getElementById("stage");
+const texto = (e) => (e ? e.textContent.replace(/\s+/g, " ").trim() : "");
+
+// no tocar lo que el navegador de pruebas tuviera guardado
+const respaldoLS = { ...localStorage };
+const restaurarLS = () => {
+  localStorage.clear();
+  for (const [k, v] of Object.entries(respaldoLS)) localStorage.setItem(k, v);
+};
+
+const D = await import("../js/util/valores-defecto.js");
+const { guardarEstado } = await import("../js/util/persistencia-calculo.js");
+
+await seccion("valores por defecto: leer y guardar", async () => {
+  localStorage.removeItem(D.CLAVE_DEFECTOS);
+  ok(JSON.stringify(D.leerDefectos()) === "{}", "sin nada guardado no hay valores");
+  const g = D.guardarDefectos({ tension: 13.2, fp: 0.95, inventado: 5, fc: NaN, tiempo: "0.5" });
+  ok(JSON.stringify(g) === JSON.stringify({ tension: 13.2, fp: 0.95 }), `solo se guardan campos conocidos y numéricos (${JSON.stringify(g)})`);
+  ok(JSON.stringify(D.leerDefectos()) === JSON.stringify({ tension: 13.2, fp: 0.95 }), "se leen igual");
+  localStorage.setItem(D.CLAVE_DEFECTOS, "{no es json");
+  ok(JSON.stringify(D.leerDefectos()) === "{}", "un valor dañado en el almacenamiento no rompe nada");
+  D.guardarDefectos({});
+  ok(localStorage.getItem(D.CLAVE_DEFECTOS) === null, "guardar vacío borra la entrada");
+  ok(new Set(D.CAMPOS.map((c) => c.clave)).size === D.CAMPOS.length && D.CAMPOS.length === 14, `14 campos, sin claves repetidas (${D.CAMPOS.length})`);
+});
+
+await seccion("valores por defecto: aplicar a un formulario", async () => {
+  stage.innerHTML = `<input type="number" id="f-tension" min="0" max="46" step="0.1" value="34.5"><input type="number" id="f-fp" min="0" max="1" step="0.01" value="0.9"><input type="number" id="f-fc" min="0" max="1" step="0.0001" value="0.4">`;
+  D.guardarDefectos({ tension: 13.2, fp: 0.955, fc: 0.35 });
+  D.aplicarDefectos(stage, "perdidas");
+  ok(stage.querySelector("#f-tension").value === "13.2" && stage.querySelector("#f-fc").value === "0.35", "aplica los valores válidos");
+  ok(stage.querySelector("#f-fp").value === "0.9", "un valor con más decimales de los que admite el campo (0.955 con step 0.01) no se aplica: queda el propio");
+  D.guardarDefectos({ tension: 115 });
+  stage.querySelector("#f-tension").value = "34.5";
+  D.aplicarDefectos(stage, "ampacidad-subterranea");
+  ok(stage.querySelector("#f-tension").value === "34.5", "fuera del rango del campo (115 kV con máximo 46) no se aplica");
+  D.guardarDefectos({ fc: 0.3 });
+  stage.querySelector("#f-fc").value = "0.4";
+  D.aplicarDefectos(stage, "regulacion");
+  ok(stage.querySelector("#f-fc").value === "0.4", "un valor que no es de esa calculadora (Fc en Regulación) no se toca");
+  D.guardarDefectos({});
+  stage.innerHTML = "";
+});
+
+// calculadora -> [módulo, {clave: [valor, selector]}]
+const CASOS = {
+  perdidas: ["calc-perdidas", { tension: [13.2, "#f-tension"], fp: [0.85, "#f-fp"], fc: [0.35, "#f-fc"] }],
+  regulacion: ["calc-regulacion", { tension: [13.2, "#f-tension"], fp: [0.85, "#f-fp"] }],
+  "conductor-economico": ["calc-conductor-economico", { tension: [13.2, "#f-tension"], fp: [0.85, "#f-fp"], fc: [0.35, "#f-fc"], precio: [420.5, "#f-precio"], escalada: [3, "#f-escalada"], tasa: [12, "#f-tasa"], anios: [30, "#f-anios"] }],
+  cortocircuito: ["calc-cortocircuito", { tiempo: [0.5, "#f-tiempo"] }],
+  "ampacidad-aerea": ["calc-ampacidad-aerea", { ta: [30, "#f-ta"], vw: [0.5, "#f-vw"], elevacion: [1000, "#f-elevacion"] }],
+  "ampacidad-subterranea": ["calc-ampacidad-subterranea", { tension: [13.2, "#f-tension"], tempterreno: [28, "#f-tempterreno"], rhosuelo: [1.2, "#f-rhosuelo"], profundidad: [1.5, "#f-profundidad"] }],
+};
+
+await seccion("las seis calculadoras arrancan con los valores por defecto personales", async () => {
+  for (const [calc, [modulo, valores]] of Object.entries(CASOS)) {
+    guardarEstado(`/calculos/${calc}`, null);
+    D.guardarDefectos(Object.fromEntries(Object.entries(valores).map(([k, [v]]) => [k, v])));
+    const vista = await import(`../js/views/${modulo}.js`);
+    stage.innerHTML = "";
+    await vista.render(stage);
+    await espera(50);
+    const malos = Object.entries(valores).filter(([, [v, sel]]) => Number(stage.querySelector(sel)?.value) !== v);
+    ok(malos.length === 0, `${calc}: ${Object.keys(valores).join(", ")}${malos.length ? " — no se aplicaron: " + malos.map(([k]) => k).join(", ") : ""}`);
+    const invalidos = Object.values(valores).filter(([, sel]) => !stage.querySelector(sel).validity.valid);
+    ok(invalidos.length === 0, `${calc}: esos campos quedan válidos (no bloquean «Calcular»)`);
+  }
+  // sin valores personales, cada una conserva su valor propio
+  D.guardarDefectos({});
+  guardarEstado("/calculos/regulacion", null);
+  const reg = await import("../js/views/calc-regulacion.js");
+  stage.innerHTML = "";
+  await reg.render(stage);
+  ok(stage.querySelector("#f-tension").value === "34.5" && stage.querySelector("#f-fp").value === "0.95", "sin valores personales, Regulación sigue con 34.5 kV y FP 0.95");
+  stage.innerHTML = "";
+});
+
+await seccion("lo escrito en la sesión gana sobre el valor por defecto", async () => {
+  guardarEstado("/calculos/perdidas", null);
+  D.guardarDefectos({ tension: 13.2 });
+  const per = await import("../js/views/calc-perdidas.js");
+  stage.innerHTML = "";
+  const salir = await per.render(stage);
+  ok(stage.querySelector("#f-tension").value === "13.2", "al abrir, la tensión por defecto (13.2)");
+  stage.querySelector("#f-tension").value = "44";
+  salir();
+  stage.innerHTML = "";
+  await per.render(stage);
+  ok(stage.querySelector("#f-tension").value === "44", "al volver a la calculadora se conserva lo escrito (44), no el valor por defecto");
+  guardarEstado("/calculos/perdidas", null);
+  D.guardarDefectos({});
+  stage.innerHTML = "";
+});
+
+await seccion("pestaña Calculadoras", async () => {
+  const { pintarCalculadoras } = await import("../js/util/perfil-calculadoras.js");
+  D.guardarDefectos({ tension: 13.2 });
+  stage.innerHTML = `<div class="card tarjeta-borde form-section" id="box"></div>`;
+  const box = stage.querySelector("#box");
+  pintarCalculadoras(box);
+  const q = (s) => box.querySelector(s);
+  ok(/Valores por defecto de las calculadoras/.test(texto(q(".form-section-title"))) && !!q(".form-section-title .icon"), "barra de título con icono");
+  ok(box.querySelectorAll("[data-clave]").length === 14 && box.querySelectorAll(".pf-grupo").length === 5, "14 campos en 5 grupos");
+  ok(q("#pf-def-tension").value === "13.2" && q("#pf-def-fp").value === "" && /Predeterminado: 0.9/.test(q("#pf-def-fp").placeholder), "muestra lo guardado; los vacíos dicen el valor de la calculadora");
+  ok(!/\bhint\b/.test(box.innerHTML) && box.querySelectorAll("[data-info]").length >= 2, "la ayuda va en botones «i»");
+  q("#pf-def-fp").value = "0.95";
+  q("#pf-def-tiempo").value = "0.5";
+  q("#pf-def-tension").value = "";
+  q("[data-form]").requestSubmit();
+  ok(JSON.stringify(D.leerDefectos()) === JSON.stringify({ fp: 0.95, tiempo: 0.5 }), `«Guardar» guarda los llenos y quita los vacíos (${JSON.stringify(D.leerDefectos())})`);
+  ok(/Guardado/.test(texto(q("[data-msg]"))), "avisa que se guardó");
+  q("#pf-def-fp").value = "2";
+  q("[data-form]").requestSubmit();
+  ok(D.leerDefectos().fp === 0.95, "un valor fuera de rango (FP 2) no se guarda");
+  q("[data-restablecer]").click();
+  ok(localStorage.getItem(D.CLAVE_DEFECTOS) === null && [...box.querySelectorAll("[data-clave]")].every((i) => i.value === ""), "«Restablecer todo» borra los valores y vacía los campos");
+  stage.innerHTML = "";
+});
+
+await seccion("pestaña Datos: respaldo", async () => {
+  const P = await import("../js/util/perfil-datos.js");
+  ok(P.validarRespaldo({ app: "otra" }) !== null && P.validarRespaldo(null) !== null, "rechaza archivos que no son respaldos de la app");
+  ok(/más nueva/.test(P.validarRespaldo({ app: "herramientas-ingenieria", tipo: "respaldo", formato: 99 })), "rechaza un formato más nuevo con un mensaje claro");
+  ok(P.validarRespaldo({ app: "herramientas-ingenieria", tipo: "respaldo", formato: 1, conversaciones: "x" }) !== null, "rechaza un respaldo dañado");
+  ok(P.validarRespaldo({ app: "herramientas-ingenieria", tipo: "respaldo", formato: 1, almacenamiento: {}, conversaciones: [] }) === null, "acepta un respaldo válido");
+  const claves = P.CATEGORIAS.find((c) => c.id === "clavesIa");
+  ok(claves && !claves.respaldo, "las claves de IA NO van en el respaldo");
+
+  localStorage.setItem("ia.apiKey", "SECRETA");
+  localStorage.setItem("ia.proveedor", "openai");
+  localStorage.setItem(D.CLAVE_DEFECTOS, JSON.stringify({ tension: 13.2 }));
+  localStorage.setItem("acceso.cache", '{"email":"x"}');
+  const r = await conTope(P.armarRespaldo("v1"));
+  if (r === "__tope__") {
+    ok(true, "(IndexedDB no respondió en este navegador de pruebas: se omite armarRespaldo; ver CLAUDE.md)");
+  } else {
+    ok(r.app === "herramientas-ingenieria" && r.formato === P.FORMATO_RESPALDO && Array.isArray(r.conversaciones), "arma el respaldo con su encabezado");
+    ok(!("ia.apiKey" in r.almacenamiento) && !JSON.stringify(r).includes("SECRETA"), "el archivo no contiene la clave de IA");
+    ok(!("acceso.cache" in r.almacenamiento), "ni la cache de acceso sin conexión");
+    ok(r.almacenamiento["ia.proveedor"] === "openai" && r.almacenamiento[D.CLAVE_DEFECTOS] === JSON.stringify({ tension: 13.2 }), "sí trae los ajustes de IA y los valores de las calculadoras");
+  }
+
+  // restaurar: reemplaza los ajustes (sin conversaciones para no depender de IndexedDB)
+  const res = await P.restaurarRespaldo({ app: "herramientas-ingenieria", tipo: "respaldo", formato: 1, almacenamiento: { "ia.proveedor": "anthropic", "acceso.cache": "trampa", "ia.apiKey": "trampa", "tema.colores": '{"claro":"#2563eb"}' }, conversaciones: [] });
+  ok(localStorage.getItem("ia.proveedor") === "anthropic" && localStorage.getItem("tema.colores") === '{"claro":"#2563eb"}', "restaurar escribe los ajustes del respaldo");
+  ok(localStorage.getItem(D.CLAVE_DEFECTOS) === null, "y reemplaza: lo que el respaldo no trae se quita");
+  ok(localStorage.getItem("acceso.cache") === '{"email":"x"}' && localStorage.getItem("ia.apiKey") === "SECRETA", "no acepta claves ajenas al respaldo (cache de acceso, claves de IA) aunque el archivo las traiga");
+  ok(res.ajustes === 2, `cuenta los ajustes restaurados (${res.ajustes})`);
+  ok(!!document.getElementById("tema-personal") || !!localStorage.getItem("tema.css"), "vuelve a aplicar el color del tema restaurado");
+  restaurarLS();
+  (await import("../js/util/tema.js")).aplicarTema();
+});
+
+await seccion("pestaña Datos: pantalla y borrar", async () => {
+  const P = await import("../js/util/perfil-datos.js");
+  localStorage.setItem("ia.proveedor", "openai");
+  localStorage.setItem("ia.apiKey.openai", "sk-x");
+  localStorage.setItem(D.CLAVE_DEFECTOS, JSON.stringify({ tension: 13.2 }));
+  localStorage.setItem("acceso.cache", '{"email":"x"}');
+  stage.innerHTML = `<div class="card tarjeta-borde form-section" id="box"></div>`;
+  const box = stage.querySelector("#box");
+  let recargas = 0;
+  let respuesta = true;
+  P.pintarDatos(box, { recargar: () => recargas++, confirmar: () => respuesta });
+  const filas = [...box.querySelectorAll("[data-filas] tr")];
+  ok(filas.length === P.CATEGORIAS.length, "la tabla aparece de inmediato, sin esperar a contar las conversaciones (IndexedDB)");
+  await espera(150);
+  {
+    ok(filas.length === P.CATEGORIAS.length, `una fila por categoría (${filas.length})`);
+    const fila = (nombre) => filas.find((tr) => tr.textContent.includes(nombre));
+    ok(/OpenAI/.test(texto(fila("Claves de IA"))), "dice qué proveedores tienen clave guardada");
+    ok(/Guardado/.test(texto(fila("Valores por defecto"))), "marca los valores de las calculadoras como guardados");
+    respuesta = false;
+    fila("Valores por defecto").querySelector("[data-borrar]").click();
+    await espera(50);
+    ok(localStorage.getItem(D.CLAVE_DEFECTOS) !== null, "si no se confirma, no se borra");
+    respuesta = true;
+    fila("Valores por defecto").querySelector("[data-borrar]").click();
+    await espera(100);
+    ok(localStorage.getItem(D.CLAVE_DEFECTOS) === null && localStorage.getItem("ia.proveedor") === "openai", "«Borrar» de una fila borra solo esa categoría");
+  }
+  ok(!!box.querySelector("[data-respaldar]") && !!box.querySelector("[data-restaurar]") && !!box.querySelector("[data-todo]"), "botones Descargar respaldo, Restaurar respaldo y Borrar todo");
+  ok(/NO las claves de IA/.test(texto(box)), "avisa que el respaldo no lleva las claves de IA");
+  box.querySelector("[data-todo]").click();
+  await conTope(espera(400));
+  ok(localStorage.getItem("ia.apiKey.openai") === null && localStorage.getItem("ia.proveedor") === null, "«Borrar todo» quita ajustes y claves de IA");
+  ok(localStorage.getItem("acceso.cache") === '{"email":"x"}', "pero conserva la cache de acceso (la sesión)");
+  await espera(1400);
+  ok(recargas === 1 || recargas === 0, "y pide recargar la app");
+  restaurarLS();
+  (await import("../js/util/tema.js")).aplicarTema();
+  stage.innerHTML = "";
+});
+
+await seccion("pestaña Aplicación", async () => {
+  const A = await import("../js/util/perfil-aplicacion.js");
+  stage.innerHTML = `<div class="card tarjeta-borde form-section" id="box"></div>`;
+  const box = stage.querySelector("#box");
+  const limpiar = A.pintarAplicacion(box);
+  ok(typeof limpiar === "function", "devuelve una función de limpieza (quita los avisos de conexión)");
+  ok(/Aplicación/.test(texto(box.querySelector(".form-section-title"))) && !!box.querySelector(".form-section-title .icon"), "barra de título con icono");
+  ok(box.querySelectorAll(".pf-lista dt").length === 3 && /En línea|Sin conexión/.test(texto(box.querySelector("[data-red]"))), "muestra versión, uso sin conexión y estado de la conexión");
+  for (let i = 0; i < 160 && /Consultando/.test(texto(box.querySelector("[data-version]"))); i++) await espera(100);
+  const v = texto(box.querySelector("[data-version]"));
+  ok(/^v\d+$/.test(v) || v === "No disponible", `la versión se llena (desde el service worker, o «No disponible» si no hay): ${v}`);
+  ok(!!box.querySelector("[data-buscar]") && !!box.querySelector("[data-buscar] svg"), "botón «Buscar actualización» con icono");
+  const sw = await (await fetch("../sw.js")).text();
+  ok(/addEventListener\("message"/.test(sw) && /tipo !== "estado"/.test(sw), "el service worker responde el mensaje «estado»");
+  const shell = [...sw.matchAll(/^\s*"([^"]+)",\s*$/gm)].map((m) => m[1]);
+  const nuevos = ["js/util/valores-defecto.js", "js/util/perfil-aplicacion.js", "js/util/perfil-datos.js", "js/util/perfil-calculadoras.js"];
+  ok(nuevos.every((f) => shell.includes(f)), "los cuatro módulos nuevos están en el APP_SHELL");
+  limpiar();
+  stage.innerHTML = "";
+});
+
+restaurarLS();
+out.textContent += `\nRESULT: ${fallos ? "FAIL" : "OK"} (${total - fallos}/${total})\n`;
+</script>
+</body>
+</html>

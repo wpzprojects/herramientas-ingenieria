@@ -3,7 +3,7 @@
 // sirve cache-first con relleno en segundo plano (stale-while-revalidate)
 // para lo que no estuviera precacheado.
 
-const CACHE_VERSION = "v295";
+const CACHE_VERSION = "v296";
 const CACHE_NAME = `herramientas-ingenieria-${CACHE_VERSION}`;
 
 const SCOPE = self.registration.scope;
@@ -30,6 +30,10 @@ const APP_SHELL = [
   "js/util/graficos.js",
   "js/util/tarjetas-plegables.js",
   "js/util/persistencia-calculo.js",
+  "js/util/valores-defecto.js",
+  "js/util/perfil-aplicacion.js",
+  "js/util/perfil-datos.js",
+  "js/util/perfil-calculadoras.js",
   "js/calc/ampacidad-aerea.js",
   "js/calc/ampacidad-subterranea.js",
   "js/calc/ampacidad-subterranea-pantalla.js",
@@ -164,6 +168,21 @@ self.addEventListener("activate", (event) => {
       .keys()
       .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
+  );
+});
+
+// Perfil > Aplicacion pregunta la version y cuantos archivos del shell faltan en la cache (lista sin conexion).
+self.addEventListener("message", (event) => {
+  if (event.data?.tipo !== "estado" || !event.ports[0]) return;
+  event.waitUntil(
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => cache.keys())
+      .then((keys) => {
+        const guardados = new Set(keys.map((r) => r.url));
+        const faltan = APP_SHELL.filter((url) => !guardados.has(url)).length;
+        event.ports[0].postMessage({ version: CACHE_VERSION, total: APP_SHELL.length, faltan });
+      })
   );
 });
 

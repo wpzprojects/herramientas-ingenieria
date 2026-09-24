@@ -599,6 +599,48 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   `tools/verify_tema.html` compara contra los valores reales de tokens.css y falla si no coinciden (con y sin el atajo, o sea, prueba la matemática).
 - `app.css` NO debe tener colores del tema escritos a mano (todo por variables; la prueba lo vigila). `manifest.webmanifest` (theme_color) es estático y no cambia.
 
+## Perfil: pestañas Calculadoras, Datos y Aplicación (2026-09-24, elegidas por el usuario entre 7 ideas)
+
+- Pestañas de Perfil (en este orden): `Usuarios` (solo admin) · `Apariencia` · `Calculadoras` · `Datos` · `Aplicación`
+  (`pintarPanel` en `js/views/configuracion-avanzada.js`; cada pestaña nueva vive en su propio módulo de `js/util/perfil-*.js`).
+  Las pestañas bajan de línea en celular (`.tabs` ya tiene `flex-wrap`). Ideas NO elegidas (quedan para después): datos
+  para el encabezado de los reportes, más apariencia (claro/oscuro/sistema, tamaño de letra, sin animaciones), favoritos,
+  y «Solicitar acceso» para el admin. La configuración de IA NO va en Perfil (se reunió en Configuración de IA).
+- **Aplicación** (`perfil-aplicacion.js`): versión instalada, si la app está completa para usarse sin conexión, estado de la
+  red y «Buscar actualización» (`registration.update()` → espera a que el SW nuevo quede activo → «Recargar ahora»; con
+  eso ya no hace falta cerrar y abrir la app dos veces). La versión y los archivos que faltan los responde el propio SW
+  (mensaje `{tipo:"estado"}` por `MessageChannel`, handler `message` en `sw.js`). La ve TODO el mundo, también sin sesión
+  (decidido con el usuario): para visitantes es una tarjeta suelta `#ca-aplicacion-libre` dentro de `#ca-libre`, debajo
+  de la tarjeta de inicio de sesión; con acceso se oculta (`libre.hidden`) y pasa a ser la pestaña. `render()` de Perfil
+  ahora devuelve una función de limpieza (listeners de online/offline). LIMITACIÓN DE PRUEBAS: el Edge sin pantalla de este
+  entorno NO completa `navigator.serviceWorker.register()` (ni con `--headless=new`), así que la versión real y el flujo de
+  «Buscar actualización» solo se pueden confirmar a mano en el navegador/celular; el arnés solo acepta `vN` o
+  «No disponible».
+- **Datos** (`perfil-datos.js`): tabla de lo guardado en el navegador por categoría (conversaciones de IA en IndexedDB,
+  agentes propios, ajustes de IA, claves de IA, valores de las calculadoras, apariencia) con «Borrar» por fila, «Borrar
+  todo», «Descargar respaldo» y «Restaurar respaldo» (archivo `.json`: `{app, tipo:"respaldo", formato:1, creado,
+  almacenamiento:{clave: texto}, conversaciones:[…]}`). Las CLAVES de IA nunca van en el respaldo (el archivo podría
+  compartirse), ni `acceso.cache` (la da el servidor) ni la cache del SW; al restaurar solo se aceptan las claves de
+  `localStorage` de la lista blanca aunque el archivo traiga otras. Restaurar REEMPLAZA ajustes/agentes/valores/apariencia
+  y SUMA las conversaciones (mismo id se reemplaza; `historial.importar`, que no toca `actualizado`, y `historial.todas`
+  son nuevas). La tabla se pinta de inmediato y cada «Contenido» se llena después, y «Borrar todo» borra primero
+  `localStorage` y luego IndexedDB: así, si IndexedDB no responde, lo demás igual funciona.
+- **Calculadoras** (`perfil-calculadoras.js` + `valores-defecto.js`): 14 valores con que arrancan las calculadoras,
+  agrupados (Sistema: tensión, FP, Fc · Evaluación económica: precio de la energía, aumento anual, tasa, años · Ambiente de
+  líneas aéreas: Ta, viento, elevación · Terreno: temperatura, resistividad, profundidad · Falla: tiempo de despeje).
+  `localStorage["calc.defectos"]` = solo los llenos; campo vacío = la calculadora conserva su valor propio (el placeholder
+  lo muestra). Cada calculadora llama `aplicarDefectos(container, "<ruta>")` justo antes de `activarInfos(container)`, o
+  sea ANTES de restaurar lo escrito en la sesión (`persistencia-calculo.js`): lo escrito siempre gana. Un valor que no es
+  válido para el campo de ESA calculadora (rango o `step`, p. ej. 115 kV en Ampacidad subterránea, que llega a 46) no se
+  aplica: se prueba con `campo.validity.valid` y se deja el valor propio, para que «Calcular» nunca quede bloqueado.
+  Ocupación de ductos no tiene ninguno de estos campos. Resuelve de paso el pendiente de Conductor económico «decidir si
+  los precios se guardan entre sesiones (solo local)»: el precio de la energía se puede fijar aquí.
+- Iconos Tabler nuevos (SVG oficial): `deviceMobileCog`, `database`, `adjustmentsHorizontal`, `refresh`, `download`, `upload`.
+- Pruebas: `tools/verify_perfil.html` (nuevo, 62) y `tools/verify_acceso.html` (pestañas, tarjeta suelta del visitante,
+  `/perfil/aplicacion`); `verify_tema.html` ajustado a las 5 pestañas. El servidor de pruebas (`python -m http.server`)
+  a veces da «Failed to fetch» en las secciones que piden los ~150 archivos del APP_SHELL a la vez: repetir el arnés
+  antes de buscar un error.
+
 ## Niveles de acceso: visitante / usuario / administrador (FASE 1 implementada 2026-09-19)
 
 - Decidido con el usuario: la app se abre SIN login. Un **visitante** (sin sesión, o con sesión de un correo fuera de la lista) solo tiene 3

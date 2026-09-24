@@ -58,6 +58,29 @@ export async function listar(tipo) {
   }
 }
 
+/** Todas las conversaciones, de cualquier tipo (respaldo de Perfil > Datos). */
+export async function todas() {
+  try {
+    return (await tx("readonly", (s) => s.getAll())) || [];
+  } catch {
+    return [];
+  }
+}
+
+/** Guarda conversaciones tal cual vienen (sin tocar «actualizado»): restaurar un respaldo. Las de mismo id se reemplazan. */
+export async function importar(lista) {
+  try {
+    await tx("readwrite", (s) => {
+      let ultima;
+      for (const c of lista) if (c && c.id) ultima = s.put(c);
+      return ultima;
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function obtener(id) {
   try {
     return (await tx("readonly", (s) => s.get(id))) || null;

@@ -15,6 +15,9 @@ import { obtenerBackend, esperarSesion, ROLES, ErrorAcceso, correoValido, normal
 import { olvidarClaveServidor } from "../ai/clave.js";
 import { estadoAcceso, venceLaCache, leerCache, revalidar } from "../auth/acceso.js";
 import { PREDETERMINADO, leerColores, guardarColor, ajustarBase } from "../util/tema.js";
+import { pintarAplicacion } from "../util/perfil-aplicacion.js";
+import { pintarDatos } from "../util/perfil-datos.js";
+import { pintarCalculadoras } from "../util/perfil-calculadoras.js";
 
 const fecha = (ms) => (ms ? new Date(ms).toLocaleDateString("es-CO", { dateStyle: "medium" }) : "—");
 const mensajeDe = (e) => (e instanceof ErrorAcceso ? e.message : `Error inesperado: ${e?.message || e}`);
@@ -37,11 +40,17 @@ export async function render(container, params = {}) {
     <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <span>Perfil y configuración avanzada</span></div>
     <h1 class="page-title">Perfil y configuración avanzada</h1>
     <div id="ca-cuerpo"></div>
+    <div id="ca-libre"><div class="card tarjeta-borde form-section" id="ca-aplicacion-libre"></div></div>
   `;
   const cuerpo = container.querySelector("#ca-cuerpo");
+  const libre = container.querySelector("#ca-libre");
   const reintentar = () => render(container);
+  // «Aplicación» la ve todo el mundo: sin sesión va como tarjeta suelta bajo el inicio de sesión; con acceso pasa a ser una pestaña.
+  const limpiezas = [pintarAplicacion(container.querySelector("#ca-aplicacion-libre"))];
+  const salir = () => limpiezas.splice(0).forEach((f) => f?.());
 
   const tarjeta = (html) => {
+    libre.hidden = false;
     cuerpo.innerHTML = `<div class="card tarjeta-borde ia-gate">${html}</div>`;
     return cuerpo.firstElementChild;
   };
@@ -63,7 +72,7 @@ export async function render(container, params = {}) {
       <div class="btn-row"><button type="button" class="btn btn-primary" data-r>Reintentar</button></div>`)
       .querySelector("[data-r]")
       .addEventListener("click", reintentar);
-    return;
+    return salir;
   }
 
   tarjeta(`<p class="text-muted" style="margin:0">Comprobando el servicio…</p>`);
@@ -77,13 +86,14 @@ export async function render(container, params = {}) {
     tarjeta(`<h2>Servicio de acceso no configurado</h2>
       <p class="text-muted">Esta sección necesita un servicio de acceso (Firebase) que todavía no se ha configurado en esta instalación de la app.</p>
       <p class="text-muted text-sm" style="margin-bottom:0">Pasos para activarlo: sección «Acceso con Google y Firebase» del README.</p>`);
-    return;
+    return salir;
   }
 
   // ---------- 2. sesion ----------
   const usuario = await esperarSesion(b);
-  if (!usuario) return pintarLogin();
-  return evaluarAcceso(usuario);
+  if (!usuario) pintarLogin();
+  else await evaluarAcceso(usuario);
+  return salir;
 
   function pintarLogin(mensaje) {
     const t = tarjeta(`${barra("user", "Iniciar sesión")}
@@ -154,8 +164,15 @@ export async function render(container, params = {}) {
   // ---------- 3. panel ----------
   function pintarPanel(u, perfil) {
     const esAdmin = perfil.rol === "admin";
-    // el administrador ve Usuarios; todos los autorizados ven la apariencia (color personal, por dispositivo)
-    const pestanas = [...(esAdmin ? [["usuarios", "Usuarios"]] : []), ["apariencia", "Apariencia"]];
+    // el administrador ve Usuarios; todos los autorizados ven el resto (ajustes personales, por dispositivo)
+    const pestanas = [
+      ...(esAdmin ? [["usuarios", "Usuarios"]] : []),
+      ["apariencia", "Apariencia"],
+      ["calculadoras", "Calculadoras"],
+      ["datos", "Datos"],
+      ["aplicacion", "Aplicación"],
+    ];
+    libre.hidden = true; // con acceso, «Aplicación» va como pestaña
     const inicial = pestanas.some(([id]) => id === params?.pestana) ? params.pestana : pestanas[0][0];
     const cache = leerCache();
     // un solo parrafo: se ajusta al ancho de la tarjeta (no se fuerza a dos lineas)
@@ -192,6 +209,9 @@ export async function render(container, params = {}) {
     }
     if (esAdmin) pintarUsuarios(perfil);
     pintarApariencia();
+    pintarCalculadoras(cuerpo.querySelector("#ca-calculadoras"));
+    pintarDatos(cuerpo.querySelector("#ca-datos"));
+    limpiezas.push(pintarAplicacion(cuerpo.querySelector("#ca-aplicacion")));
   }
 
   // ---------- apariencia: color principal de cada tema (personal, por dispositivo; ver js/util/tema.js) ----------

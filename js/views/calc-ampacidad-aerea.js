@@ -10,6 +10,7 @@ import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } fr
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
 import { guardarEstado, leerEstado } from "../util/persistencia-calculo.js";
+import { aplicarDefectos } from "../util/valores-defecto.js";
 
 const RUTA = "/calculos/ampacidad-aerea";
 
@@ -247,6 +248,7 @@ export async function render(container) {
     <div id="resultado-wrap"></div>
   `;
 
+  aplicarDefectos(container, "ampacidad-aerea"); // valores por defecto personales (Perfil > Calculadoras), antes de restaurar lo escrito
   activarInfos(container);
 
   activarPlegables(container);
