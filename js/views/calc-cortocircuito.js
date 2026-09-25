@@ -44,7 +44,7 @@ const FORMULAS_ETIQUETAS = [
   { tex: "T_2", texto: "Temperatura máxima admisible en falla [°C]" },
   { tex: "t", texto: "Tiempo de despeje de la falla [s]" },
   { tex: String.raw`\lambda`, texto: "Constante del material (temperatura de resistencia cero) [°C]" },
-  { tex: "k_1", texto: "Constante térmica del material para cortocircuito (depende de su calor específico y resistividad; ecuación adiabática de ICEA P-32-382) [A·√s/mm²]" },
+  { tex: "k_1", texto: "Constante térmica del material para cortocircuito (depende de su calor específico y resistividad)" },
 ];
 
 const FORMULAS_NOTA = `El logaritmo es en base 10.
