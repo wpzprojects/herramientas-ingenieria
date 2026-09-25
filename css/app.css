@@ -294,8 +294,14 @@ button { font-family: inherit; }
 @media (max-width: 560px) { .pf-lista { grid-template-columns: 1fr; row-gap: 0; } .pf-lista dd { margin-bottom: var(--space-2); } }
 #ca-libre:not(:empty) { margin-top: var(--space-4); }
 .pf-grupo { margin: var(--space-4) 0 var(--space-2); font-size: 1rem; }
+/* Perfil > Calculadoras: entre filas de campos el mismo espacio que en las calculadoras (sin el row-gap de la rejilla);
+   el espacio de más va entre secciones, con una línea suave */
+.pf-form .grid-2 { row-gap: 0; }
+.pf-form .pf-grupo:not(:first-child) { margin-top: var(--space-2); padding-top: var(--space-4); border-top: 1px solid var(--border); }
 /* Edición de catálogos (administrador, js/util/edicion-catalogo.js) */
 .ed-acciones { margin: 0 0 var(--space-4); }
+/* «Agregar registro» al final de la línea de filtros; si no cabe, es el primero en bajar de línea */
+.toolbar > .ed-acciones { margin: 0 0 0 auto; flex: 0 0 auto; }
 .ed-form .ed-ancho { grid-column: 1 / -1; }
 .ed-form textarea { width: 100%; resize: vertical; }
 .ed-error { margin: var(--space-1) 0 0; font-size: 0.85rem; color: var(--danger); }

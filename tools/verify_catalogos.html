@@ -330,6 +330,7 @@ await seccion("edición en las pantallas (administrador)", async () => {
   stage.innerHTML = "";
   await lista.render(stage, { familia: "tuberias" });
   ok(!!$('[data-accion="agregar"]') && !$('[data-accion="agregar"]').classList.contains("btn-primary"), "la lista muestra «Agregar registro» al administrador, sin destacar (como Editar y Eliminar)");
+  ok($(".toolbar").lastElementChild.contains($('[data-accion="agregar"]')), "va al final de la línea de filtros (si no cabe, es lo primero que baja de línea)");
   $('[data-accion="agregar"]').click();
   ok($(".toolbar").hidden && !!$(".ed-form") && $("#ed-tipo").value === "", "Agregar abre un formulario vacío en lugar de la tabla");
   $("#ed-tipo").value = "PVC prueba";

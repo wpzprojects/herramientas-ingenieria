@@ -3,6 +3,7 @@
 // La PRIMERA entrada debe coincidir con CACHE_VERSION de sw.js (lo comprueba tools/verify_perfil.html).
 // El historial anterior a 3.16.0 se reconstruyó a partir de git el 2026-09-24 (antes solo había un contador v1…v296).
 export const NOVEDADES = [
+  { version: "3.19.4", fecha: "2026-09-24", cambios: ["«Agregar registro» pasa al final de la línea de filtros de cada catálogo.", "Perfil > Calculadoras: espacios entre campos iguales a los de las calculadoras y una línea divisoria entre secciones."] },
   { version: "3.19.3", fecha: "2026-09-24", cambios: ["Perfil > Catálogos: cada catálogo tiene su botón «Historial», que abre sus versiones justo debajo; en el celular cada catálogo se muestra como un bloque.", "«Agregar registro» ya no va destacado (solo «Guardar y publicar»)."] },
   { version: "3.19.2", fecha: "2026-09-24", cambios: ["Cortocircuito: descripción más corta de la constante k₁."] },
   { version: "3.19.1", fecha: "2026-09-24", cambios: ["Regulación: el reporte incluye la reactancia inductiva y la impedancia efectiva de cada tramo.", "Cortocircuito: la constante k₁ ahora explica qué representa.", "Ajustes de texto en las notas de las fórmulas de Ocupación de ductos, Regulación y Cortocircuito."] },

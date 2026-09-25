@@ -49,7 +49,7 @@ export async function render(container) {
   if (esAdministrador()) {
     const lista = container.querySelector("#res-lista");
     const editor = container.querySelector("#res-editor");
-    lista.before(
+    lista.querySelector(".toolbar").append(
       botonesAdmin([
         {
           accion: "agregar",

@@ -147,6 +147,7 @@ await seccion("pestaña Calculadoras", async () => {
   const q = (s) => box.querySelector(s);
   ok(/Valores por defecto de las calculadoras/.test(texto(q(".form-section-title"))) && !!q(".form-section-title .icon"), "barra de título con icono");
   ok(box.querySelectorAll("[data-clave]").length === 14 && box.querySelectorAll(".pf-grupo").length === 5, "14 campos en 5 grupos");
+  ok(getComputedStyle(box.querySelector(".pf-form .grid-2")).rowGap === "0px" && getComputedStyle(box.querySelectorAll(".pf-grupo")[1]).borderTopStyle === "solid" && getComputedStyle(box.querySelectorAll(".pf-grupo")[0]).borderTopStyle === "none", "entre filas el mismo espacio que en las calculadoras (sin row-gap) y una línea suave entre secciones (no antes de la primera)");
   ok(q("#pf-def-tension").value === "13.2" && q("#pf-def-fp").value === "" && /Predeterminado: 0.9/.test(q("#pf-def-fp").placeholder), "muestra lo guardado; los vacíos dicen el valor de la calculadora");
   ok(!/\bhint\b/.test(box.innerHTML) && box.querySelectorAll("[data-info]").length >= 2, "la ayuda va en botones «i»");
   q("#pf-def-fp").value = "0.95";

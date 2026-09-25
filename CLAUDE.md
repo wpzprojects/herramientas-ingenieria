@@ -322,6 +322,12 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
     conserva abierto al volver a pintar. Descartadas: sacarlo a una tarjeta aparte con selector, o dejar la fila `details`
     de antes (se confundía con una fila de catálogo). En ≤600px la tabla pasa a bloques apilados (cada `td` en su línea,
     con la etiqueta de la columna vía `data-etiqueta`), porque la tabla ancha se salía de la pantalla.
+  - «Agregar registro» (2026-09-24, pedido del usuario) va DENTRO de `.toolbar`, como último elemento, empujado a la
+    derecha (`.toolbar > .ed-acciones { margin-left: auto }`): queda al final de la línea de filtros y, si no cabe, es
+    lo primero que baja de línea (si ni los campos caben, bajan también, eso es inevitable).
+  - Perfil → Calculadoras: todos los campos de una sección van en UNA rejilla (`.grid-2`), que sumaba su `row-gap`
+    (53 px entre filas contra 37 px en las calculadoras, donde cada fila es su propia rejilla): `.pf-form .grid-2 {
+    row-gap: 0 }`; el espacio de más va entre secciones, con una línea suave (`border-top` en `.pf-grupo` salvo la primera).
   - Pendiente (no pedido): exportar el catálogo editado a JSON para llevarlo al repositorio como nuevo «de fábrica».
 - Aclarado con el usuario: hacer privado el repo y servir desde Railway oculta el CÓDIGO en GitHub, no la app: quien
   tenga el enlace la abre y su navegador descarga el JS y los catálogos. Ocultarla exigiría pedir sesión antes de cargar.

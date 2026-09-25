@@ -183,7 +183,7 @@ export async function render(container, params) {
         },
       },
     ]);
-    toolbar.before(acciones);
+    toolbar.append(acciones);
     container.append(editorZona);
   }
 

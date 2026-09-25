@@ -20,7 +20,7 @@ export function pintarCalculadoras(box) {
   box.innerHTML = `
     <div class="form-section-title">${icon("adjustmentsHorizontal")} Valores por defecto de las calculadoras</div>
     <p class="text-muted text-sm" style="margin-top:0">Con estos valores arranca cada calculadora al abrirla. Deja un campo vacío para usar el valor que trae la calculadora. Se guardan solo en este dispositivo.</p>
-    <form data-form novalidate>
+    <form class="pf-form" data-form novalidate>
       ${GRUPOS.map(
         (g) => `
         <h3 class="pf-grupo">${escapeHtml(g.titulo)} <span class="text-muted text-sm">· ${escapeHtml(g.donde)}</span></h3>
