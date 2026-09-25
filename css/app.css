@@ -997,7 +997,7 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 /* Conclusión con el botón «Exportar» a la derecha; en pantalla angosta el botón baja */
 .vi-cabecera { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-3); margin: 0 0 var(--space-4); }
 .vi-cabecera > .callout { flex: 1 1 320px; margin: 0; }
-.vi-exportar { flex: 0 0 auto; }
+.vi-exportar { flex: 0 0 auto; margin-left: auto; } /* siempre a la derecha, también cuando baja de línea en el celular: su menú se abre hacia la izquierda y así cabe en la pantalla */
 .vi-exportar > summary { min-height: 40px; }
 .vi-exportar .menu-mas-lista { left: auto; right: 0; }
 

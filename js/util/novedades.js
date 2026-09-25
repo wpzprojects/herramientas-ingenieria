@@ -3,6 +3,7 @@
 // La PRIMERA entrada debe coincidir con CACHE_VERSION de sw.js (lo comprueba tools/verify_perfil.html).
 // El historial anterior a 3.16.0 se reconstruyó a partir de git el 2026-09-24 (antes solo había un contador v1…v296).
 export const NOVEDADES = [
+  { version: "3.23.1", fecha: "2026-09-25", cambios: ["Valoración integral: en el celular, el menú de «Exportar» ya no se sale de la pantalla."] },
   { version: "3.23.0", fecha: "2026-09-25", cambios: ["Valoración integral: botón «Exportar» junto a la conclusión, para guardar la comparación en PDF o en Excel.", "Valoración integral: la tabla muestra la unidad junto a cada valor (p. ej. «557.8 A»), separa la ampacidad por conductor de la total, y los grupos (Ampacidad, Pérdidas…) se ven como encabezados de sección."] },
   { version: "3.22.0", fecha: "2026-09-25", cambios: ["Nueva calculadora «Valoración integral»: evalúa de 1 a 6 escenarios de conductor (tensión, conductor y conductores por fase) para una misma conexión, con ampacidad aérea o subterránea, pérdidas, regulación, cortocircuito y costo total actualizado, y dice cuáles cumplen y cuál conviene."] },
   { version: "3.21.1", fecha: "2026-09-24", cambios: ["Ampacidad aérea: la casilla «Calcular con la posición del sol» pasa al final de la tarjeta de radiación solar, debajo de Qse y θ."] },
