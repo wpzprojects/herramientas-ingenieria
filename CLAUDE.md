@@ -311,6 +311,17 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
     Truco del arnés: un texto `</script>` dentro del script de una página HTML lo cierra: escribir `<\/script>`.
     Para ver el error real de un arnés que no imprime nada: `msedge --headless --enable-logging=stderr --v=0
     --dump-dom … 2>&1 >/dev/null | grep -i uncaught`.
+  - Ajustes de estilo (2026-09-24, pedido del usuario): en la edición de catálogos SOLO «Guardar y publicar» va
+    destacado (`btn-primary`); «Agregar registro», «Editar», «Eliminar», «Publicar», «Publicar de nuevo» y «Volver a esta
+    versión» van sin acento. Excepción que el usuario QUISO conservar: «Publicar todos» (antes «Publicar todos los de la
+    app», nombre acortado a pedido suyo) sigue destacado. Botones de la tabla de Perfil → Catálogos: en una línea si caben
+    y a lo sumo dos en pantalla angosta (`min-width: 7.5rem`; la regla `.pf-datos td:last-child { width: 1% }` de la tabla
+    de Datos los partía en tres: se anula con `.pf-datos.pf-catalogos`). Historial (el usuario eligió esta opción entre
+    tres): botón «Historial ⌄» en la fila de cada catálogo publicado que abre, justo debajo, un panel hundido con sangría y
+    línea de color a la izquierda (`.pf-hist-panel`), sin separación con su fila (`tr.abierto`); nace cerrado y se
+    conserva abierto al volver a pintar. Descartadas: sacarlo a una tarjeta aparte con selector, o dejar la fila `details`
+    de antes (se confundía con una fila de catálogo). En ≤600px la tabla pasa a bloques apilados (cada `td` en su línea,
+    con la etiqueta de la columna vía `data-etiqueta`), porque la tabla ancha se salía de la pantalla.
   - Pendiente (no pedido): exportar el catálogo editado a JSON para llevarlo al repositorio como nuevo «de fábrica».
 - Aclarado con el usuario: hacer privado el repo y servir desde Railway oculta el CÓDIGO en GitHub, no la app: quien
   tenga el enlace la abre y su navegador descarga el JS y los catálogos. Ocultarla exigiría pedir sesión antes de cargar.

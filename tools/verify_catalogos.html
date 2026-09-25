@@ -329,7 +329,7 @@ await seccion("edición en las pantallas (administrador)", async () => {
   // agregar desde la lista
   stage.innerHTML = "";
   await lista.render(stage, { familia: "tuberias" });
-  ok(!!$('[data-accion="agregar"]'), "la lista muestra «Agregar registro» al administrador");
+  ok(!!$('[data-accion="agregar"]') && !$('[data-accion="agregar"]').classList.contains("btn-primary"), "la lista muestra «Agregar registro» al administrador, sin destacar (como Editar y Eliminar)");
   $('[data-accion="agregar"]').click();
   ok($(".toolbar").hidden && !!$(".ed-form") && $("#ed-tipo").value === "", "Agregar abre un formulario vacío en lugar de la tabla");
   $("#ed-tipo").value = "PVC prueba";
@@ -383,11 +383,19 @@ await seccion("Perfil > Catálogos: historial y volver a una versión", async ()
   await esperarQue(() => !!box.querySelector('[data-historial="resoluciones"]'));
   const hist = box.querySelector('[data-historial="resoluciones"]');
   ok(!!hist && hist.querySelectorAll("li").length === 2 && /Actual/.test(texto(hist.querySelector("li"))), "muestra el historial con la versión actual marcada");
+  const btnHist = box.querySelector('[data-ver-historial="resoluciones"]');
+  ok(hist.hidden && btnHist && btnHist.getAttribute("aria-expanded") === "false" && /Historial/.test(texto(btnHist)), "el historial nace cerrado y se abre con el botón «Historial» de SU fila (no es una fila de catálogo más)");
+  ok(!box.querySelector('[data-ver-historial="tuberias"]'), "un catálogo sin publicar no tiene botón de historial");
+  btnHist.click();
+  ok(!hist.hidden && btnHist.getAttribute("aria-expanded") === "true" && box.querySelector('[data-cat="resoluciones"]').classList.contains("abierto") && !!hist.querySelector(".pf-hist-panel .pf-hist-titulo"), "al tocarlo se abre pegado a su fila, con su título");
+  ok(hist.previousElementSibling === box.querySelector('[data-cat="resoluciones"]'), "el panel va justo debajo de la fila de su catálogo");
+  ok(texto(box.querySelector("[data-todos]")) === "Publicar todos" && box.querySelector("[data-todos]").classList.contains("btn-primary"), "el botón general dice «Publicar todos» y sigue destacado");
   ok(/Eliminó «CREG 025»/.test(texto(box.querySelector('[data-cat="resoluciones"]'))), "la fila dice cuál fue el último cambio");
   hist.querySelector(`[data-restaurar="resoluciones"][data-version="${v1}"]`).click();
   await esperarQue(() => /volvió a la versión/.test(texto(box.querySelector("[data-msg]"))));
   ok(JSON.parse(mock.servidor.documentos.resoluciones.datos).length === 16 && /Volvió a la versión/.test(mock.servidor.indice.resoluciones.cambio), "«Volver a esta versión» publica esa versión (vuelve la resolución eliminada)");
   ok(mock.servidor.indice.resoluciones.historial.length === 3, "y la versión que se reemplazó queda en el historial");
+  ok(!box.querySelector('[data-historial="resoluciones"]').hidden, "el historial sigue abierto después de restaurar (se vuelve a pintar sin cerrarse)");
   stage.innerHTML = "";
 });
 

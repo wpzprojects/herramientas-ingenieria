@@ -164,7 +164,6 @@ export async function render(container, params) {
         accion: "agregar",
         icono: "plus",
         texto: "Agregar registro",
-        clase: "btn-primary",
         alHacer: () => {
           toolbar.hidden = resultsWrap.hidden = acciones.hidden = true;
           abrirEditor(editorZona, {

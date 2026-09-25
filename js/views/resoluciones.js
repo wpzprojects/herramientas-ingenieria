@@ -55,7 +55,6 @@ export async function render(container) {
           accion: "agregar",
           icono: "plus",
           texto: "Agregar registro",
-          clase: "btn-primary",
           alHacer: (e) => {
             const acciones = e.currentTarget.parentElement;
             lista.hidden = acciones.hidden = true;

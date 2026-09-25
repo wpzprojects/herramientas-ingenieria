@@ -12,8 +12,8 @@ export function pintarCatalogosAdmin(box, backend, { confirmar = (t) => confirm(
   box.innerHTML = `
     <div class="form-section-title">${icon("book")} Catálogos en el servidor</div>
     <p class="text-muted text-sm" style="margin-top:0">Todos los usuarios (también los visitantes) reciben los catálogos publicados aquí la próxima vez que abren la app con internet. Si un catálogo no está publicado, se usa el que trae la app.</p>
-    <div class="table-wrap"><table class="pf-datos"><thead><tr><th>Catálogo</th><th>En el servidor</th><th>Datos de la app</th><th></th></tr></thead><tbody data-filas><tr><td colspan="4" class="text-muted">Consultando el servidor…</td></tr></tbody></table></div>
-    <div class="btn-row"><button type="button" class="btn btn-primary" data-todos disabled>Publicar todos los de la app</button></div>
+    <div class="table-wrap"><table class="pf-datos pf-catalogos"><thead><tr><th>Catálogo</th><th>En el servidor</th><th>Datos de la app</th><th></th></tr></thead><tbody data-filas><tr><td colspan="4" class="text-muted">Consultando el servidor…</td></tr></tbody></table></div>
+    <div class="btn-row"><button type="button" class="btn btn-primary" data-todos disabled>Publicar todos</button></div>
     <div data-msg></div>`;
 
   const $ = (s) => box.querySelector(s);
@@ -22,6 +22,7 @@ export function pintarCatalogosAdmin(box, backend, { confirmar = (t) => confirm(
     msg.innerHTML = `<div class="callout callout-${tipo}" style="margin:var(--space-3) 0 0"><span>${escapeHtml(texto)}</span></div>`;
   };
   let indice = {};
+  const abiertos = new Set(); // historiales desplegados (se conservan al volver a pintar)
   const fabrica = {}; // nombre -> { datos, huella }
 
   async function publicar(lista) {
@@ -53,19 +54,35 @@ export function pintarCatalogosAdmin(box, backend, { confirmar = (t) => confirm(
         ? `${escapeHtml(fecha(m.fecha) || "Publicado")}${m.actualizadoPor ? ` · ${escapeHtml(m.actualizadoPor)}` : ""}${m.cambio ? `<br><span class="text-muted text-sm">${escapeHtml(m.cambio)}</span>` : ""}`
         : `<span class="text-muted">No publicado</span>`;
       const estado = !m ? "—" : m.huellaFabrica === fabrica[c.nombre].huella ? "Sin cambios desde que se publicaron" : `<span class="badge badge-warning">Cambiaron desde la última publicación</span>`;
+      // Historial: panel pegado a SU fila (sangría + línea de color), que se abre con el botón «Historial» de la fila
+      const abierto = abiertos.has(c.nombre);
       const hist = m?.historial?.length
-        ? `<tr data-historial="${c.nombre}"><td colspan="4"><details><summary class="text-sm">Historial de ${escapeHtml(c.titulo)} (${m.historial.length} ${m.historial.length === 1 ? "versión" : "versiones"})</summary>
+        ? `<tr class="pf-cat-historial" data-historial="${c.nombre}"${abierto ? "" : " hidden"}><td colspan="4"><div class="pf-hist-panel">
+            <p class="pf-hist-titulo">${icon("history")} Historial de ${escapeHtml(c.titulo)} · ${m.historial.length} ${m.historial.length === 1 ? "versión" : "versiones"}</p>
             <ul class="pf-historial">${m.historial
               .map(
                 (h) => `<li><span>${escapeHtml(fecha(h.fecha))}</span><span class="text-muted">${escapeHtml(h.actualizadoPor)}</span><span>${escapeHtml(h.cambio || "")}</span>${
                   h.version === m.version ? '<span class="badge">Actual</span>' : `<button type="button" class="btn btn-sm" data-restaurar="${c.nombre}" data-version="${h.version}" data-fecha="${escapeHtml(fecha(h.fecha))}">Volver a esta versión</button>`
                 }</li>`
               )
-              .join("")}</ul></details></td></tr>`
+              .join("")}</ul></div></td></tr>`
         : "";
-      return `<tr data-cat="${c.nombre}"><td>${escapeHtml(c.titulo)}</td><td>${servidor}</td><td>${estado}</td>
-        <td style="text-align:right"><button type="button" class="btn btn-sm" data-publicar="${c.nombre}">${m ? "Publicar de nuevo" : "Publicar"}</button></td></tr>${hist}`;
+      const botonHist = hist
+        ? `<button type="button" class="btn btn-sm btn-con-icono" data-ver-historial="${c.nombre}" aria-expanded="${abierto}">Historial ${icon("chevronDown")}</button>`
+        : "";
+      return `<tr data-cat="${c.nombre}"${abierto ? ' class="abierto"' : ""}><td>${escapeHtml(c.titulo)}</td><td data-etiqueta="En el servidor">${servidor}</td><td data-etiqueta="Datos de la app">${estado}</td>
+        <td><div class="pf-cat-acciones">${botonHist}<button type="button" class="btn btn-sm" data-publicar="${c.nombre}">${m ? "Publicar de nuevo" : "Publicar"}</button></div></td></tr>${hist}`;
     }).join("");
+    for (const b of box.querySelectorAll("[data-ver-historial]")) {
+      b.addEventListener("click", () => {
+        const n = b.dataset.verHistorial;
+        const abrir = !abiertos.has(n);
+        abrir ? abiertos.add(n) : abiertos.delete(n);
+        b.setAttribute("aria-expanded", String(abrir));
+        box.querySelector(`[data-historial="${n}"]`).hidden = !abrir;
+        box.querySelector(`[data-cat="${n}"]`).classList.toggle("abierto", abrir);
+      });
+    }
     for (const b of box.querySelectorAll("[data-restaurar]")) {
       b.addEventListener("click", () => {
         const c = CATALOGOS_EDITABLES.find((x) => x.nombre === b.dataset.restaurar);

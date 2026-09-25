@@ -301,6 +301,31 @@ button { font-family: inherit; }
 .ed-error { margin: var(--space-1) 0 0; font-size: 0.85rem; color: var(--danger); }
 .ed-form [aria-invalid="true"] { border-color: var(--danger); }
 .pf-historial { margin: 0; padding: 0; list-style: none; font-size: 0.88rem; }
+/* Perfil > Catálogos: botones en una línea si caben, a lo sumo dos en pantalla angosta; historial pegado a su fila */
+.pf-datos.pf-catalogos td:last-child { width: auto; }
+.pf-cat-acciones { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); }
+.pf-cat-acciones .btn { min-width: 7.5rem; }
+@media (min-width: 721px) { .pf-cat-acciones .btn { white-space: nowrap; } }
+.pf-cat-acciones [aria-expanded] .icon { transition: transform 0.15s; }
+.pf-cat-acciones [aria-expanded="true"] .icon { transform: rotate(180deg); }
+.pf-catalogos tr.abierto td { border-bottom: none; }
+.pf-cat-historial > td { padding-top: 0; }
+.pf-hist-panel { margin-left: var(--space-4); padding: var(--space-2) var(--space-3); border-left: 3px solid var(--accent); background: var(--bg-sunken); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.pf-hist-titulo { display: flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-1); font-weight: 600; font-size: 0.88rem; }
+.pf-hist-titulo .icon { width: 16px; height: 16px; color: var(--accent); }
+/* En celular cada catálogo es un bloque apilado (sin tabla ancha que se salga de la pantalla) */
+@media (max-width: 600px) {
+  .pf-catalogos thead { display: none; }
+  .pf-catalogos tr { display: block; border-bottom: 1px solid var(--border); }
+  .pf-catalogos tr.abierto, .pf-catalogos tr:last-child { border-bottom: none; }
+  .pf-catalogos td { display: block; border: none; padding: var(--space-1) var(--space-3); }
+  .pf-catalogos td:first-child { padding-top: var(--space-3); font-weight: 700; }
+  .pf-catalogos td[data-etiqueta]::before { content: attr(data-etiqueta) ": "; color: var(--text-muted); font-weight: 600; }
+  .pf-catalogos td:last-child { padding-bottom: var(--space-3); }
+  .pf-cat-acciones { justify-content: flex-start; }
+  .pf-hist-panel { margin-left: 0; }
+  .pf-historial li { font-size: 0.85rem; }
+}
 .pf-historial li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-1) 0; border-top: 1px solid var(--border); }
 .pf-historial li:first-child { border-top: none; }
 .pf-historial .btn { margin-left: auto; }
@@ -311,7 +336,7 @@ button { font-family: inherit; }
 .pf-anteriores { margin-top: var(--space-3); }
 .pf-anteriores summary { cursor: pointer; color: var(--accent); font-weight: 600; font-size: 0.92rem; }
 .pf-datos th, .pf-datos td { white-space: normal; } /* en celular el nombre baja de línea y la papelera queda a la vista */
-.pf-datos td:last-child { width: 1%; } /* tarjeta «Aplicación» bajo el inicio de sesión (visitantes) */
+.pf-datos td:last-child { width: 1%; } /* la columna de la papelera, lo más angosta posible */
 .ca-sola { margin-top: var(--space-4); }
 .ca-agregar { display: grid; grid-template-columns: minmax(0, 1fr) 190px auto; gap: var(--space-3); align-items: end; margin-bottom: var(--space-4); }
 .ca-agregar .field { margin-bottom: 0; }
