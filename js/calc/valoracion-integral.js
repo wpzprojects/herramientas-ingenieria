@@ -1,6 +1,8 @@
-// Valoración integral de conductores: evalúa de 1 a 6 escenarios (tensión + conductor + conductores por fase) para una
-// misma conexión (misma potencia y longitud) con TODOS los criterios a la vez: ampacidad (aérea IEEE 738 o subterránea
-// IEC 60287), pérdidas, regulación, cortocircuito y, si hay precios, el costo total actualizado.
+// Valoración integral de conductores: evalúa de 1 a 6 escenarios para una misma conexión (misma potencia) con TODOS los
+// criterios a la vez: ampacidad (aérea IEEE 738 o subterránea IEC 60287), pérdidas, regulación, cortocircuito y, si hay
+// precios, el costo total actualizado. Cada escenario es un circuito a una sola tensión formado por 1 a 4 tramos en serie
+// (cada uno con su red, conductor, conductores por fase y longitud): pérdidas, regulación y costos se suman; en ampacidad
+// manda el tramo más cargado y en cortocircuito el más débil (la corriente de falla es una por escenario, conservador).
 // Sin DOM y SIN fórmulas nuevas: combina los motores de las demás calculadoras, que no se tocan. Los límites son las
 // referencias de diseño que ya usa la app (pérdidas 3 %, regulación 10 %) y, en ampacidad, que la corriente no la supere.
 //
@@ -23,6 +25,7 @@ import { calcularOpcion } from "./conductor-economico.js";
 export { LIMITE_PERDIDAS, LIMITE_REGULACION };
 export const MIN_ESCENARIOS = 1;
 export const MAX_ESCENARIOS = 6;
+export const MAX_TRAMOS = 4;
 export const MAX_CIRCUITOS_BANCO = 6; // el mismo máximo de la calculadora de Ampacidad subterránea
 
 /** Calibres del catálogo de construcción de cables subterráneos, de menor a mayor (los mismos de Ampacidad subterránea). */
@@ -86,62 +89,45 @@ export function datosConductor(e, cat) {
 }
 
 /**
- * Evalúa un escenario con todos los criterios.
- * @param {object} comun
- * @param {number} comun.potenciaActivaMw
- * @param {number} comun.factorPotencia
- * @param {number} comun.factorCarga
- * @param {number} comun.longitudKm
- * @param {{taC,tcC,vwMs,anguloVientoDeg,elevacionM,epsilon,alfa,qseWm2,thetaDeg}} comun.aerea
- * @param {{tempMaxC,tempTerrenoC,rhoSueloKmW,uDuctoKmW,profundidadBancoM,frecuenciaHz}} comun.subterranea
- * @param {number} comun.tempFallaC - temperatura máxima admisible en falla (°C)
- * @param {null|{anios,tasaDescuentoPct,precioKwh,escaladaEnergiaPct,crecimientoDemandaPct}} comun.economia - null = sin costos
- * @param {object} esc
- * @param {"Aerea"|"Subterranea"} esc.red
- * @param {number} esc.tensionKv
- * @param {number} esc.n - conductores por fase
- * @param {object} esc.conductor - lo que devuelve datosConductor (ok: true)
- * @param {number} [esc.dabM], [esc.dacM], [esc.dbcM], [esc.separacionHazM] - aérea
- * @param {string} [esc.puestaTierra], [esc.separacionFasesM], [esc.separacionDuctosM], [esc.otrosCircuitos] - subterránea
- * @param {number|null} esc.corrienteFallaKa - null = sin dato (solo se informa la capacidad)
- * @param {number} esc.tiempoDespejeS
- * @param {null|{costoConductorKm:number, costoInstalacionKm:number, instalacionIndicada:boolean}} esc.costos
+ * Evalúa UN tramo con todos los criterios (la tensión, la potencia y la falla son las del escenario).
+ * @param {object} comun - ver evaluarEscenario
+ * @param {{tensionKv:number, corrienteFallaKa:number|null, tiempoDespejeS:number}} esc
+ * @param {object} t - tramo: red, n, longitudKm, conductor (de datosConductor), geometría y costos
+ *   aérea: dabM, dacM, dbcM, separacionHazM · subterránea: puestaTierra, separacionFasesM, separacionDuctosM, otrosCircuitos
+ *   costos: null | {costoConductorKm, costoInstalacionKm, instalacionIndicada}
  */
-export function evaluarEscenario(comun, esc) {
-  const c = esc.conductor;
-  const n = esc.n;
-  const aerea = esc.red === "Aerea";
+export function evaluarTramo(comun, esc, t) {
+  const c = t.conductor;
+  const n = t.n;
+  const aerea = t.red === "Aerea";
+  const L = t.longitudKm;
   const base = { tensionLineaKv: esc.tensionKv, potenciaActivaMw: comun.potenciaActivaMw, factorPotencia: comun.factorPotencia };
 
   // Pérdidas (mismo motor de la pantalla de Pérdidas: R/N)
-  const p = calcularPerdidasTramos({ ...base, factorCarga: comun.factorCarga }, [{ resistenciaOhmKm: c.resistenciaOhmKm, longitudKm: comun.longitudKm, numConductoresPorFase: n }]);
+  const p = calcularPerdidasTramos({ ...base, factorCarga: comun.factorCarga }, [{ resistenciaOhmKm: c.resistenciaOhmKm, longitudKm: L, numConductoresPorFase: n }]);
   const perdidas = {
     pct: p.perdidasPct,
     kw: p.perdidasMw * 1000,
     energiaMwhAnio: p.perdidasMw * 8760,
     factorPerdidas: p.factorPerdidas,
     resistenciaEfectivaOhmKm: p.tramos[0].resistenciaEfectivaOhmKm,
-    clase: clasificarPerdidas(p.perdidasPct),
   };
-  perdidas.cumple = perdidas.pct <= LIMITE_PERDIDAS;
 
   // Regulación (mismo motor de la pantalla de Regulación)
   let regulacion;
   if (aerea) {
     const r = calcularRegulacionTramos(base, [
-      { resistenciaOhmKm: c.resistenciaOhmKm, rmgMm: c.rmgMm, longitudKm: comun.longitudKm, dabM: esc.dabM, dacM: esc.dacM, dbcM: esc.dbcM, numConductoresPorFase: n, separacionHazM: esc.separacionHazM },
+      { resistenciaOhmKm: c.resistenciaOhmKm, rmgMm: c.rmgMm, longitudKm: L, dabM: t.dabM, dacM: t.dacM, dbcM: t.dbcM, numConductoresPorFase: n, separacionHazM: t.separacionHazM },
     ]);
-    const t = r.tramos[0];
-    regulacion = { pct: r.caidaTensionPct, reactanciaOhmKm: t.reactanciaInductiva, impedanciaOhmKm: t.impedanciaEfectiva, rmgEfectivoMm: t.rmgEfectivoMm, constante: t.constanteRegulacion };
+    const f = r.tramos[0];
+    regulacion = { pct: r.caidaTensionPct, reactanciaOhmKm: f.reactanciaInductiva, impedanciaOhmKm: f.impedanciaEfectiva, rmgEfectivoMm: f.rmgEfectivoMm, constante: f.constanteRegulacion };
   } else {
     // Un circuito en trébol; N circuitos en paralelo dividen la impedancia (y la caída) entre N.
-    const s = esc.separacionFasesM;
-    const r = calcularRegulacionTramos(base, [{ resistenciaOhmKm: c.resistenciaOhmKm, rmgMm: c.rmgMm, longitudKm: comun.longitudKm, dabM: s, dacM: s, dbcM: s, numConductoresPorFase: 1 }]);
-    const t = r.tramos[0];
-    regulacion = { pct: r.caidaTensionPct / n, reactanciaOhmKm: t.reactanciaInductiva / n, impedanciaOhmKm: t.impedanciaEfectiva / n, rmgEfectivoMm: t.rmgEfectivoMm, constante: t.constanteRegulacion / n };
+    const s = t.separacionFasesM;
+    const r = calcularRegulacionTramos(base, [{ resistenciaOhmKm: c.resistenciaOhmKm, rmgMm: c.rmgMm, longitudKm: L, dabM: s, dacM: s, dbcM: s, numConductoresPorFase: 1 }]);
+    const f = r.tramos[0];
+    regulacion = { pct: r.caidaTensionPct / n, reactanciaOhmKm: f.reactanciaInductiva / n, impedanciaOhmKm: f.impedanciaEfectiva / n, rmgEfectivoMm: f.rmgEfectivoMm, constante: f.constanteRegulacion / n };
   }
-  regulacion.clase = clasificarRegulacion(regulacion.pct);
-  regulacion.cumple = regulacion.pct <= LIMITE_REGULACION;
 
   // Ampacidad (N conductores o N circuitos por fase)
   const corrienteA = p.corriente;
@@ -154,24 +140,24 @@ export function evaluarEscenario(comun, esc) {
       : { error: "Con estas condiciones el balance térmico no admite corriente (temperatura máxima menor que la ambiente o sol excesivo).", tempMaxC: a.tcC };
   } else {
     const s = comun.subterranea;
-    const circuitos = n + (esc.otrosCircuitos ?? 0);
+    const circuitos = n + (t.otrosCircuitos ?? 0);
     try {
       const r = calcularAmpacidadSubterranea({
         tipoCable: "Monopolar",
         cable: c.cable,
         tipoPantalla: c.cable.tipo_pantalla,
         nivelAislamientoKv: c.nivelAislamientoKv,
-        puestaTierra: esc.puestaTierra,
+        puestaTierra: t.puestaTierra,
         tensionSistemaKv: esc.tensionKv,
         frecuenciaHz: s.frecuenciaHz,
         tempMaxC: s.tempMaxC,
         tempTerrenoC: s.tempTerrenoC,
         rhoSueloKmW: s.rhoSueloKmW,
         uDuctoKmW: s.uDuctoKmW,
-        separacionFasesM: esc.separacionFasesM,
+        separacionFasesM: t.separacionFasesM,
         numCircuitos: circuitos,
         profundidadBancoM: s.profundidadBancoM,
-        separacionDuctosM: esc.separacionDuctosM,
+        separacionDuctosM: t.separacionDuctosM,
       });
       ampacidad = { porConductorA: r.ampacidad, tempMaxC: s.tempMaxC, circuitosBanco: circuitos };
     } catch (err) {
@@ -199,14 +185,57 @@ export function evaluarEscenario(comun, esc) {
     areaMinimaMm2: falla == null ? null : areaMinimaMm2(falla / n, condiciones), // por conductor
   };
 
-  // Costos (mismo motor de Conductor económico; la tensión es la de este escenario)
+  // Costos (mismo motor de Conductor económico, con la tensión del escenario y la longitud del tramo)
   const economia =
-    comun.economia && esc.costos
+    comun.economia && t.costos
       ? calcularOpcion(
-          { ...base, factorCarga: comun.factorCarga, longitudKm: comun.longitudKm, ...comun.economia },
-          { resistenciaOhmKm: c.resistenciaOhmKm, numConductoresPorFase: n, costoConductorKm: esc.costos.costoConductorKm, costoInstalacionKm: esc.costos.costoInstalacionKm }
+          { ...base, factorCarga: comun.factorCarga, longitudKm: L, ...comun.economia },
+          { resistenciaOhmKm: c.resistenciaOhmKm, numConductoresPorFase: n, costoConductorKm: t.costos.costoConductorKm, costoInstalacionKm: t.costos.costoInstalacionKm }
         )
       : null;
+
+  return { corrienteA, potenciaS: p.potenciaS, perdidas, regulacion, ampacidad, cortocircuito, economia };
+}
+
+/**
+ * Evalúa un escenario: un circuito a una sola tensión formado por 1 o más tramos en serie (misma corriente en todos).
+ * Pérdidas, regulación y costos se SUMAN; en ampacidad manda el tramo más cargado y en cortocircuito el más débil.
+ * @param {object} comun
+ * @param {number} comun.potenciaActivaMw
+ * @param {number} comun.factorPotencia
+ * @param {number} comun.factorCarga
+ * @param {{taC,tcC,vwMs,anguloVientoDeg,elevacionM,epsilon,alfa,qseWm2,thetaDeg}} comun.aerea
+ * @param {{tempMaxC,tempTerrenoC,rhoSueloKmW,uDuctoKmW,profundidadBancoM,frecuenciaHz}} comun.subterranea
+ * @param {number} comun.tempFallaC - temperatura máxima admisible en falla (°C)
+ * @param {null|{anios,tasaDescuentoPct,precioKwh,escaladaEnergiaPct,crecimientoDemandaPct}} comun.economia - null = sin costos
+ * @param {{tensionKv:number, corrienteFallaKa:number|null, tiempoDespejeS:number, tramos:object[]}} esc - ver evaluarTramo
+ */
+export function evaluarEscenario(comun, esc) {
+  const tramos = esc.tramos.map((t) => evaluarTramo(comun, esc, t));
+  const suma = (fn) => tramos.reduce((s, t) => s + fn(t), 0);
+  const indice = (mejor) => tramos.reduce((m, t, i) => (mejor(t, tramos[m]) ? i : m), 0);
+
+  const pctPerdidas = suma((t) => t.perdidas.pct);
+  const perdidas = { pct: pctPerdidas, kw: suma((t) => t.perdidas.kw), energiaMwhAnio: suma((t) => t.perdidas.energiaMwhAnio), clase: clasificarPerdidas(pctPerdidas) };
+  perdidas.cumple = perdidas.pct <= LIMITE_PERDIDAS;
+
+  const pctRegulacion = suma((t) => t.regulacion.pct);
+  const regulacion = { pct: pctRegulacion, clase: clasificarRegulacion(pctRegulacion) };
+  regulacion.cumple = regulacion.pct <= LIMITE_REGULACION;
+
+  // Ampacidad: si algún tramo no se puede calcular, el escenario no cumple; si no, manda el de mayor % de uso.
+  const conError = tramos.findIndex((t) => t.ampacidad.error);
+  const iAmp = conError >= 0 ? conError : indice((t, m) => t.ampacidad.usoPct > m.ampacidad.usoPct);
+  const ampacidad = { ...tramos[iAmp].ampacidad, tramo: iAmp };
+
+  // Cortocircuito: manda el tramo de menor capacidad
+  const iCc = indice((t, m) => t.cortocircuito.totalKa < m.cortocircuito.totalKa);
+  const cortocircuito = { ...tramos[iCc].cortocircuito, tramo: iCc };
+
+  // Costos: solo si TODOS los tramos tienen su costo; el valor presente de las pérdidas es lineal, así que se suma
+  const economia = tramos.every((t) => t.economia)
+    ? { inversion: suma((t) => t.economia.inversion), costoPerdidasVp: suma((t) => t.economia.costoPerdidasVp), costoTotal: suma((t) => t.economia.costoTotal) }
+    : null;
 
   const incumple = [
     ...(ampacidad.cumple ? [] : [ampacidad.error ? "ampacidad (no calculable)" : "ampacidad"]),
@@ -216,8 +245,10 @@ export function evaluarEscenario(comun, esc) {
   ];
 
   return {
-    corrienteA,
-    potenciaS: p.potenciaS,
+    corrienteA: tramos[0].corrienteA,
+    potenciaS: tramos[0].potenciaS,
+    longitudKm: esc.tramos.reduce((s, t) => s + t.longitudKm, 0),
+    tramos,
     perdidas,
     regulacion,
     ampacidad,

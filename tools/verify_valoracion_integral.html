@@ -88,13 +88,25 @@ function ccKa(material, A, T1, T2, t) {
   return (A * k1 * Math.sqrt(Math.log10((T2 + lam) / (T1 + lam)) / t)) / 1000;
 }
 
-function escAereo(fila, tensionKv, n, extra = {}) {
+// Un escenario = tensión + falla + tramos. Los extras de escAereo/escSubt se reparten: falla y tiempo al escenario, lo demás al tramo.
+const CLAVES_ESC = ["corrienteFallaKa", "tiempoDespejeS"];
+const partir = (extra) => [Object.fromEntries(Object.entries(extra).filter(([k]) => CLAVES_ESC.includes(k))), Object.fromEntries(Object.entries(extra).filter(([k]) => !CLAVES_ESC.includes(k)))];
+const escenario = (tensionKv, tramos, extra = {}) => ({ tensionKv, corrienteFallaKa: null, tiempoDespejeS: 0.3, tramos, ...extra });
+function tramoAereo(fila, n, extra = {}) {
   const conductor = V.datosConductor({ red: "Aerea", material: fila.tipo, calibre: fila.calibre_awg_kcmil, referencia: fila.nombre_clave }, cat);
-  return { red: "Aerea", tensionKv, n, conductor, dabM: 2, dacM: 2.84, dbcM: 0.84, separacionHazM: n > 1 ? 0.4 : 0, corrienteFallaKa: null, tiempoDespejeS: 0.3, costos: null, ...extra };
+  return { red: "Aerea", n, longitudKm: 5, conductor, dabM: 2, dacM: 2.84, dbcM: 0.84, separacionHazM: n > 1 ? 0.4 : 0, costos: null, ...extra };
+}
+function tramoSubt(material, calibre, tensionKv, n, extra = {}) {
+  const conductor = V.datosConductor({ red: "Subterranea", material, calibre, tipoPantalla: "Hilos", nivelAislamientoPct: 100, tensionKv }, cat);
+  return { red: "Subterranea", n, longitudKm: 5, conductor, puestaTierra: "Unipuntual", separacionFasesM: 0.04, separacionDuctosM: 0.2, otrosCircuitos: 0, costos: null, ...extra };
+}
+function escAereo(fila, tensionKv, n, extra = {}) {
+  const [e, tr] = partir(extra);
+  return escenario(tensionKv, [tramoAereo(fila, n, tr)], e);
 }
 function escSubt(material, calibre, tensionKv, n, extra = {}) {
-  const conductor = V.datosConductor({ red: "Subterranea", material, calibre, tipoPantalla: "Hilos", nivelAislamientoPct: 100, tensionKv }, cat);
-  return { red: "Subterranea", tensionKv, n, conductor, puestaTierra: "Unipuntual", separacionFasesM: 0.04, separacionDuctosM: 0.2, otrosCircuitos: 0, corrienteFallaKa: null, tiempoDespejeS: 0.3, costos: null, ...extra };
+  const [e, tr] = partir(extra);
+  return escenario(tensionKv, [tramoSubt(material, calibre, tensionKv, n, tr)], e);
 }
 
 await seccion("catálogos: datos del conductor", async () => {
@@ -110,7 +122,7 @@ await seccion("catálogos: datos del conductor", async () => {
   ok(!e.ok && /46 kV/.test(e.error), "subterráneo a 69 kV: error que dice hasta dónde llega el catálogo");
   const e2 = V.datosConductor({ red: "Subterranea", material: "Cobre", calibre: "500 kcmil", tipoPantalla: "Cinta", nivelAislamientoPct: 133, tensionKv: 44 }, cat);
   ok(!e2.ok, "combinación inexistente (46 kV al 133 %): error");
-  ok(V.MIN_ESCENARIOS === 1 && V.MAX_ESCENARIOS === 6, "de 1 a 6 escenarios");
+  ok(V.MIN_ESCENARIOS === 1 && V.MAX_ESCENARIOS === 6 && V.MAX_TRAMOS === 4, "de 1 a 6 escenarios, hasta 4 tramos cada uno");
 });
 
 await seccion("motor: escenario aéreo de un conductor (AAAC 246.9 a 34.5 kV)", async () => {
@@ -122,7 +134,7 @@ await seccion("motor: escenario aéreo de un conductor (AAAC 246.9 a 34.5 kV)", 
   cerca(r.perdidas.energiaMwhAnio, (r.perdidas.kw / 1000) * 8760, 1e-9, "energía anual en MWh");
   const reg = caidaPct(COMUN, 34.5, ALLIANCE.r_ac_75c_ohm_km, ALLIANCE.radio_medio_geometrico_mm, Math.cbrt(2 * 2.84 * 0.84));
   cerca(r.regulacion.pct, reg.pct, 1e-9, "% de caída de tensión");
-  cerca(r.regulacion.reactanciaOhmKm, reg.Xl, 1e-9, "reactancia inductiva");
+  cerca(r.tramos[0].regulacion.reactanciaOhmKm, reg.Xl, 1e-9, "reactancia inductiva");
   const amp = calcularAmpacidadAerea({ diametroMm: ALLIANCE.diametro_cable_mm, rBajoOhmKm: ALLIANCE.r_ac_25c_ohm_km, rAltoOhmKm: ALLIANCE.r_ac_75c_ohm_km, ...AEREA }).ampacidad;
   cerca(r.ampacidad.porConductorA, amp, 1e-12, "ampacidad = motor IEEE 738 con R25/R75 y diámetro del catálogo");
   cerca(r.ampacidad.usoPct, (r.corrienteA / amp) * 100, 1e-9, "% de uso de la ampacidad");
@@ -141,7 +153,7 @@ await seccion("motor: haz de 2 conductores por fase (13.2 kV)", async () => {
   const r = V.evaluarEscenario(COMUN, escAereo(HAWK, 13.2, 2, { corrienteFallaKa: 20 }));
   cerca(r.perdidas.pct, perdidasPct(COMUN, 13.2, HAWK.r_ac_75c_ohm_km, 2), 1e-9, "pérdidas con R/2");
   const rmgHaz = Math.sqrt(HAWK.radio_medio_geometrico_mm * 400); // √(RMG·d), d en mm
-  cerca(r.regulacion.rmgEfectivoMm, rmgHaz, 1e-9, "RMG del haz = √(RMG·d)");
+  cerca(r.tramos[0].regulacion.rmgEfectivoMm, rmgHaz, 1e-9, "RMG del haz = √(RMG·d)");
   cerca(r.regulacion.pct, caidaPct(COMUN, 13.2, HAWK.r_ac_75c_ohm_km / 2, rmgHaz, Math.cbrt(2 * 2.84 * 0.84)).pct, 1e-9, "caída de tensión con el haz");
   const amp = calcularAmpacidadAerea({ diametroMm: HAWK.diametro_cable_mm, rBajoOhmKm: HAWK.r_ac_25c_ohm_km, rAltoOhmKm: HAWK.r_ac_75c_ohm_km, ...AEREA }).ampacidad;
   cerca(r.ampacidad.totalA, 2 * amp, 1e-12, "ampacidad de la fase = 2 × la de un conductor");
@@ -152,7 +164,7 @@ await seccion("motor: haz de 2 conductores por fase (13.2 kV)", async () => {
 await seccion("motor: subterráneo con 2 circuitos en paralelo", async () => {
   const e = escSubt("Cobre", "500 kcmil", 34.5, 2, { otrosCircuitos: 1, corrienteFallaKa: 25 });
   const r = V.evaluarEscenario(COMUN, e);
-  const c = e.conductor;
+  const c = e.tramos[0].conductor;
   const ampMotor = calcularAmpacidadSubterranea({
     tipoCable: "Monopolar", cable: c.cable, tipoPantalla: "Hilos", nivelAislamientoKv: 35, puestaTierra: "Unipuntual", tensionSistemaKv: 34.5, frecuenciaHz: 60,
     tempMaxC: 90, tempTerrenoC: 25, rhoSueloKmW: 1, uDuctoKmW: 0.3, separacionFasesM: 0.04, numCircuitos: 3, profundidadBancoM: 1, separacionDuctosM: 0.2,
@@ -192,10 +204,36 @@ await seccion("motor: comparación, costos y recomendado", async () => {
   ok(barato.escenarios[0].economia.costoTotal < barato.escenarios[1].economia.costoTotal || barato.mejorCosto !== 0 || barato.recomendado !== 0, "un escenario que no cumple nunca es el recomendado aunque sea el más barato");
   ok(barato.recomendado !== 0, "…en particular el 4/0 sobrecargado no se recomienda");
   // sin costo en uno: queda fuera de la comparación
-  const parcial = V.compararEscenarios(comun, [e1, { ...e2, costos: null }]);
+  const parcial = V.compararEscenarios(comun, [e1, { ...e2, tramos: [{ ...e2.tramos[0], costos: null }] }]);
   ok(parcial.escenarios[1].economia === null && !parcial.costosCompletos && parcial.mejorCosto === 0, "un escenario sin costo del conductor queda fuera de la comparación de costos");
   const uno = V.compararEscenarios(COMUN, [e1]);
   ok(uno.escenarios.length === 1 && uno.recomendado === null && uno.mejorCosto === null, "un solo escenario y sin precio: se evalúa igual, sin recomendado por costo");
+});
+
+await seccion("motor: escenario con varios tramos (aéreo + subterráneo a 34.5 kV)", async () => {
+  const comun = { ...COMUN, economia: ECON };
+  const costos = (c) => ({ costoConductorKm: c, costoInstalacionKm: 0, instalacionIndicada: false });
+  const a = tramoAereo(HAWK, 1, { longitudKm: 3, costos: costos(12e6) });
+  const s = tramoSubt("Cobre", "500 kcmil", 34.5, 2, { longitudKm: 2, costos: costos(60e6) });
+  const r = V.evaluarEscenario(comun, escenario(34.5, [a, s], { corrienteFallaKa: 30 }));
+  const ra = V.evaluarEscenario(comun, escenario(34.5, [a], { corrienteFallaKa: 30 }));
+  const rs = V.evaluarEscenario(comun, escenario(34.5, [s], { corrienteFallaKa: 30 }));
+  ok(r.tramos.length === 2 && r.longitudKm === 5, "2 tramos, 5 km en total");
+  cerca(r.perdidas.pct, ra.perdidas.pct + rs.perdidas.pct, 1e-12, "pérdidas = suma de los tramos");
+  cerca(r.perdidas.pct, perdidasPct({ ...COMUN, longitudKm: 3 }, 34.5, HAWK.r_ac_75c_ohm_km, 1) + perdidasPct({ ...COMUN, longitudKm: 2 }, 34.5, s.conductor.resistenciaOhmKm, 2), 1e-9, "…y coincide con 3·I²·R·L de cada tramo, calculado aparte");
+  cerca(r.regulacion.pct, ra.regulacion.pct + rs.regulacion.pct, 1e-12, "caída de tensión = suma de los tramos");
+  const usos = [ra.ampacidad.usoPct, rs.ampacidad.usoPct];
+  ok(r.ampacidad.tramo === usos.indexOf(Math.max(...usos)) && r.ampacidad.usoPct === Math.max(...usos), `ampacidad: manda el tramo más cargado (tramo ${r.ampacidad.tramo + 1})`);
+  const caps = [ra.cortocircuito.totalKa, rs.cortocircuito.totalKa];
+  ok(r.cortocircuito.tramo === caps.indexOf(Math.min(...caps)) && r.cortocircuito.totalKa === Math.min(...caps), `cortocircuito: manda el tramo de menor capacidad (tramo ${r.cortocircuito.tramo + 1})`);
+  ok(r.cortocircuito.cumple === Math.min(...caps) >= 30, "la falla del escenario se compara con el tramo más débil");
+  cerca(r.economia.costoTotal, ra.economia.costoTotal + rs.economia.costoTotal, 1e-12, "costo total = suma de los tramos");
+  cerca(r.economia.inversion, 3 * 3 * 1 * 12e6 + 2 * 3 * 2 * 60e6, 1e-12, "inversión = Σ L·3·N·c_cond de cada tramo");
+  const sin = V.evaluarEscenario(comun, escenario(34.5, [a, { ...s, costos: null }]));
+  ok(sin.economia === null, "si a un tramo le falta el costo, el escenario queda fuera de la comparación de costos");
+  const flojo = tramoAereo(cat.desnudos.find((c) => c.tipo === "ACSR" && c.calibre_awg_kcmil === "4/0"), 1, { longitudKm: 1 });
+  const rf = V.evaluarEscenario(COMUN, escenario(34.5, [a, flojo]));
+  ok(!rf.cumpleTodo && rf.incumple.includes("ampacidad") && rf.ampacidad.tramo === 1, "un tramo sobrecargado basta para que el escenario no cumpla");
 });
 
 // ---------- vista ----------
@@ -208,6 +246,8 @@ const poner = (sel, v, ev = "change") => {
   el.value = v;
   el.dispatchEvent(new Event(ev, { bubbles: true }));
 };
+// Campos del escenario (tensión, falla, tiempo) llevan su número; los del tramo, «escenario-tramo» (p. ej. f-red-0-1).
+const T = (k, sid, tr = 0) => (["tension", "falla", "tiempo"].includes(k) ? `#f-${k}-${sid}` : `#f-${k}-${sid}-${tr}`);
 const respaldoDefectos = localStorage.getItem(D.CLAVE_DEFECTOS);
 D.guardarDefectos({});
 guardarEstado("/calculos/valoracion-integral", null);
@@ -231,51 +271,51 @@ await seccion("vista: tarjetas y escenarios", async () => {
 
 await seccion("vista: campos del escenario según la red", async () => {
   const id = $(".tramo-block [id^=f-tension-]").id.split("-").pop();
-  const g = (k) => $(`#f-${k}-${id}`);
+  const g = (k) => $(T(k, id));
   ok(g("red").value === "Aerea" && !$(".vi-solo-aerea").hidden && $(".vi-solo-subt").hidden, "aérea: se ven las distancias entre fases, no los datos del cable subterráneo");
   ok(g("sephaz").disabled, "separación del haz deshabilitada con 1 conductor por fase");
-  poner(`#f-n-${id}`, "2", "input");
+  poner(T("n", id), "2", "input");
   ok(!g("sephaz").disabled && g("sephaz").required, "con 2 conductores por fase se pide la separación del haz");
-  poner(`#f-material-${id}`, "AAAC");
-  poner(`#f-calibre-${id}`, "246.9");
+  poner(T("material", id), "AAAC");
+  poner(T("calibre", id), "246.9");
   ok(g("referencia").value === "Alliance (7)", "una sola referencia: se elige sola");
-  poner(`#f-red-${id}`, "Subterranea");
+  poner(T("red", id), "Subterranea");
   ok($(".vi-solo-aerea").hidden && !$(".vi-solo-subt").hidden && g("dab").disabled && !g("sepfases").disabled, "subterránea: se ocultan y deshabilitan las distancias aéreas");
   ok(g("referencia").disabled && g("referencia").textContent.includes("No aplica"), "referencia: no aplica");
   ok([...g("material").options].map((o) => o.value).join(",") === "Aluminio,Cobre", "materiales del catálogo de cables subterráneos");
-  poner(`#f-material-${id}`, "Cobre");
+  poner(T("material", id), "Cobre");
   const calibres = [...g("calibre").options].map((o) => o.value).filter(Boolean);
   ok(calibres.join(",") === V.CALIBRES_SUBTERRANEOS.join(","), "calibres subterráneos de menor a mayor");
-  poner(`#f-calibre-${id}`, "500 kcmil");
+  poner(T("calibre", id), "500 kcmil");
   ok([...g("pct").options].map((o) => o.value).join(",") === "100,133", "a 34.5 kV (35 kV) hay aislamiento al 100 y 133 %");
   ok(!g("sepductos").disabled, "2 circuitos en el banco: se pide la separación entre ductos");
-  poner(`#f-n-${id}`, "1", "input");
+  poner(T("n", id), "1", "input");
   ok(g("sepductos").disabled, "un solo circuito: separación entre ductos deshabilitada");
-  poner(`#f-otros-${id}`, "6", "input");
+  poner(T("otros", id), "6", "input");
   ok(!g("n").validity.valid, "más de 6 circuitos en el banco: no deja calcular");
-  poner(`#f-otros-${id}`, "0", "input");
-  poner(`#f-tension-${id}`, "69", "input");
+  poner(T("otros", id), "0", "input");
+  poner(T("tension", id), "69", "input");
   ok(!g("tension").validity.valid && g("tension").validationMessage.includes("46 kV"), "subterránea a 69 kV: la tensión no es válida (el catálogo llega a 46 kV)");
-  poner(`#f-red-${id}`, "Aerea");
+  poner(T("red", id), "Aerea");
   ok(g("tension").validity.valid, "al volver a aérea, 69 kV es válido");
-  poner(`#f-tension-${id}`, "34.5", "input");
+  poner(T("tension", id), "34.5", "input");
 });
 
 await seccion("vista: cálculo con dos escenarios (el ejemplo del usuario)", async () => {
   // Escenario 1: AAAC 246.9 a 34.5 kV; escenario 2: ACSR 477 Hawk ×2 a 13.2 kV
   const ids = () => $$(".tramo-block [id^=f-tension-]").map((el) => el.id.split("-").pop());
   let [a] = ids();
-  poner(`#f-n-${a}`, "1", "input");
-  poner(`#f-material-${a}`, "AAAC");
-  poner(`#f-calibre-${a}`, "246.9");
-  poner(`#f-falla-${a}`, "5", "input");
+  poner(T("n", a), "1", "input");
+  poner(T("material", a), "AAAC");
+  poner(T("calibre", a), "246.9");
+  poner(T("falla", a), "5", "input");
   $(".btn-agregar-tramo").click();
   const b = ids()[1];
-  poner(`#f-tension-${b}`, "13.2", "input");
-  poner(`#f-material-${b}`, "ACSR");
-  poner(`#f-calibre-${b}`, "477");
-  poner(`#f-referencia-${b}`, HAWK.nombre_clave);
-  poner(`#f-n-${b}`, "2", "input");
+  poner(T("tension", b), "13.2", "input");
+  poner(T("material", b), "ACSR");
+  poner(T("calibre", b), "477");
+  poner(T("referencia", b), HAWK.nombre_clave);
+  poner(T("n", b), "2", "input");
   $("#form-calc").requestSubmit();
   await espera(30);
   const tabla = $("#resultado-wrap .vi-matriz table");
@@ -312,13 +352,13 @@ await seccion("vista: cálculo con dos escenarios (el ejemplo del usuario)", asy
 await seccion("vista: con costos", async () => {
   const ids = $$(".tramo-block [id^=f-tension-]").map((el) => el.id.split("-").pop());
   poner("#f-precio", "350", "input");
-  poner(`#f-costo-cond-${ids[0]}`, "8000000", "input");
+  poner(T("costo-cond", ids[0]), "8000000", "input");
   $("#form-calc").requestSubmit();
   await espera(30);
   const etiquetas = $$("#resultado-wrap .vi-matriz td.etiqueta-fila").map((t) => t.textContent);
   ok(etiquetas.includes("Costo total actualizado"), "con precio y al menos un costo aparecen las filas de costos");
   ok($$("#resultado-wrap .callout-warning").some((c) => c.textContent.includes("Sin costo del conductor: Escenario 2") || c.textContent.includes("no entra en la comparación de costos: Escenario 2")), "avisa qué escenario queda fuera de la comparación de costos");
-  poner(`#f-costo-cond-${ids[1]}`, "14000000", "input");
+  poner(T("costo-cond", ids[1]), "14000000", "input");
   $("#form-calc").requestSubmit();
   await espera(30);
   const rep = $("#resultado-wrap .report-block").textContent;
@@ -390,15 +430,21 @@ await seccion("vista: exportar a Excel y a PDF", async () => {
   const hoja = a["xl/worksheets/sheet1.xml"] ?? "";
   const doc = new DOMParser().parseFromString(hoja, "application/xml");
   ok(!doc.querySelector("parsererror"), "la hoja «Comparación» es XML válido");
-  ok(a["xl/workbook.xml"].includes('name="Comparación"') && a["xl/workbook.xml"].includes('name="Reporte"'), "dos hojas: Comparación y Reporte");
+  ok(a["xl/workbook.xml"].includes('name="Comparación"') && a["xl/workbook.xml"].includes('name="Tramos"') && a["xl/workbook.xml"].includes('name="Reporte"'), "tres hojas: Comparación, Tramos y Reporte");
   const textos = [...doc.querySelectorAll("t")].map((t) => t.textContent);
+  const iCostos = textos.findIndex((x) => x.startsWith("Costos a"));
+  const iPrecio = textos.findIndex((x) => x.startsWith("Precio de la energía perdida"));
+  ok(iCostos > 0 && iPrecio === iCostos + 1, "los supuestos económicos van en la sección de costos, justo bajo su título");
+  ok(textos.indexOf("Datos de la conexión") < iCostos && !textos.slice(textos.indexOf("Datos de la conexión"), textos.indexOf("Criterio")).some((x) => /Precio|Tasa/.test(x)), "…y no en los datos de la conexión");
+  const tramosXml = a["xl/worksheets/sheet2.xml"] ?? "";
+  ok(tramosXml.includes("Escenario 2") && tramosXml.includes("Capacidad de cortocircuito (kA)"), "la hoja «Tramos» trae una fila por tramo");
   for (const t of ["Criterio", "Unidad", "Escenario 1", "Ampacidad", "Corriente de operación", "Ampacidad por conductor", "Pérdidas: clasificación", "Costo total actualizado", "Resultado", "Datos de la conexión"]) ok(textos.some((x) => x.startsWith(t)), `la hoja trae «${t}»`);
   // la corriente de operación va como número (no como texto con la unidad)
   const filaCorriente = [...doc.querySelectorAll("row")].find((r) => r.querySelector("t")?.textContent === "Corriente de operación");
   const valores = filaCorriente ? [...filaCorriente.querySelectorAll("c > v")].map((v) => Number(v.textContent)) : [];
   cerca(valores[0] ?? NaN, corriente(30, 34.5, 0.9), 1e-9, "la corriente del escenario 1 va como número en su celda");
   ok(filaCorriente && [...filaCorriente.querySelectorAll("t")].some((t) => t.textContent === "A"), "…y la unidad «A» en la columna Unidad");
-  const reporte = a["xl/worksheets/sheet2.xml"] ?? "";
+  const reporte = a["xl/worksheets/sheet3.xml"] ?? "";
   ok(reporte.includes("CÁLCULO DE VALORACIÓN INTEGRAL") && reporte.includes("PARÁMETROS DE ENTRADA:"), "la hoja «Reporte» trae el reporte completo");
 
   // PDF: se intercepta la impresión
@@ -416,7 +462,8 @@ await seccion("vista: exportar a Excel y a PDF", async () => {
   ok(pdf.querySelector("h1")?.textContent === "Valoración integral de conductores" && pdf.querySelector(".vi-doc-conclusion"), "título y conclusión");
   ok(pdf.querySelectorAll(".vi-doc-matriz thead th").length === 4, "tabla: criterio, unidad y una columna por escenario");
   ok([...pdf.querySelectorAll(".vi-doc-seccion td")].map((t) => t.textContent).includes("Pérdidas"), "con las secciones");
-  ok(pdf.querySelectorAll(".vi-doc-datos tr").length >= 5, "con los datos de la conexión");
+  ok(pdf.querySelectorAll(".vi-doc-datos tr").length === 3 && !/Precio|Tasa/.test(pdf.querySelector(".vi-doc-datos").textContent), "datos de la conexión: dato de partida, FP y Fc (sin los supuestos económicos)");
+  ok(/Precio de la energía perdida/.test(pdf.querySelector(".vi-doc-nota-fila")?.textContent ?? "") && pdf.querySelector(".vi-doc-nota-fila").previousElementSibling.textContent.startsWith("Costos a"), "los supuestos económicos van en la sección de costos del PDF");
   window.dispatchEvent(new Event("afterprint"));
   ok(!document.getElementById("doc-impresion") && !document.body.classList.contains("imprimiendo-reporte"), "al terminar de imprimir se quita el documento");
 });
@@ -424,20 +471,75 @@ await seccion("vista: exportar a Excel y a PDF", async () => {
 await seccion("vista: escenario subterráneo y error de catálogo", async () => {
   const ids = $$(".tramo-block [id^=f-tension-]").map((el) => el.id.split("-").pop());
   const b = ids[1];
-  poner(`#f-red-${b}`, "Subterranea");
-  poner(`#f-material-${b}`, "Cobre");
-  poner(`#f-calibre-${b}`, "500 kcmil");
-  poner(`#f-n-${b}`, "2", "input");
+  poner(T("red", b), "Subterranea");
+  poner(T("material", b), "Cobre");
+  poner(T("calibre", b), "500 kcmil");
+  poner(T("n", b), "2", "input");
   $("#form-calc").requestSubmit();
   await espera(30);
   const rep = $("#resultado-wrap .report-block")?.textContent ?? "";
   ok(rep.includes("Circuitos en paralelo por fase: 2") && rep.includes("Cables subterráneos:"), "el reporte trae los datos del cable y del terreno");
   ok(rep.includes("(2 circuitos en el banco)"), "el reporte dice cuántos circuitos hay en el banco");
   // combinación que no existe: 46 kV al 133 %
-  poner(`#f-tension-${b}`, "44", "input");
-  poner(`#f-pantalla-${b}`, "Cinta");
-  ok([...$(`#f-pct-${b}`).options].map((o) => o.value).join(",") === "100", "a 44 kV (46 kV) solo hay aislamiento al 100 %");
-  poner(`#f-tension-${b}`, "13.2", "input");
+  poner(T("tension", b), "44", "input");
+  poner(T("pantalla", b), "Cinta");
+  ok([...$(T("pct", b)).options].map((o) => o.value).join(",") === "100", "a 44 kV (46 kV) solo hay aislamiento al 100 %");
+  poner(T("tension", b), "13.2", "input");
+});
+
+await seccion("vista: tramos dentro de un escenario", async () => {
+  $(".btn-agregar-tramo").click(); // escenario nuevo, al final
+  const cards = $$(".vi-escenario");
+  const card = cards.at(-1);
+  const col = cards.length; // su columna en la tabla (la 0 es la de etiquetas)
+  const sid = card.querySelector("[id^=f-tension-]").id.split("-").pop();
+  const cab = () => [...card.querySelectorAll(".vi-tramo-cab")];
+  ok(card.querySelectorAll(".vi-tramo").length === 1 && cab().every((c) => c.hidden), "con un tramo la tarjeta no muestra encabezado de tramo (se ve como siempre)");
+  const agregarTramo = card.querySelector(".vi-agregar-tramo");
+  ok(agregarTramo && !agregarTramo.hidden && agregarTramo.textContent.includes("Agregar tramo"), "botón «Agregar tramo» dentro del escenario");
+  agregarTramo.click();
+  ok(card.querySelectorAll(".vi-tramo").length === 2 && cab().every((c) => !c.hidden), "con dos tramos aparece el encabezado de cada uno");
+  ok(cab().map((c) => c.querySelector(".vi-tramo-titulo").textContent).join(" | ") === "Tramo 1 · Aérea | Tramo 2 · Aérea", "títulos «Tramo N · red»");
+  ok($(T("longitud", sid, 0)).value === "5" && $(T("longitud", sid, 1)).value === "1", "cada tramo tiene su propia longitud");
+  agregarTramo.click();
+  agregarTramo.click();
+  agregarTramo.click();
+  ok(card.querySelectorAll(".vi-tramo").length === 4 && agregarTramo.hidden, "máximo 4 tramos: luego «Agregar tramo» se oculta");
+  card.querySelectorAll(".vi-quitar-tramo")[3].click();
+  card.querySelectorAll(".vi-quitar-tramo")[2].click();
+  ok(card.querySelectorAll(".vi-tramo").length === 2 && !agregarTramo.hidden, "se pueden quitar tramos");
+  poner(T("tension", sid), "34.5", "input");
+  poner(T("material", sid, 0), "ACSR");
+  poner(T("calibre", sid, 0), "477");
+  poner(T("referencia", sid, 0), HAWK.nombre_clave);
+  poner(T("longitud", sid, 0), "3", "input");
+  poner(T("red", sid, 1), "Subterranea");
+  ok(cab()[1].querySelector(".vi-tramo-titulo").textContent === "Tramo 2 · Subterránea", "el título del tramo cambia con la red");
+  poner(T("material", sid, 1), "Cobre");
+  poner(T("calibre", sid, 1), "500 kcmil");
+  poner(T("longitud", sid, 1), "2.5", "input");
+  poner(T("tension", sid), "69", "input");
+  ok(!$(T("tension", sid)).validity.valid, "la tensión es del escenario: con un tramo subterráneo, 69 kV no es válido");
+  poner(T("tension", sid), "34.5", "input");
+  ok($(T("tension", sid)).validity.valid && [...$(T("pct", sid, 1)).options].map((o) => o.value).join(",") === "100,133", "a 34.5 kV sí, y el cable del tramo subterráneo toma el nivel de 35 kV");
+  $("#form-calc").requestSubmit();
+  await espera(30);
+  const fila = (nombre) => $$("#resultado-wrap .vi-matriz tr").find((tr) => tr.querySelector(":scope > td.etiqueta-fila")?.textContent === nombre);
+  const conductor = fila("Conductor").children[col];
+  ok(conductor.innerHTML.includes("<br>") && conductor.textContent.includes("T1 · Aérea") && conductor.textContent.includes("T2 · Subterránea"), "la celda del conductor lista los tramos, uno por línea");
+  const longitud = fila("Longitud").children[col].textContent;
+  ok(longitud.startsWith("5.50 km") && longitud.includes("2 tramos"), `longitud total del escenario y cuántos tramos («${longitud}»)`);
+  const amp = (fila("Ampacidad total") ?? fila("Ampacidad por conductor")).children[col].textContent;
+  ok(/Tramo \d \(el más cargado\)/.test(amp), "la ampacidad dice qué tramo manda");
+  ok(/Tramo \d \(el de menor capacidad\)/.test(fila("Capacidad de cortocircuito").children[col].textContent), "el cortocircuito dice qué tramo manda");
+  const det = $("#resultado-wrap .vi-detalle-tramos");
+  ok(det && !det.open && det.querySelectorAll("tbody tr").length === $$(".vi-tramo").length, "«Detalle por tramo» plegado, con una fila por tramo de todos los escenarios");
+  ok($$("#resultado-wrap .callout-warning").some((c) => c.textContent.includes("no tienen la misma longitud total")), "avisa que los escenarios no suman la misma longitud");
+  const rep = $("#resultado-wrap .report-block").textContent;
+  ok(rep.includes(`Escenario ${col} — 34.50 kV · 2 tramos · 5.50 km:`) && rep.includes("  Tramo 2 — Subterránea") && rep.includes("  Totales del escenario:") && rep.includes("Ampacidad: manda el tramo"), "el reporte detalla cada tramo y los totales del escenario");
+  ok(rep.includes("  Tramo 1:\n    Tipo de red: Aérea\n    Longitud: 3.00 km"), "los parámetros de entrada van por tramo");
+  card.querySelector(".btn-tramo-quitar").click(); // se deja la pantalla como estaba para las pruebas siguientes
+  ok($$(".vi-escenario").length === col - 1, "se quita el escenario de prueba");
 });
 
 await seccion("vista: al volver a la pantalla se conserva lo escrito", async () => {
@@ -449,8 +551,8 @@ await seccion("vista: al volver a la pantalla se conserva lo escrito", async () 
   salir = await vista.render(stage);
   const ids = $$(".tramo-block [id^=f-tension-]").map((el) => el.id.split("-").pop());
   ok($$(".tramo-block").length === antes, `se restauran los ${antes} escenarios`);
-  ok($(`#f-red-${ids[1]}`).value === "Subterranea" && $(`#f-calibre-${ids[1]}`).value === "500 kcmil" && $(`#f-n-${ids[1]}`).value === "2", "el escenario 2 vuelve subterráneo, 500 kcmil, 2 circuitos");
-  ok($(`#f-material-${ids[0]}`).value === "AAAC" && $(`#f-referencia-${ids[0]}`).value === "Alliance (7)" && $(`#f-falla-${ids[0]}`).value === "5", "el escenario 1 conserva conductor, referencia y falla");
+  ok($(T("red", ids[1])).value === "Subterranea" && $(T("calibre", ids[1])).value === "500 kcmil" && $(T("n", ids[1])).value === "2", "el escenario 2 vuelve subterráneo, 500 kcmil, 2 circuitos");
+  ok($(T("material", ids[0])).value === "AAAC" && $(T("referencia", ids[0])).value === "Alliance (7)" && $(T("falla", ids[0])).value === "5", "el escenario 1 conserva conductor, referencia y falla");
   ok($("#f-ta").value === "31" && $("details.vi-avanzado").open, "se conservan los parámetros avanzados y si estaban abiertos");
   ok($("#f-precio").value === "350", "se conserva el precio de la energía");
 });
@@ -485,6 +587,7 @@ await seccion("registro: menú, permisos, ruta, ayuda y service worker", async (
   const css = await (await fetch("../css/app.css")).text();
   ok(!/#[0-9a-fA-F]{3,8}\b/.test(css.split("\n").filter((l) => l.includes(".vi-") && !l.includes("vi-doc")).join("\n")), "el CSS de la pantalla no lleva colores escritos a mano (solo el documento PDF, que siempre es claro)");
   ok(shell.includes("js/util/xlsx.js"), "el service worker precachea el generador de Excel");
+  ok(!css.includes("vi-seccion + tr td"), "la primera fila de cada sección conserva su línea de tabla (no se le quita el borde)");
 });
 
 guardarEstado("/calculos/valoracion-integral", null);

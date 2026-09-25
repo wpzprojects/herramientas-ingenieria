@@ -982,6 +982,18 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .vi-avanzado[open] > summary { margin-bottom: var(--space-3); }
 .vi-avanzado-grupo { margin: var(--space-3) 0 var(--space-2); font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
 .vi-avanzado > summary + .vi-avanzado-grupo { margin-top: 0; }
+/* Tramos de un escenario: con uno solo la tarjeta se ve igual que siempre; con varios, cada tramo lleva su encabezado */
+.vi-tramo-cab {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
+  margin: var(--space-3) 0 var(--space-3); padding: var(--space-2) 0 0; border-top: 1px solid var(--border);
+}
+.vi-tramo-titulo { font-size: 0.8rem; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; }
+.vi-tramo-pie { margin-top: var(--space-3); padding-top: var(--space-2); border-top: 1px solid var(--border); }
+.vi-agregar-tramo { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; font-size: 0.88rem; text-decoration: none; font-weight: 600; }
+.vi-agregar-tramo .icon { width: 16px; height: 16px; }
+.vi-detalle-tramos { margin-top: var(--space-4); }
+.vi-detalle-tramos td.wrap { min-width: 14rem; }
+.vi-detalle-tramos > summary { cursor: pointer; color: var(--accent); font-weight: 600; font-size: 0.92rem; margin-bottom: var(--space-2); }
 .vi-matriz td { white-space: normal; vertical-align: top; }
 .vi-matriz td.vi-conductor-celda { min-width: 9rem; }
 .vi-matriz .vi-sub { font-size: 0.8rem; color: var(--text-muted); }
@@ -993,7 +1005,6 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
   border-top: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
 }
 .vi-matriz tr.vi-seccion:hover { background: none; }
-.vi-matriz tr.vi-seccion + tr td { border-top: 0; }
 /* Conclusión con el botón «Exportar» a la derecha; en pantalla angosta el botón baja */
 .vi-cabecera { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-3); margin: 0 0 var(--space-4); }
 .vi-cabecera > .callout { flex: 1 1 320px; margin: 0; }
@@ -1030,6 +1041,8 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .doc-impresion .vi-doc-matriz tr.vi-doc-seccion { break-after: avoid; }
 .doc-impresion .vi-doc-matriz tr.vi-doc-seccion td { background: #dde8e8; font-weight: 700; font-size: 7.5pt; text-transform: uppercase; letter-spacing: .06em; border-top: 1pt solid #666; }
 .doc-impresion .vi-doc-matriz tr.vi-doc-total td { font-weight: 700; background: #f0f0f0; }
+.doc-impresion .vi-doc-matriz tr.vi-doc-nota-fila td { font-size: 7.5pt; color: #444; background: #fff; font-style: italic; }
+.doc-impresion .vi-doc-tramos td, .doc-impresion .vi-doc-tramos th { font-size: 7.5pt; }
 .doc-impresion .vi-doc-matriz td:first-child { font-weight: 600; }
 .doc-impresion .vi-doc-matriz td.vi-doc-unidad { color: #555; white-space: nowrap; }
 .doc-impresion .vi-doc-estado { font-size: 7.5pt; font-weight: 700; color: #1d6b3c; }
