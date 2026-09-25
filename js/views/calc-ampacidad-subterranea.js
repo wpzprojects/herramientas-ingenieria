@@ -128,6 +128,8 @@ En el cable tripolar el factor de proximidad es cero, λ1 = 0.02 y no se usan la
 
 En el cable monopolar, con las pantallas a tierra en ambos extremos circula corriente por ellas (I_pant); con puesta a tierra unipuntual o cross-bonding no circula, y queda una tensión inducida a circuito abierto (V_ind). Ambas se calculan con la ampacidad obtenida y sirven para revisar el esquema de puesta a tierra; en el cable tripolar no aplican.
 
+V_ind es una tensión por kilómetro: indica cómo crece la tensión de la pantalla a lo largo del cable, no la tensión en un punto. Con puesta a tierra unipuntual, la tensión máxima está en el extremo sin aterrizar y vale aproximadamente V_ind × longitud del tramo. Con cross-bonding, las pantallas se cruzan en cada tercio de la sección mayor para que las tensiones de las tres fases se anulen en el recorrido completo (por eso no circula corriente); la tensión a tierra es casi nula en los extremos aterrizados de la sección mayor y máxima en las cajas de cruce, donde vale aproximadamente V_ind × longitud de la sección menor.
+
 Limitaciones conocidas: no distingue formación en trébol de formación plana (usa la misma fórmula de proximidad para ambas) y solo calcula régimen permanente (no transitorio ni secado del suelo).
 
 Si el salto térmico no alcanza para cubrir la pérdida dieléctrica, el cálculo no es válido y se avisa.`;

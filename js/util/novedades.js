@@ -3,6 +3,7 @@
 // La PRIMERA entrada debe coincidir con CACHE_VERSION de sw.js (lo comprueba tools/verify_perfil.html).
 // El historial anterior a 3.16.0 se reconstruyó a partir de git el 2026-09-24 (antes solo había un contador v1…v296).
 export const NOVEDADES = [
+  { version: "3.20.1", fecha: "2026-09-24", cambios: ["Ampacidad subterránea: nota en Fórmulas que explica dónde aparece la tensión inducida en la pantalla con puesta a tierra unipuntual y con cross-bonding."] },
   { version: "3.20.0", fecha: "2026-09-24", cambios: ["Conductor económico: nueva sección «¿Puede el costo de instalación cambiar la decisión?», que dice, para cada alternativa, hasta cuánto puede costar de más instalar la opción ganadora sin que deje de ser la mejor, y avisa cuándo revisarlo según el peso de los conductores."] },
   { version: "3.19.9", fecha: "2026-09-24", cambios: ["Conductor económico: la sensibilidad al costo de instalación destaca el margen por km de cada alternativa y resume la ventaja, el porqué y cuándo cambia la conclusión."] },
   { version: "3.19.8", fecha: "2026-09-24", cambios: ["Conductor económico: la sensibilidad al costo de instalación se explica paso a paso para cada alternativa (por cuánto gana la mejor opción, por qué, y cuánto tendría que cambiar la instalación para que perdiera)."] },
