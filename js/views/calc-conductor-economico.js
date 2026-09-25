@@ -651,29 +651,37 @@ export async function render(container) {
     });
   }
 
+  // Presentación elegida por el usuario (2026-09-24, entre tres): por alternativa, la cifra clave (margen por km) destacada
+  // a la izquierda y tres renglones rotulados a la derecha; la segunda manera de decirlo va abajo en letra pequeña.
   function sensibilidadInstalacionHtml(r, estados, base) {
     const casos = explicacionInstalacion(r, estados, base);
     if (!casos.length) return "";
     const G = r.mejor + 1;
     const nombre = (i) => `<strong>Opción ${i}</strong> <span class="text-muted">(${escapeHtml(conductorTexto(estados[i - 1]))})</span>`;
+    const mayuscula = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+    const pesos = (v) => fmtPesos(v).replace("$ ", () => "$\u00a0"); // el «$» no queda solo al final de una línea
     const bloques = casos
       .map((c) =>
         c.empate
           ? `<div class="ce-inst"><p class="ce-inst-titulo">${nombre(c.G)} frente a ${nombre(c.A)}</p>
-          <p>Con los costos que se conocen, las dos opciones empatan: cualquier diferencia en su costo de instalación decide cuál es la mejor.</p></div>`
+          <p class="ce-inst-empate">Con los costos que se conocen, las dos opciones empatan: cualquier diferencia en su costo de instalación decide cuál es la mejor.</p></div>`
           : `<div class="ce-inst"><p class="ce-inst-titulo">${nombre(c.G)} frente a ${nombre(c.A)}</p>
-          <p>Con los costos que se conocen, la Opción ${c.G} resulta <strong>$ ${fmtMillones(c.diferencia)} millones</strong> más económica en los ${base.anios} años, porque ${c.porque}. Repartido en los ${num(base.longitudKm, 0, 2)} km de la línea, son <strong>${fmtPesos(c.umbralKm)} por km</strong>.</p>
-          <ul>
-            <li>Para que la Opción ${c.A} fuera la mejor, instalarla tendría que costar al menos <strong>${fmtPesos(c.umbralKm)} por km menos</strong> que instalar la Opción ${c.G}.</li>
-            <li>Dicho de otra manera: si instalar la Opción ${c.G} costara más de <strong>${fmtPesos(c.umbralKm)} por km</strong> por encima de la Opción ${c.A}, ${c.ventaja} ya no alcanzaría a compensar esa instalación.</li>
-          </ul></div>`
+          <div class="ce-inst-cuerpo">
+            <div class="ce-inst-cifra"><span class="ce-inst-valor">${pesos(c.umbralKm)}</span><span class="ce-inst-unidad">por km</span><span class="ce-inst-rotulo">margen frente a la instalación</span></div>
+            <dl class="ce-inst-datos">
+              <dt>Ventaja</dt><dd>La Opción ${c.G} resulta <strong>$&nbsp;${fmtMillones(c.diferencia)}&nbsp;millones</strong> más económica en ${base.anios} años (${num(base.longitudKm, 0, 2)} km de línea), con los costos que se conocen.</dd>
+              <dt>Por qué</dt><dd>${mayuscula(c.porque)}.</dd>
+              <dt>Cambia si</dt><dd>Instalar la Opción ${c.A} cuesta al menos <strong>${pesos(c.umbralKm)} por km menos</strong> que instalar la Opción ${c.G}.</dd>
+            </dl>
+          </div>
+          <p class="ce-inst-nota">Dicho de otra manera: si instalar la Opción ${c.G} costara más de ${pesos(c.umbralKm)} por km por encima de la Opción ${c.A}, ${c.ventaja} ya no alcanzaría a compensar esa instalación.</p></div>`
       )
       .join("");
     return `
       <div class="result-subhead">Sensibilidad al costo de instalación</div>
-      <p class="text-muted text-sm" style="margin: 0 0 var(--space-3);">El costo de instalación no se incluyó en la comparación porque falta en al menos una opción. Aun así se puede saber qué tan firme es la conclusión: para cada alternativa, esto dice cuánto tendría que cambiar la instalación para que la Opción ${G} dejara de ser la mejor.</p>
+      <p class="text-muted text-sm" style="margin: 0 0 var(--space-3);">El costo de instalación no se incluyó en la comparación porque falta en al menos una opción. Para saber si podría cambiar la conclusión, abajo se compara la Opción ${G} con cada alternativa y se indica a partir de qué diferencia de instalación por km la otra opción pasaría a ser la mejor.</p>
       ${bloques}
-      <p class="text-muted text-sm" style="margin: var(--space-3) 0 0;"><strong>Cómo usarlo:</strong> compara cada valor con la diferencia de instalación que esperas entre esas dos opciones (por experiencia o con precios de referencia). Si la diferencia esperada es menor, la Opción ${G} sigue siendo la mejor; si es parecida o mayor, conviene cotizar la instalación antes de decidir.</p>`;
+      <p class="text-muted text-sm" style="margin: var(--space-3) 0 0;"><strong>Cómo usarlo:</strong> compara cada margen con la diferencia de instalación que esperas entre esas dos opciones (por experiencia o con precios de referencia). Si la diferencia esperada es menor, la Opción ${G} sigue siendo la mejor; si es parecida o mayor, conviene cotizar la instalación antes de decidir.</p>`;
   }
 
   function sensibilidadHtml(s, r) {

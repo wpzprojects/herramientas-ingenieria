@@ -303,11 +303,24 @@ button { font-family: inherit; }
 /* «Agregar registro» al final de la línea de filtros; si no cabe, es el primero en bajar de línea */
 .toolbar > .ed-acciones { margin: 0 0 0 auto; flex: 0 0 auto; }
 /* Conductor económico: una explicación por alternativa en la sensibilidad al costo de instalación */
-.ce-inst { border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); margin: 0 0 var(--space-3); }
-.ce-inst p { margin: 0 0 var(--space-2); line-height: 1.5; }
-.ce-inst-titulo { font-size: 0.95rem; }
-.ce-inst ul { margin: 0; padding-left: var(--space-5); line-height: 1.5; }
-.ce-inst li + li { margin-top: var(--space-1); }
+.ce-inst { border: 1px solid var(--border); border-radius: var(--radius-md); margin: 0 0 var(--space-3); overflow: hidden; }
+.ce-inst-titulo { margin: 0; padding: var(--space-2) var(--space-4); font-size: 0.95rem; border-bottom: 1px solid var(--border); }
+.ce-inst-cuerpo { display: grid; grid-template-columns: minmax(170px, auto) 1fr; gap: var(--space-4); align-items: center; padding: var(--space-3) var(--space-4); }
+.ce-inst-cifra { display: flex; flex-direction: column; align-items: center; text-align: center; padding-right: var(--space-4); border-right: 1px solid var(--border); }
+.ce-inst-valor { font-size: 1.35rem; font-weight: 700; color: var(--accent); white-space: nowrap; }
+.ce-inst-unidad { font-size: 0.85rem; font-weight: 600; }
+.ce-inst-rotulo { margin-top: var(--space-1); font-size: 0.78rem; color: var(--text-muted); }
+.ce-inst-datos { display: grid; grid-template-columns: max-content 1fr; gap: var(--space-2) var(--space-3); margin: 0; line-height: 1.45; }
+.ce-inst-datos dt { color: var(--text-muted); font-weight: 600; font-size: 0.88rem; }
+.ce-inst-datos dd { margin: 0; }
+.ce-inst-nota { margin: 0; padding: var(--space-2) var(--space-4) var(--space-3); font-size: 0.85rem; color: var(--text-muted); line-height: 1.45; }
+.ce-inst-empate { margin: 0; padding: var(--space-3) var(--space-4); }
+@media (max-width: 600px) {
+  .ce-inst-cuerpo { grid-template-columns: 1fr; }
+  .ce-inst-cifra { padding: 0 0 var(--space-3); border-right: none; border-bottom: 1px solid var(--border); }
+  .ce-inst-datos { grid-template-columns: 1fr; gap: 0; }
+  .ce-inst-datos dd { margin-bottom: var(--space-2); }
+}
 .ed-form .ed-ancho { grid-column: 1 / -1; }
 .ed-form textarea { width: 100%; resize: vertical; }
 .ed-error { margin: var(--space-1) 0 0; font-size: 0.85rem; color: var(--danger); }

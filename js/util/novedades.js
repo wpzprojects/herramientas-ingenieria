@@ -3,6 +3,7 @@
 // La PRIMERA entrada debe coincidir con CACHE_VERSION de sw.js (lo comprueba tools/verify_perfil.html).
 // El historial anterior a 3.16.0 se reconstruyó a partir de git el 2026-09-24 (antes solo había un contador v1…v296).
 export const NOVEDADES = [
+  { version: "3.19.9", fecha: "2026-09-24", cambios: ["Conductor económico: la sensibilidad al costo de instalación destaca el margen por km de cada alternativa y resume la ventaja, el porqué y cuándo cambia la conclusión."] },
   { version: "3.19.8", fecha: "2026-09-24", cambios: ["Conductor económico: la sensibilidad al costo de instalación se explica paso a paso para cada alternativa (por cuánto gana la mejor opción, por qué, y cuánto tendría que cambiar la instalación para que perdiera)."] },
   { version: "3.19.7", fecha: "2026-09-24", cambios: ["Conductor económico: la sensibilidad al costo de instalación muestra la ventaja por km de la opción ganadora, y la otra sensibilidad se llama «Sensibilidad a los supuestos del análisis»."] },
   { version: "3.19.6", fecha: "2026-09-24", cambios: ["Conductor económico: la sensibilidad al costo de instalación va al final, con una explicación más clara, y el resultado ya no anida paréntesis.", "Ampacidad aérea: notas de las fórmulas más claras."] },

@@ -148,6 +148,15 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   cuesta menos, aunque pierda algo más de energía» («el ahorro en el conductor»). Empate (U = 0): lo dice. «Con los costos
   que se conocen» cubre el caso en que una de las dos sí indicó instalación. El reporte lleva lo mismo resumido (2
   líneas por alternativa). Lógica en `explicacionInstalacion()` de la vista.
+  PRESENTACIÓN (mismo día, el usuario eligió entre tres: cifra destacada / resumen plegable / texto espaciado): cada
+  recuadro `.ce-inst` tiene el título en su franja, a la izquierda la CIFRA CLAVE (margen por km, grande y en color de
+  acento, con «por km» y «margen frente a la instalación»), a la derecha tres renglones rotulados (`dl`): «Ventaja» (total
+  en millones, años y km), «Por qué» y «Cambia si» («Instalar la Opción A cuesta al menos $ U por km menos que instalar
+  la Opción G.»), y abajo, en letra pequeña, la segunda manera («Dicho de otra manera: …»). En ≤600px se apila en una
+  columna. El párrafo inicial dice «…abajo se compara la Opción G con cada alternativa y se indica a partir de qué
+  diferencia de instalación por km la otra opción pasaría a ser la mejor» (el anterior, «esto dice cuánto tendría que
+  cambiar la instalación», no se entendía). El «$» va unido a la cifra con espacio sin corte (OJO: en `String.replace`,
+  «$&» significa «lo encontrado»: usar una función de reemplazo o el carácter \u00a0, nunca «$&nbsp;» como texto).
   Versiones anteriores del mismo día, descartadas: (1) tabla «Frente a | Sobrecosto mínimo de instalación de la Opción G»;
   (2) SEGUNDA versión (la primera, «Sobrecosto mínimo de instalación de
   la Opción G», le pareció al usuario poco intuitiva): el mismo número se presenta como la VENTAJA por km de la
