@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>verify_valoracion_integral</title>
+<!--
+  Pruebas de Valoración integral (js/views/calc-valoracion-integral.js) y de su lógica (js/calc/valoracion-integral.js).
+  Se ejecuta en el navegador, sin internet: la vista real se renderiza en un contenedor oculto y se maneja como lo haría una
+  persona. Pérdidas, regulación y cortocircuito se comparan con cálculos escritos aquí de forma independiente (pérdidas con la
+  potencia física 3·I²·R·L); la ampacidad, con los motores de Ampacidad aérea y subterránea (ya probados en sus arneses),
+  para comprobar que la combinación les pasa los datos correctos.
+
+  Uso (desde la raíz del proyecto):
+    python -m http.server 8000
+    abrir http://localhost:8000/tools/verify_valoracion_integral.html   -> lista PASS/FAIL
+  o en modo consola:
+    msedge --headless --dump-dom --virtual-time-budget=15000 http://localhost:8000/tools/verify_valoracion_integral.html
+-->
+<style>body{font-family:ui-monospace,Consolas,monospace;font-size:13px;padding:12px}#stage{position:absolute;left:-9999px;width:1000px}</style>
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+<pre id="out"></pre>
+<div id="stage"></div>
+<script type="module">
+window.__BASE_PATH__ = "../";
+const out = document.getElementById("out");
+let fallos = 0;
+let total = 0;
+function ok(cond, msg) {
+  total++;
+  if (!cond) fallos++;
+  out.textContent += `${cond ? "PASS" : "FAIL"} ${msg}\n`;
+}
+function cerca(a, b, tol, msg) {
+  ok(Math.abs(a - b) <= tol * Math.max(1, Math.abs(b)), `${msg} (obtenido ${a}, esperado ${b})`);
+}
+async function seccion(nombre, fn) {
+  out.textContent += `\n== ${nombre}\n`;
+  try {
+    await fn();
+  } catch (err) {
+    fallos++;
+    total++;
+    out.textContent += `FAIL excepcion en "${nombre}": ${err && err.stack ? err.stack : err}\n`;
+  }
+}
+const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const V = await import("../js/calc/valoracion-integral.js");
+const { calcularAmpacidadAerea } = await import("../js/calc/ampacidad-aerea.js");
+const { calcularAmpacidadSubterranea } = await import("../js/calc/ampacidad-subterranea.js");
+const { calcularOpcion } = await import("../js/calc/conductor-economico.js");
+const { guardarEstado } = await import("../js/util/persistencia-calculo.js");
+const D = await import("../js/util/valores-defecto.js");
+const cat = {
+  desnudos: await (await fetch("../data/conductores-desnudos.json")).json(),
+  xlpe: await (await fetch("../data/conductores-xlpe.json")).json(),
+  cables: await (await fetch("../data/construccion-cable-subterraneo.json")).json(),
+};
+const ALLIANCE = cat.desnudos.find((c) => c.tipo === "AAAC" && c.calibre_awg_kcmil === "246.9");
+const HAWK = cat.desnudos.find((c) => c.tipo === "ACSR" && c.calibre_awg_kcmil === "477" && c.nombre_clave.startsWith("Hawk"));
+
+const AEREA = { taC: 25, tcC: 75, vwMs: 0.61, anguloVientoDeg: 90, elevacionM: 0, epsilon: 0.5, alfa: 0.5, qseWm2: 1000, thetaDeg: 90 };
+const SUBT = { tempMaxC: 90, tempTerrenoC: 25, rhoSueloKmW: 1, uDuctoKmW: 0.3, profundidadBancoM: 1, frecuenciaHz: 60 };
+const COMUN = { potenciaActivaMw: 30, factorPotencia: 0.9, factorCarga: 0.4, longitudKm: 5, aerea: AEREA, subterranea: SUBT, tempFallaC: 250, economia: null };
+const ECON = { anios: 25, tasaDescuentoPct: 10, precioKwh: 350, escaladaEnergiaPct: 2.5, crecimientoDemandaPct: 0 };
+
+// ---------- cálculos independientes ----------
+const corriente = (P, V, fp) => (P * 1e6) / (Math.sqrt(3) * V * 1e3 * fp);
+function perdidasPct(c, V, R, n) {
+  const I = corriente(c.potenciaActivaMw, V, c.factorPotencia);
+  const Fp = 0.3 * c.factorCarga + 0.7 * c.factorCarga ** 2;
+  const kw = (3 * I * I * (R / n) * c.longitudKm * Fp) / 1000;
+  return (kw / (c.potenciaActivaMw * 1000)) * 100;
+}
+function caidaPct(c, V, Ref, rmgMm, dmgM) {
+  const I = corriente(c.potenciaActivaMw, V, c.factorPotencia);
+  const phi = Math.acos(c.factorPotencia);
+  const Xl = 0.0754 * Math.log(dmgM / (rmgMm / 1000));
+  const Z = Ref * Math.cos(phi) + Xl * Math.sin(phi);
+  return { pct: (Math.sqrt(3) * I * Z * c.longitudKm * 100) / (V * 1000), Xl, Z };
+}
+const K = { Cobre: [341, 234], Aluminio: [224, 228] };
+function ccKa(material, A, T1, T2, t) {
+  const [k1, lam] = K[material];
+  return (A * k1 * Math.sqrt(Math.log10((T2 + lam) / (T1 + lam)) / t)) / 1000;
+}
+
+function escAereo(fila, tensionKv, n, extra = {}) {
+  const conductor = V.datosConductor({ red: "Aerea", material: fila.tipo, calibre: fila.calibre_awg_kcmil, referencia: fila.nombre_clave }, cat);
+  return { red: "Aerea", tensionKv, n, conductor, dabM: 2, dacM: 2.84, dbcM: 0.84, separacionHazM: n > 1 ? 0.4 : 0, corrienteFallaKa: null, tiempoDespejeS: 0.3, costos: null, ...extra };
+}
+function escSubt(material, calibre, tensionKv, n, extra = {}) {
+  const conductor = V.datosConductor({ red: "Subterranea", material, calibre, tipoPantalla: "Hilos", nivelAislamientoPct: 100, tensionKv }, cat);
+  return { red: "Subterranea", tensionKv, n, conductor, puestaTierra: "Unipuntual", separacionFasesM: 0.04, separacionDuctosM: 0.2, otrosCircuitos: 0, corrienteFallaKa: null, tiempoDespejeS: 0.3, costos: null, ...extra };
+}
+
+await seccion("catálogos: datos del conductor", async () => {
+  const a = V.datosConductor({ red: "Aerea", material: "AAAC", calibre: "246.9", referencia: "Alliance (7)" }, cat);
+  ok(a.ok && a.resistenciaOhmKm === ALLIANCE.r_ac_75c_ohm_km && a.diametroMm === ALLIANCE.diametro_cable_mm && a.areaMm2 === ALLIANCE.area_seccion_aluminio_mm2 && a.materialCc === "Aluminio", "aéreo: R75, diámetro y área de aluminio del catálogo; cortocircuito como aluminio");
+  ok(!V.datosConductor({ red: "Aerea", material: "AAAC", calibre: "246.9", referencia: "" }, cat).ok, "aéreo sin referencia: error");
+  ok(V.nivelAislamientoPara(13.2) === 15 && V.nivelAislamientoPara(34.5) === 35 && V.nivelAislamientoPara(44) === 46 && V.nivelAislamientoPara(69) === null, "nivel de aislamiento según la tensión: 13.2→15, 34.5→35, 44→46, 69→ninguno");
+  const s = V.datosConductor({ red: "Subterranea", material: "Cobre", calibre: "500 kcmil", tipoPantalla: "Hilos", nivelAislamientoPct: 100, tensionKv: 34.5 }, cat);
+  const x = cat.xlpe.find((r) => r.material_conductor === "Cobre" && r.calibre_awg_kcmil === "500" && r.nivel_tension_kv === "35 kV" && r.pantalla === "Hilos de cobre");
+  ok(s.ok && s.cable.nivel_aislamiento_kv === 35 && s.cable.calibre_awg_kcmil === "500 kcmil" && s.nivelAislamientoKv === 35, "subterráneo: cable de construcción de 35 kV");
+  ok(x && s.resistenciaOhmKm === x.r_ac_75c_ohm_km && s.rmgMm === x.radio_medio_geometrico_mm && s.areaMm2 === x.area_conductor_mm2, "subterráneo: R75, RMG y área del catálogo XLPE (35 kV, hilos)");
+  const e = V.datosConductor({ red: "Subterranea", material: "Cobre", calibre: "500 kcmil", tipoPantalla: "Hilos", nivelAislamientoPct: 100, tensionKv: 69 }, cat);
+  ok(!e.ok && /46 kV/.test(e.error), "subterráneo a 69 kV: error que dice hasta dónde llega el catálogo");
+  const e2 = V.datosConductor({ red: "Subterranea", material: "Cobre", calibre: "500 kcmil", tipoPantalla: "Cinta", nivelAislamientoPct: 133, tensionKv: 44 }, cat);
+  ok(!e2.ok, "combinación inexistente (46 kV al 133 %): error");
+  ok(V.MIN_ESCENARIOS === 1 && V.MAX_ESCENARIOS === 6, "de 1 a 6 escenarios");
+});
+
+await seccion("motor: escenario aéreo de un conductor (AAAC 246.9 a 34.5 kV)", async () => {
+  const e = escAereo(ALLIANCE, 34.5, 1, { corrienteFallaKa: 5 });
+  const r = V.evaluarEscenario(COMUN, e);
+  cerca(r.corrienteA, corriente(30, 34.5, 0.9), 1e-9, "corriente de operación");
+  cerca(r.perdidas.pct, perdidasPct(COMUN, 34.5, ALLIANCE.r_ac_75c_ohm_km, 1), 1e-9, "% de pérdidas = 3·I²·R·L·Fp / P");
+  cerca(r.perdidas.kw, (r.perdidas.pct / 100) * 30000, 1e-9, "pérdidas en kW");
+  cerca(r.perdidas.energiaMwhAnio, (r.perdidas.kw / 1000) * 8760, 1e-9, "energía anual en MWh");
+  const reg = caidaPct(COMUN, 34.5, ALLIANCE.r_ac_75c_ohm_km, ALLIANCE.radio_medio_geometrico_mm, Math.cbrt(2 * 2.84 * 0.84));
+  cerca(r.regulacion.pct, reg.pct, 1e-9, "% de caída de tensión");
+  cerca(r.regulacion.reactanciaOhmKm, reg.Xl, 1e-9, "reactancia inductiva");
+  const amp = calcularAmpacidadAerea({ diametroMm: ALLIANCE.diametro_cable_mm, rBajoOhmKm: ALLIANCE.r_ac_25c_ohm_km, rAltoOhmKm: ALLIANCE.r_ac_75c_ohm_km, ...AEREA }).ampacidad;
+  cerca(r.ampacidad.porConductorA, amp, 1e-12, "ampacidad = motor IEEE 738 con R25/R75 y diámetro del catálogo");
+  cerca(r.ampacidad.usoPct, (r.corrienteA / amp) * 100, 1e-9, "% de uso de la ampacidad");
+  ok(r.ampacidad.cumple === r.corrienteA <= amp, "cumple ampacidad si la corriente no la supera");
+  const cc = ccKa("Aluminio", ALLIANCE.area_seccion_aluminio_mm2, 75, 250, 0.3);
+  cerca(r.cortocircuito.totalKa, cc, 1e-9, "capacidad de cortocircuito (aluminio, desde 75 °C a 250 °C en 0.3 s)");
+  ok(r.cortocircuito.cumple === cc >= 5, `con falla de 5 kA: ${r.cortocircuito.cumple ? "la soporta" : "no la soporta"}`);
+  cerca(ccKa("Aluminio", r.cortocircuito.areaMinimaMm2, 75, 250, 0.3), 5, 1e-9, "el área mínima soporta justo los 5 kA");
+  ok(r.perdidas.clase.etiqueta && r.regulacion.clase.etiqueta, `clasificación: pérdidas ${r.perdidas.clase.etiqueta}, regulación ${r.regulacion.clase.etiqueta}`);
+  ok(r.economia === null, "sin precio de la energía no hay costos");
+  const sinFalla = V.evaluarEscenario(COMUN, escAereo(ALLIANCE, 34.5, 1));
+  ok(sinFalla.cortocircuito.cumple === null && sinFalla.cortocircuito.areaMinimaMm2 === null && !sinFalla.incumple.includes("cortocircuito"), "sin corriente de falla: solo se informa la capacidad y no cuenta como incumplimiento");
+});
+
+await seccion("motor: haz de 2 conductores por fase (13.2 kV)", async () => {
+  const r = V.evaluarEscenario(COMUN, escAereo(HAWK, 13.2, 2, { corrienteFallaKa: 20 }));
+  cerca(r.perdidas.pct, perdidasPct(COMUN, 13.2, HAWK.r_ac_75c_ohm_km, 2), 1e-9, "pérdidas con R/2");
+  const rmgHaz = Math.sqrt(HAWK.radio_medio_geometrico_mm * 400); // √(RMG·d), d en mm
+  cerca(r.regulacion.rmgEfectivoMm, rmgHaz, 1e-9, "RMG del haz = √(RMG·d)");
+  cerca(r.regulacion.pct, caidaPct(COMUN, 13.2, HAWK.r_ac_75c_ohm_km / 2, rmgHaz, Math.cbrt(2 * 2.84 * 0.84)).pct, 1e-9, "caída de tensión con el haz");
+  const amp = calcularAmpacidadAerea({ diametroMm: HAWK.diametro_cable_mm, rBajoOhmKm: HAWK.r_ac_25c_ohm_km, rAltoOhmKm: HAWK.r_ac_75c_ohm_km, ...AEREA }).ampacidad;
+  cerca(r.ampacidad.totalA, 2 * amp, 1e-12, "ampacidad de la fase = 2 × la de un conductor");
+  cerca(r.cortocircuito.totalKa, 2 * ccKa("Aluminio", HAWK.area_seccion_aluminio_mm2, 75, 250, 0.3), 1e-9, "capacidad de cortocircuito = 2 × la de un conductor");
+  cerca(ccKa("Aluminio", r.cortocircuito.areaMinimaMm2, 75, 250, 0.3), 10, 1e-9, "área mínima POR conductor: soporta la mitad de la falla");
+});
+
+await seccion("motor: subterráneo con 2 circuitos en paralelo", async () => {
+  const e = escSubt("Cobre", "500 kcmil", 34.5, 2, { otrosCircuitos: 1, corrienteFallaKa: 25 });
+  const r = V.evaluarEscenario(COMUN, e);
+  const c = e.conductor;
+  const ampMotor = calcularAmpacidadSubterranea({
+    tipoCable: "Monopolar", cable: c.cable, tipoPantalla: "Hilos", nivelAislamientoKv: 35, puestaTierra: "Unipuntual", tensionSistemaKv: 34.5, frecuenciaHz: 60,
+    tempMaxC: 90, tempTerrenoC: 25, rhoSueloKmW: 1, uDuctoKmW: 0.3, separacionFasesM: 0.04, numCircuitos: 3, profundidadBancoM: 1, separacionDuctosM: 0.2,
+  }).ampacidad;
+  cerca(r.ampacidad.porConductorA, ampMotor, 1e-12, "ampacidad de un circuito con 3 circuitos en el banco (2 propios + 1 ajeno)");
+  ok(r.ampacidad.circuitosBanco === 3, "circuitos en el banco = 3");
+  cerca(r.ampacidad.totalA, 2 * ampMotor, 1e-12, "ampacidad de la fase = 2 circuitos");
+  cerca(r.perdidas.pct, perdidasPct(COMUN, 34.5, c.resistenciaOhmKm, 2), 1e-9, "pérdidas con R/2");
+  const uno = caidaPct(COMUN, 34.5, c.resistenciaOhmKm, c.rmgMm, 0.04);
+  cerca(r.regulacion.pct, uno.pct / 2, 1e-9, "caída = la de un circuito en trébol (D = separación entre fases) / 2");
+  cerca(r.cortocircuito.totalKa, 2 * ccKa("Cobre", c.areaMm2, 90, 250, 0.3), 1e-9, "cortocircuito: cobre, desde 90 °C, 2 conductores");
+  const alto = V.evaluarEscenario({ ...COMUN, subterranea: { ...SUBT, tempTerrenoC: 95 } }, escSubt("Cobre", "500 kcmil", 34.5, 1));
+  ok(alto.ampacidad.error && !alto.ampacidad.cumple && alto.incumple.includes("ampacidad (no calculable)"), "terreno más caliente que el conductor: la ampacidad no se puede calcular y el escenario no cumple");
+});
+
+await seccion("motor: comparación, costos y recomendado", async () => {
+  const comun = { ...COMUN, economia: ECON };
+  const costos = (c, i = null) => ({ costoConductorKm: c, costoInstalacionKm: i ?? 0, instalacionIndicada: i !== null });
+  const e1 = escAereo(ALLIANCE, 34.5, 1, { costos: costos(8e6, 50e6) });
+  const e2 = escAereo(HAWK, 13.2, 2, { costos: costos(14e6, 60e6) });
+  const e3 = escAereo(cat.desnudos.find((c) => c.tipo === "ACSR" && c.calibre_awg_kcmil === "4/0"), 13.2, 1, { costos: costos(1e6) }); // barato pero se sobrecarga
+  const r = V.compararEscenarios(comun, [e1, e2, e3]);
+  ok(r.escenarios.length === 3 && r.costosCompletos, "3 escenarios, todos con costos");
+  const esperado = calcularOpcion({ tensionLineaKv: 13.2, potenciaActivaMw: 30, factorPotencia: 0.9, factorCarga: 0.4, longitudKm: 5, ...ECON }, { resistenciaOhmKm: HAWK.r_ac_75c_ohm_km, numConductoresPorFase: 2, costoConductorKm: 14e6, costoInstalacionKm: 60e6 });
+  cerca(r.escenarios[1].economia.costoTotal, esperado.costoTotal, 1e-12, "el costo usa el motor de Conductor económico con la tensión DEL escenario");
+  cerca(r.escenarios[1].economia.inversion, 5 * (3 * 2 * 14e6 + 60e6), 1e-12, "inversión = L·(3·N·c_cond + c_inst)");
+  ok(!r.escenarios[2].cumpleTodo && r.escenarios[2].incumple.includes("ampacidad"), `el 4/0 a 13.2 kV no cumple (${r.escenarios[2].incumple.join(", ")})`);
+  const totales = r.escenarios.map((x) => x.economia.costoTotal);
+  const menor = totales.indexOf(Math.min(...totales));
+  ok(r.mejorCosto === menor, `menor costo total: Escenario ${menor + 1}`);
+  const candidatos = r.cumplen.filter(() => true);
+  const recomendadoEsperado = candidatos.length ? candidatos.reduce((m, i) => (totales[i] < totales[m] ? i : m), candidatos[0]) : null;
+  ok(r.recomendado === recomendadoEsperado && (r.recomendado === null || r.escenarios[r.recomendado].cumpleTodo), `recomendado = el más barato de los que cumplen (Escenario ${r.recomendado === null ? "—" : r.recomendado + 1})`);
+  ok(r.escenarios[r.mejorCosto].economia.diferenciaVsMejor === 0 && r.escenarios.every((x) => x.economia.diferenciaVsMejor >= 0), "diferencia frente al menor costo: 0 para el menor y positiva para los demás");
+  // el más barato no cumple: no puede ser el recomendado
+  const barato = V.compararEscenarios(comun, [e3, e1]);
+  ok(barato.escenarios[0].economia.costoTotal < barato.escenarios[1].economia.costoTotal || barato.mejorCosto !== 0 || barato.recomendado !== 0, "un escenario que no cumple nunca es el recomendado aunque sea el más barato");
+  ok(barato.recomendado !== 0, "…en particular el 4/0 sobrecargado no se recomienda");
+  // sin costo en uno: queda fuera de la comparación
+  const parcial = V.compararEscenarios(comun, [e1, { ...e2, costos: null }]);
+  ok(parcial.escenarios[1].economia === null && !parcial.costosCompletos && parcial.mejorCosto === 0, "un escenario sin costo del conductor queda fuera de la comparación de costos");
+  const uno = V.compararEscenarios(COMUN, [e1]);
+  ok(uno.escenarios.length === 1 && uno.recomendado === null && uno.mejorCosto === null, "un solo escenario y sin precio: se evalúa igual, sin recomendado por costo");
+});
+
+// ---------- vista ----------
+const stage = document.getElementById("stage");
+const $ = (s) => stage.querySelector(s);
+const $$ = (s) => [...stage.querySelectorAll(s)];
+const vista = await import("../js/views/calc-valoracion-integral.js");
+const poner = (sel, v, ev = "change") => {
+  const el = $(sel);
+  el.value = v;
+  el.dispatchEvent(new Event(ev, { bubbles: true }));
+};
+const respaldoDefectos = localStorage.getItem(D.CLAVE_DEFECTOS);
+D.guardarDefectos({});
+guardarEstado("/calculos/valoracion-integral", null);
+let salir = await vista.render(stage);
+
+await seccion("vista: tarjetas y escenarios", async () => {
+  ok($(".page-title").textContent === "Valoración integral", "título");
+  const titulos = $$(".form-section-title").map((t) => t.textContent.replace(/\s+/g, " ").trim());
+  ok(titulos[0].startsWith("Datos de la conexión") && titulos[1].startsWith("Evaluación económica") && titulos[2].startsWith("Escenario 1"), `tarjetas: ${titulos.join(" | ")}`);
+  ok($$(".tramo-block").length === 1 && $(".btn-tramo-quitar").hidden, "arranca con UN escenario, sin «Quitar»");
+  const agregar = $(".btn-agregar-tramo");
+  ok(agregar && agregar.textContent.includes("Agregar escenario") && !agregar.hidden, "botón «Agregar escenario» en la fila de Calcular");
+  for (let i = 0; i < 7; i++) agregar.click();
+  ok($$(".tramo-block").length === 6 && agregar.hidden, "máximo 6 escenarios: luego «Agregar» se oculta");
+  ok($$(".tramo-titulo").map((t) => t.textContent).join(",") === "Escenario 1,Escenario 2,Escenario 3,Escenario 4,Escenario 5,Escenario 6", "numeración 1…6");
+  while ($$(".tramo-block").length > 1) $$(".btn-tramo-quitar").at(-1).click();
+  ok($$(".tramo-block").length === 1 && !agregar.hidden && $(".btn-tramo-quitar").hidden, "se pueden quitar hasta quedar uno");
+  ok($$("details.vi-avanzado").every((d) => !d.open), "«Parámetros avanzados» nacen plegados");
+  ok(!$("#f-modo").innerHTML.includes("corriente"), "el dato de partida no ofrece corriente (depende de la tensión de cada escenario)");
+});
+
+await seccion("vista: campos del escenario según la red", async () => {
+  const id = $(".tramo-block [id^=f-tension-]").id.split("-").pop();
+  const g = (k) => $(`#f-${k}-${id}`);
+  ok(g("red").value === "Aerea" && !$(".vi-solo-aerea").hidden && $(".vi-solo-subt").hidden, "aérea: se ven las distancias entre fases, no los datos del cable subterráneo");
+  ok(g("sephaz").disabled, "separación del haz deshabilitada con 1 conductor por fase");
+  poner(`#f-n-${id}`, "2", "input");
+  ok(!g("sephaz").disabled && g("sephaz").required, "con 2 conductores por fase se pide la separación del haz");
+  poner(`#f-material-${id}`, "AAAC");
+  poner(`#f-calibre-${id}`, "246.9");
+  ok(g("referencia").value === "Alliance (7)", "una sola referencia: se elige sola");
+  poner(`#f-red-${id}`, "Subterranea");
+  ok($(".vi-solo-aerea").hidden && !$(".vi-solo-subt").hidden && g("dab").disabled && !g("sepfases").disabled, "subterránea: se ocultan y deshabilitan las distancias aéreas");
+  ok(g("referencia").disabled && g("referencia").textContent.includes("No aplica"), "referencia: no aplica");
+  ok([...g("material").options].map((o) => o.value).join(",") === "Aluminio,Cobre", "materiales del catálogo de cables subterráneos");
+  poner(`#f-material-${id}`, "Cobre");
+  const calibres = [...g("calibre").options].map((o) => o.value).filter(Boolean);
+  ok(calibres.join(",") === V.CALIBRES_SUBTERRANEOS.join(","), "calibres subterráneos de menor a mayor");
+  poner(`#f-calibre-${id}`, "500 kcmil");
+  ok([...g("pct").options].map((o) => o.value).join(",") === "100,133", "a 34.5 kV (35 kV) hay aislamiento al 100 y 133 %");
+  ok(!g("sepductos").disabled, "2 circuitos en el banco: se pide la separación entre ductos");
+  poner(`#f-n-${id}`, "1", "input");
+  ok(g("sepductos").disabled, "un solo circuito: separación entre ductos deshabilitada");
+  poner(`#f-otros-${id}`, "6", "input");
+  ok(!g("n").validity.valid, "más de 6 circuitos en el banco: no deja calcular");
+  poner(`#f-otros-${id}`, "0", "input");
+  poner(`#f-tension-${id}`, "69", "input");
+  ok(!g("tension").validity.valid && g("tension").validationMessage.includes("46 kV"), "subterránea a 69 kV: la tensión no es válida (el catálogo llega a 46 kV)");
+  poner(`#f-red-${id}`, "Aerea");
+  ok(g("tension").validity.valid, "al volver a aérea, 69 kV es válido");
+  poner(`#f-tension-${id}`, "34.5", "input");
+});
+
+await seccion("vista: cálculo con dos escenarios (el ejemplo del usuario)", async () => {
+  // Escenario 1: AAAC 246.9 a 34.5 kV; escenario 2: ACSR 477 Hawk ×2 a 13.2 kV
+  const ids = () => $$(".tramo-block [id^=f-tension-]").map((el) => el.id.split("-").pop());
+  let [a] = ids();
+  poner(`#f-n-${a}`, "1", "input");
+  poner(`#f-material-${a}`, "AAAC");
+  poner(`#f-calibre-${a}`, "246.9");
+  poner(`#f-falla-${a}`, "5", "input");
+  $(".btn-agregar-tramo").click();
+  const b = ids()[1];
+  poner(`#f-tension-${b}`, "13.2", "input");
+  poner(`#f-material-${b}`, "ACSR");
+  poner(`#f-calibre-${b}`, "477");
+  poner(`#f-referencia-${b}`, HAWK.nombre_clave);
+  poner(`#f-n-${b}`, "2", "input");
+  $("#form-calc").requestSubmit();
+  await espera(30);
+  const tabla = $("#resultado-wrap .vi-matriz table");
+  ok(tabla, "aparece la matriz de resultados");
+  ok($$("#resultado-wrap .vi-matriz thead th").length === 3, "una columna por escenario (+ la de etiquetas)");
+  const etiquetas = $$("#resultado-wrap .vi-matriz td.etiqueta-fila").map((t) => t.textContent);
+  for (const e of ["Corriente de operación (A)", "Ampacidad de la fase (A)", "Uso de la ampacidad", "Pérdidas (%)", "Caída de tensión (%)", "Capacidad de la fase (kA)", "Corriente de falla (kA)", "Veredicto"]) ok(etiquetas.includes(e), `fila «${e}»`);
+  ok(!etiquetas.includes("Costo total actualizado ($)"), "sin precio de la energía no hay filas de costos");
+  const falla = $$("#resultado-wrap .vi-matriz tr").find((tr) => tr.textContent.startsWith("Corriente de falla"));
+  ok(falla.textContent.includes("Sin dato"), "el escenario sin corriente de falla dice «Sin dato»");
+  ok($("#resultado-wrap .result-panel > .callout"), "hay una conclusión arriba de la tabla");
+  // mismo resultado que el motor
+  const r = V.evaluarEscenario(COMUN, escAereo(ALLIANCE, 34.5, 1, { corrienteFallaKa: 5 }));
+  const perd = $$("#resultado-wrap .vi-matriz tr").find((tr) => tr.textContent.startsWith("Pérdidas (%)"));
+  ok(perd.children[1].textContent.startsWith(`${r.perdidas.pct.toFixed(2)}`), `pérdidas del escenario 1 en pantalla = motor (${r.perdidas.pct.toFixed(2)} %)`);
+  // reporte
+  const rep = $("#resultado-wrap .report-block").textContent.split("\n");
+  const iP = rep.indexOf("PARÁMETROS DE ENTRADA:");
+  const iR = rep.indexOf("RESULTADOS:");
+  ok(rep[0] === "CÁLCULO DE VALORACIÓN INTEGRAL" && iP > 0 && iR > iP && rep[iP + 1] === "-".repeat(30) && rep[iR + 1] === "-".repeat(30), "reporte: título, parámetros y resultados con su línea de 30 guiones debajo");
+  ok($$("#resultado-wrap .report-block strong").length === 3, "las tres etiquetas del reporte en negrita");
+  const texto = rep.join("\n");
+  ok(texto.includes("Escenario 2 — Aérea · ACSR 477") && texto.includes("×2") && texto.includes("Conclusión:"), "el reporte trae cada escenario y la conclusión");
+  ok(texto.includes("Evaluación económica: no incluida"), "el reporte dice que no hay evaluación económica");
+});
+
+await seccion("vista: con costos", async () => {
+  const ids = $$(".tramo-block [id^=f-tension-]").map((el) => el.id.split("-").pop());
+  poner("#f-precio", "350", "input");
+  poner(`#f-costo-cond-${ids[0]}`, "8000000", "input");
+  $("#form-calc").requestSubmit();
+  await espera(30);
+  const etiquetas = $$("#resultado-wrap .vi-matriz td.etiqueta-fila").map((t) => t.textContent);
+  ok(etiquetas.includes("Costo total actualizado ($)"), "con precio y al menos un costo aparecen las filas de costos");
+  ok($$("#resultado-wrap .callout-warning").some((c) => c.textContent.includes("Sin costo del conductor: Escenario 2") || c.textContent.includes("no entra en la comparación de costos: Escenario 2")), "avisa qué escenario queda fuera de la comparación de costos");
+  poner(`#f-costo-cond-${ids[1]}`, "14000000", "input");
+  $("#form-calc").requestSubmit();
+  await espera(30);
+  const rep = $("#resultado-wrap .report-block").textContent;
+  ok(rep.includes("Precio de la energía perdida (año 1): $ 350/kWh") && rep.includes("Costo total actualizado:"), "el reporte trae los supuestos y los costos");
+  const cumplen = $("#resultado-wrap .result-panel > .callout").textContent;
+  ok(/Recomendado: Escenario \d/.test(cumplen) || /Ningún escenario cumple/.test(cumplen), `conclusión: «${cumplen.trim()}»`);
+});
+
+await seccion("vista: escenario subterráneo y error de catálogo", async () => {
+  const ids = $$(".tramo-block [id^=f-tension-]").map((el) => el.id.split("-").pop());
+  const b = ids[1];
+  poner(`#f-red-${b}`, "Subterranea");
+  poner(`#f-material-${b}`, "Cobre");
+  poner(`#f-calibre-${b}`, "500 kcmil");
+  poner(`#f-n-${b}`, "2", "input");
+  $("#form-calc").requestSubmit();
+  await espera(30);
+  const rep = $("#resultado-wrap .report-block")?.textContent ?? "";
+  ok(rep.includes("Circuitos en paralelo por fase: 2") && rep.includes("Cables subterráneos:"), "el reporte trae los datos del cable y del terreno");
+  ok(rep.includes("(2 circuitos en el banco)"), "el reporte dice cuántos circuitos hay en el banco");
+  // combinación que no existe: 46 kV al 133 %
+  poner(`#f-tension-${b}`, "44", "input");
+  poner(`#f-pantalla-${b}`, "Cinta");
+  ok([...$(`#f-pct-${b}`).options].map((o) => o.value).join(",") === "100", "a 44 kV (46 kV) solo hay aislamiento al 100 %");
+  poner(`#f-tension-${b}`, "13.2", "input");
+});
+
+await seccion("vista: al volver a la pantalla se conserva lo escrito", async () => {
+  const antes = $$(".tramo-block").length;
+  $("details.vi-avanzado").open = true;
+  poner("#f-ta", "31", "input");
+  salir();
+  stage.innerHTML = "";
+  salir = await vista.render(stage);
+  const ids = $$(".tramo-block [id^=f-tension-]").map((el) => el.id.split("-").pop());
+  ok($$(".tramo-block").length === antes, `se restauran los ${antes} escenarios`);
+  ok($(`#f-red-${ids[1]}`).value === "Subterranea" && $(`#f-calibre-${ids[1]}`).value === "500 kcmil" && $(`#f-n-${ids[1]}`).value === "2", "el escenario 2 vuelve subterráneo, 500 kcmil, 2 circuitos");
+  ok($(`#f-material-${ids[0]}`).value === "AAAC" && $(`#f-referencia-${ids[0]}`).value === "Alliance (7)" && $(`#f-falla-${ids[0]}`).value === "5", "el escenario 1 conserva conductor, referencia y falla");
+  ok($("#f-ta").value === "31" && $("details.vi-avanzado").open, "se conservan los parámetros avanzados y si estaban abiertos");
+  ok($("#f-precio").value === "350", "se conserva el precio de la energía");
+});
+
+await seccion("vista: un dato obligatorio faltante dentro de «Parámetros avanzados» lo despliega", async () => {
+  const det = $("details.vi-avanzado");
+  det.open = false;
+  $("#f-ta").value = "";
+  $("#form-calc").requestSubmit();
+  await espera(20);
+  ok(det.open, "el desplegable se abre para mostrar el campo vacío");
+  $("#f-ta").value = "25";
+});
+
+await seccion("registro: menú, permisos, ruta, ayuda y service worker", async () => {
+  const nav = await import("../js/nav.js");
+  const lista = nav.sectionMenus.calculos;
+  const item = lista.find((x) => x.title === "Valoración integral");
+  ok(item && item.hash === "#/calculos/valoracion-integral" && item.icon === "clipboardCheck" && !item.libre, "tarjeta en Cálculos, icono clipboardCheck, solo usuarios");
+  ok(lista.at(-1) === item, "va al final del menú de Cálculos");
+  const perm = await import("../js/auth/permisos.js");
+  ok(!perm.permitida("/calculos/valoracion-integral", "visitante") && perm.permitida("/calculos/valoracion-integral", "usuario"), "el visitante no la abre; el usuario sí");
+  const { icon } = await import("../js/icons.js");
+  ok(icon("clipboardCheck").includes("M9 14l2 2l4 -4"), "el icono existe");
+  const router = await (await fetch("../js/router.js")).text();
+  ok(router.includes('"/calculos/valoracion-integral"') && router.includes("calc-valoracion-integral.js"), "la ruta está en el router");
+  const ayuda = await (await fetch("../js/views/ayuda.js")).text();
+  ok(ayuda.includes('"#/calculos/valoracion-integral"'), "tiene descripción en Ayuda");
+  const sw = await (await fetch("../sw.js")).text();
+  const shell = [...sw.matchAll(/^\s*"([^"]+)",\s*$/gm)].map((m) => m[1]);
+  ok(shell.includes("js/calc/valoracion-integral.js") && shell.includes("js/views/calc-valoracion-integral.js") && shell.includes("data/construccion-cable-subterraneo.json"), "el service worker precachea el motor, la vista y los catálogos");
+  const css = await (await fetch("../css/app.css")).text();
+  ok(!/#[0-9a-fA-F]{3,8}\b/.test(css.split("\n").filter((l) => l.includes(".vi-")).join("\n")), "el CSS nuevo no lleva colores escritos a mano");
+});
+
+guardarEstado("/calculos/valoracion-integral", null);
+if (respaldoDefectos === null) localStorage.removeItem(D.CLAVE_DEFECTOS);
+else localStorage.setItem(D.CLAVE_DEFECTOS, respaldoDefectos);
+stage.innerHTML = "";
+out.textContent += `\nRESULT: ${fallos ? "FAIL" : "OK"} (${total - fallos}/${total})\n`;
+</script>
+</body>
+</html>

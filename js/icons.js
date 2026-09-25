@@ -111,6 +111,9 @@ const shapes = {
   circuitVoltmeter:
     '<g stroke-width="2"><path d="M5 12a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M5 12h-3"/><path d="M19 12h3"/><path d="M10 10l2 4l2 -4"/></g>',
   // Tabler "coin" (SVG oficial): icono de Conductor económico (tarjeta del menú y tarjeta de supuestos). Sin <g stroke-width="2">: usa el trazo base de la app (1.6), como Pérdidas o Cortocircuito; con 2 se veía más grueso y menos legible a 20 px.
+  // Tabler "clipboard-check" (SVG oficial): icono de Valoración integral. Trazo base de la app (1.6), como coin.
+  clipboardCheck:
+    '<g><path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2"/><path d="M9 5a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2"/><path d="M9 14l2 2l4 -4"/></g>',
   coin:
     '<g><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M14.8 9a2 2 0 0 0 -1.8 -1h-2a2 2 0 1 0 0 4h2a2 2 0 1 1 0 4h-2a2 2 0 0 1 -1.8 -1"/><path d="M12 7v10"/></g>',
   // Tabler "cylinder" (SVG oficial): icono de la tarjeta Tuberia (Ocupacion de ductos).

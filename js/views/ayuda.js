@@ -29,6 +29,8 @@ const AYUDA_DESCRIPCIONES = {
     "Calcula la corriente máxima admisible de un cable enterrado (solo o en banco de ductos) según IEC 60287-1-1, con la resistividad del suelo, la temperatura del terreno y el número de circuitos. En cables monopolares también calcula la corriente circulante o la tensión inducida en la pantalla.",
   "#/calculos/conductor-economico":
     "Compara entre 2 y 5 opciones de conductor para una línea nueva por costo total actualizado (inversión más el valor presente de las pérdidas a varios años), con precios que escribe el propio usuario. Ayuda a decidir el calibre más económico a largo plazo, no solo el más barato de instalar.",
+  "#/calculos/valoracion-integral":
+    "Evalúa de 1 a 6 escenarios de conductor para una misma conexión (misma potencia y longitud), cada uno con su tensión, conductor aéreo o subterráneo y conductores por fase. Calcula a la vez ampacidad, pérdidas, regulación, cortocircuito y, si se indican precios, el costo total actualizado, y dice cuáles cumplen y cuál conviene.",
   "#/catalogos/desnudos":
     "Ficha técnica de conductores ACSR, AAAC, ACAR, AAC y ACSS (diámetro, resistencia, capacidad, etc.), con filtro por tipo y buscador por calibre. Es la fuente de datos que usan Pérdidas, Regulación, Cortocircuito y Ampacidad aérea.",
   "#/catalogos/semiaislados":

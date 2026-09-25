@@ -9,44 +9,44 @@ export const CLAVE_DEFECTOS = "calc.defectos";
 export const GRUPOS = [
   {
     titulo: "Sistema",
-    donde: "Pérdidas, Regulación, Conductor económico y Ampacidad subterránea",
+    donde: "Pérdidas, Regulación, Conductor económico, Ampacidad subterránea y Valoración integral",
     campos: [
       { clave: "tension", etiqueta: "Tensión de línea (kV)", inicial: "34.5", min: 0, step: 0.01, en: { perdidas: "#f-tension", regulacion: "#f-tension", "conductor-economico": "#f-tension", "ampacidad-subterranea": "#f-tension" }, info: "En Ampacidad subterránea solo se aplica hasta 46 kV (el máximo de esa calculadora)." },
-      { clave: "fp", etiqueta: "Factor de potencia", inicial: "0.9", min: 0, max: 1, step: 0.01, en: { perdidas: "#f-fp", regulacion: "#f-fp", "conductor-economico": "#f-fp" } },
-      { clave: "fc", etiqueta: "Factor de carga (Fc)", inicial: "0.4", min: 0, max: 1, step: 0.0001, en: { perdidas: "#f-fc", "conductor-economico": "#f-fc" } },
+      { clave: "fp", etiqueta: "Factor de potencia", inicial: "0.9", min: 0, max: 1, step: 0.01, en: { perdidas: "#f-fp", regulacion: "#f-fp", "conductor-economico": "#f-fp", "valoracion-integral": "#f-fp" } },
+      { clave: "fc", etiqueta: "Factor de carga (Fc)", inicial: "0.4", min: 0, max: 1, step: 0.0001, en: { perdidas: "#f-fc", "conductor-economico": "#f-fc", "valoracion-integral": "#f-fc" } },
     ],
   },
   {
     titulo: "Evaluación económica",
-    donde: "Conductor económico",
+    donde: "Conductor económico y Valoración integral",
     campos: [
-      { clave: "precio", etiqueta: "Precio de la energía perdida ($/kWh)", inicial: "vacío", min: 0, step: "any", en: { "conductor-economico": "#f-precio" }, info: "Se guarda solo en este navegador; no se sube a ningún servidor." },
-      { clave: "escalada", etiqueta: "Aumento anual del precio (%)", inicial: "2.5", min: 0, max: 100, step: "any", en: { "conductor-economico": "#f-escalada" } },
-      { clave: "tasa", etiqueta: "Tasa de descuento (%)", inicial: "10", min: 0, max: 100, step: "any", en: { "conductor-economico": "#f-tasa" } },
-      { clave: "anios", etiqueta: "Años de análisis", inicial: "25", min: 1, max: 60, step: 1, en: { "conductor-economico": "#f-anios" } },
+      { clave: "precio", etiqueta: "Precio de la energía perdida ($/kWh)", inicial: "vacío", min: 0, step: "any", en: { "conductor-economico": "#f-precio", "valoracion-integral": "#f-precio" }, info: "Se guarda solo en este navegador; no se sube a ningún servidor." },
+      { clave: "escalada", etiqueta: "Aumento anual del precio (%)", inicial: "2.5", min: 0, max: 100, step: "any", en: { "conductor-economico": "#f-escalada", "valoracion-integral": "#f-escalada" } },
+      { clave: "tasa", etiqueta: "Tasa de descuento (%)", inicial: "10", min: 0, max: 100, step: "any", en: { "conductor-economico": "#f-tasa", "valoracion-integral": "#f-tasa" } },
+      { clave: "anios", etiqueta: "Años de análisis", inicial: "25", min: 1, max: 60, step: 1, en: { "conductor-economico": "#f-anios", "valoracion-integral": "#f-anios" } },
     ],
   },
   {
     titulo: "Ambiente de las líneas aéreas",
-    donde: "Ampacidad aérea",
+    donde: "Ampacidad aérea y Valoración integral",
     campos: [
-      { clave: "ta", etiqueta: "Temperatura ambiente (°C)", inicial: "25", min: -50, max: 60, step: 0.1, en: { "ampacidad-aerea": "#f-ta" } },
-      { clave: "vw", etiqueta: "Velocidad del viento (m/s)", inicial: "0.61", min: 0, max: 100, step: 0.01, en: { "ampacidad-aerea": "#f-vw" } },
-      { clave: "elevacion", etiqueta: "Elevación sobre el nivel del mar (m)", inicial: "0", min: 0, max: 10000, step: 1, en: { "ampacidad-aerea": "#f-elevacion" } },
+      { clave: "ta", etiqueta: "Temperatura ambiente (°C)", inicial: "25", min: -50, max: 60, step: 0.1, en: { "ampacidad-aerea": "#f-ta", "valoracion-integral": "#f-ta" } },
+      { clave: "vw", etiqueta: "Velocidad del viento (m/s)", inicial: "0.61", min: 0, max: 100, step: 0.01, en: { "ampacidad-aerea": "#f-vw", "valoracion-integral": "#f-vw" } },
+      { clave: "elevacion", etiqueta: "Elevación sobre el nivel del mar (m)", inicial: "0", min: 0, max: 10000, step: 1, en: { "ampacidad-aerea": "#f-elevacion", "valoracion-integral": "#f-elevacion" } },
     ],
   },
   {
     titulo: "Terreno",
-    donde: "Ampacidad subterránea",
+    donde: "Ampacidad subterránea y Valoración integral",
     campos: [
-      { clave: "tempterreno", etiqueta: "Temperatura del terreno (°C)", inicial: "25", min: -50, max: 100, step: 0.1, en: { "ampacidad-subterranea": "#f-tempterreno" } },
-      { clave: "rhosuelo", etiqueta: "Resistividad térmica del suelo (K·m/W)", inicial: "1", min: 0, max: 1000, step: 0.01, en: { "ampacidad-subterranea": "#f-rhosuelo" } },
-      { clave: "profundidad", etiqueta: "Profundidad de enterramiento (m)", inicial: "1", min: 0, max: 10, step: 0.01, en: { "ampacidad-subterranea": "#f-profundidad" } },
+      { clave: "tempterreno", etiqueta: "Temperatura del terreno (°C)", inicial: "25", min: -50, max: 100, step: 0.1, en: { "ampacidad-subterranea": "#f-tempterreno", "valoracion-integral": "#f-tempterreno" } },
+      { clave: "rhosuelo", etiqueta: "Resistividad térmica del suelo (K·m/W)", inicial: "1", min: 0, max: 1000, step: 0.01, en: { "ampacidad-subterranea": "#f-rhosuelo", "valoracion-integral": "#f-rhosuelo" } },
+      { clave: "profundidad", etiqueta: "Profundidad de enterramiento (m)", inicial: "1", min: 0, max: 10, step: 0.01, en: { "ampacidad-subterranea": "#f-profundidad", "valoracion-integral": "#f-profundidad" } },
     ],
   },
   {
     titulo: "Falla",
-    donde: "Cortocircuito y conductor de continuidad de tierra (Ampacidad subterránea)",
+    donde: "Cortocircuito, conductor de continuidad de tierra (Ampacidad subterránea) y Valoración integral",
     campos: [{ clave: "tiempo", etiqueta: "Tiempo de despeje de la falla (s)", inicial: "0.3", min: 0, max: 60, step: 0.1, en: { cortocircuito: "#f-tiempo", "ampacidad-subterranea": "#f-gcc-tiempo" } }],
   },
 ];

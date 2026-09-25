@@ -3,6 +3,7 @@
 // La PRIMERA entrada debe coincidir con CACHE_VERSION de sw.js (lo comprueba tools/verify_perfil.html).
 // El historial anterior a 3.16.0 se reconstruyó a partir de git el 2026-09-24 (antes solo había un contador v1…v296).
 export const NOVEDADES = [
+  { version: "3.22.0", fecha: "2026-09-25", cambios: ["Nueva calculadora «Valoración integral»: evalúa de 1 a 6 escenarios de conductor (tensión, conductor y conductores por fase) para una misma conexión, con ampacidad aérea o subterránea, pérdidas, regulación, cortocircuito y costo total actualizado, y dice cuáles cumplen y cuál conviene."] },
   { version: "3.21.1", fecha: "2026-09-24", cambios: ["Ampacidad aérea: la casilla «Calcular con la posición del sol» pasa al final de la tarjeta de radiación solar, debajo de Qse y θ."] },
   { version: "3.21.0", fecha: "2026-09-24", cambios: ["Ampacidad aérea: la radiación solar (Qse) y el ángulo de incidencia (θ) se pueden calcular con la posición del sol a partir de la latitud, la fecha, la hora solar y la dirección de la línea, con un botón que busca el peor día del año.", "Ampacidad subterránea: con cable monopolar y puesta a tierra unipuntual se puede dimensionar el conductor de continuidad de tierra (GCC): área mínima en mm² y calibre comercial sugerido."] },
   { version: "3.20.1", fecha: "2026-09-24", cambios: ["Ampacidad subterránea: nota en Fórmulas que explica dónde aparece la tensión inducida en la pantalla con puesta a tierra unipuntual y con cross-bonding."] },
