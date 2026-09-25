@@ -339,7 +339,7 @@ await seccion("vista: reporte", async () => {
   const despues = lineas.slice(i("RESULTADOS:")).join("\n");
   ok(antes.includes("Precio de la energía perdida (año 1): $ 350/kWh") && antes.includes("Opción 2:") && antes.includes("Costo de instalación: $ 60,000,000/km"), "parámetros: lo que dio el usuario, incluida cada opción");
   ok(antes.includes("Potencia activa (año 1): 19.90 MW"), "con dato de partida en MW, la potencia activa va en parámetros");
-  ok(despues.includes("Costo total actualizado: $") && despues.includes("Opción de menor costo total: Opción") && despues.includes("Sensibilidad (opción de menor costo en cada escenario):"), "resultados: costo total, mejor opción y sensibilidad");
+  ok(despues.includes("Costo total actualizado: $") && despues.includes("Opción de menor costo total: Opción") && despues.includes("Sensibilidad a los supuestos del análisis (opción de menor costo en cada escenario):"), "resultados: costo total, mejor opción y sensibilidad");
   ok(!antes.includes("Costo total actualizado"), "los resultados no aparecen en parámetros");
 });
 
@@ -475,12 +475,12 @@ await seccion("vista: costo de instalación opcional", async () => {
   ok($('[data-panel="reporte"] .report-block').textContent.includes("Sensibilidad al costo de instalación (no incluido en el costo total):"), "también aparece en el reporte de texto");
   // 2026-09-24 (pedido del usuario): va al FINAL, después de la sensibilidad de escenarios, y sin «× lo que cuesta el conductor»
   const subheads = [...$$(".result-subhead")].map(texto);
-  ok(subheads.at(-1).includes("Sensibilidad al costo de instalación") && subheads.at(-2).startsWith("Sensibilidad (costo total actualizado"), `el bloque va al final, después de la sensibilidad de escenarios (${subheads.join(" | ")})`);
+  ok(subheads.at(-1).includes("Sensibilidad al costo de instalación") && subheads.at(-2).startsWith("Sensibilidad a los supuestos del análisis (costo total actualizado"), `el bloque va al final, después de la sensibilidad de escenarios (${subheads.join(" | ")})`);
   const repInst = $('[data-panel="reporte"] .report-block').textContent;
-  ok(repInst.indexOf("Sensibilidad al costo de instalación") > repInst.indexOf("Sensibilidad (opción de menor costo"), "en el reporte también va después de la sensibilidad de escenarios");
+  ok(repInst.indexOf("Sensibilidad al costo de instalación") > repInst.indexOf("Sensibilidad a los supuestos del análisis (opción de menor costo"), "en el reporte también va después de la sensibilidad de escenarios");
   const bloqueInst = subInst.parentElement.innerHTML.slice(subInst.parentElement.innerHTML.indexOf("Sensibilidad al costo de instalación"));
   ok(!/×|lo que cuesta el conductor/.test(bloqueInst) && !/×/.test(repInst.slice(repInst.indexOf("Sensibilidad al costo de instalación"))), "sin la comparación «× lo que cuesta el conductor»");
-  ok(/tendría que costar por km al menos este valor más/.test(texto(subInst.nextElementSibling)) && /sigue siendo la mejor/.test(texto(subInst.nextElementSibling)), `la explicación dice, en condicional, cuánto más tendría que costar instalar la ganadora y que si la diferencia real es menor la conclusión se mantiene`);
+  ok(/cuánto más económica es la Opción \d que cada alternativa, por kilómetro/.test(texto(subInst.nextElementSibling)) && /sigue siendo la mejor/.test(texto(subInst.nextElementSibling)) && /Ventaja de la Opción \d \(\$\/km\)/.test(texto(subInst.nextElementSibling.nextElementSibling.querySelector("thead"))), `la explicación y la tabla hablan de la VENTAJA por km de la opción ganadora (el número que se compara con la diferencia real de instalación)`);
   ok(!/\(\s*[^()]*\([^()]*\([^()]*\)/.test(texto($(".callout-success"))), `el aviso verde no anida paréntesis: ${texto($(".callout-success"))}`);
   ids().forEach((id) => poner(`#f-costo-inst-${id}`, 5e6));
   enviar();
