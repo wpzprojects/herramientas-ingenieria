@@ -748,6 +748,12 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   aplica: se prueba con `campo.validity.valid` y se deja el valor propio, para que «Calcular» nunca quede bloqueado.
   Ocupación de ductos no tiene ninguno de estos campos. Resuelve de paso el pendiente de Conductor económico «decidir si
   los precios se guardan entre sesiones (solo local)»: el precio de la energía se puede fijar aquí.
+- Ajustes posteriores (2026-09-24, pedidos del usuario): la lista de **Novedades** de la pestaña Aplicación solo la ve el
+  ADMINISTRADOR (`pintarAplicacion(box, { novedades: esAdmin })`; ni usuarios ni visitantes). «Uso sin conexión» dice
+  «Lista: todos los archivos de la app están guardados en este dispositivo.» (sin el número; si falta alguno sí se dice
+  cuál). En Perfil → Calculadoras el espacio SOBRE cada separador de sección es el doble del inicial (16 px del campo +
+  32 px de `margin-top` = 48 px). La tarjeta de inicio de sesión dice «…Con una cuenta autorizada se habilitan todos
+  los módulos y la configuración avanzada.».
 - Iconos Tabler nuevos (SVG oficial): `deviceMobileCog`, `database`, `adjustmentsHorizontal`, `refresh`, `download`, `upload`.
 - Pruebas: `tools/verify_perfil.html` (nuevo, 62) y `tools/verify_acceso.html` (pestañas, tarjeta suelta del visitante,
   `/perfil/aplicacion`); `verify_tema.html` ajustado a las 5 pestañas. El servidor de pruebas (`python -m http.server`)

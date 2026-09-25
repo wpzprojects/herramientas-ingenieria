@@ -362,7 +362,7 @@ await seccion("pantalla de Perfil rediseñada", async () => {
   await dibujar({ usuarios: semilla(), sesion: null });
   ok(/Inicia sesión para habilitar todos los módulos/.test(texto(q(".ia-gate"))) && !!q("[data-login] svg") && /Iniciar sesión con Google/.test(texto(q("[data-login]"))), "sin sesión: texto nuevo y botón de Google con su icono");
   ok(!/Acceso restringido/.test(marco.textContent), "ya no dice «Acceso restringido»");
-  ok(/Sin iniciar sesión puedes usar algunas funcionalidades\. Con una cuenta autorizada se habilitan todos los módulos\./.test(texto(q(".ia-gate"))), "la explicación es corta: «Sin iniciar sesión puedes usar algunas funcionalidades. Con una cuenta autorizada se habilitan todos los módulos.»");
+  ok(/Sin iniciar sesión puedes usar algunas funcionalidades\. Con una cuenta autorizada se habilitan todos los módulos y la configuración avanzada\./.test(texto(q(".ia-gate"))), "la explicación es corta: «Sin iniciar sesión puedes usar algunas funcionalidades. Con una cuenta autorizada se habilitan todos los módulos.»");
   // un visitante también ve «Aplicación» (actualizar la app le sirve igual), como tarjeta suelta bajo el inicio de sesión
   ok(!q("#ca-libre").hidden && /Aplicación/.test(texto(q("#ca-aplicacion-libre .form-section-title"))) && !!q("#ca-aplicacion-libre [data-buscar]") && !q(".ca-tabs"), "sin sesión: tarjeta «Aplicación» con «Buscar actualización» debajo del inicio de sesión (sin pestañas)");
   const rGate = q(".ia-gate").getBoundingClientRect();

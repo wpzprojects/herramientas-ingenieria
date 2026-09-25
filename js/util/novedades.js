@@ -3,6 +3,7 @@
 // La PRIMERA entrada debe coincidir con CACHE_VERSION de sw.js (lo comprueba tools/verify_perfil.html).
 // El historial anterior a 3.16.0 se reconstruyó a partir de git el 2026-09-24 (antes solo había un contador v1…v296).
 export const NOVEDADES = [
+  { version: "3.19.5", fecha: "2026-09-24", cambios: ["Perfil > Aplicación: la lista de novedades solo la ve el administrador; «Uso sin conexión» ya no menciona el número de archivos.", "Perfil > Calculadoras: más espacio antes de cada separador de sección.", "Inicio de sesión: aclara que con una cuenta autorizada también se habilita la configuración avanzada."] },
   { version: "3.19.4", fecha: "2026-09-24", cambios: ["«Agregar registro» pasa al final de la línea de filtros de cada catálogo.", "Perfil > Calculadoras: espacios entre campos iguales a los de las calculadoras y una línea divisoria entre secciones."] },
   { version: "3.19.3", fecha: "2026-09-24", cambios: ["Perfil > Catálogos: cada catálogo tiene su botón «Historial», que abre sus versiones justo debajo; en el celular cada catálogo se muestra como un bloque.", "«Agregar registro» ya no va destacado (solo «Guardar y publicar»)."] },
   { version: "3.19.2", fecha: "2026-09-24", cambios: ["Cortocircuito: descripción más corta de la constante k₁."] },

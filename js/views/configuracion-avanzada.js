@@ -99,7 +99,7 @@ export async function render(container, params = {}) {
   function pintarLogin(mensaje) {
     const t = tarjeta(`${barra("user", "Iniciar sesión")}
       <p style="margin:0 0 var(--space-2)">Inicia sesión para habilitar todos los módulos de la aplicación.</p>
-      <p class="text-muted text-sm">Sin iniciar sesión puedes usar algunas funcionalidades. Con una cuenta autorizada se habilitan todos los módulos.</p>
+      <p class="text-muted text-sm">Sin iniciar sesión puedes usar algunas funcionalidades. Con una cuenta autorizada se habilitan todos los módulos y la configuración avanzada.</p>
       <div class="btn-row"><button type="button" class="btn btn-primary btn-con-icono" data-login>${icon("brandGoogle")} Iniciar sesión con Google</button></div>
       <div data-msg></div>`);
     if (mensaje) aviso(t.querySelector("[data-msg]"), "warning", mensaje);
@@ -215,7 +215,7 @@ export async function render(container, params = {}) {
     pintarApariencia();
     pintarCalculadoras(cuerpo.querySelector("#ca-calculadoras"));
     pintarDatos(cuerpo.querySelector("#ca-datos"));
-    limpiezas.push(pintarAplicacion(cuerpo.querySelector("#ca-aplicacion")));
+    limpiezas.push(pintarAplicacion(cuerpo.querySelector("#ca-aplicacion"), { novedades: esAdmin }));
   }
 
   // ---------- apariencia: color principal de cada tema (personal, por dispositivo; ver js/util/tema.js) ----------

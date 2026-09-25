@@ -259,7 +259,14 @@ await seccion("pestaña Aplicación", async () => {
   const partes = (s) => s.split(".").map(Number);
   const mayor = (a, b) => { const [p, q] = [partes(a), partes(b)]; for (let i = 0; i < 3; i++) if (p[i] !== q[i]) return p[i] > q[i]; return false; };
   ok(NOVEDADES.every((n, i) => /^\d+\.\d+\.\d+$/.test(n.version) && /^\d{4}-\d{2}-\d{2}$/.test(n.fecha) && n.cambios.length > 0 && (i === 0 || mayor(NOVEDADES[i - 1].version, n.version))), "cada versión tiene fecha y cambios, de la más nueva a la más vieja, sin repetidas");
-  ok(texto(box.querySelector(".pf-version-cab")).startsWith(NOVEDADES[0].version) && box.querySelectorAll(".pf-anteriores .pf-version").length === NOVEDADES.length - 1 && !box.querySelector(".pf-anteriores").open, "muestra las novedades de la versión actual y las anteriores plegadas");
+  ok(!box.querySelector(".pf-version") && !/Novedades/.test(texto(box)), "sin la opción de administrador NO se muestran las novedades (solo las ve el administrador)");
+  const cajaAdmin = document.createElement("div");
+  stage.append(cajaAdmin);
+  const limpiarAdmin = A.pintarAplicacion(cajaAdmin, { novedades: true });
+  ok(texto(cajaAdmin.querySelector(".pf-version-cab")).startsWith(NOVEDADES[0].version) && cajaAdmin.querySelectorAll(".pf-anteriores .pf-version").length === NOVEDADES.length - 1 && !cajaAdmin.querySelector(".pf-anteriores").open, "al administrador le muestra las novedades de la versión actual y las anteriores plegadas");
+  limpiarAdmin();
+  const fuentePerfil = await (await fetch("../js/views/configuracion-avanzada.js")).text();
+  ok(/pintarAplicacion\(cuerpo\.querySelector\("#ca-aplicacion"\), \{ novedades: esAdmin \}\)/.test(fuentePerfil) && /pintarAplicacion\(container\.querySelector\("#ca-aplicacion-libre"\)\)/.test(fuentePerfil), "Perfil pide las novedades solo para el administrador (ni usuarios ni visitantes)");
   ok(!!box.querySelector("[data-buscar]") && !!box.querySelector("[data-buscar] svg"), "botón «Buscar actualización» con icono");
   const sw = await (await fetch("../sw.js")).text();
   ok(/addEventListener\("message"/.test(sw) && /tipo !== "estado"/.test(sw), "el service worker responde el mensaje «estado»");

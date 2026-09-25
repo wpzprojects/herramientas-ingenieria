@@ -58,7 +58,8 @@ async function registro() {
   }
 }
 
-export function pintarAplicacion(box) {
+// `novedades`: solo el administrador ve la lista de novedades por versión (pedido del usuario).
+export function pintarAplicacion(box, { novedades = false } = {}) {
   box.innerHTML = `
     <div class="form-section-title">${icon("deviceMobileCog")} Aplicación</div>
     <dl class="pf-lista">
@@ -69,9 +70,13 @@ export function pintarAplicacion(box) {
     </dl>
     <div class="btn-row"><button type="button" class="btn btn-primary btn-con-icono" data-buscar>${icon("refresh")} Buscar actualización</button></div>
     <div data-msg></div>
-    <h3 class="pf-grupo">Novedades</h3>
+    ${
+      novedades
+        ? `<h3 class="pf-grupo">Novedades</h3>
     ${version(NOVEDADES[0])}
-    <details class="pf-anteriores"><summary>Versiones anteriores</summary>${NOVEDADES.slice(1).map(version).join("")}</details>`;
+    <details class="pf-anteriores"><summary>Versiones anteriores</summary>${NOVEDADES.slice(1).map(version).join("")}</details>`
+        : ""
+    }`;
 
   const $ = (s) => box.querySelector(s);
   const btn = $("[data-buscar]");
@@ -100,7 +105,7 @@ export function pintarAplicacion(box) {
     $("[data-version]").textContent = e.version;
     const cuales = (e.faltantes || []).slice(0, 5).join(", ") + ((e.faltantes || []).length > 5 ? "…" : "");
     $("[data-offline]").textContent = !e.faltan
-      ? `Lista: los ${e.total} archivos de la app están guardados en este dispositivo.`
+      ? "Lista: todos los archivos de la app están guardados en este dispositivo."
       : navigator.onLine === false
         ? `Incompleto: faltan ${e.faltan} de ${e.total} archivos${cuales ? ` (${cuales})` : ""}. Se completa sola la próxima vez que abras esta pestaña con internet.`
         : `Incompleto: ${e.faltan === 1 ? "no se pudo" : "no se pudieron"} descargar ${e.faltan} de ${e.total} archivos${cuales ? ` (${cuales})` : ""}. Vuelve a abrir esta pestaña en un momento para reintentarlo.`;
