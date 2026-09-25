@@ -8,6 +8,7 @@ import { fmt, loadData, distinct, escapeHtml } from "../util/format.js";
 import { icon } from "../icons.js";
 import { calcularAmpacidadSubterranea } from "../calc/ampacidad-subterranea.js";
 import { calcularPantalla } from "../calc/ampacidad-subterranea-pantalla.js";
+import { dimensionarGcc } from "../calc/conductor-continuidad.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
@@ -78,6 +79,13 @@ const FORMULAS_TEX = [
       String.raw`V_{ind} = 1000\,I\,X_m \quad [\mathrm{V/km}] \quad (\text{unipuntual o cross-bonding, circuito abierto})`,
     ],
   },
+  {
+    titulo: "Conductor de continuidad de tierra (GCC, puesta a tierra unipuntual)",
+    ecuaciones: [
+      String.raw`A_{GCC} = \dfrac{1000\,I_f}{k_1\,\sqrt{\dfrac{\log_{10}\!\left(\dfrac{\theta_f + \lambda}{\theta_i + \lambda}\right)}{t_f}}} \quad [\mathrm{mm^2}]`,
+      String.raw`\lambda = \begin{cases} 234 & \text{Cobre} \\ 228 & \text{Aluminio} \end{cases} \qquad k_1 = \begin{cases} 341 & \text{Cobre} \\ 224 & \text{Aluminio} \end{cases}`,
+    ],
+  },
 ];
 
 // Descripcion de las etiquetas (simbolos) de las ecuaciones, en el orden en que aparecen; el simbolo se dibuja con KaTeX igual que en ellas.
@@ -118,6 +126,12 @@ const FORMULAS_ETIQUETAS = [
   { tex: String.raw`L_j,\,x_j`, texto: "Profundidad del ducto j y su distancia horizontal al ducto activo [m]" },
   { tex: String.raw`I_{pant}`, texto: "Corriente circulante por la pantalla [A]" },
   { tex: String.raw`V_{ind}`, texto: "Tensión inducida en la pantalla a circuito abierto, por kilómetro de cable [V/km]" },
+  { tex: String.raw`A_{GCC}`, texto: "Área mínima del conductor de continuidad de tierra [mm²]" },
+  { tex: String.raw`I_f`, texto: "Corriente de falla a tierra que regresa por el GCC [kA]" },
+  { tex: String.raw`t_f`, texto: "Tiempo de despeje de la falla [s]" },
+  { tex: String.raw`\theta_i,\,\theta_f`, texto: "Temperatura inicial y final admisible del GCC [°C]" },
+  { tex: String.raw`\lambda`, texto: "Constante del material (temperatura de resistencia cero) [°C]" },
+  { tex: "k_1", texto: "Constante térmica del material para cortocircuito (depende de su calor específico y resistividad)" },
 ];
 
 const FORMULAS_NOTA = `El cálculo es el de régimen permanente de la IEC 60287-1-1. La resistencia térmica externa se calcula con el método de imágenes de Kennelly: acopla el ducto activo con los demás ductos del banco.
@@ -129,6 +143,8 @@ En el cable tripolar el factor de proximidad es cero, λ1 = 0.02 y no se usan la
 En el cable monopolar, con las pantallas a tierra en ambos extremos circula corriente por ellas (I_pant); con puesta a tierra unipuntual o cross-bonding no circula, y queda una tensión inducida a circuito abierto (V_ind). Ambas se calculan con la ampacidad obtenida y sirven para revisar el esquema de puesta a tierra; en el cable tripolar no aplican.
 
 V_ind es una tensión por kilómetro: indica cómo crece la tensión de la pantalla a lo largo del cable, no la tensión en un punto. Con puesta a tierra unipuntual, la tensión máxima está en el extremo sin aterrizar y vale aproximadamente V_ind × longitud del tramo. Con cross-bonding, las pantallas se cruzan en cada tercio de la sección mayor para que las tensiones de las tres fases se anulen en el recorrido completo (por eso no circula corriente); la tensión a tierra es casi nula en los extremos aterrizados de la sección mayor y máxima en las cajas de cruce, donde vale aproximadamente V_ind × longitud de la sección menor.
+
+Con puesta a tierra unipuntual, IEEE 575 exige un conductor de continuidad de tierra (GCC) en paralelo con el circuito, aterrizado en ambos extremos, que lleva la corriente de una falla a tierra de regreso a la fuente y limita la tensión de las pantallas. Su área mínima se calcula con la misma ecuación adiabática de la calculadora de Cortocircuito (todo el calor queda en el conductor durante la falla), y el calibre sugerido es el comercial más cercano por encima. No cambia la ampacidad del circuito.
 
 Limitaciones conocidas: no distingue formación en trébol de formación plana (usa la misma fórmula de proximidad para ambas) y solo calcula régimen permanente (no transitorio ni secado del suelo).
 
@@ -164,10 +180,26 @@ const FORMULAS_TEXTO = `Metodología IEC 60287-1-1 (régimen permanente):
     Ipant = I·Xm / √(Rs,op² + Xm²)        [A]      (ambos extremos)
     Vind  = 1000·I·Xm                      [V/km]   (unipuntual o cross-bonding)
 
+  Conductor de continuidad de tierra (GCC, unipuntual):
+    A_GCC = 1000·If / (k1·√(log10((θf + λ)/(θi + λ)) / tf))     [mm²]
+    λ = 234 (cobre) / 228 (aluminio)      k1 = 341 (cobre) / 224 (aluminio)
+
 ${FORMULAS_NOTA}`;
 
 // Lineas del reporte que son etiquetas: van en negrita (el texto que se copia es el mismo).
 const ETIQUETAS_REPORTE = ["CÁLCULO DE AMPACIDAD SUBTERRÁNEA", "PARÁMETROS DE ENTRADA:", "RESULTADOS:"];
+
+// Conductor de continuidad de tierra (GCC): solo con cable monopolar; se dimensiona con puesta a tierra unipuntual (IEEE 575
+// lo exige) y con cross-bonding solo se explica por qué no suele hacer falta.
+const NOTA_GCC_CROSS_BONDING = "Con cross-bonding las pantallas, cruzadas y aterrizadas al final de cada sección mayor, forman un camino continuo para la corriente de falla, así que el conductor de continuidad de tierra no suele ser obligatorio. Sí lo es con puesta a tierra unipuntual.";
+const INFO_GCC_CORRIENTE = "La corriente de una falla monofásica a tierra que regresa por el GCC. Lo conservador es usar toda la corriente de falla monofásica del sistema.";
+// Calibre comercial sugerido para el GCC: el de menor área que cubre la mínima.
+function calibreGccTexto(gcc) {
+  return gcc.sugerido
+    ? `${gcc.sugerido.calibre} (${fmt(gcc.sugerido.areaMm2)} mm²)`
+    : "más de 1000 kcmil: usar varios conductores en paralelo";
+}
+const INFO_GCC_TFINAL ="Cobre desnudo: 250 °C. Con chaqueta de PVC: 160 °C. Con chaqueta de XLPE o EPR: 250 °C.";
 
 export async function render(container) {
   const cables = await loadData("construccion-cable-subterraneo");
@@ -294,6 +326,45 @@ export async function render(container) {
         </div>
       </div>
 
+      <div class="card tarjeta-borde form-section" id="tarjeta-gcc">
+        <div class="form-section-title">${icon("circuitGround")} Conductor de continuidad de tierra (GCC)</div>
+        <p class="gcc-nota" id="gcc-nota-cb" hidden>${NOTA_GCC_CROSS_BONDING}</p>
+        <div id="gcc-unipuntual">
+          <label class="checkbox-row gcc-casilla"><input type="checkbox" id="chk-gcc"> Dimensionar el conductor de continuidad de tierra</label>
+          <div id="bloque-gcc" hidden>
+            <div class="grid-2">
+              <div class="field">
+                <label for="f-gcc-corriente" data-info="${INFO_GCC_CORRIENTE}">Corriente de falla a tierra (kA)</label>
+                <input type="number" id="f-gcc-corriente" min="0.01" max="1000" step="any" required>
+              </div>
+              <div class="field">
+                <label for="f-gcc-tiempo">Tiempo de despeje de la falla (s)</label>
+                <input type="number" id="f-gcc-tiempo" min="0.01" max="60" step="any" value="0.3" required>
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="field">
+                <label for="f-gcc-material">Material del GCC</label>
+                <select id="f-gcc-material" required>
+                  <option value="Cobre">Cobre</option>
+                  <option value="Aluminio">Aluminio</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid-2 ultima">
+              <div class="field">
+                <label for="f-gcc-tinicial" data-info="Por defecto, la temperatura del terreno: el GCC no lleva corriente de carga.">Temperatura inicial (°C)</label>
+                <input type="number" id="f-gcc-tinicial" min="-50" max="300" step="any" value="25" required>
+              </div>
+              <div class="field">
+                <label for="f-gcc-tfinal" data-info="${INFO_GCC_TFINAL}">Temperatura final admisible (°C)</label>
+                <input type="number" id="f-gcc-tfinal" min="0" max="1000" step="any" value="250" required>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="btn-row">
         <button type="submit" class="btn btn-primary">Calcular</button>
       </div>
@@ -340,12 +411,47 @@ export async function render(container) {
     fSepDuctos.disabled = !(numCircuitos > 1);
   }
 
+  // ---------- conductor de continuidad de tierra (GCC) ----------
+  const tarjetaGcc = container.querySelector("#tarjeta-gcc");
+  const notaGccCb = container.querySelector("#gcc-nota-cb");
+  const gccUnipuntual = container.querySelector("#gcc-unipuntual");
+  const chkGcc = container.querySelector("#chk-gcc");
+  const bloqueGcc = container.querySelector("#bloque-gcc");
+  const fGccCorriente = container.querySelector("#f-gcc-corriente");
+  const fGccTiempo = container.querySelector("#f-gcc-tiempo");
+  const selGccMaterial = container.querySelector("#f-gcc-material");
+  const fGccTInicial = container.querySelector("#f-gcc-tinicial");
+  const fGccTFinal = container.querySelector("#f-gcc-tfinal");
+  const camposGcc = [fGccCorriente, fGccTiempo, selGccMaterial, fGccTInicial, fGccTFinal];
+  let tInicialEditada = false; // mientras no se escriba a mano, la temperatura inicial sigue a la del terreno
+  fGccTInicial.value = fTempTerreno.value;
+  fGccTInicial.addEventListener("input", () => (tInicialEditada = true));
+  fTempTerreno.addEventListener("input", () => {
+    if (!tInicialEditada) fGccTInicial.value = fTempTerreno.value;
+  });
+
+  // true si el GCC se dimensiona en este cálculo (cable monopolar, unipuntual y casilla marcada).
+  const gccActivo = () => selTipoCable.value === "Monopolar" && selTierra.value === "Unipuntual" && chkGcc.checked;
+
+  function actualizarGcc() {
+    const monopolar = selTipoCable.value === "Monopolar";
+    tarjetaGcc.hidden = !(monopolar && (selTierra.value === "Unipuntual" || selTierra.value === "Cross-bonding"));
+    notaGccCb.hidden = selTierra.value !== "Cross-bonding";
+    gccUnipuntual.hidden = selTierra.value !== "Unipuntual";
+    bloqueGcc.hidden = !chkGcc.checked;
+    camposGcc.forEach((c) => (c.disabled = !gccActivo())); // oculto y deshabilitado: no entra en la validación del formulario
+  }
+
   selNivelKv.addEventListener("change", actualizarNivelPct);
   selTipoCable.addEventListener("change", actualizarDisponibilidad);
+  selTipoCable.addEventListener("change", actualizarGcc);
+  selTierra.addEventListener("change", actualizarGcc);
+  chkGcc.addEventListener("change", actualizarGcc);
   fNCircuitos.addEventListener("input", actualizarDisponibilidad);
 
   actualizarNivelPct();
   actualizarDisponibilidad();
+  actualizarGcc();
 
   // ---------- restaurar lo que habia si se volvio de otra seccion (no sobrevive a un recargue) ----------
   const guardado = leerEstado(RUTA);
@@ -370,6 +476,16 @@ export async function render(container) {
     fNCircuitos.dispatchEvent(new Event("input"));
     fProfundidad.value = guardado.profundidad;
     fSepDuctos.value = guardado.sepDuctos;
+    if (guardado.gcc) {
+      chkGcc.checked = guardado.gcc.activo;
+      fGccCorriente.value = guardado.gcc.corriente;
+      fGccTiempo.value = guardado.gcc.tiempo;
+      selGccMaterial.value = guardado.gcc.material;
+      fGccTInicial.value = guardado.gcc.tInicial;
+      fGccTFinal.value = guardado.gcc.tFinal;
+      tInicialEditada = guardado.gcc.tInicialEditada;
+    }
+    actualizarGcc();
   }
 
   // El router llama a esto justo antes de salir de la pantalla (ver js/router.js), para que lo
@@ -393,6 +509,15 @@ export async function render(container) {
       nCircuitos: fNCircuitos.value,
       profundidad: fProfundidad.value,
       sepDuctos: fSepDuctos.value,
+      gcc: {
+        activo: chkGcc.checked,
+        corriente: fGccCorriente.value,
+        tiempo: fGccTiempo.value,
+        material: selGccMaterial.value,
+        tInicial: fGccTInicial.value,
+        tFinal: fGccTFinal.value,
+        tInicialEditada,
+      },
     });
   }
 
@@ -439,9 +564,26 @@ export async function render(container) {
       separacionDuctosM: parseFloat(fSepDuctos.value),
     };
 
+    let gcc = null;
+    if (gccActivo()) {
+      const g = {
+        material: selGccMaterial.value,
+        corrienteKa: parseFloat(fGccCorriente.value),
+        tiempoS: parseFloat(fGccTiempo.value),
+        tempInicialC: parseFloat(fGccTInicial.value),
+        tempFinalC: parseFloat(fGccTFinal.value),
+      };
+      if (!(g.tempFinalC > g.tempInicialC)) {
+        renderError("Conductor de continuidad de tierra: la temperatura final admisible debe ser mayor que la inicial.");
+        return;
+      }
+      gcc = { datos: g, ...dimensionarGcc(g) };
+    }
+
     try {
       const data = calcularAmpacidadSubterranea(p);
       data.pantalla = calcularPantalla(p, data.ampacidad);
+      data.gcc = gcc;
       renderResultado(data, p, { material, calibre, tipoPantalla, nivelAislamientoKv, nivelAislamientoPct });
     } catch (err) {
       renderError(err.message);
@@ -459,6 +601,7 @@ export async function render(container) {
     // Parametros = lo que el usuario dio; resultados = todo lo que sale del calculo.
     const i = data.intermedios;
     const pant = data.pantalla;
+    const gcc = data.gcc;
     return [
       `CÁLCULO DE AMPACIDAD SUBTERRÁNEA`,
       ``,
@@ -481,6 +624,16 @@ export async function render(container) {
       `Número de circuitos en el banco: ${fmt(p.numCircuitos, 0)}`,
       `Profundidad de enterramiento del banco: ${fmt(p.profundidadBancoM)} m`,
       `Separación entre ductos: ${p.numCircuitos > 1 ? `${fmt(p.separacionDuctosM)} m` : "N/A (1 circuito)"}`,
+      ...(gcc
+        ? [
+            `Conductor de continuidad de tierra (GCC):`,
+            `  Corriente de falla a tierra: ${fmt(gcc.datos.corrienteKa)} kA`,
+            `  Tiempo de despeje de la falla: ${fmt(gcc.datos.tiempoS)} s`,
+            `  Material: ${gcc.datos.material}`,
+            `  Temperatura inicial: ${fmt(gcc.datos.tempInicialC)} °C`,
+            `  Temperatura final admisible: ${fmt(gcc.datos.tempFinalC)} °C`,
+          ]
+        : []),
       ``,
       ``,
       `RESULTADOS:`,
@@ -496,6 +649,16 @@ export async function render(container) {
       ``,
       `Ampacidad: ${fmt(data.ampacidad)} A`,
       ...(pant === null ? [] : [``, pant.tipo === "circulante" ? `Corriente circulante en la pantalla: ${fmt(pant.corrienteA)} A` : `Tensión inducida en la pantalla (circuito abierto): ${fmt(pant.tensionVKm)} V/km`]),
+      ...(gcc
+        ? [
+            ``,
+            `Conductor de continuidad de tierra (GCC):`,
+            `  λ (constante del material): ${fmt(gcc.intermedios.tempRes0, 0)} °C`,
+            `  k1 (constante térmica del material): ${fmt(gcc.intermedios.k1, 0)}`,
+            `  Área mínima requerida: ${fmt(gcc.areaMinimaMm2)} mm²`,
+            `  Calibre sugerido: ${calibreGccTexto(gcc)}`,
+          ]
+        : []),
     ].join("\n");
   }
 
@@ -524,6 +687,21 @@ export async function render(container) {
               </div>
               ${metricaPantalla}
             </div>
+            ${
+              data.gcc
+                ? `<div class="result-subhead">Conductor de continuidad de tierra (GCC)</div>
+            <div class="grid-2" id="gcc-resultado">
+              <div class="result-metric">
+                <div class="value">${fmt(data.gcc.areaMinimaMm2)}<span class="unit">mm²</span></div>
+                <div class="label">Área mínima requerida</div>
+              </div>
+              <div class="result-metric">
+                <div class="value">${escapeHtml(data.gcc.sugerido ? data.gcc.sugerido.calibre : "> 1000 kcmil")}</div>
+                <div class="label">${data.gcc.sugerido ? `Calibre sugerido (${fmt(data.gcc.sugerido.areaMm2)} mm², el comercial más cercano por encima)` : "Supera el mayor calibre comercial: usar varios conductores en paralelo"}</div>
+              </div>
+            </div>`
+                : ""
+            }
           </div>`;
 
     wrap.innerHTML = tarjetaResultadosHtml({

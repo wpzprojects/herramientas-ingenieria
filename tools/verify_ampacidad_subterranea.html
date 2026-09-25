@@ -168,6 +168,7 @@ const $ = (s, r = stage) => r.querySelector(s);
 const $$ = (s, r = stage) => [...r.querySelectorAll(s)];
 const poner = (sel, v, ev = "input") => { const e = $(sel); e.value = v; e.dispatchEvent(new Event("input", { bubbles: true })); if (ev !== "input") e.dispatchEvent(new Event(ev, { bubbles: true })); };
 const elegir = (sel, v) => poner(sel, v, "change");
+const marcar = (sel, v) => { const e = $(sel); e.checked = v; e.dispatchEvent(new Event("change", { bubbles: true })); };
 const texto = (e) => (e ? e.textContent.replace(/\s+/g, " ").trim() : "");
 const calcular = () => $("#form-calc").requestSubmit();
 const resultadoA = () => parseFloat(texto($(".result-metric .value")));
@@ -198,9 +199,9 @@ const cargarBase = () => {
 
 await seccion("vista: tarjetas y campos", async () => {
   const titulos = $$(".form-section-title").map(texto);
-  ok($$(".card.form-section").length === 3 && titulos[0].includes("Cable") && titulos[1].includes("Condiciones de operación") && titulos[2].includes("Instalación"), `tres tarjetas: «${titulos.join("», «")}»`);
+  ok($$(".card.form-section").length === 4 && titulos[0].includes("Cable") && titulos[1].includes("Condiciones de operación") && titulos[2].includes("Instalación") && titulos[3] === "Conductor de continuidad de tierra (GCC)", `cuatro tarjetas (la última, del GCC, visible con monopolar unipuntual): «${titulos.join("», «")}»`);
   ok($$(".form-section-title").every((t) => t.querySelector("svg.icon") && t.parentElement.classList.contains("card")), "cada título lleva su icono y va dentro de su tarjeta");
-  ok(new Set($$(".form-section-title > svg").map((s) => s.innerHTML)).size === 3, "las tres tarjetas tienen iconos distintos");
+  ok(new Set($$(".form-section-title > svg").map((s) => s.innerHTML)).size === 4, "las cuatro tarjetas tienen iconos distintos");
   ok($$(".card").every((c) => c.classList.contains("tarjeta-borde")), "las tarjetas llevan el borde marcado");
   ok($$(".hint").length === 0, "no quedan textos de ayuda fijos (.hint) debajo de los campos");
   const tarjetas = $$(".form-section").map((c) => c.getBoundingClientRect());
@@ -330,6 +331,58 @@ await seccion("vista: corriente circulante y tensión inducida en la pantalla", 
   cargarBase();
 });
 
+await seccion("conductor de continuidad de tierra (GCC)", async () => {
+  const gccMod = await import("../js/calc/conductor-continuidad.js");
+  // Independiente: ecuacion adiabatica despejada (cobre: lambda 234, k1 341; aluminio: 228 y 224).
+  const areaRef = (I, t, ti, tf, cu = true) => (1000 * I) / ((cu ? 341 : 224) * Math.sqrt(Math.log10((tf + (cu ? 234 : 228)) / (ti + (cu ? 234 : 228))) / t));
+  const r = gccMod.dimensionarGcc({ material: "Cobre", corrienteKa: 20, tiempoS: 0.5, tempInicialC: 25, tempFinalC: 250 });
+  cerca(r.areaMinimaMm2, areaRef(20, 0.5, 25, 250), 1e-9, `cobre, 20 kA, 0.5 s, 25 → 250 °C: ${areaRef(20, 0.5, 25, 250).toFixed(2)} mm²`);
+  ok(r.sugerido && r.sugerido.calibre === "3/0 AWG" && r.areaMinimaMm2 > 67.43, `el calibre sugerido es el comercial más cercano por encima: ${r.areaMinimaMm2.toFixed(1)} mm² → ${r.sugerido && r.sugerido.calibre} (85.01 mm²; 2/0 = 67.43 mm² no alcanza)`);
+  const ra = gccMod.dimensionarGcc({ material: "Aluminio", corrienteKa: 20, tiempoS: 0.5, tempInicialC: 25, tempFinalC: 250 });
+  cerca(ra.areaMinimaMm2, areaRef(20, 0.5, 25, 250, false), 1e-9, "aluminio necesita más área");
+  const lista = gccMod.CALIBRES_GCC;
+  ok(lista.every((c, i) => i === 0 || c.areaMm2 > lista[i - 1].areaMm2), "la lista de calibres comerciales va de menor a mayor área");
+  ok(gccMod.dimensionarGcc({ material: "Cobre", corrienteKa: 400, tiempoS: 1, tempInicialC: 25, tempFinalC: 160 }).sugerido === null, "si supera 1000 kcmil no sugiere calibre");
+
+  cargarBase(); // monopolar, unipuntual
+  ok(!$("#tarjeta-gcc").hidden && !$("#gcc-unipuntual").hidden && $("#gcc-nota-cb").hidden && $("#bloque-gcc").hidden && $("#f-gcc-corriente").disabled, "monopolar unipuntual: la tarjeta aparece con su casilla y los campos nacen ocultos y deshabilitados");
+  elegir("#f-tierra", "Cross-bonding");
+  ok(!$("#tarjeta-gcc").hidden && $("#gcc-unipuntual").hidden && !$("#gcc-nota-cb").hidden && texto($("#gcc-nota-cb")).includes("no suele ser obligatorio"), "cross-bonding: la tarjeta solo trae la nota");
+  elegir("#f-tierra", "Ambos Extremos");
+  ok($("#tarjeta-gcc").hidden, "ambos extremos: la tarjeta no aparece");
+  elegir("#f-tierra", "Unipuntual");
+  elegir("#f-tipocable", "Tripolar");
+  ok($("#tarjeta-gcc").hidden, "tripolar: la tarjeta no aparece");
+  elegir("#f-tipocable", "Monopolar");
+
+  marcar("#chk-gcc", true);
+  ok(!$("#bloque-gcc").hidden && !$("#f-gcc-corriente").disabled && $("#f-gcc-tinicial").value === "25" && $("#f-gcc-tfinal").value === "250" && $("#f-gcc-tiempo").value === "0.3" && $("#f-gcc-material").value === "Cobre", "al marcarla: temperatura inicial = la del terreno (25 °C), final 250 °C, 0.3 s y cobre");
+  poner("#f-tempterreno", "30");
+  ok($("#f-gcc-tinicial").value === "30", "la temperatura inicial sigue a la del terreno mientras no se escriba a mano");
+  ok(!$("#form-calc").checkValidity(), "sin la corriente de falla el formulario no es válido");
+  poner("#f-gcc-corriente", "20");
+  poner("#f-gcc-tiempo", "0.5");
+  calcular();
+  const area = parseFloat(texto($("#gcc-resultado .result-metric .value")));
+  cerca(area, areaRef(20, 0.5, 30, 250), 0.006, "la pantalla muestra primero el área mínima en mm²");
+  const sug = gccMod.dimensionarGcc({ material: "Cobre", corrienteKa: 20, tiempoS: 0.5, tempInicialC: 30, tempFinalC: 250 }).sugerido;
+  ok(texto($$("#gcc-resultado .result-metric .value")[1]) === sug.calibre && texto($$("#gcc-resultado .result-metric .label")[1]).includes("más cercano por encima"), `y luego el calibre sugerido (${sug.calibre})`);
+  cerca(resultadoA(), ref(CABLE, { ...BASE, ths: 30 }).I, 0.006, "la ampacidad no cambia por el GCC");
+  const rep = $('[data-panel="reporte"] .report-block').textContent.split("\n");
+  const iRes = rep.indexOf("RESULTADOS:");
+  ok(rep.slice(0, iRes).some((x) => x.trim() === "Corriente de falla a tierra: 20.00 kA") && rep.slice(iRes).some((x) => x.trim().startsWith("Área mínima requerida:")) && rep.at(-1).trim().startsWith(`Calibre sugerido: ${sug.calibre}`), "reporte: los datos del GCC en parámetros; área mínima y calibre sugerido al final de resultados");
+  poner("#f-gcc-tinicial", "260");
+  calcular();
+  ok(!!$("#resultado-wrap .callout-danger") && texto($("#resultado-wrap .callout-danger")).includes("mayor que la inicial"), "si la temperatura final no supera la inicial se avisa");
+  poner("#f-tempterreno", "25");
+  ok($("#f-gcc-tinicial").value === "260", "escrita a mano, la temperatura inicial ya no sigue a la del terreno");
+  marcar("#chk-gcc", false);
+  ok($("#f-gcc-corriente").disabled && $("#form-calc").checkValidity(), "al desmarcar, los campos ocultos no bloquean «Calcular»");
+  calcular();
+  ok(!$("#gcc-resultado"), "sin la casilla no sale el resultado del GCC");
+  cargarBase();
+});
+
 await seccion("vista: estructura del reporte (se copia y se pega)", async () => {
   const leer = () => { calcular(); return $('[data-panel="reporte"] .report-block').textContent.split("\n"); };
   const LINEA = /^-{30}$/;
@@ -385,11 +438,11 @@ await seccion("vista: fórmulas con KaTeX", async () => {
   const items = $$("#formulas-katex ul.formula-etiquetas > li");
   const izq = items.map((li) => li.lastElementChild.getBoundingClientRect().left);
   const n = $$("#formulas-katex .formula-katex").length;
-  ok(window.katex && n === 23 && $$("#formulas-katex .katex-display").length === 23, `KaTeX cargado y ${n} ecuaciones dibujadas`);
+  ok(window.katex && n === 25 && $$("#formulas-katex .katex-display").length === 25, `KaTeX cargado y ${n} ecuaciones dibujadas`);
   ok($$("#formulas-katex .katex-error").length === 0, "ninguna ecuación con error de sintaxis");
   ok($("#formulas-plano").hidden && !caja.hidden, "al dibujarse las fórmulas se oculta el texto plano y aparece la subtarjeta");
-  ok(subtitulos.join("|") === "Ampacidad (IEC 60287-1-1)|Resistencia AC del conductor (efecto piel y proximidad)|Pérdida dieléctrica|Pérdidas en la pantalla (λ1)|Resistencias térmicas del cable|Resistencia térmica externa (ducto y suelo, método de imágenes de Kennelly)|Pantalla del cable monopolar (con la ampacidad ya calculada)|Descripción de las variables|Notas", `subtítulos: ${subtitulos.join(" | ")}`);
-  ok(items.length === 36 && items.every((li) => li.querySelector(".formula-simbolo .katex")), `la descripción de las etiquetas es una lista de ${items.length} viñetas con el símbolo dibujado`);
+  ok(subtitulos.join("|") === "Ampacidad (IEC 60287-1-1)|Resistencia AC del conductor (efecto piel y proximidad)|Pérdida dieléctrica|Pérdidas en la pantalla (λ1)|Resistencias térmicas del cable|Resistencia térmica externa (ducto y suelo, método de imágenes de Kennelly)|Pantalla del cable monopolar (con la ampacidad ya calculada)|Conductor de continuidad de tierra (GCC, puesta a tierra unipuntual)|Descripción de las variables|Notas", `subtítulos: ${subtitulos.join(" | ")}`);
+  ok(items.length === 42 && items.every((li) => li.querySelector(".formula-simbolo .katex")), `la descripción de las etiquetas es una lista de ${items.length} viñetas con el símbolo dibujado`);
   ok(Math.max(...izq) - Math.min(...izq) < 1, "los textos de las viñetas quedan alineados");
   ok($$("#formulas-katex .katex .sqrt").length >= 2 && $$("#formulas-katex .katex .mop").some((m) => m.textContent.includes("ln")) && $$("#formulas-katex .katex .mtable").length >= 2, "hay raíces, logaritmos y los casos de n y de λ1 dibujados");
   const textoCaja = texto(caja);
@@ -462,13 +515,13 @@ await seccion("vista: aspecto (barra de título, 16 px laterales y espaciado uni
 
   for (const [nombre, m] of [["600 px", mAng], ["1000 px", mAnc]]) {
     m.barras.forEach((b, i) => {
-      const t = ["Cable", "Condiciones de operación", "Instalación"][i];
+      const t = ["Cable", "Condiciones de operación", "Instalación", "Conductor de continuidad de tierra (GCC)"][i];
       ok(b.llegaBordes && b.arriba && b.fondo && b.linea && b.icono && b.centrado, `ancho ${nombre}, «${t}»: barra de borde a borde con el color atenuado, línea 35 % menos intensa, icono en color pleno y centrado`);
     });
     ok(new Set(m.barras.map((b) => b.altura)).size === 1, `ancho ${nombre}: las barras tienen la misma altura`);
     ok(Object.values(m.lateral).every((v) => v === 17), `ancho ${nombre}: 17 px del borde al contenido (1 + 16) en tarjetas, resultados y panel (${Object.values(m.lateral).join(", ")})`);
   }
-  mAng.separaciones.forEach((s, i) => {
+  mAng.separaciones.slice(0, 3).forEach((s, i) => { // la tarjeta del GCC nace solo con su casilla (sin campos a la vista)
     ok(s.length >= 3 && s.every((v) => Math.abs(v - 16) <= 0.6), `ancho 600 px, tarjeta ${i + 1}: todos los campos a 16 px unos de otros (${s.map((v) => v.toFixed(0)).join(", ")})`);
   });
 });
@@ -486,7 +539,7 @@ await seccion("vista: ayuda de los campos con botón de información", async () 
 
   const botones = $$(".info-btn");
   const nombres = botones.map((b) => b.getAttribute("aria-label").replace("Más información sobre ", ""));
-  ok(nombres.join("|") === "Puesta a tierra de pantallas|Separación entre fases (m)|Temperatura del terreno (°C)|Resistividad térmica del suelo (K·m/W)|Resistencia térmica del ducto (K·m/W)|Separación entre ductos (m)", `botones de información junto al nombre de: ${nombres.join(" | ")}`);
+  ok(nombres.join("|") === "Puesta a tierra de pantallas|Separación entre fases (m)|Temperatura del terreno (°C)|Resistividad térmica del suelo (K·m/W)|Resistencia térmica del ducto (K·m/W)|Separación entre ductos (m)|Corriente de falla a tierra (kA)|Temperatura inicial (°C)|Temperatura final admisible (°C)", `botones de información junto al nombre de: ${nombres.join(" | ")}`);
   ok(botones.every((b) => b.tagName === "BUTTON" && b.type === "button" && b.getAttribute("aria-expanded") === "false" && document.getElementById(b.getAttribute("aria-controls"))), "son botones reales, con aria-expanded y aria-controls");
   const textos = botones.map((b) => document.getElementById(b.getAttribute("aria-controls")).textContent);
   ok(textos[0] === "Unipuntual: en un extremo del cable." && textos[1] === "Valores típicos entre 0.04 y 0.10 m entre fases." && textos[2].startsWith("Valores típicos: 15-20°C") && textos[3].startsWith("Tipos de suelo:") && textos[4].startsWith("Típicos: PVC") && textos[5].startsWith("Depende de la norma"), "los seis textos son los mismos que antes estaban fijos debajo de los campos");

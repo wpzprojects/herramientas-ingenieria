@@ -438,7 +438,7 @@ button { font-family: inherit; }
 .campos-sistemas .field { min-width: 0; } /* deja que el nombre largo se recorte con «…» en vez de ensanchar la columna */
 /* Linea de nombre bajo un campo que se reserva SIEMPRE (una sola linea, se recorta con «…»): asi mostrarla u ocultarla no mueve el resto del formulario */
 .field .hint.hint-linea { display: block; min-height: 1.35em; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-input[type="text"], input[type="number"], input[type="search"], input[type="email"], input[type="password"], select, textarea {
+input[type="text"], input[type="number"], input[type="search"], input[type="email"], input[type="password"], input[type="date"], select, textarea {
   font: inherit;
   font-size: 0.95rem;
   padding: 10px 12px;
@@ -487,6 +487,13 @@ input:disabled, select:disabled { opacity: 0.55; }
 .input-with-toggle { display: flex; align-items: center; gap: var(--space-3); }
 .input-with-toggle input[type="number"] { flex: 1 1 auto; min-width: 0; }
 .input-with-toggle .checkbox-row { white-space: nowrap; }
+.input-with-toggle input[type="date"] { flex: 1 1 auto; min-width: 0; }
+.input-with-toggle .btn-enlace { white-space: nowrap; }
+/* Ampacidad aérea: casilla «Calcular con la posición del sol», entre ε|α y Qse|θ */
+.sol-casilla { margin: 0 0 var(--space-4); }
+/* Ampacidad subterránea: tarjeta del conductor de continuidad de tierra (GCC) */
+#bloque-gcc { margin-top: var(--space-4); }
+.gcc-nota { margin: 0; font-size: 0.88rem; color: var(--text-muted); line-height: 1.5; }
 #tramos-container, #grupos-container { margin-top: var(--space-4); }
 .result-subhead {
   font-size: 0.75rem; font-weight: 700; color: var(--text-muted);

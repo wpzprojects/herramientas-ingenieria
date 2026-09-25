@@ -125,7 +125,7 @@ await seccion("vista: tarjetas y campos", async () => {
   ok(tarjetas.slice(1).every((r, i) => Math.abs(r.top - tarjetas[i].bottom - 16) < 0.6), "las tarjetas están separadas 16 px");
 
   const filas = (card) => {
-    const campos = $$(".field", card).map((f) => ({ n: texto($(":scope > label:first-child", f)), r: f.getBoundingClientRect() }));
+    const campos = $$(".field", card).filter((f) => f.getClientRects().length).map((f) => ({ n: texto($(":scope > label:first-child", f)), r: f.getBoundingClientRect() }));
     const fs = [];
     for (const c of campos) { const f = fs.find((x) => Math.abs(x[0].r.top - c.r.top) < 2); if (f) f.push(c); else fs.push([c]); }
     return fs.map((f) => f.map((c) => c.n).join(" | ")).join(" // ");
@@ -134,7 +134,9 @@ await seccion("vista: tarjetas y campos", async () => {
   ok(filas(c1) === "Tipo | Calibre // Referencia | Diámetro del cable (mm) // Resistencia AC a 25°C (Ω/km) | Resistencia AC a 75°C (Ω/km)", `tarjeta Conductor: ${filas(c1)}`);
   ok(filas(c2) === "Temperatura ambiente (°C) | Temperatura máxima del conductor (°C) // Velocidad del viento (m/s) | Ángulo viento-conductor (°) // Elevación sobre el nivel del mar (m)", `tarjeta Condiciones: ${filas(c2)}`);
   ok(filas(c3) === "Emisividad (ε) | Absortividad (α) // Radiación solar total Qse (W/m²) | Ángulo efectivo de incidencia solar θ (°)", `tarjeta Radiación: ${filas(c3)}`);
-  ok($$(".input-with-toggle").length === 5 && $$(".input-with-toggle").every((w) => texto($("label.checkbox-row", w)) === "Manual"), "diámetro, las dos resistencias, Qse y θ llevan la casilla «Manual» a su derecha (ya no «Modificar manualmente»)");
+  const conManual = $$(".input-with-toggle").filter((w) => $("label.checkbox-row", w));
+  ok(conManual.length === 5 && conManual.every((w) => texto($("label.checkbox-row", w)) === "Manual"), "diámetro, las dos resistencias, Qse y θ llevan la casilla «Manual» a su derecha (ya no «Modificar manualmente»)");
+  ok(texto($(".sol-casilla")) === "Calcular con la posición del sol" && $(".sol-casilla").compareDocumentPosition($("#f-qse")) & Node.DOCUMENT_POSITION_FOLLOWING && $("#bloque-sol").hidden, "la casilla «Calcular con la posición del sol» va antes de Qse | θ y sus campos nacen ocultos");
   ok(!texto($("#form-calc")).includes("Modificar manualmente"), "no queda ningún «Modificar manualmente»");
 });
 
@@ -273,15 +275,15 @@ await seccion("vista: fórmulas con KaTeX", async () => {
   const items = $$("#formulas-katex ul.formula-etiquetas > li");
   const izq = items.map((li) => li.lastElementChild.getBoundingClientRect().left);
   const n = $$("#formulas-katex .formula-katex").length;
-  ok(window.katex && n === 15 && $$("#formulas-katex .katex-display").length === 15, `KaTeX cargado y ${n} ecuaciones dibujadas`);
+  ok(window.katex && n === 21 && $$("#formulas-katex .katex-display").length === 21, `KaTeX cargado y ${n} ecuaciones dibujadas`);
   ok($$("#formulas-katex .katex-error").length === 0, "ninguna ecuación con error de sintaxis");
   ok($("#formulas-plano").hidden && !caja.hidden, "al dibujarse las fórmulas se oculta el texto plano y aparece la subtarjeta");
-  ok(subtitulos.join("|") === "Balance térmico (IEEE Std 738)|Propiedades del aire|Convección|Radiación|Resistencia a la temperatura del conductor|Descripción de las variables|Notas", `subtítulos: ${subtitulos.join(" | ")}`);
-  ok(items.length === 23 && items.every((li) => li.querySelector(".formula-simbolo .katex")), `la descripción de las etiquetas es una lista de ${items.length} viñetas con el símbolo dibujado`);
+  ok(subtitulos.join("|") === "Balance térmico (IEEE Std 738)|Propiedades del aire|Convección|Radiación|Posición del sol (con «Calcular con la posición del sol»)|Resistencia a la temperatura del conductor|Descripción de las variables|Notas", `subtítulos: ${subtitulos.join(" | ")}`);
+  ok(items.length === 33 && items.every((li) => li.querySelector(".formula-simbolo .katex")), `la descripción de las etiquetas es una lista de ${items.length} viñetas con el símbolo dibujado`);
   ok(Math.max(...izq) - Math.min(...izq) < 1, "los textos de las viñetas quedan alineados");
   ok($$("#formulas-katex .katex .sqrt").length >= 2 && $$("#formulas-katex .katex .mop").some((m) => m.textContent.includes("max")), "hay raíces y el máximo de las tres convecciones dibujados");
   const textoCaja = texto(caja);
-  ok(textoCaja.includes("IEEE Std 738 en régimen permanente") && textoCaja.includes("se usa la mayor") && textoCaja.includes("no está implementado") && textoCaja.includes("no hay ampacidad"), "las notas explican el balance, que Qse y θ se ingresan y cuándo no hay ampacidad");
+  ok(textoCaja.includes("IEEE Std 738 en régimen permanente") && textoCaja.includes("se usa la mayor") && textoCaja.includes("Calcular con la posición del sol") && textoCaja.includes("sin nubes") && !textoCaja.includes("no está implementado") && textoCaja.includes("no hay ampacidad"), "las notas explican el balance, cómo se obtienen Qse y θ (a mano o con la posición del sol) y cuándo no hay ampacidad");
   const rc = caja.getBoundingClientRect();
   ok($$("#formulas-katex .formula-katex").every((e) => { const r = e.getBoundingClientRect(); return r.left >= rc.left && r.right <= rc.right + 0.5; }), "las ecuaciones quedan dentro de la subtarjeta (aun las más largas)");
   const lineaSec = $$("#formulas-katex > .result-subhead")[1];
@@ -291,6 +293,93 @@ await seccion("vista: fórmulas con KaTeX", async () => {
   const colorTabla = getComputedStyle(sondaLinea).backgroundColor;
   sondaLinea.remove();
   ok(getComputedStyle(lineaSec).borderTopColor === colorTabla && getComputedStyle(lineaSec).borderTopColor !== getComputedStyle(caja).backgroundColor && parseFloat(getComputedStyle(lineaSec).borderTopWidth) >= 1, "la línea que separa las secciones de las fórmulas usa el borde marcado de las tablas (se ve también en el tema claro)");
+});
+
+const sol = await import("../js/calc/posicion-solar.js");
+// Posicion del sol escrita aparte, con la tabla de la constante C de IEEE 738 (no con atan2 como el modulo).
+function refSol({ lat, N, hora, zl, atm = "Clara", He = 0 }) {
+  const g = Math.PI / 180;
+  const d = 23.46 * Math.sin(((284 + N) / 365) * 360 * g);
+  const w = (hora - 12) * 15;
+  const hc = Math.asin(Math.cos(lat * g) * Math.cos(d * g) * Math.cos(w * g) + Math.sin(lat * g) * Math.sin(d * g)) / g;
+  const chi = Math.sin(w * g) / (Math.sin(lat * g) * Math.cos(w * g) - Math.cos(lat * g) * Math.tan(d * g));
+  const C = w < 0 ? (chi >= 0 ? 0 : 180) : chi >= 0 ? 180 : 360;
+  const zc = (C + Math.atan(chi) / g) % 360;
+  const k = atm === "Clara"
+    ? [-42.2391, 63.8044, -1.922, 3.46921e-2, -3.61118e-4, 1.94318e-6, -4.07608e-9]
+    : [53.1821, 14.211, 6.6138e-1, -3.1658e-2, 5.4654e-4, -4.3446e-6, 1.3236e-8];
+  const qs = hc > 0 ? Math.max(0, k.reduce((s, c, i) => s + c * hc ** i, 0)) : 0;
+  const ks = 1 + 1.148e-4 * He - 1.108e-8 * He * He;
+  const th = Math.acos(Math.cos(Math.max(0, hc) * g) * Math.cos((zc - zl) * g)) / g;
+  return { d, hc, zc, qs, ks, qse: qs * ks, th };
+}
+
+await seccion("posición del sol: cálculo (IEEE 738)", async () => {
+  // Ejemplo de la IEEE 738: latitud 30° N, 10 de junio, 11:00 hora solar, línea oriente-occidente, atmósfera clara.
+  const r = sol.calcularRadiacionSolar({ latitudDeg: 30, diaAnio: 161, horaSolar: 11, azimutLineaDeg: 90, atmosfera: "Clara", elevacionM: 0 });
+  cerca(r.intermedios.alturaSolDeg, 74.9, 0.05, "ejemplo IEEE 738: altura del sol ≈ 74.9°");
+  cerca(r.intermedios.azimutSolDeg, 114.0, 0.1, "ejemplo IEEE 738: azimut del sol ≈ 114°");
+  cerca(r.thetaDeg, 76.2, 0.05, "ejemplo IEEE 738: θ ≈ 76.2°");
+  cerca(r.qseWm2, 1027, 1, "ejemplo IEEE 738: Qs ≈ 1027 W/m²");
+  let difMax = 0;
+  for (const lat of [-4, 0, 4.6, 11, 30]) for (const N of [1, 80, 172, 266, 355]) for (const hora of [7, 9.5, 12, 12.5, 15, 17.25]) for (const zl of [0, 45, 90, 135]) {
+    const a = sol.calcularRadiacionSolar({ latitudDeg: lat, diaAnio: N, horaSolar: hora, azimutLineaDeg: zl, atmosfera: "Clara", elevacionM: 1500 });
+    const b = refSol({ lat, N, hora, zl, He: 1500 });
+    // A las 12 en punto la tabla no distingue si el sol esta al norte o al sur (chi = ±0): ahi el azimut de la tabla puede
+    // quedar girado 180° y θ salir suplementario; lo que entra al calculo (Qse y sen θ) es igual.
+    const g = Math.PI / 180;
+    const difAz = hora === 12 ? 0 : Math.abs(((a.intermedios.azimutSolDeg - b.zc + 540) % 360) - 180);
+    const difTh = hora === 12 ? Math.abs(Math.sin(a.thetaDeg * g) - Math.sin(b.th * g)) : Math.abs(a.thetaDeg - b.th);
+    difMax = Math.max(difMax, Math.abs(a.qseWm2 - b.qse), difTh, difAz);
+  }
+  ok(difMax < 1e-6, `600 casos (latitudes −4° a 30°, todo el año, mañana y tarde, 4 direcciones de línea): el azimut con atan2 coincide con la tabla de la constante C de la norma, igual que Qse y θ (diferencia máx. ${difMax.toExponential(1)})`);
+  const mediodia = (N) => sol.calcularRadiacionSolar({ latitudDeg: 4.6, diaAnio: N, horaSolar: 12, azimutLineaDeg: 0, atmosfera: "Clara", elevacionM: 0 }).intermedios.azimutSolDeg;
+  ok(Math.abs(mediodia(172)) < 1e-9 && Math.abs(mediodia(355) - 180) < 1e-9, "al mediodía en Bogotá el sol está al norte en junio (azimut 0°) y al sur en diciembre (180°)");
+  cerca(sol.calcularRadiacionSolar({ latitudDeg: 4.6, diaAnio: 90, horaSolar: 12, azimutLineaDeg: 0, atmosfera: "Clara", elevacionM: 2600 }).intermedios.kSolar, 1 + 1.148e-4 * 2600 - 1.108e-8 * 2600 ** 2, 1e-12, "a 2600 m (Bogotá) Ksolar ≈ 1.22");
+  const noche = sol.calcularRadiacionSolar({ latitudDeg: 4.6, diaAnio: 90, horaSolar: 0, azimutLineaDeg: 0, atmosfera: "Clara", elevacionM: 0 });
+  ok(noche.qseWm2 === 0, "de noche (sol bajo el horizonte) Qse = 0");
+  const p = { latitudDeg: 4.6, diaAnio: 90, horaSolar: 12, azimutLineaDeg: 90, elevacionM: 0 };
+  ok(sol.calcularRadiacionSolar({ ...p, atmosfera: "Industrial" }).qseWm2 < sol.calcularRadiacionSolar({ ...p, atmosfera: "Clara" }).qseWm2, "la atmósfera industrial da menos radiación que la clara");
+  ok(sol.diaDelAnio("2026-06-10") === 161 && sol.diaDelAnio("2024-06-10") === 162 && sol.diaDelAnio("2026-01-01") === 1 && sol.fechaDeDia(2026, 161) === "2026-06-10", "día del año y fecha (incluye año bisiesto)");
+  // Peor día: línea oriente-occidente al mediodía en Bogotá -> θ = 90° siempre; manda la altura del sol: declinación ≈ latitud.
+  const nPeor = sol.peorDiaDelAnio({ latitudDeg: 4.6, horaSolar: 12, azimutLineaDeg: 90, atmosfera: "Clara", elevacionM: 2600 });
+  const dPeor = sol.calcularRadiacionSolar({ latitudDeg: 4.6, diaAnio: nPeor, horaSolar: 12, azimutLineaDeg: 90, atmosfera: "Clara", elevacionM: 2600 });
+  cerca(dPeor.intermedios.declinacionDeg, 4.6, 0.25, `peor día en Bogotá (línea oriente-occidente, mediodía): día ${nPeor}, con el sol en el cenit (declinación ≈ latitud)`);
+  const valor = (n) => { const x = sol.calcularRadiacionSolar({ latitudDeg: 30, diaAnio: n, horaSolar: 10, azimutLineaDeg: 0, atmosfera: "Clara", elevacionM: 0 }); return x.qseWm2 * Math.sin(x.thetaDeg * Math.PI / 180); };
+  const n30 = sol.peorDiaDelAnio({ latitudDeg: 30, horaSolar: 10, azimutLineaDeg: 0, atmosfera: "Clara", elevacionM: 0 });
+  ok(Array.from({ length: 365 }, (_, i) => valor(i + 1)).every((v) => v <= valor(n30) + 1e-9), `peor día a 30° N, 10:00, línea norte-sur: día ${n30}, ninguno de los 365 lo supera`);
+});
+
+await seccion("vista: Qse y θ con la posición del sol", async () => {
+  marcar("#chk-sol", true);
+  ok(!$("#bloque-sol").hidden && $("#chk-qse").disabled && $("#chk-theta").disabled && $("#f-qse").disabled && $("#f-theta").disabled, "al marcar la casilla aparecen sus campos y Qse y θ quedan bloqueados, sin «Manual»");
+  ok($("#f-latitud").value === "4.6" && $("#f-azimut").value === "90" && $("#f-hora").value === "12" && $("#f-atmosfera").value === "Clara" && /^\d{4}-\d{2}-\d{2}$/.test($("#f-fecha").value), "valores iniciales: Bogotá (4.6°), línea oriente-occidente, mediodía, atmósfera clara, fecha de hoy");
+  poner("#f-latitud", "30");
+  poner("#f-azimut", "90");
+  poner("#f-fecha", "2026-06-10");
+  poner("#f-hora", "11");
+  ok($("#f-qse").value === "1027.3" && $("#f-theta").value === "76.2", `Qse y θ se llenan solos al escribir (${$("#f-qse").value} W/m², ${$("#f-theta").value}°)`);
+  poner("#f-elevacion", "2600");
+  const e = refSol({ lat: 30, N: 161, hora: 11, zl: 90, He: 2600 });
+  ok(Math.abs(parseFloat($("#f-qse").value) - e.qse) < 0.06, "al cambiar la elevación se recalcula Qse (corrección Ksolar)");
+  calcular();
+  cerca(resultadoA(), ref({ ...BASE, He: 2600, Qse: e.qse, theta: e.th }).I, 0.006, "«Calcular» usa Qse y θ exactos de la posición del sol");
+  const rep = $('[data-panel="reporte"] .report-block').textContent.split("\n");
+  const iRes = rep.indexOf("RESULTADOS:");
+  const params = rep.slice(0, iRes);
+  const res = rep.slice(iRes);
+  const tiene = (l, s) => l.some((x) => x.startsWith(s));
+  ok(["Latitud: 30", "Azimut de la línea: 90", "Fecha: 2026-06-10 (día 161 del año)", "Hora solar: 11", "Atmósfera: Clara"].every((s) => tiene(params, s)) && !tiene(params, "Radiación solar total"), "en parámetros van latitud, azimut, fecha, hora y atmósfera (Qse y θ ya no, porque se calculan)");
+  ok(["Declinación solar (δ)", "Ángulo horario (ω)", "Altura del sol (Hc)", "Azimut del sol (Zc)", "Flujo solar a nivel del mar (Qs)", "Corrección por elevación (Ksolar)", "Radiación solar total (Qse)", "Ángulo efectivo de incidencia solar (θ)"].every((s) => tiene(res, s)), "en resultados van los pasos de la posición del sol, Qse y θ");
+  poner("#f-fecha", "");
+  ok(!$("#form-calc").checkValidity() && $("#f-qse").value === "", "sin fecha el formulario no es válido y Qse queda vacío");
+  $("#btn-peor-dia").click();
+  const n = sol.peorDiaDelAnio({ latitudDeg: 30, horaSolar: 11, azimutLineaDeg: 90, atmosfera: "Clara", elevacionM: 2600 });
+  ok($("#f-fecha").value === sol.fechaDeDia(new Date().getFullYear(), n) && $("#f-qse").value !== "", `«Peor día del año» pone la fecha del día ${n} y recalcula`);
+  marcar("#chk-sol", false);
+  ok($("#bloque-sol").hidden && $("#f-latitud").disabled && !$("#chk-qse").disabled && $("#f-qse").value === "1000" && $("#f-theta").value === "90" && $("#form-calc").checkValidity(), "al desmarcarla vuelven Qse = 1000 W/m², θ = 90° y «Manual»; los campos ocultos no bloquean «Calcular»");
+  poner("#f-elevacion", "0");
+  calcular();
 });
 
 // La pantalla se prueba tambien dentro de un iframe de ancho fijo: las media queries dependen del ancho de la ventana.
@@ -331,9 +420,12 @@ await seccion("vista: aspecto (barra de título, 16 px laterales y espaciado uni
       const ri = svg.getBoundingClientRect();
       return { llegaBordes: Math.abs(rt.left - (rc.left + 1)) <= 0.6 && Math.abs(rt.right - (rc.right - 1)) <= 0.6, arriba: rt.top - rc.top <= 1.6, fondo: cs(t).backgroundColor === suave, linea: cs(t).borderBottomColor === mezcla && cs(t).borderBottomWidth === "1px", icono: cs(svg).color === acento, centrado: Math.abs(ri.top + ri.height / 2 - (rt.top + (rt.height - 1) / 2)) <= 1, altura: Math.round(rt.height) };
     });
+    // Entre dos campos separados por la casilla «Calcular con la posición del sol» la distancia es otra: esa pareja no se mide.
+    const casilla = d.querySelector(".sol-casilla");
+    const trasCasilla = (a, b) => casilla && (a.compareDocumentPosition(casilla) & 4) && (b.compareDocumentPosition(casilla) & 2);
     const separaciones = tarjetas.map((card) => {
-      const rects = [...card.querySelectorAll(".field")].filter((f) => f.getClientRects().length).map((f) => f.getBoundingClientRect());
-      return rects.slice(1).map((r, i) => r.top - rects[i].bottom);
+      const campos = [...card.querySelectorAll(".field")].filter((f) => f.getClientRects().length);
+      return campos.slice(1).filter((f, i) => !trasCasilla(campos[i], f)).map((f) => f.getBoundingClientRect().top - campos[campos.indexOf(f) - 1].getBoundingClientRect().bottom);
     });
     return {
       barras,
@@ -374,7 +466,7 @@ await seccion("vista: ayuda de los campos con botón de información", async () 
 
   const botones = $$(".info-btn");
   const nombres = botones.map((b) => b.getAttribute("aria-label").replace("Más información sobre ", ""));
-  ok(nombres.join("|") === "Resistencia AC a 25°C (Ω/km)|Resistencia AC a 75°C (Ω/km)|Velocidad del viento (m/s)|Ángulo viento-conductor (°)|Emisividad (ε)|Absortividad (α)|Radiación solar total Qse (W/m²)|Ángulo efectivo de incidencia solar θ (°)", `botones de información junto al nombre de: ${nombres.join(" | ")}`);
+  ok(nombres.join("|") === "Resistencia AC a 25°C (Ω/km)|Resistencia AC a 75°C (Ω/km)|Velocidad del viento (m/s)|Ángulo viento-conductor (°)|Emisividad (ε)|Absortividad (α)|Latitud (°)|Azimut de la línea (°)|Fecha|Hora solar (h)|Atmósfera|Radiación solar total Qse (W/m²)|Ángulo efectivo de incidencia solar θ (°)", `botones de información junto al nombre de: ${nombres.join(" | ")}`);
   ok(botones.every((b) => b.tagName === "BUTTON" && b.type === "button" && b.getAttribute("aria-expanded") === "false" && document.getElementById(b.getAttribute("aria-controls"))), "son botones reales, con aria-expanded y aria-controls");
   const b0 = botones[4];
   const campo = b0.closest(".field");
@@ -392,7 +484,7 @@ await seccion("vista: ayuda de los campos con botón de información", async () 
 await seccion("service worker y otros archivos", async () => {
   const sw = await (await fetch("../sw.js")).text();
   const lista = [...sw.matchAll(/^\s*"([^"]+)",\s*$/gm)].map((m) => m[1]);
-  ok(["js/calc/ampacidad-aerea.js", "js/views/calc-ampacidad-aerea.js", "js/util/info-campo.js", "js/util/resultados-ui.js"].every((f) => lista.includes(f)), "el service worker precachea los módulos que usa la pantalla");
+  ok(["js/calc/ampacidad-aerea.js", "js/calc/posicion-solar.js", "js/views/calc-ampacidad-aerea.js", "js/util/info-campo.js", "js/util/resultados-ui.js"].every((f) => lista.includes(f)), "el service worker precachea los módulos que usa la pantalla");
   const existen = await Promise.all(lista.filter((f) => f !== "./").map((f) => fetch(`../${f}`, { method: "HEAD" }).then((r) => [f, r.ok])));
   const faltan = existen.filter(([, okk]) => !okk).map(([f]) => f);
   ok(faltan.length === 0, `todos los archivos del APP_SHELL existen${faltan.length ? ": " + faltan.join(", ") : ""}`);

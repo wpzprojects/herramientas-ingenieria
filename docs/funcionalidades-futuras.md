@@ -5,8 +5,8 @@ implicaría y los riesgos. Antes de retomar una, leer su sección completa.
 
 | # | Funcionalidad | Pantalla | Viabilidad | Esfuerzo | Estado |
 |---|---|---|---|---|---|
-| A | Qse calculado con la posición del sol | Ampacidad aérea | Alta | Bajo | **En curso** (2026-09-24) |
-| B1 | Calibre del conductor de continuidad de tierra (GCC) por cortocircuito | Ampacidad subterránea | Alta | Bajo | **En curso** (2026-09-24) |
+| A | Qse calculado con la posición del sol | Ampacidad aérea | Alta | Bajo | **Hecho** (3.21.0, 2026-09-24) |
+| B1 | Calibre del conductor de continuidad de tierra (GCC) por cortocircuito | Ampacidad subterránea | Alta | Bajo | **Hecho** (3.21.0, 2026-09-24) |
 | B2 | Tensión en la pantalla durante una falla, según la posición del GCC | Ampacidad subterránea | Media | Medio-alto | Aplazada |
 | B3 | Pérdidas por corriente inducida en el GCC y su transposición | Ampacidad subterránea | Baja | Alto | Aplazada |
 | C1 | Cables directamente enterrados (trébol y plano) | Ampacidad subterránea | Alta | Medio | Aplazada |
@@ -71,7 +71,7 @@ pantallas durante una falla monofásica. En «Ambos extremos» las mismas pantal
 necesita. En cross-bonding las pantallas forman un camino continuo entre las puestas a tierra de las secciones
 mayores y el GCC no suele ser obligatorio, aunque a veces se instala.
 
-### B1. Calibre por cortocircuito — en curso
+### B1. Calibre por cortocircuito — hecho (3.21.0)
 
 - Fórmula adiabática, la misma de la calculadora de Cortocircuito: A = I · √t / k (despejada del motor
   `js/calc/cortocircuito.js`, sin tocarlo).

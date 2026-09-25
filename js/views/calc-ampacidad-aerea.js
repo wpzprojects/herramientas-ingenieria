@@ -6,6 +6,7 @@
 import { fmt, loadData, distinct, escapeHtml } from "../util/format.js";
 import { icon } from "../icons.js";
 import { calcularAmpacidadAerea } from "../calc/ampacidad-aerea.js";
+import { calcularRadiacionSolar, diaDelAnio, peorDiaDelAnio, fechaDeDia } from "../calc/posicion-solar.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
@@ -51,6 +52,17 @@ const FORMULAS_TEX = [
     ],
   },
   {
+    titulo: "Posición del sol (con «Calcular con la posición del sol»)",
+    ecuaciones: [
+      String.raw`\delta = 23.46\,\sin\left(\dfrac{284 + N}{365}\cdot 360^{\circ}\right) \qquad \omega = (h_{sol} - 12)\cdot 15^{\circ}`,
+      String.raw`H_c = \arcsin\left(\cos Lat\,\cos\delta\,\cos\omega + \sin Lat\,\sin\delta\right)`,
+      String.raw`Z_c = \operatorname{atan2}\left(\sin\omega,\ \sin Lat\,\cos\omega - \cos Lat\,\tan\delta\right) + 180^{\circ}`,
+      String.raw`Q_s = A + B H_c + C H_c^{2} + D H_c^{3} + E H_c^{4} + F H_c^{5} + G H_c^{6} \quad [\mathrm{W/m^2}]`,
+      String.raw`K_{solar} = 1 + 1.148\times10^{-4}\,H_e - 1.108\times10^{-8}\,H_e^{2} \qquad Q_{se} = K_{solar}\,Q_s`,
+      String.raw`\theta = \arccos\left[\cos H_c\,\cos\left(Z_c - Z_l\right)\right]`,
+    ],
+  },
+  {
     titulo: "Resistencia a la temperatura del conductor",
     ecuaciones: [String.raw`R(T_c) = \dfrac{R_{25} + \dfrac{R_{75} - R_{25}}{75 - 25}\,(T_c - 25)}{1000} \quad [\Omega/\mathrm{m}]`],
   },
@@ -81,13 +93,23 @@ const FORMULAS_ETIQUETAS = [
   { tex: "\\alpha", texto: "Absortividad" },
   { tex: "Q_{se}", texto: "Radiación solar total [W/m²]" },
   { tex: "\\theta", texto: "Ángulo efectivo de incidencia solar [°]" },
+  { tex: "N", texto: "Día del año (1 = 1 de enero)" },
+  { tex: "\\delta", texto: "Declinación solar [°]" },
+  { tex: "\\omega", texto: "Ángulo horario [°]" },
+  { tex: "h_{sol}", texto: "Hora solar [h]" },
+  { tex: "Lat", texto: "Latitud [°]" },
+  { tex: "H_c", texto: "Altura del sol sobre el horizonte [°]" },
+  { tex: "Z_c", texto: "Azimut del sol, desde el norte [°]" },
+  { tex: "Z_l", texto: "Azimut de la línea [°]" },
+  { tex: "A \\ldots G", texto: "Coeficientes de la IEEE 738 según la atmósfera (clara o industrial)" },
+  { tex: "K_{solar}", texto: "Corrección de la radiación por elevación" },
 ];
 
 const FORMULAS_NOTA = `Método de la IEEE Std 738 en régimen permanente: la ampacidad es la corriente cuyo calentamiento (I²·R) iguala el calor que el conductor puede disipar a la temperatura máxima, es decir, lo que pierde por convección y radiación menos lo que gana del sol.
 
 La convección se calcula de tres formas (natural, y forzada con viento bajo y con viento alto) y se usa la mayor, como indica la norma.
 
-La radiación solar total (Qse) y el ángulo efectivo de incidencia solar (θ) se ingresan directamente: el cálculo de la posición del sol a partir de fecha, hora y latitud del estándar completo no está implementado.
+La radiación solar total (Qse) y el ángulo efectivo de incidencia solar (θ) se ingresan directamente o, con «Calcular con la posición del sol», se calculan como indica la IEEE 738: la altura y el azimut del sol salen de la latitud, la fecha y la hora solar; el flujo solar depende de la altura del sol y de la atmósfera, y se corrige por la elevación. El modelo supone cielo sin nubes, así que el resultado queda del lado conservador. «Peor día del año» elige el día en que Qse·sen θ es mayor a esa hora.
 
 Si la ganancia solar supera lo que el conductor disipa, o la temperatura máxima es menor que la ambiente, el balance no admite corriente y no hay ampacidad.`;
 
@@ -114,12 +136,26 @@ const FORMULAS_TEXTO = `Metodología IEEE Std 738 (balance térmico en régimen 
   Qs = α·Qse·sen θ·D
   R  = (R25 + (R75 − R25)/(75 − 25)·(Tc − 25)) / 1000           [Ω/m]
 
+  Posición del sol (opcional):
+  δ  = 23.46·sen((284 + N)/365·360°)      ω = (hora solar − 12)·15°
+  Hc = asen(cos Lat·cos δ·cos ω + sen Lat·sen δ)
+  Zc = atan2(sen ω, sen Lat·cos ω − cos Lat·tan δ) + 180°
+  Qs = A + B·Hc + C·Hc² + D·Hc³ + E·Hc⁴ + F·Hc⁵ + G·Hc⁶          [W/m²]
+  Qse = Ksolar·Qs,  Ksolar = 1 + 1.148e-4·He − 1.108e-8·He²
+  θ  = acos(cos Hc·cos(Zc − Zl))
+
 ${FORMULAS_NOTA}`;
 
 // Lineas del reporte que son etiquetas: van en negrita (el texto que se copia es el mismo).
 const ETIQUETAS_REPORTE = ["CÁLCULO DE AMPACIDAD AÉREA", "PARÁMETROS DE ENTRADA:", "RESULTADOS:"];
 
 const INFO_EMISIVIDAD = "Entre 0.23 (conductor nuevo, brillante) y 0.91 (envejecido, oscuro).";
+const INFO_LATITUD = "Positiva al norte del ecuador y negativa al sur. Colombia va de unos −4° (Leticia) a 12° (La Guajira); Bogotá ≈ 4.6°.";
+const INFO_AZIMUT = "Dirección de la línea respecto al norte: 0° = norte-sur, 90° = oriente-occidente.";
+const INFO_PEOR_DIA = "«Peor día del año» busca el día en que el sol calienta más el conductor a la hora solar indicada, con esta latitud y dirección de la línea.";
+const INFO_HORA_SOLAR = "12 es el mediodía solar (el sol en su punto más alto). En Colombia la hora del reloj difiere de la solar hasta en unos 20 minutos, según la longitud y la época del año.";
+const INFO_ATMOSFERA = "Clara: cielo limpio (valor más alto, conservador). Industrial: aire con contaminación o bruma, que atenúa la radiación. En ambos casos sin nubes.";
+const LATITUD_INICIAL = 4.6;
 
 export async function render(container) {
   const conductores = await loadData("conductores-desnudos");
@@ -222,9 +258,44 @@ export async function render(container) {
             <input type="number" id="f-alfa" min="0.23" max="0.91" step="0.01" value="0.5" required>
           </div>
         </div>
+        <label class="checkbox-row sol-casilla"><input type="checkbox" id="chk-sol"> Calcular con la posición del sol</label>
+        <div id="bloque-sol" hidden>
+          <div class="grid-2">
+            <div class="field">
+              <label for="f-latitud" data-info="${INFO_LATITUD}">Latitud (°)</label>
+              <input type="number" id="f-latitud" min="-90" max="90" step="any" value="${LATITUD_INICIAL}" required>
+            </div>
+            <div class="field">
+              <label for="f-azimut" data-info="${INFO_AZIMUT}">Azimut de la línea (°)</label>
+              <input type="number" id="f-azimut" min="0" max="360" step="any" value="90" required>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="field">
+              <label for="f-fecha" data-info="${INFO_PEOR_DIA}">Fecha</label>
+              <div class="input-with-toggle">
+                <input type="date" id="f-fecha" required>
+                <button type="button" class="btn-enlace" id="btn-peor-dia">Peor día del año</button>
+              </div>
+            </div>
+            <div class="field">
+              <label for="f-hora" data-info="${INFO_HORA_SOLAR}">Hora solar (h)</label>
+              <input type="number" id="f-hora" min="0" max="24" step="any" value="12" required>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="field">
+              <label for="f-atmosfera" data-info="${INFO_ATMOSFERA}">Atmósfera</label>
+              <select id="f-atmosfera" required>
+                <option value="Clara">Clara</option>
+                <option value="Industrial">Industrial</option>
+              </select>
+            </div>
+          </div>
+        </div>
         <div class="grid-2 ultima">
           <div class="field">
-            <label for="f-qse" data-info="Se ingresa directamente: no se calcula a partir de fecha, hora y latitud.">Radiación solar total Qse (W/m²)</label>
+            <label for="f-qse" data-info="Se ingresa directamente o, con «Calcular con la posición del sol», se calcula a partir de la latitud, la fecha, la hora y la elevación.">Radiación solar total Qse (W/m²)</label>
             <div class="input-with-toggle">
               <input type="number" id="f-qse" min="0" max="3000" step="1" value="1000" required disabled>
               <label class="checkbox-row"><input type="checkbox" id="chk-qse"> Manual</label>
@@ -305,6 +376,85 @@ export async function render(container) {
     if (!chkTheta.checked) fTheta.value = 90;
   });
 
+  // ---------- Qse y θ calculados con la posición del sol (opcional) ----------
+  const chkSol = container.querySelector("#chk-sol");
+  const bloqueSol = container.querySelector("#bloque-sol");
+  const fLatitud = container.querySelector("#f-latitud");
+  const fAzimut = container.querySelector("#f-azimut");
+  const fFecha = container.querySelector("#f-fecha");
+  const fHora = container.querySelector("#f-hora");
+  const selAtmosfera = container.querySelector("#f-atmosfera");
+  const btnPeorDia = container.querySelector("#btn-peor-dia");
+  const camposSol = [fLatitud, fAzimut, fFecha, fHora, selAtmosfera];
+  fFecha.value = fechaHoy();
+
+  function fechaHoy() {
+    const h = new Date();
+    return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, "0")}-${String(h.getDate()).padStart(2, "0")}`;
+  }
+
+  // Datos de la posición del sol si están completos y válidos; null si falta alguno.
+  // Con sinFecha no exige la fecha (el botón «Peor día del año» la busca).
+  function datosSol({ sinFecha = false } = {}) {
+    if (!chkSol.checked) return null;
+    const campos = [...camposSol, fElevacion].filter((c) => !(sinFecha && c === fFecha));
+    if (!campos.every((c) => c.value !== "" && c.validity.valid)) return null;
+    const diaAnio = sinFecha ? 1 : diaDelAnio(fFecha.value);
+    if (!Number.isFinite(diaAnio)) return null;
+    return {
+      latitudDeg: parseFloat(fLatitud.value),
+      azimutLineaDeg: parseFloat(fAzimut.value),
+      fecha: fFecha.value,
+      diaAnio,
+      horaSolar: parseFloat(fHora.value),
+      atmosfera: selAtmosfera.value,
+      elevacionM: parseFloat(fElevacion.value),
+    };
+  }
+
+  // Llena Qse y θ con lo calculado (redondeado a 0.1 en pantalla; «Calcular» usa el valor exacto).
+  function actualizarSol() {
+    if (!chkSol.checked) return;
+    const d = datosSol();
+    if (!d) {
+      fQse.value = "";
+      fTheta.value = "";
+      return;
+    }
+    const r = calcularRadiacionSolar(d);
+    fQse.value = Math.round(r.qseWm2 * 10) / 10;
+    fTheta.value = Math.round(r.thetaDeg * 10) / 10;
+  }
+
+  chkSol.addEventListener("change", () => {
+    const activo = chkSol.checked;
+    bloqueSol.hidden = !activo;
+    camposSol.forEach((c) => (c.disabled = !activo)); // oculto y deshabilitado: no entra en la validación del formulario
+    for (const [chk, campo, valor] of [[chkQse, fQse, 1000], [chkTheta, fTheta, 90]]) {
+      chk.checked = false;
+      chk.disabled = activo;
+      campo.disabled = true;
+      campo.value = valor;
+    }
+    actualizarSol();
+  });
+  camposSol.forEach((c) => c.disabled = true);
+  [...camposSol, fElevacion].forEach((c) => {
+    c.addEventListener("input", actualizarSol);
+    c.addEventListener("change", actualizarSol);
+  });
+
+  btnPeorDia.addEventListener("click", () => {
+    const anio = parseInt(fFecha.value, 10) || new Date().getFullYear();
+    const d = datosSol({ sinFecha: true });
+    if (!d) {
+      form.reportValidity();
+      return;
+    }
+    fFecha.value = fechaDeDia(anio, peorDiaDelAnio(d));
+    actualizarSol();
+  });
+
   selTipo.addEventListener("change", () => {
     const tipo = selTipo.value;
     const calibres = tipo ? distinct(conductores.filter((c) => c.tipo === tipo), "calibre_awg_kcmil", "area_seccion_aluminio_mm2") : [];
@@ -382,6 +532,15 @@ export async function render(container) {
       chkTheta.dispatchEvent(new Event("change"));
       fTheta.value = guardado.theta;
     }
+    if (guardado.sol) {
+      fLatitud.value = guardado.sol.latitud;
+      fAzimut.value = guardado.sol.azimut;
+      fFecha.value = guardado.sol.fecha;
+      fHora.value = guardado.sol.hora;
+      selAtmosfera.value = guardado.sol.atmosfera;
+      chkSol.checked = true;
+      chkSol.dispatchEvent(new Event("change"));
+    }
   }
 
   // El router llama a esto justo antes de salir de la pantalla (ver js/router.js), para que lo
@@ -408,6 +567,9 @@ export async function render(container) {
       qse: fQse.value,
       manualTheta: chkTheta.checked,
       theta: fTheta.value,
+      sol: chkSol.checked
+        ? { latitud: fLatitud.value, azimut: fAzimut.value, fecha: fFecha.value, hora: fHora.value, atmosfera: selAtmosfera.value }
+        : null,
     });
   }
 
@@ -430,14 +592,23 @@ export async function render(container) {
       thetaDeg: parseFloat(fTheta.value),
     };
 
+    // Con la posición del sol, Qse y θ entran con su valor exacto (en pantalla van redondeados).
+    const dSol = datosSol();
+    const sol = dSol ? { datos: dSol, ...calcularRadiacionSolar(dSol) } : null;
+    if (sol) {
+      p.qseWm2 = sol.qseWm2;
+      p.thetaDeg = sol.thetaDeg;
+    }
+
     const data = calcularAmpacidadAerea(p);
-    renderResultado(data, p, { tipo: selTipo.value, calibre: selCalibre.value, referencia: selReferencia.value });
+    renderResultado(data, p, { tipo: selTipo.value, calibre: selCalibre.value, referencia: selReferencia.value, sol });
   });
 
   function reporteTexto(data, p, ctx, hayCorriente) {
     // El reporte se copia y se pega: tres etiquetas (el calculo, los parametros de entrada y los resultados).
     // Parametros = lo que el usuario dio; resultados = todo lo que sale del calculo.
     const i = data.intermedios;
+    const sol = ctx.sol;
     return [
       `CÁLCULO DE AMPACIDAD AÉREA`,
       ``,
@@ -457,12 +628,31 @@ export async function render(container) {
       `Elevación sobre el nivel del mar: ${fmt(p.elevacionM)} m`,
       `Emisividad (ε): ${fmt(p.epsilon)}`,
       `Absortividad (α): ${fmt(p.alfa)}`,
-      `Radiación solar total (Qse): ${fmt(p.qseWm2)} W/m²`,
-      `Ángulo efectivo de incidencia solar (θ): ${fmt(p.thetaDeg)} °`,
+      ...(sol
+        ? [
+            `Latitud: ${fmt(sol.datos.latitudDeg, 4)} °`,
+            `Azimut de la línea: ${fmt(sol.datos.azimutLineaDeg)} °`,
+            `Fecha: ${sol.datos.fecha} (día ${sol.datos.diaAnio} del año)`,
+            `Hora solar: ${fmt(sol.datos.horaSolar)} h`,
+            `Atmósfera: ${sol.datos.atmosfera}`,
+          ]
+        : [`Radiación solar total (Qse): ${fmt(p.qseWm2)} W/m²`, `Ángulo efectivo de incidencia solar (θ): ${fmt(p.thetaDeg)} °`]),
       ``,
       ``,
       `RESULTADOS:`,
       LINEA_REPORTE,
+      ...(sol
+        ? [
+            `Declinación solar (δ): ${fmt(sol.intermedios.declinacionDeg)} °`,
+            `Ángulo horario (ω): ${fmt(sol.intermedios.anguloHorarioDeg)} °`,
+            `Altura del sol (Hc): ${fmt(sol.intermedios.alturaSolDeg)} °`,
+            `Azimut del sol (Zc): ${fmt(sol.intermedios.azimutSolDeg)} °`,
+            `Flujo solar a nivel del mar (Qs): ${fmt(sol.intermedios.qsMar)} W/m²`,
+            `Corrección por elevación (Ksolar): ${fmt(sol.intermedios.kSolar, 4)}`,
+            `Radiación solar total (Qse): ${fmt(p.qseWm2)} W/m²`,
+            `Ángulo efectivo de incidencia solar (θ): ${fmt(p.thetaDeg)} °`,
+          ]
+        : []),
       `Qc (convección): ${fmt(i.qc)} W/m`,
       `Qr (radiación emitida): ${fmt(i.qr)} W/m`,
       `Qs (radiación solar absorbida): ${fmt(i.qs)} W/m`,
