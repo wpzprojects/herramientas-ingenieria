@@ -839,6 +839,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 - **Adjuntos en los chats de IA** (imágenes y PDF; foto de placa, ficha técnica): viable con Gemini; reducir imágenes, máx. 3, guardar solo el texto en el historial, y regla «transcribe lo que leíste y confirma antes de calcular».
 - **Otro proveedor de IA (Claude de pago, con clave propia)**: viable con un traductor de formatos por proveedor; la clave de pago SIEMPRE personal (nunca la compartida del servidor); avisar del costo. Otras herramientas de IA posibles: barrido 2D, comparador, costo de pérdidas, consultar norma (requiere pasar las tablas de imagen a datos), ficha del caso.
 - Además siguen pendientes: fase 2 del acceso (login Microsoft), «Solicitar acceso», gráficos de resultado y el «reporte de la IA» (`js/ai/reporte.js`, lo rediseña el usuario).
+- **`docs/funcionalidades-futuras.md`** (2026-09-24): análisis de viabilidad (con investigación en internet) de Qse calculado con la posición del sol (Ampacidad aérea), conductor de continuidad de tierra GCC y ampliación de Ampacidad subterránea (enterrado directo, formación plana, un cable por ducto, aire/bandejas, cárcamos) con un motor nuevo por posiciones. El usuario eligió hacer primero A (Qse) y B1 (calibre del GCC por cortocircuito); lo demás queda aplazado. Leerlo antes de retomar cualquiera y actualizar su columna «Estado».
 
 ## (Histórico) Puerta de acceso general con solicitud de acceso
 
