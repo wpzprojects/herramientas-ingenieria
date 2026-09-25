@@ -427,6 +427,7 @@ export async function render(container) {
         costoInstalacionKm: parseFloat(fCostoInst.value) || 0,
         instalacionIndicada: fCostoInst.value.trim() !== "",
         ampacidadA: selRed.value === "Aerea" && fila ? fila.corriente_75c_a ?? null : null,
+        masaKgKm: fila ? fila.masa_kg_km ?? fila.masa_total_kg_km ?? null : null, // por conductor (catálogo)
       }),
       /** Foto cruda para guardarla y restaurarla despues. */
       bruto: () => ({
@@ -628,60 +629,76 @@ export async function render(container) {
   }
 
   /**
-   * Sensibilidad al costo de instalación: solo aparece si a alguna opción comparada le falta ese dato. Redacción didáctica
-   * pedida por el usuario (2026-09-24): por cada alternativa, quién gana, por cuánto y por qué, y cuánto tendría que cambiar
-   * la instalación para que perdiera, dicho de dos maneras. Todo en CONDICIONAL: no se sabe cuál instalación es más cara.
+   * «¿Puede el costo de instalación cambiar la decisión?» (sensibilidad al costo de instalación): solo aparece si a alguna
+   * opción comparada le falta ese dato. Es el VALOR DE CONMUTACIÓN (switching value) de la diferencia de instalación: lo
+   * máximo que puede costar de más instalar la ganadora antes de que cada alternativa pase a ser la mejor. Diseño acordado
+   * con el usuario (2026-09-24, tras varias versiones): todo dicho desde la ganadora y en una sola dirección, alternativas
+   * de la más ajustada a la más holgada, cifras en millones por km, detalle plegado, y una pista por el peso de los
+   * conductores (más peso suele encarecer la instalación). SIN barra ni campo para la estimación del usuario (descartados).
    */
   function explicacionInstalacion(r, estados, base) {
     const filas = sensibilidadInstalacion(r, base.longitudKm, estados.map((e) => e.instalacionIndicada));
     const G = r.mejor + 1;
     const g = r.opciones[r.mejor];
-    return filas.map(({ opcion, umbralKm }) => {
-      const o = r.opciones[opcion];
-      const A = opcion + 1;
-      const menosConductor = g.costoConductores < o.costoConductores;
-      const menosPerdidas = g.costoPerdidasVp < o.costoPerdidasVp;
-      const porque = menosConductor && menosPerdidas
-        ? "su conductor cuesta menos y además pierde menos energía"
-        : menosPerdidas
-          ? "lo que ahorra en pérdidas es mayor que lo que cuesta de más su conductor"
-          : "su conductor cuesta menos, aunque pierda algo más de energía";
-      const ventaja = menosPerdidas && !menosConductor ? "su ahorro en pérdidas" : menosConductor && !menosPerdidas ? "el ahorro en el conductor" : "su ventaja en conductor y pérdidas";
-      return { G, A, empate: !(umbralKm > 0), diferencia: o.diferenciaVsMejor, umbralKm, porque, ventaja };
-    });
+    const eg = estados[r.mejor];
+    const pesoLinea = (e) => (e.masaKgKm > 0 ? 3 * e.numConductoresPorFase * e.masaKgKm : null); // kg por km de línea
+    return filas
+      .map(({ opcion, umbralKm }) => {
+        const o = r.opciones[opcion];
+        const menosConductor = g.costoConductores < o.costoConductores;
+        const menosPerdidas = g.costoPerdidasVp < o.costoPerdidasVp;
+        const porque = menosConductor && menosPerdidas
+          ? "su conductor es más barato y además pierde menos energía"
+          : menosPerdidas
+            ? "lo que ahorra en pérdidas es mayor que lo que cuesta de más su conductor"
+            : "su conductor es más barato, aunque pierda algo más de energía";
+        const pg = pesoLinea(eg);
+        const pa = pesoLinea(estados[opcion]);
+        const difPeso = pg != null && pa != null ? pg - pa : null;
+        return { G, A: opcion + 1, empate: !(umbralKm > 0), diferencia: o.diferenciaVsMejor, umbralKm, porque, difPeso };
+      })
+      .sort((a, b) => a.umbralKm - b.umbralKm); // la comparación más ajustada primero: es la que decide
   }
 
-  // Presentación elegida por el usuario (2026-09-24, entre tres): por alternativa, la cifra clave (margen por km) destacada
-  // a la izquierda y tres renglones rotulados a la derecha; la segunda manera de decirlo va abajo en letra pequeña.
+  // «$ 8.9 millones» (o el valor exacto si es menos de un millón); el «$» va unido a la cifra
+  const millonesTexto = (v) => (Math.abs(v) >= 1e6 ? `$\u00a0${num(v / 1e6, 1, 1)}\u00a0millones` : fmtPesos(v).replace("$ ", () => "$\u00a0"));
+  const pistaPeso = (c) =>
+    c.difPeso == null || Math.abs(c.difPeso) < 1
+      ? null
+      : c.difPeso > 0
+        ? { alerta: true, texto: `Los conductores de la Opción ${c.G} pesan ${num(c.difPeso, 0, 0)} kg más por km de línea que los de la Opción ${c.A}: es probable que su instalación cueste más; revisa este margen.` }
+        : { alerta: false, texto: `Los conductores de la Opción ${c.G} pesan ${num(-c.difPeso, 0, 0)} kg menos por km de línea que los de la Opción ${c.A}: lo probable es que su instalación no cueste más, así que este margen es aún más seguro.` };
+
   function sensibilidadInstalacionHtml(r, estados, base) {
     const casos = explicacionInstalacion(r, estados, base);
     if (!casos.length) return "";
     const G = r.mejor + 1;
-    const nombre = (i) => `<strong>Opción ${i}</strong> <span class="text-muted">(${escapeHtml(conductorTexto(estados[i - 1]))})</span>`;
-    const mayuscula = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-    const pesos = (v) => fmtPesos(v).replace("$ ", () => "$\u00a0"); // el «$» no queda solo al final de una línea
-    const bloques = casos
-      .map((c) =>
-        c.empate
-          ? `<div class="ce-inst"><p class="ce-inst-titulo">${nombre(c.G)} frente a ${nombre(c.A)}</p>
-          <p class="ce-inst-empate">Con los costos que se conocen, las dos opciones empatan: cualquier diferencia en su costo de instalación decide cuál es la mejor.</p></div>`
-          : `<div class="ce-inst"><p class="ce-inst-titulo">${nombre(c.G)} frente a ${nombre(c.A)}</p>
-          <div class="ce-inst-cuerpo">
-            <div class="ce-inst-cifra"><span class="ce-inst-valor">${pesos(c.umbralKm)}</span><span class="ce-inst-unidad">por km</span><span class="ce-inst-rotulo">margen frente a la instalación</span></div>
-            <dl class="ce-inst-datos">
-              <dt>Ventaja</dt><dd>La Opción ${c.G} resulta <strong>$&nbsp;${fmtMillones(c.diferencia)}&nbsp;millones</strong> más económica en ${base.anios} años (${num(base.longitudKm, 0, 2)} km de línea), con los costos que se conocen.</dd>
-              <dt>Por qué</dt><dd>${mayuscula(c.porque)}.</dd>
-              <dt>Cambia si</dt><dd>Instalar la Opción ${c.A} cuesta al menos <strong>${pesos(c.umbralKm)} por km menos</strong> que instalar la Opción ${c.G}.</dd>
-            </dl>
-          </div>
-          <p class="ce-inst-nota">Dicho de otra manera: si instalar la Opción ${c.G} costara más de ${pesos(c.umbralKm)} por km por encima de la Opción ${c.A}, ${c.ventaja} ya no alcanzaría a compensar esa instalación.</p></div>`
+    const nombre = (i) => `<strong>Opción ${i}</strong> <br><span class="text-muted text-sm">${escapeHtml(conductorTexto(estados[i - 1]))}</span>`;
+    const filas = casos
+      .map((c) => {
+        const pista = pistaPeso(c);
+        const valor = c.empate
+          ? `Empatan: cualquier diferencia en el costo de instalación decide.`
+          : `<strong>${millonesTexto(c.umbralKm)} por km</strong> por encima de la Opción ${c.A}`;
+        const nota = pista ? `<div class="ce-inst-pista${pista.alerta ? " alerta" : ""}">${pista.alerta ? '<span class="badge badge-warning">Revisar</span> ' : ""}${escapeHtml(pista.texto)}</div>` : "";
+        return `<tr><td>${nombre(c.A)}</td><td>${valor}${nota}</td></tr>`;
+      })
+      .join("");
+    const detalle = casos
+      .filter((c) => !c.empate)
+      .map(
+        (c) => `<p><strong>Frente a la Opción ${c.A}:</strong> con los costos que se conocen, la Opción ${c.G} cuesta ${millonesTexto(c.diferencia)} menos en ${base.anios} años, porque ${c.porque}. Repartido en los ${num(base.longitudKm, 0, 2)} km de línea son ${millonesTexto(c.umbralKm)} por km: es lo máximo que puede costar de más su instalación antes de que esa ventaja desaparezca.</p>`
       )
       .join("");
     return `
-      <div class="result-subhead">Sensibilidad al costo de instalación</div>
-      <p class="text-muted text-sm" style="margin: 0 0 var(--space-3);">El costo de instalación no se incluyó en la comparación porque falta en al menos una opción. Para saber si podría cambiar la conclusión, abajo se compara la Opción ${G} con cada alternativa y se indica a partir de qué diferencia de instalación por km la otra opción pasaría a ser la mejor.</p>
-      ${bloques}
-      <p class="text-muted text-sm" style="margin: var(--space-3) 0 0;"><strong>Cómo usarlo:</strong> compara cada margen con la diferencia de instalación que esperas entre esas dos opciones (por experiencia o con precios de referencia). Si la diferencia esperada es menor, la Opción ${G} sigue siendo la mejor; si es parecida o mayor, conviene cotizar la instalación antes de decidir.</p>`;
+      <div class="result-subhead">¿Puede el costo de instalación cambiar la decisión?</div>
+      <p class="text-muted text-sm" style="margin: 0 0 var(--space-3);">El costo de instalación no se incluyó en la comparación porque falta en al menos una opción. Para saber si el costo de instalación podría cambiar la conclusión del análisis, abajo se compara la Opción ${G} con cada alternativa y se indica a partir de qué diferencia en el costo de instalación por km la otra opción pasaría a ser la mejor.</p>
+      <div class="table-wrap tabla-resultado tabla-matriz ce-inst-tabla"><table>
+        <thead><tr><th>Frente a</th><th>La Opción ${G} sigue siendo la mejor mientras instalarla no cueste más de…</th></tr></thead>
+        <tbody>${filas}</tbody>
+      </table></div>
+      <p class="text-muted text-sm" style="margin: var(--space-2) 0 0;">Compara cada valor con la diferencia de instalación que esperas según tu experiencia: si es menor, la Opción ${G} sigue siendo la mejor.</p>
+      ${detalle ? `<details class="ce-inst-detalle"><summary>¿De dónde sale este valor?</summary>${detalle}</details>` : ""}`;
   }
 
   function sensibilidadHtml(s, r) {
@@ -738,14 +755,13 @@ export async function render(container) {
       ].join("\n");
     });
     const sens = s.filas.map((f) => `  ${f.etiqueta}: Opción ${f.ganador + 1}`);
-    const sensInstalacion = explicacionInstalacion(r, estados, base).flatMap((c) =>
-      c.empate
-        ? [`  Opción ${c.G} frente a Opción ${c.A}: empatan; cualquier diferencia en la instalación decide.`]
-        : [
-            `  Opción ${c.G} frente a Opción ${c.A}: la Opción ${c.G} es $ ${fmtMillones(c.diferencia)} millones más económica (${fmtPesos(c.umbralKm)} por km) porque ${c.porque}.`,
-            `    Para que la Opción ${c.A} fuera la mejor, instalarla tendría que costar al menos ${fmtPesos(c.umbralKm)} por km menos que instalar la Opción ${c.G}.`,
-          ]
-    );
+    const sensInstalacion = explicacionInstalacion(r, estados, base).flatMap((c) => {
+      const pista = pistaPeso(c);
+      const linea = c.empate
+        ? `  Frente a la Opción ${c.A}: empatan; cualquier diferencia en el costo de instalación decide.`
+        : `  Frente a la Opción ${c.A}: la Opción ${c.G} sigue siendo la mejor mientras instalarla no cueste más de ${millonesTexto(c.umbralKm).replace(/\u00a0/g, " ")} por km por encima de la Opción ${c.A}.`;
+      return pista ? [linea, `    ${pista.texto}`] : [linea];
+    });
     return [
       `CÁLCULO DE CONDUCTOR ECONÓMICO`,
       ``,
@@ -776,7 +792,7 @@ export async function render(container) {
       ``,
       `Sensibilidad a los supuestos del análisis (opción de menor costo en cada escenario):`,
       ...sens,
-      ...(sensInstalacion.length ? [``, `Sensibilidad al costo de instalación (no incluido en el costo total):`, ...sensInstalacion] : []),
+      ...(sensInstalacion.length ? [``, `¿Puede el costo de instalación cambiar la decisión? (instalación no incluida en el costo total):`, ...sensInstalacion] : []),
     ].join("\n");
   }
 

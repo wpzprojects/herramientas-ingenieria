@@ -132,44 +132,39 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   por opción afectada, con una nota que aclara al modelo que es una diferencia neutral, no una estimación de instalación.
   Pruebas: sección nueva en `tools/verify_conductor_economico.html` (incluye el caso de empate, umbral = 0) y ampliación de
   la sección "tools: conductor económico" de `tools/verify_ia.html`.
-  **Cambio posterior (2026-09-24, pedido del usuario; reemplaza los puntos (3) y el orden de arriba)**: el bloque va al
-  FINAL, después de la tabla de sensibilidad de escenarios (en pantalla y en el reporte); YA NO se muestra
-  `vecesConductor` («× lo que cuesta el conductor»: confundía; el motor lo sigue calculando y la IA lo usa). Título
-  «Sensibilidad al costo de instalación». TERCERA versión, la vigente (mismo día; el usuario seguía sin entender la tabla y
-  pidió algo didáctico, sin ahorrar espacio): YA NO HAY TABLA; por cada alternativa un recuadro `.ce-inst` con
-  «Opción G (conductor) frente a Opción A (conductor)», «Con los costos que se conocen, la Opción G resulta $ X millones más
-  económica en los N años, porque <porqué>. Repartido en los L km de la línea, son $ U por km.», y dos viñetas con las
-  dos maneras que propuso el usuario: «Para que la Opción A fuera la mejor, instalarla tendría que costar al menos $ U por
-  km menos que instalar la Opción G.» y «Dicho de otra manera: si instalar la Opción G costara más de $ U por km por encima
-  de la Opción A, <su ventaja> ya no alcanzaría a compensar esa instalación.»; cierra con «Cómo usarlo: compara cada valor
-  con la diferencia de instalación que esperas…». El <porqué>/<su ventaja> se ELIGE según los números del par (no se
-  asume que la ganadora gana por pérdidas: puede ganar por conductor más barato): conductor más barato y menos pérdidas /
-  «lo que ahorra en pérdidas es mayor que lo que cuesta de más su conductor» («su ahorro en pérdidas») / «su conductor
-  cuesta menos, aunque pierda algo más de energía» («el ahorro en el conductor»). Empate (U = 0): lo dice. «Con los costos
-  que se conocen» cubre el caso en que una de las dos sí indicó instalación. El reporte lleva lo mismo resumido (2
-  líneas por alternativa). Lógica en `explicacionInstalacion()` de la vista.
-  PRESENTACIÓN (mismo día, el usuario eligió entre tres: cifra destacada / resumen plegable / texto espaciado): cada
-  recuadro `.ce-inst` tiene el título en su franja, a la izquierda la CIFRA CLAVE (margen por km, grande y en color de
-  acento, con «por km» y «margen frente a la instalación»), a la derecha tres renglones rotulados (`dl`): «Ventaja» (total
-  en millones, años y km), «Por qué» y «Cambia si» («Instalar la Opción A cuesta al menos $ U por km menos que instalar
-  la Opción G.»), y abajo, en letra pequeña, la segunda manera («Dicho de otra manera: …»). En ≤600px se apila en una
-  columna. El párrafo inicial dice «…abajo se compara la Opción G con cada alternativa y se indica a partir de qué
-  diferencia de instalación por km la otra opción pasaría a ser la mejor» (el anterior, «esto dice cuánto tendría que
-  cambiar la instalación», no se entendía). El «$» va unido a la cifra con espacio sin corte (OJO: en `String.replace`,
-  «$&» significa «lo encontrado»: usar una función de reemplazo o el carácter \u00a0, nunca «$&nbsp;» como texto).
-  Versiones anteriores del mismo día, descartadas: (1) tabla «Frente a | Sobrecosto mínimo de instalación de la Opción G»;
-  (2) SEGUNDA versión (la primera, «Sobrecosto mínimo de instalación de
-  la Opción G», le pareció al usuario poco intuitiva): el mismo número se presenta como la VENTAJA por km de la
-  ganadora — columnas «Alternativa» | «Ventaja de la Opción G ($/km)» (valores sin «/km», ya va en el encabezado) y
-  el texto «El costo de instalación no está incluido (falta en al menos una opción). La tabla muestra cuánto más
-  económica es la Opción G que cada alternativa, por kilómetro de línea. Esa ventaja solo se pierde si instalar la
-  Opción G cuesta más que instalar la alternativa y la diferencia supera este valor; si es menor, la Opción G sigue
-  siendo la mejor.» (condicional: no afirma cuál instalación es más cara). La idea del usuario: el ingeniero compara
-  esa ventaja con lo que, por experiencia, cuesta la diferencia real de instalación. Para distinguir los dos bloques, la
-  tabla de escenarios (precio de la energía, demanda y tasa ±) se llama «Sensibilidad a los supuestos del análisis»
-  (pantalla y reporte); también se ajustó la etiqueta de U_i en Fórmulas.
-  `conductorTexto` separa la referencia con « · » (la referencia ya trae paréntesis, p. ej. «Penguin (6/1)»), y el aviso
-  verde usa « — » en lugar de paréntesis: antes quedaba «Opción 2 (ACSR 4/0 (Penguin (6/1)))».
+  **Versión VIGENTE (2026-09-24, 3.20.0; reemplaza el punto (3), el orden y la presentación de arriba)**. Tras varias
+  versiones que al usuario no le resultaban claras (tabla «Sobrecosto mínimo…», tabla «Ventaja de la Opción G», recuadros
+  con cifra destacada), se investigó el concepto y se rediseñó desde las bases. El número es el VALOR DE CONMUTACIÓN
+  (*switching value*, «valor crítico»; HM Treasury Green Book): el valor que tendría que alcanzar el dato desconocido (la
+  diferencia de instalación) para que cambie la opción preferida; su utilidad es compararlo con el rango plausible, que el
+  ingeniero conoce por experiencia. Principios aplicados: conclusión primero (el título es la pregunta), todo dicho DESDE
+  LA GANADORA y en UNA sola dirección (sin «X menos que…» ni negaciones), una cifra por comparación en millones por km,
+  la comparación más ajustada primero, y el detalle plegado. Estructura (bloque al FINAL, tras «Sensibilidad a los
+  supuestos del análisis»):
+  - Título «¿Puede el costo de instalación cambiar la decisión?»; párrafo inicial REDACTADO POR EL USUARIO («El costo de
+    instalación no se incluyó en la comparación porque falta en al menos una opción. Para saber si el costo de instalación
+    podría cambiar la conclusión del análisis, abajo se compara la Opción G con cada alternativa y se indica a partir de qué
+    diferencia en el costo de instalación por km la otra opción pasaría a ser la mejor.»).
+  - Tabla `.ce-inst-tabla`: «Frente a» (opción + su conductor) | «La Opción G sigue siendo la mejor mientras instalarla no
+    cueste más de…» → «$ 8.9 millones por km por encima de la Opción A». Filas ordenadas de menor a mayor margen.
+  - PISTA POR PESO (idea aprobada por el usuario): peso de conductor por km de línea = 3 × conductores por fase ×
+    `masa_kg_km` (desnudos) o `masa_total_kg_km` (XLPE), del catálogo (`masaKgKm` en el estado de cada opción). Si la
+    ganadora pesa más: insignia «Revisar» + «…pesan X kg más por km de línea…: es probable que su instalación cueste más;
+    revisa este margen.»; si pesa menos: «…lo probable es que su instalación no cueste más, así que este margen es aún más
+    seguro.». Es una inferencia (más peso suele encarecer estructuras, tensado y mano de obra), no un costo.
+  - «Compara cada valor con la diferencia de instalación que esperas según tu experiencia…» y un `<details>` plegado
+    «¿De dónde sale este valor?» con un párrafo por alternativa (ventaja total en millones, porqué según los números del
+    par, reparto por km, «es lo máximo que puede costar de más su instalación antes de que esa ventaja desaparezca»).
+  - Reporte: una línea por alternativa con la misma frase, más la pista de peso.
+  - DESCARTADOS por el usuario: un campo para escribir su estimación de la diferencia de instalación (no es precisa y
+    variaría entre personas) y una barra visual (sin estimación aporta poco; casi siempre se comparan dos conductores).
+    Posible a futuro: un costo de instalación de REFERENCIA fijado por la empresa (no por cada persona).
+  - `conductorTexto` separa la referencia con « · » (la referencia ya trae paréntesis) y el aviso verde usa « — »: antes
+    quedaba «Opción 2 (ACSR 4/0 (Penguin (6/1)))». En `String.replace`, «$&» significa «lo encontrado»: para unir el «$»
+    con un espacio sin corte usar una función de reemplazo o `\u00a0`, nunca «$&nbsp;» como texto.
+  - La otra tabla se llama «Sensibilidad a los supuestos del análisis» (precio de la energía, demanda y tasa ±).
+  - La pantalla YA NO muestra `vecesConductor` («× lo que cuesta el conductor»: confundía); el motor lo sigue calculando
+    y la herramienta de la IA lo usa (`opcionN_umbral_instalacion_km`, sin cambios).
 - Tarjetas plegables (2026-09-21, pedido del usuario): en las SIETE calculadoras cada barra de título (`.form-section-title`) lleva al extremo derecho un botón con un chevron (`.btn-plegar`, `js/util/tarjetas-plegables.js`, `activarPlegables(contenedor)` junto a cada `activarInfos`) que pliega/despliega SU tarjeta; todas nacen abiertas; el chevron apunta ARRIBA abierta y ABAJO plegada (icono `chevronUp` girado 180°). Decisiones del usuario: solo el icono pliega (la barra NO; el área de toque es de 32 px + 4 px por lado para no exigir puntería), sigue plegada al recalcular (el estado vive en el DOM, clase `.plegada`), SIN botón «Plegar todo». Plegar solo OCULTA: lo escrito se conserva y «Calcular» lo usa. Si falta un dato obligatorio dentro de una tarjeta plegada, se despliega sola (escucha `invalid` en captura). «Agregar tramo/opción/tipo» YA NO vive dentro de la última tarjeta (2026-09-21, pedido del usuario): es un botón `.btn.btn-agregar-tramo` en la fila de «Calcular» (`.btn-row--agregar`), JUSTIFICADO A LA DERECHA de la línea (mismo alto y relleno que «Calcular»; siempre a la vista). Si los dos no caben en una línea, «Agregar» queda ARRIBA y «Calcular» abajo, ambos a la izquierda (`flex-wrap: wrap-reverse` + `justify-content: space-between`; el orden de tabulación sigue siendo Calcular → Agregar), así plegar oculta TODO lo de la tarjeta (sin excepciones en el CSS). Si no convence en esa posición, la alternativa que el usuario dejó lista para probar es ponerlo ARRIBA del botón «Calcular». No aplica a la tarjeta de Resultados ni a las pantallas fuera de las calculadoras (Perfil). En las pantallas de IA (2026-09-21, decidido con el usuario) se pliegan SOLO «Agente» (Corrector y Análisis) y «Reporte de escenarios» (Análisis); «Conversación» queda fija porque sus botones (Nueva, Dictar, Enviar) viven fuera de la tarjeta (por eso se llama `activarPlegables` con la tarjeta concreta, no con el contenedor). El reporte se despliega solo al terminar de generarlo con «Generar reporte con IA» (el aviso del chat remite a él). Pruebas: sección «tarjetas plegables en las pantallas de IA» de `verify_ia_pantallas.html`. Pruebas: `tools/verify_tarjetas_plegables.html`. En ese arnés hay que quitar la transición del chevron (`style.transition = "none"`) para medir el giro: Edge sin pantalla no la avanza de forma fiable. ANIMACIÓN (2026-09-21, pedido del usuario): al pulsar el chevron el cuerpo se recoge hacia arriba / se despliega hacia abajo (220 ms; altura + opacidad del cuerpo, relleno inferior de la tarjeta y margen inferior de la barra) con la Web Animations API, sin librerías. `activarPlegables` ENVUELVE todo lo que va bajo la barra en un `<div class="plegable-cuerpo">` (`display: flow-root`) y plegar oculta ESE cuerpo; durante la animación la tarjeta lleva `.animando` (el cuerpo sigue visible con overflow oculto). Se puede interrumpir con otro clic (parte de la altura actual). NO anima: con `prefers-reduced-motion`, sin `element.animate`, con la tarjeta oculta, ni en el despliegue automático por dato faltante o al terminar el reporte (`plegarTarjeta` sin `animado`). La limpieza usa la promesa `finished` (el evento `finish` solo llega en el siguiente cuadro y en Edge sin pantalla es intermitente). NO usar transiciones CSS para la barra: dejan `getAnimations()` sucio y en Edge sin pantalla no avanzan. En las pruebas `plegado.animar = false` (export de `tarjetas-plegables.js`) para comprobar el estado final al instante; la animación se prueba aparte, avanzando a mano (`pause` + `currentTime`, `finish()`), en la sección «animación al plegar y desplegar» de `verify_tarjetas_plegables.html`. AVISO: los archivos del árbol de trabajo tienen CRLF (Git los normaliza): en scripts de edición usar una función que respete el fin de línea, y escribir los scripts con Write (los heredocs de Bash alteran los `\n`).
 - Rediseño acordado con el usuario (2026-09-19) tomando de referencia el módulo de pérdidas de otro proyecto («Calculadora
   Normativa»): tarjeta «Datos de la línea» (con *dato de partida*: MW, MVA o A) + una tarjeta «Conductor tramo N» por tramo (sin guión desde 2026-09-21, también en Regulación; los reportes usan «Tramo N:»)
