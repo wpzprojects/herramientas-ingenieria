@@ -135,7 +135,21 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   **Cambio posterior (2026-09-24, pedido del usuario; reemplaza los puntos (3) y el orden de arriba)**: el bloque va al
   FINAL, después de la tabla de sensibilidad de escenarios (en pantalla y en el reporte); YA NO se muestra
   `vecesConductor` («× lo que cuesta el conductor»: confundía; el motor lo sigue calculando y la IA lo usa). Título
-  «Sensibilidad al costo de instalación». SEGUNDA versión (mismo día; la primera, «Sobrecosto mínimo de instalación de
+  «Sensibilidad al costo de instalación». TERCERA versión, la vigente (mismo día; el usuario seguía sin entender la tabla y
+  pidió algo didáctico, sin ahorrar espacio): YA NO HAY TABLA; por cada alternativa un recuadro `.ce-inst` con
+  «Opción G (conductor) frente a Opción A (conductor)», «Con los costos que se conocen, la Opción G resulta $ X millones más
+  económica en los N años, porque <porqué>. Repartido en los L km de la línea, son $ U por km.», y dos viñetas con las
+  dos maneras que propuso el usuario: «Para que la Opción A fuera la mejor, instalarla tendría que costar al menos $ U por
+  km menos que instalar la Opción G.» y «Dicho de otra manera: si instalar la Opción G costara más de $ U por km por encima
+  de la Opción A, <su ventaja> ya no alcanzaría a compensar esa instalación.»; cierra con «Cómo usarlo: compara cada valor
+  con la diferencia de instalación que esperas…». El <porqué>/<su ventaja> se ELIGE según los números del par (no se
+  asume que la ganadora gana por pérdidas: puede ganar por conductor más barato): conductor más barato y menos pérdidas /
+  «lo que ahorra en pérdidas es mayor que lo que cuesta de más su conductor» («su ahorro en pérdidas») / «su conductor
+  cuesta menos, aunque pierda algo más de energía» («el ahorro en el conductor»). Empate (U = 0): lo dice. «Con los costos
+  que se conocen» cubre el caso en que una de las dos sí indicó instalación. El reporte lleva lo mismo resumido (2
+  líneas por alternativa). Lógica en `explicacionInstalacion()` de la vista.
+  Versiones anteriores del mismo día, descartadas: (1) tabla «Frente a | Sobrecosto mínimo de instalación de la Opción G»;
+  (2) SEGUNDA versión (la primera, «Sobrecosto mínimo de instalación de
   la Opción G», le pareció al usuario poco intuitiva): el mismo número se presenta como la VENTAJA por km de la
   ganadora — columnas «Alternativa» | «Ventaja de la Opción G ($/km)» (valores sin «/km», ya va en el encabezado) y
   el texto «El costo de instalación no está incluido (falta en al menos una opción). La tabla muestra cuánto más

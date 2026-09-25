@@ -302,6 +302,12 @@ button { font-family: inherit; }
 .ed-acciones { margin: 0 0 var(--space-4); }
 /* «Agregar registro» al final de la línea de filtros; si no cabe, es el primero en bajar de línea */
 .toolbar > .ed-acciones { margin: 0 0 0 auto; flex: 0 0 auto; }
+/* Conductor económico: una explicación por alternativa en la sensibilidad al costo de instalación */
+.ce-inst { border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); margin: 0 0 var(--space-3); }
+.ce-inst p { margin: 0 0 var(--space-2); line-height: 1.5; }
+.ce-inst-titulo { font-size: 0.95rem; }
+.ce-inst ul { margin: 0; padding-left: var(--space-5); line-height: 1.5; }
+.ce-inst li + li { margin-top: var(--space-1); }
 .ed-form .ed-ancho { grid-column: 1 / -1; }
 .ed-form textarea { width: 100%; resize: vertical; }
 .ed-error { margin: var(--space-1) 0 0; font-size: 0.85rem; color: var(--danger); }

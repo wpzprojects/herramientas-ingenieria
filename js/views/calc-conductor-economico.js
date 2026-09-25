@@ -627,21 +627,53 @@ export async function render(container) {
       <p class="text-muted text-sm" style="margin: var(--space-2) 0 0;">«Compensa su mayor inversión» compara cada opción con la de menor inversión (Opción ${r.indiceBase + 1}, «Base»): el año en que su costo acumulado, a valor presente, deja de ser mayor.</p>`;
   }
 
-  /** Sensibilidad al costo de instalación (2026-09-23): solo aparece si a alguna opción comparada le falta ese dato. */
+  /**
+   * Sensibilidad al costo de instalación: solo aparece si a alguna opción comparada le falta ese dato. Redacción didáctica
+   * pedida por el usuario (2026-09-24): por cada alternativa, quién gana, por cuánto y por qué, y cuánto tendría que cambiar
+   * la instalación para que perdiera, dicho de dos maneras. Todo en CONDICIONAL: no se sabe cuál instalación es más cara.
+   */
+  function explicacionInstalacion(r, estados, base) {
+    const filas = sensibilidadInstalacion(r, base.longitudKm, estados.map((e) => e.instalacionIndicada));
+    const G = r.mejor + 1;
+    const g = r.opciones[r.mejor];
+    return filas.map(({ opcion, umbralKm }) => {
+      const o = r.opciones[opcion];
+      const A = opcion + 1;
+      const menosConductor = g.costoConductores < o.costoConductores;
+      const menosPerdidas = g.costoPerdidasVp < o.costoPerdidasVp;
+      const porque = menosConductor && menosPerdidas
+        ? "su conductor cuesta menos y además pierde menos energía"
+        : menosPerdidas
+          ? "lo que ahorra en pérdidas es mayor que lo que cuesta de más su conductor"
+          : "su conductor cuesta menos, aunque pierda algo más de energía";
+      const ventaja = menosPerdidas && !menosConductor ? "su ahorro en pérdidas" : menosConductor && !menosPerdidas ? "el ahorro en el conductor" : "su ventaja en conductor y pérdidas";
+      return { G, A, empate: !(umbralKm > 0), diferencia: o.diferenciaVsMejor, umbralKm, porque, ventaja };
+    });
+  }
+
   function sensibilidadInstalacionHtml(r, estados, base) {
-    const instalacionIndicada = estados.map((e) => e.instalacionIndicada);
-    const filas = sensibilidadInstalacion(r, base.longitudKm, instalacionIndicada);
-    if (!filas.length) return "";
-    const g = r.mejor + 1;
-    const filasHtml = filas.map(({ opcion, umbralKm }) => `<tr><td class="etiqueta-fila">Opción ${opcion + 1}</td><td class="num">${fmtPesos(umbralKm)}</td></tr>`).join("");
-    // Condicional, sin afirmar cuál instalación es más cara (no se sabe): solo cuánto tendría que diferir para cambiar la conclusión.
+    const casos = explicacionInstalacion(r, estados, base);
+    if (!casos.length) return "";
+    const G = r.mejor + 1;
+    const nombre = (i) => `<strong>Opción ${i}</strong> <span class="text-muted">(${escapeHtml(conductorTexto(estados[i - 1]))})</span>`;
+    const bloques = casos
+      .map((c) =>
+        c.empate
+          ? `<div class="ce-inst"><p class="ce-inst-titulo">${nombre(c.G)} frente a ${nombre(c.A)}</p>
+          <p>Con los costos que se conocen, las dos opciones empatan: cualquier diferencia en su costo de instalación decide cuál es la mejor.</p></div>`
+          : `<div class="ce-inst"><p class="ce-inst-titulo">${nombre(c.G)} frente a ${nombre(c.A)}</p>
+          <p>Con los costos que se conocen, la Opción ${c.G} resulta <strong>$ ${fmtMillones(c.diferencia)} millones</strong> más económica en los ${base.anios} años, porque ${c.porque}. Repartido en los ${num(base.longitudKm, 0, 2)} km de la línea, son <strong>${fmtPesos(c.umbralKm)} por km</strong>.</p>
+          <ul>
+            <li>Para que la Opción ${c.A} fuera la mejor, instalarla tendría que costar al menos <strong>${fmtPesos(c.umbralKm)} por km menos</strong> que instalar la Opción ${c.G}.</li>
+            <li>Dicho de otra manera: si instalar la Opción ${c.G} costara más de <strong>${fmtPesos(c.umbralKm)} por km</strong> por encima de la Opción ${c.A}, ${c.ventaja} ya no alcanzaría a compensar esa instalación.</li>
+          </ul></div>`
+      )
+      .join("");
     return `
       <div class="result-subhead">Sensibilidad al costo de instalación</div>
-      <p class="text-muted text-sm" style="margin: 0 0 var(--space-3);">El costo de instalación no está incluido (falta en al menos una opción). La tabla muestra cuánto más económica es la Opción ${g} que cada alternativa, por kilómetro de línea. Esa ventaja solo se pierde si instalar la Opción ${g} cuesta más que instalar la alternativa y la diferencia supera este valor; si es menor, la Opción ${g} sigue siendo la mejor.</p>
-      <div class="table-wrap tabla-resultado tabla-matriz"><table>
-        <thead><tr><th>Alternativa</th><th class="num">Ventaja de la Opción ${g} ($/km)</th></tr></thead>
-        <tbody>${filasHtml}</tbody>
-      </table></div>`;
+      <p class="text-muted text-sm" style="margin: 0 0 var(--space-3);">El costo de instalación no se incluyó en la comparación porque falta en al menos una opción. Aun así se puede saber qué tan firme es la conclusión: para cada alternativa, esto dice cuánto tendría que cambiar la instalación para que la Opción ${G} dejara de ser la mejor.</p>
+      ${bloques}
+      <p class="text-muted text-sm" style="margin: var(--space-3) 0 0;"><strong>Cómo usarlo:</strong> compara cada valor con la diferencia de instalación que esperas entre esas dos opciones (por experiencia o con precios de referencia). Si la diferencia esperada es menor, la Opción ${G} sigue siendo la mejor; si es parecida o mayor, conviene cotizar la instalación antes de decidir.</p>`;
   }
 
   function sensibilidadHtml(s, r) {
@@ -698,10 +730,13 @@ export async function render(container) {
       ].join("\n");
     });
     const sens = s.filas.map((f) => `  ${f.etiqueta}: Opción ${f.ganador + 1}`);
-    const filasInstalacion = sensibilidadInstalacion(r, base.longitudKm, estados.map((e) => e.instalacionIndicada));
-    const sensInstalacion = filasInstalacion.map(
-      ({ opcion, umbralKm }) =>
-        `  Frente a la Opción ${opcion + 1}: la Opción ${r.mejor + 1} es más económica por ${fmtPesos(umbralKm)}/km; solo la pierde si instalarla cuesta más que eso por encima de la Opción ${opcion + 1}.`
+    const sensInstalacion = explicacionInstalacion(r, estados, base).flatMap((c) =>
+      c.empate
+        ? [`  Opción ${c.G} frente a Opción ${c.A}: empatan; cualquier diferencia en la instalación decide.`]
+        : [
+            `  Opción ${c.G} frente a Opción ${c.A}: la Opción ${c.G} es $ ${fmtMillones(c.diferencia)} millones más económica (${fmtPesos(c.umbralKm)} por km) porque ${c.porque}.`,
+            `    Para que la Opción ${c.A} fuera la mejor, instalarla tendría que costar al menos ${fmtPesos(c.umbralKm)} por km menos que instalar la Opción ${c.G}.`,
+          ]
     );
     return [
       `CÁLCULO DE CONDUCTOR ECONÓMICO`,
