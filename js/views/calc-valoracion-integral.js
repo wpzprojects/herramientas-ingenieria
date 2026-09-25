@@ -26,6 +26,7 @@ import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
 import { guardarEstado, leerEstado } from "../util/persistencia-calculo.js";
 import { aplicarDefectos, leerDefectos } from "../util/valores-defecto.js";
+import { crearXlsx, columna, MIME_XLSX } from "../util/xlsx.js";
 
 const RUTA = "/calculos/valoracion-integral";
 
@@ -703,8 +704,8 @@ export async function render(container) {
     const detalle = s.red === "Aerea" ? (e.referencia ? ` · ${e.referencia}` : "") : ` · ${e.tipoPantalla}, ${s.conductor.nivelAislamientoKv} kV ${e.nivelAislamientoPct} %`;
     return `${e.material} ${e.calibre}${detalle}${s.n > 1 ? ` ×${s.n}` : ""}`;
   }
-  const insignia = (texto, clase) => `<span class="badge ${clase}">${texto}</span>`;
-  const siCumple = (ok, si = "Cumple", no = "No cumple") => (ok ? insignia(si, "badge-success") : insignia(no, "badge-danger"));
+  const insignia = (texto, clase) => `<span class="badge ${clase}">${escapeHtml(texto)}</span>`;
+  const estadoCumple = (ok, si = "Cumple", no = "No cumple") => (ok ? { texto: si, clase: "badge-success" } : { texto: no, clase: "badge-danger" });
 
   function renderError(errores) {
     const wrap = q("#resultado-wrap");
@@ -712,57 +713,277 @@ export async function render(container) {
     wrap.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 
-  function conclusionHtml(r) {
-    const nombres = (lista) => lista.map((i) => `Escenario ${i + 1}`).join(", ");
+  /** Conclusión en una línea: {ok, titulo, detalle} (la pantalla, el PDF y el Excel la dicen igual). */
+  function conclusion(r) {
     const total = r.escenarios.length;
     if (!r.cumplen.length) {
-      return `<div class="callout callout-warning" style="margin: 0 0 var(--space-4);"><div><strong>${total === 1 ? "El escenario no cumple" : "Ningún escenario cumple"} todos los criterios.</strong> Revisa en la tabla qué criterio falla en cada uno.</div></div>`;
+      return { ok: false, titulo: `${total === 1 ? "El escenario no cumple" : "Ningún escenario cumple"} todos los criterios.`, detalle: "Revisa en la tabla qué criterio falla en cada uno." };
     }
-    const recomendado = r.recomendado !== null ? ` <strong>Recomendado: Escenario ${r.recomendado + 1}</strong>, el de menor costo total entre los que cumplen.` : "";
-    const cumplen = total === 1 ? "El escenario cumple todos los criterios." : `Cumplen todos los criterios: ${nombres(r.cumplen)}.`;
-    return `<div class="callout callout-success" style="margin: 0 0 var(--space-4);"><div><strong>${cumplen}</strong>${recomendado}</div></div>`;
+    return {
+      ok: true,
+      titulo: total === 1 ? "El escenario cumple todos los criterios." : `Cumplen todos los criterios: ${r.cumplen.map((i) => `Escenario ${i + 1}`).join(", ")}.`,
+      detalle: r.recomendado !== null ? `Recomendado: Escenario ${r.recomendado + 1}, el de menor costo total entre los que cumplen.` : "",
+    };
   }
 
-  function matrizHtml(r, comun, estados) {
-    const cab = r.escenarios
-      .map((x, i) => `<th class="num${i === r.recomendado ? " col-mejor" : ""}">Escenario ${i + 1}${i === r.recomendado ? ` ${insignia("Recomendado", "badge-success")}` : ""}</th>`)
-      .join("");
-    const fila = (etiqueta, fn, { total = false } = {}) =>
-      `<tr${total ? ' class="total-row"' : ""}><td class="etiqueta-fila">${etiqueta}</td>${r.escenarios.map((x, i) => `<td class="num">${fn(x, estados[i], i)}</td>`).join("")}</tr>`;
-    const seccion = (titulo) => `<tr class="vi-seccion"><td colspan="${r.escenarios.length + 1}">${titulo}</td></tr>`;
-    const hayEconomia = r.escenarios.some((x) => x.economia);
+  /**
+   * Modelo de la tabla comparativa: secciones con filas, y en cada fila una celda por escenario. La pantalla, el PDF y el
+   * Excel se arman con él. La unidad va aparte (en pantalla, junto al número: «557.8 A»; en PDF y Excel, en su columna):
+   * así «(A)» no se confunde con la fase A.
+   * celda = { v: número | texto | null, dec, estado?: {texto, clase}, sub?: texto }
+   */
+  function modeloMatriz(r, comun, estados) {
+    const X = r.escenarios;
+    const fila = (etiqueta, unidad, celda, extra = {}) => ({ etiqueta, unidad, celdas: X.map((x, i) => celda(x, estados[i], i)), ...extra });
+    const conN = (s, texto) => (s.n > 1 ? `${s.n} ${s.red === "Aerea" ? "conductores" : "circuitos"} por fase${texto ? ` · ${texto}` : ""}` : texto || null);
+    const hayN = estados.some((s) => s.n > 1);
     const hayFalla = estados.some((s) => s.corrienteFallaKa !== null);
+    const secciones = [
+      {
+        titulo: null,
+        filas: [
+          fila("Conductor", "", (x, s) => ({ v: `${nombreRed(s.red)} · ${conductorTexto(s)}`, texto: true })),
+          fila("Tensión de línea", "kV", (x, s) => ({ v: s.tensionKv, dec: 1 })),
+          fila("Corriente de operación", "A", (x) => ({ v: x.corrienteA, dec: 1 })),
+        ],
+      },
+      {
+        titulo: "Ampacidad",
+        filas: [
+          fila("Ampacidad por conductor", "A", (x) => (x.ampacidad.error ? { v: null, estado: { texto: "No calculable", clase: "badge-danger" } } : { v: x.ampacidad.porConductorA, dec: 0 })),
+          ...(hayN ? [fila("Ampacidad total", "A", (x, s) => (x.ampacidad.error ? { v: null } : { v: x.ampacidad.totalA, dec: 0, sub: conN(s) }))] : []),
+          fila("Uso de la ampacidad", "%", (x) => (x.ampacidad.error ? { v: null } : { v: x.ampacidad.usoPct, dec: 1, estado: estadoCumple(x.ampacidad.cumple, "Cumple", "Sobrecarga") }), { etiquetaEstado: "Ampacidad: cumplimiento" }),
+        ],
+      },
+      {
+        titulo: "Pérdidas",
+        filas: [
+          fila("Pérdidas", "%", (x) => ({ v: x.perdidas.pct, dec: 2, estado: { texto: x.perdidas.clase.etiqueta, clase: x.perdidas.clase.clase } }), { etiquetaEstado: "Pérdidas: clasificación" }),
+          fila("Pérdidas de potencia", "kW", (x) => ({ v: x.perdidas.kw, dec: 1 })),
+          fila("Energía perdida al año", "MWh", (x) => ({ v: x.perdidas.energiaMwhAnio, dec: 1 })),
+        ],
+      },
+      {
+        titulo: "Regulación",
+        filas: [fila("Caída de tensión", "%", (x) => ({ v: x.regulacion.pct, dec: 2, estado: { texto: x.regulacion.clase.etiqueta, clase: x.regulacion.clase.clase } }), { etiquetaEstado: "Regulación: clasificación" })],
+      },
+      {
+        titulo: "Cortocircuito",
+        filas: [
+          fila("Capacidad de cortocircuito", "kA", (x, s) => ({ v: x.cortocircuito.totalKa, dec: 2, sub: conN(s, `en ${fmt(s.tiempoDespejeS)} s`) })),
+          ...(hayFalla
+            ? [
+                fila(
+                  "Corriente de falla",
+                  "kA",
+                  (x) => (x.cortocircuito.corrienteFallaKa === null ? { v: "Sin dato", texto: true } : { v: x.cortocircuito.corrienteFallaKa, dec: 2, estado: estadoCumple(x.cortocircuito.cumple, "Soporta", "No soporta") }),
+                  { etiquetaEstado: "Cortocircuito: cumplimiento" }
+                ),
+              ]
+            : []),
+        ],
+      },
+    ];
+    if (X.some((x) => x.economia)) {
+      const e = (fn) => (x) => (x.economia ? { v: fn(x.economia), dec: 0, pesos: true } : { v: "Sin costo", texto: true });
+      secciones.push({
+        titulo: `Costos a ${comun.economia.anios} años`,
+        filas: [
+          fila("Inversión inicial", "$", e((c) => c.inversion)),
+          fila("Costo de las pérdidas (valor presente)", "$", e((c) => c.costoPerdidasVp)),
+          fila("Costo total actualizado", "$", e((c) => c.costoTotal), { total: true }),
+          fila("Diferencia frente al menor costo", "$", (x) =>
+            !x.economia ? { v: "—", texto: true } : x.economia.diferenciaVsMejor === 0 ? { v: 0, dec: 0, pesos: true, estado: { texto: "Menor costo", clase: "badge-success" } } : { v: x.economia.diferenciaVsMejor, dec: 0, pesos: true, signo: true }
+          ),
+        ],
+      });
+    }
+    secciones.push({
+      titulo: "Veredicto",
+      filas: [
+        fila("Resultado", "", (x) => ({ v: x.cumpleTodo ? "Cumple todo" : "No cumple", texto: true, estado: estadoCumple(x.cumpleTodo, "Cumple todo", "No cumple"), sub: x.cumpleTodo ? null : `Falla: ${x.incumple.join(", ")}` }), { total: true }),
+      ],
+    });
+    return { secciones, recomendado: r.recomendado, columnas: X.map((x, i) => `Escenario ${i + 1}`) };
+  }
+
+  /** Texto de una celda numérica con su unidad («557.8 A», «1.15 %», «$ 105,000,000»). */
+  function textoCelda(c, unidad) {
+    if (c.v === null || c.v === undefined) return "—";
+    if (c.texto) return String(c.v);
+    const n = num(c.v, c.dec, c.dec);
+    if (c.pesos) return `${c.signo ? "+" : ""}$ ${n}`;
+    return unidad ? `${n} ${unidad}` : n;
+  }
+
+  function matrizHtml(modelo) {
+    const cab = modelo.columnas
+      .map((t, i) => `<th class="num${i === modelo.recomendado ? " col-mejor" : ""}">${t}${i === modelo.recomendado ? ` ${insignia("Recomendado", "badge-success")}` : ""}</th>`)
+      .join("");
+    const ncol = modelo.columnas.length + 1;
+    const celdaHtml = (c, f) => {
+      const esVeredicto = f.etiqueta === "Resultado";
+      const valor = esVeredicto ? "" : c.estado && c.v === null ? "" : escapeHtml(textoCelda(c, f.unidad));
+      const badge = c.estado && !(c.estado.texto === "Menor costo") ? ` ${insignia(c.estado.texto, c.estado.clase)}` : "";
+      const menor = c.estado?.texto === "Menor costo" ? insignia("Menor costo", c.estado.clase) : "";
+      const texto = menor || `${valor}${badge}`.trim();
+      const conductor = f.etiqueta === "Conductor" ? ' class="num vi-conductor-celda"' : ' class="num"';
+      return `<td${conductor}>${texto}${c.sub ? `<div class="vi-sub">${escapeHtml(c.sub)}</div>` : ""}</td>`;
+    };
+    const cuerpo = modelo.secciones
+      .map(
+        (s) =>
+          `<tbody${s.titulo ? ' class="vi-grupo"' : ""}>` +
+          (s.titulo ? `<tr class="vi-seccion"><th colspan="${ncol}" scope="colgroup">${escapeHtml(s.titulo)}</th></tr>` : "") +
+          s.filas.map((f) => `<tr${f.total ? ' class="total-row"' : ""}><td class="etiqueta-fila">${escapeHtml(f.etiqueta)}</td>${f.celdas.map((c) => celdaHtml(c, f)).join("")}</tr>`).join("") +
+          `</tbody>`
+      )
+      .join("");
+    return `<div class="table-wrap tabla-resultado tabla-matriz vi-matriz"><table><thead><tr><th></th>${cab}</tr></thead>${cuerpo}</table></div>`;
+  }
+
+  // ---------- exportar ----------
+  const fechaArchivo = () => new Date().toISOString().slice(0, 10);
+  const fechaLarga = () => new Date().toLocaleString("es-CO", { dateStyle: "long", timeStyle: "short" });
+
+  function descargar(nombre, contenido, tipo) {
+    const url = URL.createObjectURL(new Blob([contenido], { type: tipo }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = nombre;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  /** Datos de entrada comunes, en pares [etiqueta, valor] (para el PDF y el Excel). */
+  function datosEntrada(comun, estados, { modo, datoPartida }) {
+    const ec = comun.economia;
+    return [
+      ["Dato de partida", `${MODOS[modo]}: ${fmt(datoPartida)} ${modo === "potencia" ? "MW" : "MVA"}`],
+      ["Factor de potencia", fmt(comun.factorPotencia)],
+      ["Factor de carga (Fc)", fmt(comun.factorCarga, 4)],
+      ["Longitud de la línea", `${fmt(comun.longitudKm)} km`],
+      ...(ec ? [["Precio de la energía perdida", `${fmtPesos(ec.precioKwh)}/kWh (sube ${fmtPercent(ec.escaladaEnergiaPct)} al año)`], ["Tasa de descuento · años", `${fmtPercent(ec.tasaDescuentoPct)} · ${ec.anios} años`]] : [["Evaluación económica", "No incluida (sin precio de la energía)"]]),
+    ];
+  }
+
+  const REFERENCIAS = `Referencias de diseño: pérdidas hasta ${OPTIMO_PERDIDAS} % óptimo · hasta ${LIMITE_PERDIDAS} % aceptable; regulación hasta ${OPTIMO_REGULACION} % óptimo · hasta ${LIMITE_REGULACION} % aceptable. La corriente de operación no debe superar la ampacidad.`;
+
+  /** Documento de impresión (PDF): Carta, vertical hasta 3 escenarios y horizontal con más; siempre en claro. */
+  function documentoPdf(modelo, conc, entrada) {
+    const doc = document.createElement("div");
+    doc.id = "doc-impresion";
+    doc.className = `doc-impresion vi-doc${modelo.columnas.length > 3 ? " vi-doc-apaisado" : ""}`;
+    const cab = modelo.columnas.map((t, i) => `<th class="num">${t}${i === modelo.recomendado ? "<br><small>Recomendado</small>" : ""}</th>`).join("");
+    const ncol = modelo.columnas.length + 2;
+    const cuerpo = modelo.secciones
+      .map(
+        (s) =>
+          (s.titulo ? `<tr class="vi-doc-seccion"><td colspan="${ncol}">${escapeHtml(s.titulo)}</td></tr>` : "") +
+          s.filas
+            .map((f) => {
+              const celdas = f.celdas
+                .map((c) => {
+                  const oculto = f.etiqueta === "Resultado" || (c.estado && (c.v === null || c.estado.texto === "Menor costo"));
+                  const valor = oculto ? "" : escapeHtml(c.pesos ? textoCelda(c, "").replace("$ ", "") : textoCelda(c, ""));
+                  const estado = c.estado ? `<span class="vi-doc-estado${c.estado.clase === "badge-danger" ? " malo" : c.estado.clase === "badge-warning" ? " alerta" : ""}">${escapeHtml(c.estado.texto)}</span>` : "";
+                  return `<td class="num">${[valor, estado].filter(Boolean).join(" ")}${c.sub ? `<div class="vi-doc-sub">${escapeHtml(c.sub)}</div>` : ""}</td>`;
+                })
+                .join("");
+              return `<tr${f.total ? ' class="vi-doc-total"' : ""}><td>${escapeHtml(f.etiqueta)}</td><td class="vi-doc-unidad">${escapeHtml(f.unidad)}</td>${celdas}</tr>`;
+            })
+            .join("")
+      )
+      .join("");
+    doc.innerHTML =
+      `<header class="doc-cab"><div class="doc-app">Herramientas de Ingeniería</div><h1>Valoración integral de conductores</h1><p class="doc-meta">${escapeHtml(fechaLarga())}</p></header>` +
+      `<div class="vi-doc-conclusion${conc.ok ? "" : " malo"}"><strong>${escapeHtml(conc.titulo)}</strong> ${escapeHtml(conc.detalle)}</div>` +
+      `<h3>Datos de la conexión</h3><table class="vi-doc-datos"><tbody>${entrada.map(([k, v]) => `<tr><td>${escapeHtml(k)}</td><td>${escapeHtml(v)}</td></tr>`).join("")}</tbody></table>` +
+      `<h3>Comparación de escenarios</h3><div class="table-wrap"><table class="vi-doc-matriz"><thead><tr><th>Criterio</th><th>Unidad</th>${cab}</tr></thead><tbody>${cuerpo}</tbody></table></div>` +
+      `<p class="vi-doc-nota">${escapeHtml(REFERENCIAS)} El detalle de cada escenario (datos de entrada y valores intermedios) está en la pestaña «Reporte» de la calculadora.</p>`;
+    return doc;
+  }
+
+  function exportarPdf(modelo, conc, entrada) {
+    document.getElementById("doc-impresion")?.remove();
+    document.body.append(documentoPdf(modelo, conc, entrada));
+    document.body.classList.add("imprimiendo-reporte");
+    document.documentElement.classList.add("imprimiendo-reporte");
+    window.addEventListener(
+      "afterprint",
+      () => {
+        document.body.classList.remove("imprimiendo-reporte");
+        document.documentElement.classList.remove("imprimiendo-reporte");
+        document.getElementById("doc-impresion")?.remove();
+      },
+      { once: true }
+    );
+    window.print();
+  }
+
+  /** Libro de Excel: hoja «Comparación» (la tabla, con números de verdad y la unidad en su columna) y hoja «Reporte» (el texto completo). */
+  function libroExcel(modelo, conc, entrada, reporte) {
+    const n = modelo.columnas.length;
+    const vacias = (estilo) => Array.from({ length: n + 2 }, () => ({ v: "", estilo }));
+    const filas = [
+      [{ v: "Valoración integral de conductores", estilo: "titulo" }],
+      [{ v: `Herramientas de Ingeniería · ${fechaLarga()}`, estilo: "nota" }],
+      [],
+      [{ v: `${conc.titulo} ${conc.detalle}`.trim(), estilo: "etiqueta" }, ...Array.from({ length: n + 1 }, () => ({ v: "", estilo: "etiqueta" }))],
+      [],
+      [{ v: "Datos de la conexión", estilo: "seccion" }, { v: "", estilo: "seccion" }],
+      ...entrada.map(([k, v]) => [{ v: k, estilo: "etiqueta" }, { v, estilo: "celda" }]),
+      [],
+      [{ v: "Criterio", estilo: "cabecera" }, { v: "Unidad", estilo: "cabecera" }, ...modelo.columnas.map((t, i) => ({ v: i === modelo.recomendado ? `${t} (recomendado)` : t, estilo: "cabecera" }))],
+    ];
+    const combinar = [`A1:${columna(n + 1)}1`, `A4:${columna(n + 1)}4`];
+    for (const s of modelo.secciones) {
+      if (s.titulo) {
+        const fila = vacias("seccion");
+        fila[0] = { v: s.titulo, estilo: "seccion" };
+        filas.push(fila);
+      }
+      for (const f of s.filas) {
+        const estilo = f.total ? "total" : "celda";
+        const esVeredicto = f.etiqueta === "Resultado";
+        filas.push([
+          { v: f.etiqueta, estilo: f.total ? "total" : "etiqueta" },
+          { v: f.unidad, estilo },
+          ...f.celdas.map((c) => {
+            if (esVeredicto) return { v: c.sub ? `${c.v} (${c.sub.replace(/^Falla: /, "")})` : c.v, estilo };
+            if (c.v === null || c.v === undefined) return { v: c.estado?.texto ?? "—", estilo };
+            return c.texto ? { v: c.v, estilo } : { v: c.v, dec: c.dec, estilo };
+          }),
+        ]);
+        // la clasificación (Óptimo / Cumple / Soporta…) va en su propia fila: la celda del número queda numérica
+        if (f.etiquetaEstado && f.celdas.some((c) => c.estado)) {
+          filas.push([{ v: f.etiquetaEstado, estilo: "etiqueta" }, { v: "", estilo }, ...f.celdas.map((c) => ({ v: c.estado?.texto ?? "—", estilo }))]);
+        }
+        // lo que en pantalla va debajo del número (p. ej. «2 conductores por fase») también se conserva
+        if (!esVeredicto && f.celdas.some((c) => c.sub)) {
+          filas.push([{ v: `${f.etiqueta}: detalle`, estilo: "etiqueta" }, { v: "", estilo }, ...f.celdas.map((c) => ({ v: c.sub ?? "", estilo }))]);
+        }
+      }
+    }
+    filas.push([], [{ v: REFERENCIAS, estilo: "nota" }]);
+    combinar.push(`A${filas.length}:${columna(n + 1)}${filas.length}`);
+    return crearXlsx([
+      { nombre: "Comparación", anchos: [38, 9, ...modelo.columnas.map(() => 30)], combinar, filas },
+      { nombre: "Reporte", anchos: [120], filas: reporte.split("\n").map((l) => [l]) },
+    ]);
+  }
+
+  function exportarHtml() {
     return `
-      <div class="table-wrap tabla-resultado tabla-matriz vi-matriz"><table>
-        <thead><tr><th></th>${cab}</tr></thead>
-        <tbody>
-          ${fila("Conductor", (x, s) => `<span class="vi-conductor">${escapeHtml(`${nombreRed(s.red)} · ${conductorTexto(s)}`)}</span>`)}
-          ${fila("Tensión (kV)", (x, s) => fmt(s.tensionKv))}
-          ${fila("Corriente de operación (A)", (x) => fmt(x.corrienteA, 1))}
-          ${seccion("Ampacidad")}
-          ${fila("Ampacidad de la fase (A)", (x, s) => (x.ampacidad.error ? "—" : `${fmt(x.ampacidad.totalA, 0)}${s.n > 1 ? `<div class="vi-sub">${s.n} × ${fmt(x.ampacidad.porConductorA, 0)}</div>` : ""}`))}
-          ${fila("Uso de la ampacidad", (x) => (x.ampacidad.error ? insignia("No calculable", "badge-danger") : `${fmtPercent(x.ampacidad.usoPct, 1)} ${siCumple(x.ampacidad.cumple, "Cumple", "Sobrecarga")}`))}
-          ${seccion("Pérdidas")}
-          ${fila("Pérdidas (%)", (x) => `${fmtPercent(x.perdidas.pct)} ${insignia(x.perdidas.clase.etiqueta, x.perdidas.clase.clase)}`)}
-          ${fila("Pérdidas de potencia (kW)", (x) => fmt(x.perdidas.kw, 1))}
-          ${fila("Energía perdida al año (MWh)", (x) => num(x.perdidas.energiaMwhAnio, 1, 1))}
-          ${seccion("Regulación")}
-          ${fila("Caída de tensión (%)", (x) => `${fmtPercent(x.regulacion.pct)} ${insignia(x.regulacion.clase.etiqueta, x.regulacion.clase.clase)}`)}
-          ${seccion("Cortocircuito")}
-          ${fila("Capacidad de la fase (kA)", (x, s) => `${fmt(x.cortocircuito.totalKa)}<div class="vi-sub">en ${fmt(s.tiempoDespejeS)} s</div>`)}
-          ${hayFalla ? fila("Corriente de falla (kA)", (x) => (x.cortocircuito.corrienteFallaKa === null ? "Sin dato" : `${fmt(x.cortocircuito.corrienteFallaKa)} ${siCumple(x.cortocircuito.cumple, "Soporta", "No soporta")}`)) : ""}
-          ${
-            hayEconomia
-              ? seccion(`Costos (${comun.economia.anios} años)`) +
-                fila("Inversión inicial ($)", (x) => (x.economia ? num(x.economia.inversion) : "Sin costo")) +
-                fila("Costo de las pérdidas, valor presente ($)", (x) => (x.economia ? num(x.economia.costoPerdidasVp) : "—")) +
-                fila("Costo total actualizado ($)", (x) => (x.economia ? num(x.economia.costoTotal) : "—"), { total: true }) +
-                fila("Diferencia frente al menor costo ($)", (x) => (!x.economia ? "—" : x.economia.diferenciaVsMejor === 0 ? insignia("Menor costo", "badge-success") : `+${num(x.economia.diferenciaVsMejor)}`))
-              : ""
-          }
-          ${fila("Veredicto", (x) => (x.cumpleTodo ? insignia("Cumple todo", "badge-success") : `${insignia("No cumple", "badge-danger")}<div class="vi-sub">${escapeHtml(x.incumple.join(", "))}</div>`), { total: true })}
-        </tbody>
-      </table></div>`;
+      <details class="menu-mas vi-exportar no-print">
+        <summary class="btn btn-sm btn-con-icono" aria-label="Exportar la comparación">${icon("download")} Exportar ${icon("chevronDown")}</summary>
+        <div class="menu-mas-lista">
+          <button type="button" data-exportar="pdf">PDF (imprimir o guardar)</button>
+          <button type="button" data-exportar="xlsx">Excel (.xlsx)</button>
+        </div>
+      </details>`;
   }
 
   function avisosHtml(r, comun, estados) {
@@ -826,7 +1047,7 @@ export async function render(container) {
           ? [`  Ampacidad: no calculable (${x.ampacidad.error})`]
           : [
               `  Ampacidad por conductor: ${fmt(x.ampacidad.porConductorA, 1)} A${e.red !== "Aerea" ? ` (${x.ampacidad.circuitosBanco} circuito${x.ampacidad.circuitosBanco > 1 ? "s" : ""} en el banco)` : ""}`,
-              `  Ampacidad de la fase: ${fmt(x.ampacidad.totalA, 1)} A`,
+              `  Ampacidad total${e.n > 1 ? ` (${e.n} ${e.red === "Aerea" ? "conductores" : "circuitos"} por fase)` : ""}: ${fmt(x.ampacidad.totalA, 1)} A`,
               `  Uso de la ampacidad: ${fmtPercent(x.ampacidad.usoPct, 1)} (${x.ampacidad.cumple ? "cumple" : "sobrecarga"})`,
             ]),
         `  Resistencia efectiva (R/N): ${fmt(x.perdidas.resistenciaEfectivaOhmKm, 4)} Ω/km`,
@@ -897,19 +1118,42 @@ export async function render(container) {
 
   function renderResultado(r, comun, estados, dato) {
     const wrap = q("#resultado-wrap");
+    const modelo = modeloMatriz(r, comun, estados);
+    const conc = conclusion(r);
+    const reporte = reporteTexto(r, comun, estados, dato);
     const resultado = `
       <div class="result-panel">
-        ${conclusionHtml(r)}
-        ${matrizHtml(r, comun, estados)}
-        <p class="text-muted text-sm" style="margin: var(--space-3) 0 0;">Referencias de diseño: pérdidas hasta ${OPTIMO_PERDIDAS}% óptimo · hasta ${LIMITE_PERDIDAS}% aceptable; regulación hasta ${OPTIMO_REGULACION}% óptimo · hasta ${LIMITE_REGULACION}% aceptable. La corriente de operación no debe superar la ampacidad.</p>
+        <div class="vi-cabecera">
+          <div class="callout ${conc.ok ? "callout-success" : "callout-warning"}"><div><strong>${escapeHtml(conc.titulo)}</strong>${conc.detalle ? ` ${escapeHtml(conc.detalle)}` : ""}</div></div>
+          ${exportarHtml()}
+        </div>
+        ${matrizHtml(modelo)}
+        <p class="text-muted text-sm" style="margin: var(--space-3) 0 0;">${escapeHtml(REFERENCIAS)}</p>
         ${avisosHtml(r, comun, estados)}
       </div>`;
     wrap.innerHTML = tarjetaResultadosHtml({
       resultado,
-      reporte: reporteHtml(reporteTexto(r, comun, estados, dato), ETIQUETAS_REPORTE),
+      reporte: reporteHtml(reporte, ETIQUETAS_REPORTE),
       formulasPlano: FORMULAS_TEXTO,
     });
     activarPestanas(wrap, { grupos: FORMULAS_TEX, etiquetas: FORMULAS_ETIQUETAS, nota: FORMULAS_NOTA });
+
+    // «Exportar» abre un menú con dos formatos; se cierra al elegir uno o al pulsar fuera
+    const menu = wrap.querySelector(".vi-exportar");
+    const entrada = datosEntrada(comun, estados, dato);
+    menu.addEventListener("click", (e) => {
+      const boton = e.target.closest("[data-exportar]");
+      if (!boton) return;
+      menu.open = false;
+      if (boton.dataset.exportar === "pdf") exportarPdf(modelo, conc, entrada);
+      else descargar(`valoracion-integral-${fechaArchivo()}.xlsx`, libroExcel(modelo, conc, entrada, reporte), MIME_XLSX);
+    });
+    const cerrarFuera = (e) => {
+      if (!menu.isConnected) return document.removeEventListener("click", cerrarFuera);
+      if (!menu.contains(e.target)) menu.open = false;
+    };
+    document.addEventListener("click", cerrarFuera);
+
     wrap.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 

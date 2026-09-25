@@ -282,14 +282,21 @@ await seccion("vista: cálculo con dos escenarios (el ejemplo del usuario)", asy
   ok(tabla, "aparece la matriz de resultados");
   ok($$("#resultado-wrap .vi-matriz thead th").length === 3, "una columna por escenario (+ la de etiquetas)");
   const etiquetas = $$("#resultado-wrap .vi-matriz td.etiqueta-fila").map((t) => t.textContent);
-  for (const e of ["Corriente de operación (A)", "Ampacidad de la fase (A)", "Uso de la ampacidad", "Pérdidas (%)", "Caída de tensión (%)", "Capacidad de la fase (kA)", "Corriente de falla (kA)", "Veredicto"]) ok(etiquetas.includes(e), `fila «${e}»`);
-  ok(!etiquetas.includes("Costo total actualizado ($)"), "sin precio de la energía no hay filas de costos");
-  const falla = $$("#resultado-wrap .vi-matriz tr").find((tr) => tr.textContent.startsWith("Corriente de falla"));
+  for (const e of ["Corriente de operación", "Ampacidad por conductor", "Ampacidad total", "Uso de la ampacidad", "Pérdidas", "Caída de tensión", "Capacidad de cortocircuito", "Corriente de falla", "Resultado"]) ok(etiquetas.includes(e), `fila «${e}»`);
+  ok(!etiquetas.includes("Costo total actualizado"), "sin precio de la energía no hay filas de costos");
+  ok(etiquetas.every((e) => !/\((A|kA|kV|%|kW|MWh|\$)\)/.test(e)), "las etiquetas no llevan la unidad entre paréntesis (se confundía «(A)» con la fase A)");
+  const fila = (nombre) => $$("#resultado-wrap .vi-matriz tr").find((tr) => tr.querySelector(":scope > td.etiqueta-fila")?.textContent === nombre);
+  ok(/^\d[\d,.]* A$/.test(fila("Corriente de operación").children[1].textContent.trim()), `la unidad va junto al número («${fila("Corriente de operación").children[1].textContent.trim()}»)`);
+  ok(fila("Ampacidad total").children[2].textContent.includes("2 conductores por fase"), "la ampacidad total dice cuántos conductores por fase suma");
+  const secciones = $$("#resultado-wrap .vi-matriz tr.vi-seccion th").map((th) => th.textContent);
+  ok(secciones.join(",") === "Ampacidad,Pérdidas,Regulación,Cortocircuito,Veredicto", `secciones como encabezados (th en su propio tbody): ${secciones.join(", ")}`);
+  ok($$("#resultado-wrap .vi-matriz tr.vi-seccion th").every((th) => th.colSpan === 3 && th.closest("tbody").classList.contains("vi-grupo")), "cada sección ocupa todo el ancho y agrupa sus filas");
+  const falla = fila("Corriente de falla");
   ok(falla.textContent.includes("Sin dato"), "el escenario sin corriente de falla dice «Sin dato»");
-  ok($("#resultado-wrap .result-panel > .callout"), "hay una conclusión arriba de la tabla");
+  ok($("#resultado-wrap .vi-cabecera > .callout"), "hay una conclusión arriba de la tabla");
   // mismo resultado que el motor
   const r = V.evaluarEscenario(COMUN, escAereo(ALLIANCE, 34.5, 1, { corrienteFallaKa: 5 }));
-  const perd = $$("#resultado-wrap .vi-matriz tr").find((tr) => tr.textContent.startsWith("Pérdidas (%)"));
+  const perd = fila("Pérdidas");
   ok(perd.children[1].textContent.startsWith(`${r.perdidas.pct.toFixed(2)}`), `pérdidas del escenario 1 en pantalla = motor (${r.perdidas.pct.toFixed(2)} %)`);
   // reporte
   const rep = $("#resultado-wrap .report-block").textContent.split("\n");
@@ -309,15 +316,109 @@ await seccion("vista: con costos", async () => {
   $("#form-calc").requestSubmit();
   await espera(30);
   const etiquetas = $$("#resultado-wrap .vi-matriz td.etiqueta-fila").map((t) => t.textContent);
-  ok(etiquetas.includes("Costo total actualizado ($)"), "con precio y al menos un costo aparecen las filas de costos");
+  ok(etiquetas.includes("Costo total actualizado"), "con precio y al menos un costo aparecen las filas de costos");
   ok($$("#resultado-wrap .callout-warning").some((c) => c.textContent.includes("Sin costo del conductor: Escenario 2") || c.textContent.includes("no entra en la comparación de costos: Escenario 2")), "avisa qué escenario queda fuera de la comparación de costos");
   poner(`#f-costo-cond-${ids[1]}`, "14000000", "input");
   $("#form-calc").requestSubmit();
   await espera(30);
   const rep = $("#resultado-wrap .report-block").textContent;
   ok(rep.includes("Precio de la energía perdida (año 1): $ 350/kWh") && rep.includes("Costo total actualizado:"), "el reporte trae los supuestos y los costos");
-  const cumplen = $("#resultado-wrap .result-panel > .callout").textContent;
+  const cumplen = $("#resultado-wrap .vi-cabecera > .callout").textContent;
   ok(/Recomendado: Escenario \d/.test(cumplen) || /Ningún escenario cumple/.test(cumplen), `conclusión: «${cumplen.trim()}»`);
+});
+
+// Lee un ZIP sin compresión (el que arma js/util/zip.js): { nombre: texto }
+function leerZip(bytes) {
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const dec = new TextDecoder();
+  const archivos = {};
+  let p = 0;
+  while (p + 30 <= bytes.length && dv.getUint32(p, true) === 0x04034b50) {
+    const tam = dv.getUint32(p + 18, true);
+    const largoNombre = dv.getUint16(p + 26, true);
+    const extra = dv.getUint16(p + 28, true);
+    const nombre = dec.decode(bytes.subarray(p + 30, p + 30 + largoNombre));
+    const ini = p + 30 + largoNombre + extra;
+    archivos[nombre] = dec.decode(bytes.subarray(ini, ini + tam));
+    p = ini + tam;
+  }
+  return archivos;
+}
+
+await seccion("xlsx: generador de Excel", async () => {
+  const X = await import("../js/util/xlsx.js");
+  ok(X.columna(0) === "A" && X.columna(25) === "Z" && X.columna(26) === "AA" && X.columna(27) === "AB", "letras de columna: A, Z, AA, AB");
+  const zip = X.crearXlsx([
+    { nombre: "Prueba: [1]", anchos: [20, 10], combinar: ["A1:B1"], filas: [[{ v: "Título <&>", estilo: "titulo" }], ["texto", 1234.5678], [{ v: 3.14159, dec: 2, estilo: "celda" }, { v: "", estilo: "seccion" }]] },
+    { nombre: "Otra", filas: [["x"]] },
+  ]);
+  ok(zip[0] === 0x50 && zip[1] === 0x4b, "es un ZIP (empieza por PK)");
+  const a = leerZip(zip);
+  const nombres = Object.keys(a);
+  for (const n of ["[Content_Types].xml", "_rels/.rels", "xl/workbook.xml", "xl/_rels/workbook.xml.rels", "xl/styles.xml", "xl/worksheets/sheet1.xml", "xl/worksheets/sheet2.xml"]) ok(nombres.includes(n), `trae ${n}`);
+  const malos = nombres.filter((n) => new DOMParser().parseFromString(a[n], "application/xml").querySelector("parsererror"));
+  ok(malos.length === 0, `todos los XML están bien formados${malos.length ? ": " + malos.join(", ") : ""}`);
+  ok(a["xl/workbook.xml"].includes('name="Prueba   1 "') || a["xl/workbook.xml"].includes('name="Prueba   1"'), "el nombre de la hoja quita los caracteres que Excel no admite");
+  const hoja = a["xl/worksheets/sheet1.xml"];
+  ok(hoja.includes("Título &lt;&amp;&gt;") && hoja.includes("<v>1234.5678</v>") && hoja.includes('<mergeCell ref="A1:B1"/>') && hoja.includes('width="20"'), "texto escapado, número como número, celdas combinadas y anchos");
+  const xfs = new DOMParser().parseFromString(a["xl/styles.xml"], "application/xml").querySelectorAll("cellXfs > xf");
+  const conDecimales = hoja.match(/<c r="A3" s="(\d+)"/);
+  ok(conDecimales && xfs[Number(conDecimales[1])].getAttribute("numFmtId") === "4", "un número con dec: 2 usa el formato #,##0.00");
+});
+
+await seccion("vista: exportar a Excel y a PDF", async () => {
+  const menu = $("#resultado-wrap .vi-cabecera .vi-exportar");
+  ok(menu && menu.tagName === "DETAILS" && menu.previousElementSibling.classList.contains("callout"), "botón «Exportar» a la derecha de la conclusión");
+  const opciones = [...menu.querySelectorAll("[data-exportar]")].map((b) => b.dataset.exportar);
+  ok(opciones.join(",") === "pdf,xlsx", "el menú ofrece PDF y Excel");
+
+  // Excel: se intercepta la descarga
+  const crear = URL.createObjectURL;
+  let blob = null;
+  URL.createObjectURL = (b) => ((blob = b), "blob:prueba");
+  const clickA = HTMLAnchorElement.prototype.click;
+  let descargado = null;
+  HTMLAnchorElement.prototype.click = function () { descargado = this.download; };
+  menu.open = true;
+  menu.querySelector('[data-exportar="xlsx"]').click();
+  URL.createObjectURL = crear;
+  HTMLAnchorElement.prototype.click = clickA;
+  ok(!menu.open, "el menú se cierra al elegir");
+  ok(/^valoracion-integral-\d{4}-\d{2}-\d{2}\.xlsx$/.test(descargado ?? ""), `descarga ${descargado}`);
+  ok(blob && blob.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "con el tipo de Excel");
+  const a = leerZip(new Uint8Array(await blob.arrayBuffer()));
+  const hoja = a["xl/worksheets/sheet1.xml"] ?? "";
+  const doc = new DOMParser().parseFromString(hoja, "application/xml");
+  ok(!doc.querySelector("parsererror"), "la hoja «Comparación» es XML válido");
+  ok(a["xl/workbook.xml"].includes('name="Comparación"') && a["xl/workbook.xml"].includes('name="Reporte"'), "dos hojas: Comparación y Reporte");
+  const textos = [...doc.querySelectorAll("t")].map((t) => t.textContent);
+  for (const t of ["Criterio", "Unidad", "Escenario 1", "Ampacidad", "Corriente de operación", "Ampacidad por conductor", "Pérdidas: clasificación", "Costo total actualizado", "Resultado", "Datos de la conexión"]) ok(textos.some((x) => x.startsWith(t)), `la hoja trae «${t}»`);
+  // la corriente de operación va como número (no como texto con la unidad)
+  const filaCorriente = [...doc.querySelectorAll("row")].find((r) => r.querySelector("t")?.textContent === "Corriente de operación");
+  const valores = filaCorriente ? [...filaCorriente.querySelectorAll("c > v")].map((v) => Number(v.textContent)) : [];
+  cerca(valores[0] ?? NaN, corriente(30, 34.5, 0.9), 1e-9, "la corriente del escenario 1 va como número en su celda");
+  ok(filaCorriente && [...filaCorriente.querySelectorAll("t")].some((t) => t.textContent === "A"), "…y la unidad «A» en la columna Unidad");
+  const reporte = a["xl/worksheets/sheet2.xml"] ?? "";
+  ok(reporte.includes("CÁLCULO DE VALORACIÓN INTEGRAL") && reporte.includes("PARÁMETROS DE ENTRADA:"), "la hoja «Reporte» trae el reporte completo");
+
+  // PDF: se intercepta la impresión
+  const imprimir = window.print;
+  let impreso = null;
+  window.print = () => {
+    const d = document.getElementById("doc-impresion");
+    impreso = { html: d?.outerHTML ?? "", clase: d?.className ?? "", marca: document.body.classList.contains("imprimiendo-reporte") };
+  };
+  menu.querySelector('[data-exportar="pdf"]').click();
+  window.print = imprimir;
+  ok(impreso && impreso.marca && /\bvi-doc\b/.test(impreso.clase), "arma el documento de impresión y marca la página para imprimir solo ese documento");
+  ok(!/vi-doc-apaisado/.test(impreso.clase), "con 2 escenarios la hoja va vertical");
+  const pdf = new DOMParser().parseFromString(impreso.html, "text/html");
+  ok(pdf.querySelector("h1")?.textContent === "Valoración integral de conductores" && pdf.querySelector(".vi-doc-conclusion"), "título y conclusión");
+  ok(pdf.querySelectorAll(".vi-doc-matriz thead th").length === 4, "tabla: criterio, unidad y una columna por escenario");
+  ok([...pdf.querySelectorAll(".vi-doc-seccion td")].map((t) => t.textContent).includes("Pérdidas"), "con las secciones");
+  ok(pdf.querySelectorAll(".vi-doc-datos tr").length >= 5, "con los datos de la conexión");
+  window.dispatchEvent(new Event("afterprint"));
+  ok(!document.getElementById("doc-impresion") && !document.body.classList.contains("imprimiendo-reporte"), "al terminar de imprimir se quita el documento");
 });
 
 await seccion("vista: escenario subterráneo y error de catálogo", async () => {
@@ -382,7 +483,8 @@ await seccion("registro: menú, permisos, ruta, ayuda y service worker", async (
   const shell = [...sw.matchAll(/^\s*"([^"]+)",\s*$/gm)].map((m) => m[1]);
   ok(shell.includes("js/calc/valoracion-integral.js") && shell.includes("js/views/calc-valoracion-integral.js") && shell.includes("data/construccion-cable-subterraneo.json"), "el service worker precachea el motor, la vista y los catálogos");
   const css = await (await fetch("../css/app.css")).text();
-  ok(!/#[0-9a-fA-F]{3,8}\b/.test(css.split("\n").filter((l) => l.includes(".vi-")).join("\n")), "el CSS nuevo no lleva colores escritos a mano");
+  ok(!/#[0-9a-fA-F]{3,8}\b/.test(css.split("\n").filter((l) => l.includes(".vi-") && !l.includes("vi-doc")).join("\n")), "el CSS de la pantalla no lleva colores escritos a mano (solo el documento PDF, que siempre es claro)");
+  ok(shell.includes("js/util/xlsx.js"), "el service worker precachea el generador de Excel");
 });
 
 guardarEstado("/calculos/valoracion-integral", null);
