@@ -489,8 +489,9 @@ input:disabled, select:disabled { opacity: 0.55; }
 .input-with-toggle .checkbox-row { white-space: nowrap; }
 .input-with-toggle input[type="date"] { flex: 1 1 auto; min-width: 0; }
 .input-with-toggle .btn-enlace { white-space: nowrap; }
-/* Ampacidad aérea: casilla «Calcular con la posición del sol», entre ε|α y Qse|θ */
-.sol-casilla { margin: 0 0 var(--space-4); }
+/* Ampacidad aérea: casilla «Calcular con la posición del sol», al final de la tarjeta (debajo de Qse|θ) */
+.sol-casilla { margin: 0; }
+#bloque-sol { margin-top: var(--space-4); }
 /* Ampacidad subterránea: tarjeta del conductor de continuidad de tierra (GCC) */
 #bloque-gcc { margin-top: var(--space-4); }
 .gcc-nota { margin: 0; font-size: 0.88rem; color: var(--text-muted); line-height: 1.5; }

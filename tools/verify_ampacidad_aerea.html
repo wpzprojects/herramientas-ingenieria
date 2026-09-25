@@ -136,7 +136,11 @@ await seccion("vista: tarjetas y campos", async () => {
   ok(filas(c3) === "Emisividad (ε) | Absortividad (α) // Radiación solar total Qse (W/m²) | Ángulo efectivo de incidencia solar θ (°)", `tarjeta Radiación: ${filas(c3)}`);
   const conManual = $$(".input-with-toggle").filter((w) => $("label.checkbox-row", w));
   ok(conManual.length === 5 && conManual.every((w) => texto($("label.checkbox-row", w)) === "Manual"), "diámetro, las dos resistencias, Qse y θ llevan la casilla «Manual» a su derecha (ya no «Modificar manualmente»)");
-  ok(texto($(".sol-casilla")) === "Calcular con la posición del sol" && $(".sol-casilla").compareDocumentPosition($("#f-qse")) & Node.DOCUMENT_POSITION_FOLLOWING && $("#bloque-sol").hidden, "la casilla «Calcular con la posición del sol» va antes de Qse | θ y sus campos nacen ocultos");
+  ok(texto($(".sol-casilla")) === "Calcular con la posición del sol" && $(".sol-casilla").compareDocumentPosition($("#f-theta")) & Node.DOCUMENT_POSITION_PRECEDING && $("#bloque-sol").hidden, "la casilla «Calcular con la posición del sol» va al final de la tarjeta, debajo de Qse | θ, y sus campos nacen ocultos");
+  const rCard = $$(".form-section")[2].getBoundingClientRect();
+  const rCas = $(".sol-casilla").getBoundingClientRect();
+  const rTheta = $("#f-theta").closest(".field").getBoundingClientRect();
+  ok(rCas.top >= rTheta.bottom - 0.5 && Math.abs(rCard.bottom - 1 - 12 - rCas.bottom) < 1, `con la casilla desmarcada es lo último de la tarjeta, a 12 px del borde inferior (${(rCard.bottom - 1 - rCas.bottom).toFixed(1)} px)`);
   ok(!texto($("#form-calc")).includes("Modificar manualmente"), "no queda ningún «Modificar manualmente»");
 });
 
@@ -466,7 +470,7 @@ await seccion("vista: ayuda de los campos con botón de información", async () 
 
   const botones = $$(".info-btn");
   const nombres = botones.map((b) => b.getAttribute("aria-label").replace("Más información sobre ", ""));
-  ok(nombres.join("|") === "Resistencia AC a 25°C (Ω/km)|Resistencia AC a 75°C (Ω/km)|Velocidad del viento (m/s)|Ángulo viento-conductor (°)|Emisividad (ε)|Absortividad (α)|Latitud (°)|Azimut de la línea (°)|Fecha|Hora solar (h)|Atmósfera|Radiación solar total Qse (W/m²)|Ángulo efectivo de incidencia solar θ (°)", `botones de información junto al nombre de: ${nombres.join(" | ")}`);
+  ok(nombres.join("|") === "Resistencia AC a 25°C (Ω/km)|Resistencia AC a 75°C (Ω/km)|Velocidad del viento (m/s)|Ángulo viento-conductor (°)|Emisividad (ε)|Absortividad (α)|Radiación solar total Qse (W/m²)|Ángulo efectivo de incidencia solar θ (°)|Latitud (°)|Azimut de la línea (°)|Fecha|Hora solar (h)|Atmósfera", `botones de información junto al nombre de: ${nombres.join(" | ")}`);
   ok(botones.every((b) => b.tagName === "BUTTON" && b.type === "button" && b.getAttribute("aria-expanded") === "false" && document.getElementById(b.getAttribute("aria-controls"))), "son botones reales, con aria-expanded y aria-controls");
   const b0 = botones[4];
   const campo = b0.closest(".field");

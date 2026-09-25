@@ -99,7 +99,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   la corriente cuyo I²·R iguala lo que el conductor disipa a su temperatura máxima (convección + radiación − ganancia
   solar), y la convección se calcula de tres formas (natural, forzada con viento bajo y con viento alto) y se usa la mayor.
   **Qse con la posición del sol (2026-09-24, 3.21.0, ver `docs/funcionalidades-futuras.md` A)**: casilla «Calcular con la
-  posición del sol» entre ε|α y Qse|θ; muestra latitud (4.6, Bogotá) | azimut de la línea (90), fecha (hoy) con el enlace
+  posición del sol» al FINAL de la tarjeta, debajo de Qse|θ (3.21.1, pedido del usuario; antes iba entre ε|α y Qse|θ); muestra latitud (4.6, Bogotá) | azimut de la línea (90), fecha (hoy) con el enlace
   «Peor día del año» | hora solar (12), y atmósfera Clara/Industrial. Qse y θ se llenan solos (redondeados a 0.1; «Calcular»
   usa el valor exacto) y sus «Manual» se desactivan; usa la elevación de la pantalla (Ksolar). `js/calc/posicion-solar.js`
   (IEEE 738: declinación, ángulo horario, Hc, Zc, polinomio Qs clara/industrial, Ksolar, θ; `peorDiaDelAnio` = máximo de

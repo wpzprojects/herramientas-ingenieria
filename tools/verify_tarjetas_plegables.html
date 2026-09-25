@@ -129,6 +129,7 @@ await seccion("Conductor económico: sigue plegada al calcular y se despliega si
     const id = c.querySelector("select").id.replace("f-red-", "");
     elegir(`#f-material-${id}`, "ACSR");
     elegir(`#f-calibre-${id}`, i ? "4/0" : "1/0");
+    elegir(`#f-referencia-${id}`, $(`#f-referencia-${id} option:nth-child(2)`).value); // la referencia es obligatoria desde 2026-09-23
     poner(`#f-costo-cond-${id}`, 9e6);
   });
   $("#form-calc").requestSubmit();
@@ -198,7 +199,7 @@ await seccion("Ocupación de ductos: tipos de conductor nuevos", async () => {
   ok(t.length === antes + 1 && t.every((c) => boton(c)), "el tipo de conductor agregado después también se puede plegar");
 });
 
-for (const [nombre, modulo, texto_boton] of [["Pérdidas", "calc-perdidas", "Agregar tramo"], ["Regulación", "calc-regulacion", "Agregar tramo"], ["Ocupación de ductos", "calc-ocupacion-ductos", "Agregar tipo de conductor"], ["Conductor económico", "calc-conductor-economico", "Agregar opción"]]) {
+for (const [nombre, modulo, texto_boton] of [["Pérdidas", "calc-perdidas", "Agregar tramo"], ["Regulación", "calc-regulacion", "Agregar tramo"], ["Ocupación de ductos", "calc-ocupacion-ductos", "Agregar tipo de conductor"], ["Conductor económico", "calc-conductor-economico", "Agregar conductor"]]) {
   await seccion(`${nombre}: «${texto_boton}» junto a «Calcular»`, async () => {
     stage.innerHTML = "";
     const { render } = await import(`../js/views/${modulo}.js`);

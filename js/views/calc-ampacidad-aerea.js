@@ -258,6 +258,22 @@ export async function render(container) {
             <input type="number" id="f-alfa" min="0.23" max="0.91" step="0.01" value="0.5" required>
           </div>
         </div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="f-qse" data-info="Se ingresa directamente o, con «Calcular con la posición del sol», se calcula a partir de la latitud, la fecha, la hora y la elevación.">Radiación solar total Qse (W/m²)</label>
+            <div class="input-with-toggle">
+              <input type="number" id="f-qse" min="0" max="3000" step="1" value="1000" required disabled>
+              <label class="checkbox-row"><input type="checkbox" id="chk-qse"> Manual</label>
+            </div>
+          </div>
+          <div class="field">
+            <label for="f-theta" data-info="90° es el sol perpendicular al conductor (máxima absorción).">Ángulo efectivo de incidencia solar θ (°)</label>
+            <div class="input-with-toggle">
+              <input type="number" id="f-theta" min="0" max="1000" step="1" value="90" required disabled>
+              <label class="checkbox-row"><input type="checkbox" id="chk-theta"> Manual</label>
+            </div>
+          </div>
+        </div>
         <label class="checkbox-row sol-casilla"><input type="checkbox" id="chk-sol"> Calcular con la posición del sol</label>
         <div id="bloque-sol" hidden>
           <div class="grid-2">
@@ -283,29 +299,13 @@ export async function render(container) {
               <input type="number" id="f-hora" min="0" max="24" step="any" value="12" required>
             </div>
           </div>
-          <div class="grid-2">
+          <div class="grid-2 ultima">
             <div class="field">
               <label for="f-atmosfera" data-info="${INFO_ATMOSFERA}">Atmósfera</label>
               <select id="f-atmosfera" required>
                 <option value="Clara">Clara</option>
                 <option value="Industrial">Industrial</option>
               </select>
-            </div>
-          </div>
-        </div>
-        <div class="grid-2 ultima">
-          <div class="field">
-            <label for="f-qse" data-info="Se ingresa directamente o, con «Calcular con la posición del sol», se calcula a partir de la latitud, la fecha, la hora y la elevación.">Radiación solar total Qse (W/m²)</label>
-            <div class="input-with-toggle">
-              <input type="number" id="f-qse" min="0" max="3000" step="1" value="1000" required disabled>
-              <label class="checkbox-row"><input type="checkbox" id="chk-qse"> Manual</label>
-            </div>
-          </div>
-          <div class="field">
-            <label for="f-theta" data-info="90° es el sol perpendicular al conductor (máxima absorción).">Ángulo efectivo de incidencia solar θ (°)</label>
-            <div class="input-with-toggle">
-              <input type="number" id="f-theta" min="0" max="1000" step="1" value="90" required disabled>
-              <label class="checkbox-row"><input type="checkbox" id="chk-theta"> Manual</label>
             </div>
           </div>
         </div>
