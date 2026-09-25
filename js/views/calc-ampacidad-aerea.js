@@ -83,9 +83,9 @@ const FORMULAS_ETIQUETAS = [
   { tex: "\\theta", texto: "Ángulo efectivo de incidencia solar [°]" },
 ];
 
-const FORMULAS_NOTA = `El cálculo es el balance térmico en régimen permanente de la IEEE Std 738: el calor que el conductor pierde por convección y por radiación, menos el que gana del sol, es el que puede generar el calentamiento resistivo I²·R.
+const FORMULAS_NOTA = `Método de la IEEE Std 738 en régimen permanente: la ampacidad es la corriente cuyo calentamiento (I²·R) iguala el calor que el conductor puede disipar a la temperatura máxima, es decir, lo que pierde por convección y radiación menos lo que gana del sol.
 
-Se toma la mayor de las tres convecciones (natural y las dos correlaciones de convección forzada).
+La convección se calcula de tres formas (natural, y forzada con viento bajo y con viento alto) y se usa la mayor, como indica la norma.
 
 La radiación solar total (Qse) y el ángulo efectivo de incidencia solar (θ) se ingresan directamente: el cálculo de la posición del sol a partir de fecha, hora y latitud del estándar completo no está implementado.
 

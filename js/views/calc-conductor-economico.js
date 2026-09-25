@@ -577,7 +577,8 @@ export async function render(container) {
   });
 
   const nombreRed = (red) => (red === "Aerea" ? "Aérea" : "Subterránea");
-  const conductorTexto = (e) => `${e.material} ${e.calibre}${e.referencia ? ` (${e.referencia})` : ""}${e.numConductoresPorFase > 1 ? ` ×${e.numConductoresPorFase}` : ""}`;
+  // La referencia ya trae sus propios paréntesis (p. ej. «Penguin (6/1)»): se separa con « · » para no anidar paréntesis.
+  const conductorTexto = (e) => `${e.material} ${e.calibre}${e.referencia ? ` · ${e.referencia}` : ""}${e.numConductoresPorFase > 1 ? ` ×${e.numConductoresPorFase}` : ""}`;
 
   /** Avisos tecnicos: solo hay referencia de ampacidad en los aereos (corriente a 75 °C del catalogo, por conductor). */
   function avisosAmpacidad(r, estados, base) {
@@ -631,17 +632,14 @@ export async function render(container) {
     const instalacionIndicada = estados.map((e) => e.instalacionIndicada);
     const filas = sensibilidadInstalacion(r, base.longitudKm, instalacionIndicada);
     if (!filas.length) return "";
-    const filasHtml = filas
-      .map(({ opcion, umbralKm, vecesConductor }) => {
-        const veces = vecesConductor != null ? ` (${fmt(vecesConductor, 1)}× lo que cuesta el conductor de la Opción ${r.mejor + 1} por km)` : "";
-        return `<tr><td class="etiqueta-fila">Opción ${opcion + 1}</td><td class="num">${fmtPesos(umbralKm)}/km${veces}</td></tr>`;
-      })
-      .join("");
+    const g = r.mejor + 1;
+    const filasHtml = filas.map(({ opcion, umbralKm }) => `<tr><td class="etiqueta-fila">Opción ${opcion + 1}</td><td class="num">${fmtPesos(umbralKm)}/km</td></tr>`).join("");
+    // Condicional, sin afirmar cuál instalación es más cara (no se sabe): solo cuánto tendría que diferir para cambiar la conclusión.
     return `
-      <div class="result-subhead">Sensibilidad al costo de instalación (no incluido)</div>
-      <p class="text-muted text-sm" style="margin: 0 0 var(--space-3);">El costo de instalación no se indicó (o es 0) para alguna de las opciones comparadas: el costo total de arriba es solo del conductor y sus pérdidas. Esto NO dice cuál instalación sería más cara (no se sabe); dice qué tan grande tendría que ser la diferencia real de instalación entre esa opción y la de menor costo para que la conclusión cambiara.</p>
+      <div class="result-subhead">Sensibilidad al costo de instalación</div>
+      <p class="text-muted text-sm" style="margin: 0 0 var(--space-3);">No se indicó el costo de instalación de todas las opciones, así que el costo total solo incluye el conductor y sus pérdidas. Para que otra opción pase a ser la más económica, instalar la Opción ${g} tendría que costar por km al menos este valor más que instalar esa opción. Si en la práctica la diferencia es menor, la Opción ${g} sigue siendo la mejor.</p>
       <div class="table-wrap tabla-resultado tabla-matriz"><table>
-        <thead><tr><th></th><th>Diferencia de instalación necesaria para cambiar la conclusión</th></tr></thead>
+        <thead><tr><th>Frente a</th><th class="num">Sobrecosto mínimo de instalación de la Opción ${g}</th></tr></thead>
         <tbody>${filasHtml}</tbody>
       </table></div>`;
   }
@@ -702,10 +700,8 @@ export async function render(container) {
     const sens = s.filas.map((f) => `  ${f.etiqueta}: Opción ${f.ganador + 1}`);
     const filasInstalacion = sensibilidadInstalacion(r, base.longitudKm, estados.map((e) => e.instalacionIndicada));
     const sensInstalacion = filasInstalacion.map(
-      ({ opcion, umbralKm, vecesConductor }) =>
-        `  Opción ${opcion + 1}: la diferencia de instalación entre esta opción y la Opción ${r.mejor + 1} tendría que ser de al menos ${fmtPesos(umbralKm)}/km` +
-        (vecesConductor != null ? ` (${fmt(vecesConductor, 1)}× el costo del conductor de la Opción ${r.mejor + 1})` : "") +
-        ` para que cambiara la conclusión.`
+      ({ opcion, umbralKm }) =>
+        `  Frente a la Opción ${opcion + 1}: instalar la Opción ${r.mejor + 1} tendría que costar al menos ${fmtPesos(umbralKm)}/km más para que la Opción ${opcion + 1} fuera la más económica.`
     );
     return [
       `CÁLCULO DE CONDUCTOR ECONÓMICO`,
@@ -734,10 +730,10 @@ export async function render(container) {
       ...resultadosOpciones,
       ``,
       `Opción de menor costo total: Opción ${r.mejor + 1} — ${conductorTexto(estados[r.mejor])} (${fmtPesos(r.opciones[r.mejor].costoTotal)})`,
-      ...(sensInstalacion.length ? [``, `Sensibilidad al costo de instalación (no incluido en el costo total):`, ...sensInstalacion] : []),
       ``,
       `Sensibilidad (opción de menor costo en cada escenario):`,
       ...sens,
+      ...(sensInstalacion.length ? [``, `Sensibilidad al costo de instalación (no incluido en el costo total):`, ...sensInstalacion] : []),
     ].join("\n");
   }
 
@@ -762,13 +758,13 @@ export async function render(container) {
       const avisos = avisosAmpacidad(r, estados, base);
       resultado = `
           <div class="result-panel">
-            <div class="callout callout-success" style="margin: 0 0 var(--space-4);"><strong>Menor costo total en ${base.anios} años: Opción ${r.mejor + 1}</strong> (${escapeHtml(conductorTexto(estados[r.mejor]))}), con ${fmtPesos(mejor.costoTotal)}.</div>
+            <div class="callout callout-success" style="margin: 0 0 var(--space-4);"><strong>Menor costo total en ${base.anios} años: Opción ${r.mejor + 1}</strong> — ${escapeHtml(conductorTexto(estados[r.mejor]))}, con ${fmtPesos(mejor.costoTotal)}.</div>
             <div class="grid-2">${metricas}</div>
             <p class="text-muted text-sm" style="margin: var(--space-3) 0 0;">Costo total actualizado = inversión inicial + valor presente del costo de las pérdidas.</p>
             ${avisos.length ? `<div class="callout callout-warning" style="margin-top: var(--space-4);">${avisos.map(escapeHtml).join("<br>")}</div>` : ""}
             ${matrizHtml(r, estados, base)}
-            ${sensibilidadInstalacionHtml(r, estados, base)}
             ${sensibilidadHtml(s, r)}
+            ${sensibilidadInstalacionHtml(r, estados, base)}
           </div>`;
     }
 

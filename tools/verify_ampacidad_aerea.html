@@ -281,7 +281,7 @@ await seccion("vista: fórmulas con KaTeX", async () => {
   ok(Math.max(...izq) - Math.min(...izq) < 1, "los textos de las viñetas quedan alineados");
   ok($$("#formulas-katex .katex .sqrt").length >= 2 && $$("#formulas-katex .katex .mop").some((m) => m.textContent.includes("max")), "hay raíces y el máximo de las tres convecciones dibujados");
   const textoCaja = texto(caja);
-  ok(textoCaja.includes("balance térmico en régimen permanente") && textoCaja.includes("no está implementado") && textoCaja.includes("no hay ampacidad"), "las notas explican el balance, que Qse y θ se ingresan y cuándo no hay ampacidad");
+  ok(textoCaja.includes("IEEE Std 738 en régimen permanente") && textoCaja.includes("se usa la mayor") && textoCaja.includes("no está implementado") && textoCaja.includes("no hay ampacidad"), "las notas explican el balance, que Qse y θ se ingresan y cuándo no hay ampacidad");
   const rc = caja.getBoundingClientRect();
   ok($$("#formulas-katex .formula-katex").every((e) => { const r = e.getBoundingClientRect(); return r.left >= rc.left && r.right <= rc.right + 0.5; }), "las ecuaciones quedan dentro de la subtarjeta (aun las más largas)");
   const lineaSec = $$("#formulas-katex > .result-subhead")[1];

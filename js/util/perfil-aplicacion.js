@@ -105,7 +105,7 @@ export function pintarAplicacion(box, { novedades = false } = {}) {
     $("[data-version]").textContent = e.version;
     const cuales = (e.faltantes || []).slice(0, 5).join(", ") + ((e.faltantes || []).length > 5 ? "…" : "");
     $("[data-offline]").textContent = !e.faltan
-      ? "Lista: todos los archivos de la app están guardados en este dispositivo."
+      ? "Todos los archivos de la app están guardados en este dispositivo."
       : navigator.onLine === false
         ? `Incompleto: faltan ${e.faltan} de ${e.total} archivos${cuales ? ` (${cuales})` : ""}. Se completa sola la próxima vez que abras esta pestaña con internet.`
         : `Incompleto: ${e.faltan === 1 ? "no se pudo" : "no se pudieron"} descargar ${e.faltan} de ${e.total} archivos${cuales ? ` (${cuales})` : ""}. Vuelve a abrir esta pestaña en un momento para reintentarlo.`;

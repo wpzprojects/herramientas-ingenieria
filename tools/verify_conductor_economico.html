@@ -473,6 +473,15 @@ await seccion("vista: costo de instalación opcional", async () => {
   const filasInstUi = [...subInst.nextElementSibling.nextElementSibling.querySelectorAll("tbody tr")];
   ok(filasInstUi.length === 2, "una fila por cada opción que no es la ganadora (2 de 3)");
   ok($('[data-panel="reporte"] .report-block').textContent.includes("Sensibilidad al costo de instalación (no incluido en el costo total):"), "también aparece en el reporte de texto");
+  // 2026-09-24 (pedido del usuario): va al FINAL, después de la sensibilidad de escenarios, y sin «× lo que cuesta el conductor»
+  const subheads = [...$$(".result-subhead")].map(texto);
+  ok(subheads.at(-1).includes("Sensibilidad al costo de instalación") && subheads.at(-2).startsWith("Sensibilidad (costo total actualizado"), `el bloque va al final, después de la sensibilidad de escenarios (${subheads.join(" | ")})`);
+  const repInst = $('[data-panel="reporte"] .report-block').textContent;
+  ok(repInst.indexOf("Sensibilidad al costo de instalación") > repInst.indexOf("Sensibilidad (opción de menor costo"), "en el reporte también va después de la sensibilidad de escenarios");
+  const bloqueInst = subInst.parentElement.innerHTML.slice(subInst.parentElement.innerHTML.indexOf("Sensibilidad al costo de instalación"));
+  ok(!/×|lo que cuesta el conductor/.test(bloqueInst) && !/×/.test(repInst.slice(repInst.indexOf("Sensibilidad al costo de instalación"))), "sin la comparación «× lo que cuesta el conductor»");
+  ok(/tendría que costar por km al menos este valor más/.test(texto(subInst.nextElementSibling)) && /sigue siendo la mejor/.test(texto(subInst.nextElementSibling)), `la explicación dice, en condicional, cuánto más tendría que costar instalar la ganadora y que si la diferencia real es menor la conclusión se mantiene`);
+  ok(!/\(\s*[^()]*\([^()]*\([^()]*\)/.test(texto($(".callout-success"))), `el aviso verde no anida paréntesis: ${texto($(".callout-success"))}`);
   ids().forEach((id) => poner(`#f-costo-inst-${id}`, 5e6));
   enviar();
   ok(![...$$(".result-subhead")].some((h) => texto(h).includes("Sensibilidad al costo de instalación")), "si las 3 opciones indican su costo de instalación, el bloque no aparece");
