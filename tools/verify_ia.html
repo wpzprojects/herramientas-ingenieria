@@ -1227,6 +1227,50 @@ await seccion("reporte: la nota de referencia ambigua se actualiza si el grupo u
   ok(amp2.notas.some((n) => /se usó la primera \(Pelican/.test(n)) && !amp2.notas.some((n) => /varias referencias/.test(n)), "si todas las corridas terminan con la misma referencia, la nota original (sin reescribir) sigue siendo exacta");
 });
 
+await seccion("consumo de tokens (leído de la respuesta, sin llamadas adicionales)", async () => {
+  const U = await import("../js/ai/uso.js");
+  let llamadasApi = 0;
+  gemini.usarMock(async () => (llamadasApi++, { candidates: [{ finishReason: "STOP", content: { role: "model", parts: [{ text: "ok" }] } }], usageMetadata: { promptTokenCount: 1200, candidatesTokenCount: 80, thoughtsTokenCount: 20, totalTokenCount: 1300 } }));
+  const g = await gemini.generar({ clave: "k", modelo: "m", contenidos: [] });
+  ok(g.uso && g.uso.entrada === 1200 && g.uso.salida === 100 && g.uso.llamadas === 1 && llamadasApi === 1, "Gemini: entrada, salida (con el razonamiento) y una sola llamada a la API (no se consulta aparte)");
+  gemini.usarMock(async () => ({ candidates: [{ finishReason: "STOP", content: { role: "model", parts: [{ text: "ok" }] } }] }));
+  ok((await gemini.generar({ clave: "k", modelo: "m", contenidos: [] })).uso === null, "sin datos de consumo en la respuesta: uso = null (no se inventa)");
+  openai.usarMock(async () => ({ choices: [{ finish_reason: "stop", message: { content: "ok" } }], usage: { prompt_tokens: 500, completion_tokens: 40, total_tokens: 540 } }));
+  const o = await openai.generar({ clave: "k", modelo: "m", contenidos: [] });
+  ok(o.uso && o.uso.entrada === 500 && o.uso.salida === 40, "OpenAI: prompt_tokens y completion_tokens");
+  anthropic.usarMock(async () => ({ content: [{ type: "text", text: "ok" }], stop_reason: "end_turn", usage: { input_tokens: 300, cache_read_input_tokens: 100, output_tokens: 60 } }));
+  const a = await anthropic.generar({ clave: "k", modelo: "m", contenidos: [], maxTokens: 100 });
+  ok(a.uso && a.uso.entrada === 400 && a.uso.salida === 60, "Anthropic: input (con la caché) y output tokens");
+  openai.usarMock(null);
+  anthropic.usarMock(null);
+
+  // una pregunta con calculadoras = varias rondas: se suman
+  let n2 = 0;
+  gemini.usarMock(async () => {
+    n2++;
+    if (n2 === 1) return { candidates: [{ content: { role: "model", parts: [{ functionCall: { name: "calcular_perdidas", args: { ...LINEA, factor_carga: 0.5, resistencia_ohm_km: 0.3 } } }] } }], usageMetadata: { promptTokenCount: 2000, candidatesTokenCount: 50 } };
+    return { candidates: [{ content: { role: "model", parts: [{ text: "Listo." }] } }], usageMetadata: { promptTokenCount: 2600, candidatesTokenCount: 300 } };
+  });
+  const r = await analisis.ejecutarTurno({ conv: { contenidos: [] }, texto: "pérdidas", clave: "k", ajustes: { modelo: "m", temperatura: 0.3, maxRondas: 4, maxCalculos: 60 }, ctx: ctxNuevo() });
+  ok(r.uso && r.uso.entrada === 4600 && r.uso.salida === 350 && r.uso.llamadas === 2, `el Asistente suma las rondas de la pregunta (${JSON.stringify(r.uso)})`);
+  gemini.usarMock(null);
+
+  ok(U.textoTokens(850) === "850 tokens" && U.textoTokens(3240) === "3.2 k tokens" && U.textoTokens(18400) === "18 k tokens" && U.textoTokens(1250000) === "1.25 M tokens", "formato corto: 850 tokens · 3.2 k · 18 k · 1.25 M");
+  const mensajes = [{ rol: "user", texto: "a" }, { rol: "model", texto: "b", uso: { entrada: 1000, salida: 200, llamadas: 1 } }, { rol: "model", texto: "c" }, { rol: "model", texto: "d", uso: { entrada: 3000, salida: 400, llamadas: 3 } }];
+  const tot = U.usoConversacion(mensajes);
+  ok(tot.entrada === 4000 && tot.salida === 600 && tot.llamadas === 4, "el total de la conversación suma las respuestas que traen el dato (las anteriores a esta función no cuentan)");
+  const caja = document.createElement("span");
+  document.body.append(caja);
+  U.pintarTotal(caja, mensajes);
+  const etiqueta = caja.querySelector("label.ia-uso-total");
+  ok(etiqueta && /^Total: 4\.6 k tokens/.test(etiqueta.textContent.trim()) && /Entrada: 4\.0 k tokens/.test(etiqueta.dataset.info) && !!etiqueta.querySelector(".info-btn"), "total en la barra de «Conversación» con un botón «i» que da el detalle");
+  U.pintarTotal(caja, [{ rol: "user", texto: "a" }]);
+  ok(caja.innerHTML === "", "sin consumo registrado no se muestra nada");
+  caja.remove();
+  const nodo = U.nodoUso({ entrada: 3000, salida: 240, llamadas: 2 });
+  ok(nodo.textContent === "≈ 3.2 k tokens" && nodo.classList.contains("ia-uso") && U.nodoUso(null) === null, "bajo cada respuesta: «≈ 3.2 k tokens» (nada si no hay dato)");
+});
+
 await seccion("analisis: bucle con herramientas (Gemini simulado)", async () => {
   const ajustes = { modelo: "m", temperatura: 0.3, maxRondas: 4, maxCalculos: 60 };
   const conv = { contenidos: [] };

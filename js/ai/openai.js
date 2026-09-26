@@ -7,6 +7,7 @@
 // hacia/desde el formato nativo de OpenAI puertas adentro.
 
 import { ErrorProveedorIA } from "./errores.js";
+import { usoDesdeOpenAI } from "./uso.js";
 
 const BASE = "https://api.openai.com/v1";
 
@@ -214,7 +215,7 @@ export async function generar({ clave, modelo, sistema, contenidos, herramientas
     .join("");
   const llamadas = parts.filter((p) => p.functionCall).map((p) => p.functionCall);
 
-  return { content, texto, llamadas, finishReason: cand.finish_reason || "" };
+  return { content, texto, llamadas, finishReason: cand.finish_reason || "", uso: usoDesdeOpenAI(json) };
 }
 
 /** Prueba minima de conexion: lista modelos y devuelve cuantos hay. */

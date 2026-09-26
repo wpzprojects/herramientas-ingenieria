@@ -11,6 +11,7 @@
 // falla por CORS antes de llegar al servidor.
 
 import { ErrorProveedorIA } from "./errores.js";
+import { usoDesdeAnthropic } from "./uso.js";
 
 const BASE = "https://api.anthropic.com/v1";
 const VERSION = "2023-06-01";
@@ -213,7 +214,7 @@ export async function generar({ clave, modelo, sistema, contenidos, herramientas
     .join("");
   const llamadas = parts.filter((p) => p.functionCall).map((p) => p.functionCall);
 
-  return { content, texto, llamadas, finishReason: json.stop_reason || "" };
+  return { content, texto, llamadas, finishReason: json.stop_reason || "", uso: usoDesdeAnthropic(json) };
 }
 
 /** Prueba minima de conexion: lista modelos y devuelve cuantos hay. */

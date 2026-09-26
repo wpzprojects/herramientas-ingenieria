@@ -5,6 +5,7 @@
 // con listarModelos() y el usuario elige en Configuracion.
 
 import { ErrorProveedorIA } from "./errores.js";
+import { usoDesdeGemini } from "./uso.js";
 
 const BASE = "https://generativelanguage.googleapis.com/v1beta";
 
@@ -198,7 +199,7 @@ export async function generar({ clave, modelo, sistema, contenidos, herramientas
     .join("");
   const llamadas = content.parts.filter((p) => p.functionCall).map((p) => ({ name: p.functionCall.name, args: p.functionCall.args || {} }));
 
-  return { content, texto, llamadas, finishReason: cand.finishReason || "" };
+  return { content, texto, llamadas, finishReason: cand.finishReason || "", uso: usoDesdeGemini(json) };
 }
 
 /** Prueba minima de conexion: lista modelos y devuelve cuantos hay. */

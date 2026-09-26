@@ -3,6 +3,7 @@
 // La PRIMERA entrada debe coincidir con CACHE_VERSION de sw.js (lo comprueba tools/verify_perfil.html).
 // El historial anterior a 3.16.0 se reconstruyó a partir de git el 2026-09-24 (antes solo había un contador v1…v296).
 export const NOVEDADES = [
+  { version: "3.36.0", fecha: "2026-09-26", cambios: ["Asistente técnico y Corrector de redacción: cada respuesta muestra en gris los tokens que usó y la barra de «Conversación» el total, con el detalle en el botón «i». Sirve para comparar cuánto consume una consulta frente a otra; no genera consumo adicional.", "Biblioteca técnica y Corriente NTC: los nombres de las imágenes van sin negrilla y más pequeños."] },
   { version: "3.35.3", fecha: "2026-09-26", cambios: ["Distancias de seguridad y Corriente de conductores NTC: las imágenes arrancan al 80 % y tienen botones «−» y «+» de zoom (de 40 % a 300 %), como en la Biblioteca técnica. En Corriente NTC el encabezado fijo y la tabla crecen juntos y se desplazan a lo ancho a la par."] },
   { version: "3.35.2", fecha: "2026-09-26", cambios: ["Biblioteca técnica: el recuadro de cada imagen crece con su altura (ya no aparece una barra vertical); solo se desplaza a lo ancho cuando el zoom la hace más ancha que el recuadro."] },
   { version: "3.35.1", fecha: "2026-09-26", cambios: ["Biblioteca técnica: las imágenes se ven al 80 % y cada una tiene botones «−» y «+» para acercarla o alejarla dentro de su recuadro (de 40 % a 300 %); el botón de agregar dice solo «Agregar»."] },

@@ -4,6 +4,7 @@
 // pantalla (crear, editar, duplicar, borrar, exportar/importar JSON).
 
 import { el, escapeHtml } from "../util/format.js";
+import { nodoUso, pintarTotal } from "../ai/uso.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
 import { copiarTexto } from "../util/portapapeles.js";
@@ -106,7 +107,7 @@ export async function render(container) {
     </div>
 
     <div class="card tarjeta-borde form-section ia-conv" id="conv">
-      <div class="form-section-title">${icon("messageCircle")} Conversación</div>
+      <div class="form-section-title">${icon("messageCircle")} Conversación <span class="ia-uso-caja" id="uso-total"></span></div>
       <div class="tabs ia-pestanas" role="tablist">
         <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-conv="actual">Actual</button>
         <button type="button" class="tab-btn" role="tab" aria-selected="false" data-conv="historial">Historial</button>
@@ -193,13 +194,14 @@ export async function render(container) {
   }
 
   // ---------- conversacion ----------
-  function burbuja(rol, texto) {
+  function burbuja(rol, texto, uso = null) {
     const cls = rol === "user" ? "ia-msg ia-msg--user" : rol === "error" ? "ia-msg ia-msg--error" : "ia-msg ia-msg--model ia-msg--plano";
     const nodo = el("div", { class: cls }, texto);
     if (rol === "model") {
       nodo.prepend(el("div", { class: "ia-msg-etiqueta" }, etiquetaRespuesta())); // «Correo corregido», «Resumen»…
       nodo.append(
         el("div", { class: "ia-msg-acciones" }, [
+          nodoUso(uso), // tokens de esta respuesta, en gris (js/ai/uso.js)
           el("button", {
             type: "button",
             class: "ia-accion",
@@ -234,12 +236,14 @@ export async function render(container) {
   function reiniciarConversacion() {
     conv = null;
     chat.innerHTML = "";
+    pintarTotal($("#uso-total"), []);
     mostrarHilo(false);
   }
 
   function pintarConversacion() {
     chat.innerHTML = "";
-    for (const m of conv.mensajes) burbuja(m.rol, m.texto);
+    for (const m of conv.mensajes) burbuja(m.rol, m.texto, m.uso);
+    pintarTotal($("#uso-total"), conv.mensajes);
     mostrarHilo(true);
     pintarAjustes();
   }
@@ -287,10 +291,11 @@ export async function render(container) {
       });
       const texto = r.texto.trim() || `(La IA no devolvió texto${r.finishReason ? `: ${r.finishReason}` : ""}. Reformula o acorta el texto.)`;
       conv.contenidos.push({ role: "model", parts: [{ text: r.texto || texto }] });
-      conv.mensajes.push({ rol: "model", texto });
+      conv.mensajes.push({ rol: "model", texto, ...(r.uso ? { uso: r.uso } : {}) });
       espera.remove();
       ocupado = false;
-      burbuja("model", texto);
+      burbuja("model", texto, r.uso);
+      pintarTotal($("#uso-total"), conv.mensajes);
       pintarAjustes();
       historial.guardar(conv); // en segundo plano: un guardado lento no debe bloquear la interfaz
     } catch (err) {

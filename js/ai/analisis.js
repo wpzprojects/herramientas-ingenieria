@@ -4,6 +4,7 @@
 
 import { PROVEEDORES, proveedorDe } from "./proveedores.js";
 import { declaraciones, ejecutarLlamada, tituloDe, HERRAMIENTAS_ESTANDAR } from "./tools.js";
+import { sumarUso } from "./uso.js";
 
 export const SISTEMA_ANALISIS = `Eres el asistente de análisis de la aplicación "Herramientas de Ingeniería", para líneas y redes de distribución eléctrica en Colombia (referencias: RETIE, NTC 2050, IEEE Std 738, IEC 60287, CREG). Respondes siempre en español.
 
@@ -96,6 +97,7 @@ export async function ejecutarTurno({ conv, texto, clave, ajustes, ctx, onEvento
   const marcador = conv.contenidos.length;
   const marcadorLog = ctx.log.length;
   const herramientas = [];
+  let uso = null; // tokens de todas las rondas de esta pregunta (ver js/ai/uso.js)
   ctx.presupuesto = { max: ajustes.maxCalculos, usado: 0 };
   ctx.presupuestoAgotado = false;
   ctx.permitidas = permitidas ? new Set(permitidas) : null;
@@ -113,10 +115,11 @@ export async function ejecutarTurno({ conv, texto, clave, ajustes, ctx, onEvento
   try {
     for (let ronda = 0; ronda < ajustes.maxRondas; ronda++) {
       const r = await generar({ ...base, contenidos: conv.contenidos, modoHerramientas: "AUTO" });
+      uso = sumarUso(uso, r.uso);
       conv.contenidos.push(r.content);
 
       if (!r.llamadas.length) {
-        return { texto: r.texto.trim() || "(La IA no devolvió texto.)", herramientas, truncado: false, presupuestoAgotado: ctx.presupuestoAgotado };
+        return { texto: r.texto.trim() || "(La IA no devolvió texto.)", herramientas, truncado: false, presupuestoAgotado: ctx.presupuestoAgotado, uso };
       }
 
       const respuestas = [];
@@ -137,8 +140,9 @@ export async function ejecutarTurno({ conv, texto, clave, ajustes, ctx, onEvento
       parts: [{ text: "Se alcanzó el límite de rondas de cálculo. Sin usar más herramientas, resume con los resultados ya obtenidos e indica qué faltó por evaluar." }],
     });
     const cierre = await generar({ ...base, contenidos: conv.contenidos, modoHerramientas: "NONE" });
+    uso = sumarUso(uso, cierre.uso);
     conv.contenidos.push(cierre.content);
-    return { texto: cierre.texto.trim() || "(La IA no devolvió texto.)", herramientas, truncado: true, presupuestoAgotado: ctx.presupuestoAgotado };
+    return { texto: cierre.texto.trim() || "(La IA no devolvió texto.)", herramientas, truncado: true, presupuestoAgotado: ctx.presupuestoAgotado, uso };
   } catch (err) {
     conv.contenidos.length = marcador;
     ctx.log.length = marcadorLog;

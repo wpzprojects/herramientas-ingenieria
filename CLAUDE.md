@@ -860,6 +860,18 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
     estándar, presentes en los prompts). Como son cambios de PROMPT (texto que interpreta el modelo, no código
     determinista), las pruebas solo verifican que la instrucción está en el texto — no pueden verificar que el modelo
     la siga; eso lo confirma el usuario probando los agentes.
+- **Consumo de tokens (2026-09-26, 3.36.0, pedido del usuario)**: `js/ai/uso.js`. Cada cliente (`gemini.js`,
+  `openai.js`, `anthropic.js`) devuelve `uso = {entrada, salida, llamadas}` leído de la MISMA respuesta (Gemini
+  `usageMetadata`, con `thoughtsTokenCount` en la salida; OpenAI `usage`; Anthropic `usage`, con la caché en la entrada):
+  mostrarlo no gasta nada. `ejecutarTurno` suma las rondas de una pregunta. En el Asistente y el Corrector cada respuesta
+  guarda `uso` en `conv.mensajes` y muestra «≈ 3.2 k tokens» en gris a la izquierda de «Copiar» (`nodoUso`); la barra de
+  «Conversación» muestra «Total: …» con «i» (`pintarTotal`, `#uso-total`). Las APIs NO informan el saldo del plan (solo
+  límites por minuto): no se muestra un «% consumido»; tampoco pesos (los precios cambian). Conversaciones anteriores sin
+  `uso` no cuentan. Pruebas: «consumo de tokens» en `verify_ia.html`.
+- **Decisión del usuario (2026-09-26)**: NO agregar más funciones de IA hasta que él lo pida. Se le propusieron y
+  descartó: analizar con IA desde cada calculadora, consulta de la Biblioteca/Resoluciones como herramienta, control de
+  cambios en el Corrector, agentes compartidos, adjuntos, plantilla Word, conversaciones en la cuenta, más herramientas,
+  revisor de memorias, consulta normativa con citas, datos de campo por foto, especificación desde una valoración y actas.
 - Explicación completa de cómo la IA usa las herramientas y de cómo agregar una nueva: `docs/ia-herramientas.md` (léelo antes de
   tocar `tools.js` o los agentes; si cambia ese comportamiento, actualízalo).
 - **Documentos para explicarle esto a alguien que no ve el código (2026-09-24, pedido del usuario)**: `docs/como-funcionan-los-agentes-ia.md`

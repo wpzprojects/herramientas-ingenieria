@@ -13,6 +13,7 @@ import { verificarAcceso } from "../ai/ui-clave.js";
 import { markdownAHtml } from "../ai/markdown.js";
 import { crearContexto, catalogoHerramientas } from "../ai/tools.js";
 import { ejecutarTurno } from "../ai/analisis.js";
+import { nodoUso, pintarTotal } from "../ai/uso.js";
 import {
   ID_PREDETERMINADO,
   REGLA_FIJA,
@@ -90,7 +91,7 @@ export async function render(container) {
     </div>
 
     <div class="card tarjeta-borde form-section ia-conv" id="conv">
-      <div class="form-section-title">${icon("messageCircle")} Conversación</div>
+      <div class="form-section-title">${icon("messageCircle")} Conversación <span class="ia-uso-caja" id="uso-total"></span></div>
       <div class="tabs ia-pestanas" role="tablist">
         <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-conv="actual">Actual</button>
         <button type="button" class="tab-btn" role="tab" aria-selected="false" data-conv="historial">Historial</button>
@@ -182,10 +183,14 @@ export async function render(container) {
       const chips = chipsHerramientas(m.herramientas);
       if (chips) chat.append(chips);
       const burbuja = el("div", { class: "ia-msg ia-msg--model md", html: markdownAHtml(m.texto) });
-      // «Copiar» dentro de cada respuesta (como en el Corrector): copia el texto de la respuesta; el aviso «Reporte generado…» no lleva
+      // «Copiar» dentro de cada respuesta (como en el Corrector): copia el texto de la respuesta; el aviso «Reporte generado…» no lleva.
+      // A la izquierda, en gris, los tokens que usó esa respuesta (js/ai/uso.js).
+      const uso = nodoUso(m.uso);
+      if (m.sinCopia && uso) burbuja.append(el("div", { class: "ia-msg-acciones" }, [uso]));
       if (!m.sinCopia) {
         burbuja.append(
           el("div", { class: "ia-msg-acciones" }, [
+            uso,
             el("button", {
               type: "button",
               class: "ia-accion",
@@ -217,6 +222,7 @@ export async function render(container) {
   function pintarChat() {
     chat.innerHTML = "";
     for (const m of conv?.mensajes || []) pintarMensaje(m);
+    pintarTotal($("#uso-total"), conv?.mensajes);
     $("#ejemplos").hidden = !!conv?.mensajes?.length;
     pintarPlaceholder();
   }
@@ -323,9 +329,10 @@ export async function render(container) {
       } else if (r.truncado) {
         textoVisible += "\n\n> Se alcanzó el límite de rondas de cálculo (Configuración → Rondas máximas); puedes continuar con una nueva pregunta.";
       }
-      const msg = { rol: "model", texto: textoVisible, herramientas: r.herramientas, ...(esReporte ? { sinCopia: true } : {}) };
+      const msg = { rol: "model", texto: textoVisible, herramientas: r.herramientas, ...(esReporte ? { sinCopia: true } : {}), ...(r.uso ? { uso: r.uso } : {}) };
       conv.mensajes.push(msg);
       pintarMensaje(msg);
+      pintarTotal($("#uso-total"), conv.mensajes);
       historial.guardar(conv); // en segundo plano
     } catch (err) {
       espera.remove();
