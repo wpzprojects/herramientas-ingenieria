@@ -454,6 +454,19 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   `.graf-cifras-apiladas`: una debajo de otra; en ≤1180px (cuando las cifras quedan encima de los gráficos), lado a lado.
   3.41.3: `.oc-resumen` = `fit-content(340px) minmax(0,340px) minmax(0,340px)`, `justify-content: start`, gap 56 px. El
   usuario NO quiere columnas repartidas a todo el ancho: SIEMPRE justificadas a la izquierda con aire entre ellas.
+  **3.42.0 (2026-09-26)**: Reportes (texto, Cálculo LaTeX, PDF y Word) en las SEIS calculadoras (Pérdidas era el piloto).
+  Cada vista arma `simbolosX` (parámetros con símbolo) y `memoriaX` (pasos con las fórmulas del motor, sin tocarlo) y
+  llama `activarReportes` con sus gráficos: Regulación (DMG, Xl, Z, K y %ΔV por tramo; haz con r y RMGeq), Cortocircuito
+  (factor log10, Icc, y con corriente a soportar el área mínima y la temperatura alcanzada), Ocupación (π = 3.1416 como
+  el original, áreas, %, límite NTC, relación de atascamiento y 12D), Ampacidad aérea (IEEE 738: Tfilm, ρf, μf, kf, NRe,
+  Kangle, qcn/qc1/qc2, qr, qs, R(Tc) e I; sin memoria si el balance no admite corriente) y Ampacidad subterránea (Δθ,
+  R, Wd, λ1, T1–T4 e I). `numTex` (reportes.js) formatea los números. Vista LaTeX: tablas `width: auto` (a la
+  izquierda), 10 mm entre secciones y 5 mm entre pasos. Etiqueta del punto de Pérdidas: «1.53 % · 19.9 MW» (primero el
+  %, como el eje Y). Celular (≤720px): `.tabla-resultado` con encabezados en dos líneas, rellenos menores y la insignia
+  «Actual» bajo el calibre (sin desplazamiento lateral); cifras de `.graf-metricas .grid-2` en DOS columnas (valor a
+  1.45rem); los pares de gráficos se apilan y el angosto (`.graf-angosto`, ancho < 300 en `resumenConGraficosHtml`: el
+  termómetro) va al 50 % para que tenga el alto del otro. ≤560px: pestañas compactas (caben las tres en una línea). OJO:
+  una regla `@media` para `.tab-btn` debe ir DESPUÉS de la regla base (si no, la base la pisa).
 - **Valores por defecto (2026-09-26, pedido del usuario: calcular de una)**: `porDefecto(sel, valor)` en cada vista
   (dispara «change» para la cascada): AAAC 246.9 + primera referencia en Pérdidas y Regulación (cada tramo aéreo nuevo),
   Cortocircuito y Ampacidad aérea; Ocupación: PVC Tipo TDP de 4". Lo guardado en la sesión sigue ganando.

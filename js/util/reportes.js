@@ -14,6 +14,9 @@
 import { escapeHtml } from "./format.js";
 import { cargarKatex, ecuacionHtml } from "./katex.js";
 
+/** Número para la memoria de cálculo: hasta `d` decimales, sin ceros sobrantes. */
+export const numTex = (v, d = 4) => String(Number(Number(v).toFixed(d)));
+
 const fechaLarga = () => new Date().toLocaleString("es-CO", { dateStyle: "long", timeStyle: "short" });
 const fechaArchivo = () => new Date().toISOString().slice(0, 10);
 const slug = (t) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");

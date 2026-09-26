@@ -548,6 +548,18 @@ input:disabled, select:disabled { opacity: 0.55; }
 .tabla-resultado th.col-mejor { color: var(--accent-strong); box-shadow: inset 0 -3px 0 var(--accent); }
 .tabla-matriz :is(th, td) + :is(th, td) { border-left: 1px solid var(--table-border); }
 .tabla-resultado td.etiqueta-fila { font-weight: 600; white-space: normal; }
+/* Celular (pedido del usuario, 2026-09-26): las tablas de resultado (comparación con otros calibres, tramos) caben sin
+   desplazarse de lado: encabezados en dos líneas si hace falta, rellenos menores, y la insignia «Actual» baja bajo el calibre. */
+@media (max-width: 720px) {
+  .tabla-resultado thead th { white-space: normal; font-size: 0.68rem; padding: 8px 8px; vertical-align: bottom; line-height: 1.25; }
+  .tabla-resultado tbody td { white-space: normal; padding: 10px 8px; font-size: 0.84rem; vertical-align: middle; }
+  .tabla-resultado td .badge { display: inline-block; margin: 3px 0 0; }
+  /* los gráficos van uno debajo del otro; el angosto (termómetro) a la mitad del ancho: queda del mismo alto que el ancho */
+  .graf-resumen .graf-par:not(.graf-cuadricula) { grid-template-columns: minmax(0, 1fr) !important; row-gap: var(--space-5); }
+  .graf-par .graf-item.graf-angosto { width: 50%; justify-self: center; }
+  .graf-metricas .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-4); } /* cifras en dos columnas: menos desplazamiento */
+  .graf-metricas .grid-2 .result-metric .value { font-size: 1.45rem; overflow-wrap: anywhere; } /* números largos (p. ej. 0.0000445) no se montan en la columna vecina */
+}
 /* Borde de las tarjetas de esta pantalla: el color del borde de las tablas (--table-border): en el tema claro es mas marcado que --border
    (que casi se pierde contra el fondo) y en el oscuro es el mismo --border de siempre. Se mantiene en 1px: mas grueso se veria pesado. */
 .card.tarjeta-borde { border-color: var(--table-border); --pad-tarjeta: var(--space-4); padding: var(--pad-tarjeta); }
@@ -637,6 +649,7 @@ input:disabled, select:disabled { opacity: 0.55; }
   margin-bottom: -1px;
 }
 .tab-btn.active { color: var(--accent-strong); border-bottom-color: var(--accent); }
+@media (max-width: 560px) { .tabs { gap: 2px; } .tab-btn { padding: var(--space-3) 8px; font-size: 0.84rem; } } /* Resultado · Reportes · Fórmulas caben en una línea en el celular */
 .tab-panel[hidden] { display: none; }
 
 /* ---------- results / formulas ---------- */
@@ -1041,10 +1054,10 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .rep-hoja .text-muted { color: #666; }
 /* texto plano y LaTeX con el fondo del tema, como antes (pedido del usuario); solo PDF y Word van en hoja blanca */
 .memoria-caja { font: 10.5pt/1.5 system-ui, "Segoe UI", Arial, sans-serif; color: var(--text); background: var(--bg-sunken); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-4); overflow-x: auto; }
-.memoria-paso + .memoria-paso { margin-top: 3mm; }
-.memoria-seccion { margin: 6mm 0 2mm; font-size: 10.5pt; font-weight: 700; color: var(--text); padding-bottom: 1mm; border-bottom: 1px solid var(--border); }
+.memoria-paso + .memoria-paso { margin-top: 5mm; } /* más aire entre fórmulas */
+.memoria-seccion { margin: 10mm 0 3mm; font-size: 10.5pt; font-weight: 700; color: var(--text); padding-bottom: 1mm; border-bottom: 1px solid var(--border); }
 .memoria-seccion:first-child { margin-top: 0; }
-.memoria-tabla { border-collapse: collapse; font-size: 9.5pt; margin-bottom: 2mm; }
+.memoria-tabla { width: auto; border-collapse: collapse; font-size: 9.5pt; margin-bottom: 2mm; } /* justificada a la izquierda: cada columna mide lo que su contenido */
 .memoria-tabla th { text-align: left; font-weight: 600; color: var(--text-muted); padding: 1mm 6mm 1mm 0; border-bottom: 1px solid var(--border); }
 .memoria-tabla td { padding: 1mm 6mm 1mm 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent); vertical-align: top; }
 .memoria-tabla .memoria-sub td { font-weight: 700; padding-top: 2.5mm; }

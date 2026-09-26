@@ -214,7 +214,7 @@ export function curvaCargaSvg({ pct, carga, unidad, nombreEje, optimo, aceptable
   // líneas guía del punto a los dos ejes (pedido del usuario: la recta ya deja leer hasta dónde se llega a cada nivel)
   s += linea(m.l, Y(pct), X(carga), Y(pct), "var(--text)", 1.3, "4 4") + linea(X(carga), Y(pct), X(carga), Y(0), "var(--text)", 1.3, "4 4");
   s += `<circle class="oc-aparece" cx="${f1(X(carga))}" cy="${f1(Y(pct))}" r="6.5" style="fill:var(--accent);stroke:var(--bg)" stroke-width="2.5"/>`;
-  s += texto(X(carga) - 10, Y(pct) - 12, `${numEje(carga)} ${unidad} · ${pct.toFixed(2)} %`, { color: "var(--text)", ancla: "end", peso: 700, tam: 12.5 });
+  s += texto(X(carga) - 10, Y(pct) - 12, `${pct.toFixed(2)} % · ${numEje(carga)} ${unidad}`, { color: "var(--text)", ancla: "end", peso: 700, tam: 12.5 });
   return envolver(W, H, `Pérdidas frente a la carga: ${numEje(carga)} ${unidad} con ${pct.toFixed(2)} %`, s);
 }
 

@@ -11,6 +11,7 @@ import { calcularPantalla } from "../calc/ampacidad-subterranea-pantalla.js";
 import { dimensionarGcc } from "../calc/conductor-continuidad.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas, resumenConGraficosHtml } from "../util/resultados-ui.js";
 import { corteZanjaSvg, curvasSvg, numEje } from "../util/graficos.js";
+import { activarReportes, numTex } from "../util/reportes.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
 import { mostrar } from "../util/revelar.js";
@@ -706,6 +707,40 @@ export async function render(container) {
     }
   }
 
+  /** Parámetros de entrada con su símbolo (memoria en LaTeX). */
+  function simbolosSubterranea(p) {
+    const n = numTex;
+    const s = [
+      { tex: "U", nombre: "Tensión del sistema", valor: n(p.tensionSistemaKv), unidad: String.raw`\text{kV}` },
+      { tex: "f", nombre: "Frecuencia", valor: n(p.frecuenciaHz), unidad: String.raw`\text{Hz}` },
+      { tex: String.raw`\theta_{max}`, nombre: "Temperatura máxima del conductor", valor: n(p.tempMaxC), unidad: String.raw`^\circ\text{C}` },
+      { tex: String.raw`\theta_{amb}`, nombre: "Temperatura del terreno", valor: n(p.tempTerrenoC), unidad: String.raw`^\circ\text{C}` },
+      { tex: String.raw`\rho_{suelo}`, nombre: "Resistividad térmica del suelo", valor: n(p.rhoSueloKmW), unidad: String.raw`\text{K·m/W}` },
+      { tex: "T_d", nombre: "Resistencia térmica del ducto", valor: n(p.uDuctoKmW), unidad: String.raw`\text{K·m/W}` },
+      { tex: "L", nombre: "Profundidad del banco", valor: n(p.profundidadBancoM), unidad: String.raw`\text{m}` },
+      { tex: "N_c", nombre: "Número de circuitos", valor: String(p.numCircuitos) },
+    ];
+    if (p.numCircuitos > 1) s.push({ tex: "s_d", nombre: "Separación entre ductos", valor: n(p.separacionDuctosM), unidad: String.raw`\text{m}` });
+    if (p.tipoCable !== "Tripolar") s.push({ tex: "s", nombre: "Separación entre fases", valor: n(p.separacionFasesM), unidad: String.raw`\text{m}` });
+    return s;
+  }
+
+  /** Memoria de cálculo con las resistencias térmicas y la ecuación final de IEC 60287 del motor. */
+  function memoriaSubterranea(data, p) {
+    const n = numTex;
+    const m = data.intermedios;
+    const N = p.tipoCable === "Tripolar" ? 1 : 3;
+    return [
+      { titulo: "Salto térmico disponible", tex: String.raw`\Delta\theta = \theta_{max} - \theta_{amb} = ${n(p.tempMaxC)} - ${n(p.tempTerrenoC)} = ${n(m.deltaTheta, 2)}\ ^\circ\text{C}`, texto: `Δθ = θmax − θamb = ${n(p.tempMaxC)} − ${n(p.tempTerrenoC)} = ${n(m.deltaTheta, 2)} °C` },
+      { titulo: "Resistencia AC del conductor (efecto piel y proximidad)", tex: String.raw`R = R'(1 + y_s + y_p) = ${n(m.varR * 1e6, 4)}\times10^{-6}\ \Omega/\text{m}`, texto: `R = R'·(1 + ys + yp) = ${n(m.varR * 1e6, 4)}e−6 Ω/m` },
+      { titulo: "Pérdida dieléctrica", tex: String.raw`W_d = \omega\, C\, U_0^2 \tan\delta = ${n(m.varWd, 5)}\ \text{W/m}`, texto: `Wd = ω·C·U0²·tan δ = ${n(m.varWd, 5)} W/m` },
+      { titulo: "Factor de pérdidas en la pantalla", tex: String.raw`\lambda_1 = ${n(m.lambda1, 5)}`, texto: `λ1 = ${n(m.lambda1, 5)}` },
+      { titulo: "Resistencias térmicas del cable", tex: String.raw`T_1 = ${n(m.T1, 4)} \qquad T_2 = ${n(m.T2, 4)} \qquad T_3 = ${n(m.T3, 4)}\ \text{K·m/W}`, texto: `T1 = ${n(m.T1, 4)};  T2 = ${n(m.T2, 4)};  T3 = ${n(m.T3, 4)} K·m/W` },
+      { titulo: "Resistencia térmica externa (ducto y suelo, imágenes de Kennelly)", tex: String.raw`T_4 = T_{4,propia} + T_{4,mutua} = ${n(m.T4propia, 4)} + ${n(m.T4mutuo, 4)} = ${n(m.T4, 4)}\ \text{K·m/W}`, texto: `T4 = T4 propia + T4 mutua = ${n(m.T4propia, 4)} + ${n(m.T4mutuo, 4)} = ${n(m.T4, 4)} K·m/W` },
+      { titulo: "Ampacidad", tex: String.raw`I = \sqrt{\frac{\Delta\theta - W_d\,[0.5\,T_1 + n(T_2 + T_3 + T_4)]}{R\,T_1 + n\,R(1 + \lambda_1)T_2 + n\,R(1 + \lambda_1)(T_3 + T_4)}} = \sqrt{\frac{${n(m.numerador, 4)}}{${n(m.denominador, 8)}}} = ${n(data.ampacidad, 2)}\ \text{A} \quad (n = ${N})`, texto: `I = √[(Δθ − Wd·(0.5·T1 + n·(T2 + T3 + T4))) / (R·T1 + n·R·(1 + λ1)·T2 + n·R·(1 + λ1)·(T3 + T4))] = √(${n(m.numerador, 4)} / ${n(m.denominador, 8)}) = ${n(data.ampacidad, 2)} A (n = ${N})` },
+    ];
+  }
+
   function renderResultado(data, p, ctx) {
     const wrap = container.querySelector("#resultado-wrap");
 
@@ -753,12 +788,26 @@ export async function render(container) {
             }
           </div>`;
 
+    const textoReporte = reporteTexto(data, p, ctx);
     wrap.innerHTML = tarjetaResultadosHtml({
       resultado,
-      reporte: reporteHtml(reporteTexto(data, p, ctx), ETIQUETAS_REPORTE),
+      conDocumentos: true,
+      reporte: reporteHtml(textoReporte, ETIQUETAS_REPORTE),
       formulasPlano: FORMULAS_TEXTO,
     });
     activarPestanas(wrap, { grupos: FORMULAS_TEX, etiquetas: FORMULAS_ETIQUETAS, nota: FORMULAS_NOTA });
+    activarReportes(wrap, {
+      titulo: "Cálculo de ampacidad subterránea",
+      texto: textoReporte,
+      pasos: memoriaSubterranea(data, p),
+      simbolos: simbolosSubterranea(p),
+      graficos: g
+        ? [
+            { titulo: "Corte de la instalación (temperatura del terreno)", svg: g.corte.svg },
+            { titulo: "Ampacidad frente a la resistividad térmica del suelo", svg: g.suelo.svg },
+          ]
+        : [],
+    });
 
     wrap.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }

@@ -10,6 +10,7 @@ import { calcularCortocircuito } from "../calc/cortocircuito.js";
 import { compararCalibres } from "../calc/cortocircuito-calibre.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas, resumenConGraficosHtml } from "../util/resultados-ui.js";
 import { soportabilidadSvg, termometroFallaSvg } from "../util/graficos.js";
+import { activarReportes, numTex } from "../util/reportes.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
 import { guardarEstado, leerEstado } from "../util/persistencia-calculo.js";
@@ -483,6 +484,38 @@ export async function render(container) {
     ];
   }
 
+  /** Parámetros de entrada con su símbolo (memoria en LaTeX). */
+  function simbolosCortocircuito(data, p, ctx) {
+    const n = numTex;
+    const s = [
+      { tex: "A", nombre: `Área del conductor (${ctx.materialElectrico.toLowerCase()})`, valor: n(p.areaMm2), unidad: String.raw`\text{mm}^2` },
+      { tex: "T_1", nombre: "Temperatura de operación", valor: n(p.tempOperacionC), unidad: String.raw`^\circ\text{C}` },
+      { tex: "T_2", nombre: "Temperatura máxima admisible en falla", valor: n(p.tempFallaC), unidad: String.raw`^\circ\text{C}` },
+      { tex: "t", nombre: "Tiempo de despeje de la falla", valor: n(p.tiempoS), unidad: String.raw`\text{s}` },
+      { tex: String.raw`\lambda`, nombre: `Temperatura inferida de resistencia cero (${ctx.materialElectrico.toLowerCase()})`, valor: n(data.intermedios.tempRes0), unidad: String.raw`^\circ\text{C}` },
+      { tex: "k_1", nombre: `Constante térmica del material (${ctx.materialElectrico.toLowerCase()})`, valor: n(data.intermedios.k1), unidad: String.raw`\text{A}\sqrt{\text{s}}/\text{mm}^2` },
+    ];
+    if (ctx.objetivoKa !== null) s.push({ tex: "I_f", nombre: "Corriente de falla a soportar", valor: n(ctx.objetivoKa), unidad: String.raw`\text{kA}` });
+    return s;
+  }
+
+  /** Memoria de cálculo con la ecuación adiabática del motor (js/calc/cortocircuito.js). */
+  function memoriaCortocircuito(data, p, ctx) {
+    const n = numTex;
+    const { tempRes0: lam, k1, logaritmo } = data.intermedios;
+    const pasos = [
+      { titulo: "Factor de temperatura", tex: String.raw`\log_{10}\!\left(\frac{T_2 + \lambda}{T_1 + \lambda}\right) = \log_{10}\!\left(\frac{${n(p.tempFallaC)} + ${n(lam)}}{${n(p.tempOperacionC)} + ${n(lam)}}\right) = ${n(logaritmo, 5)}`, texto: `log10((T2 + λ) / (T1 + λ)) = log10((${n(p.tempFallaC)} + ${n(lam)}) / (${n(p.tempOperacionC)} + ${n(lam)})) = ${n(logaritmo, 5)}` },
+      { titulo: "Capacidad de corriente de cortocircuito", tex: String.raw`I_{cc} = \frac{A\, k_1}{1000} \sqrt{\frac{\log_{10}(\ldots)}{t}} = \frac{${n(p.areaMm2)} \cdot ${n(k1)}}{1000} \sqrt{\frac{${n(logaritmo, 5)}}{${n(p.tiempoS)}}} = ${n(data.capacidadCcKa, 3)}\ \text{kA}`, texto: `Icc = A·k1/1000·√(log10(…)/t) = ${n(p.areaMm2)}·${n(k1)}/1000·√(${n(logaritmo, 5)}/${n(p.tiempoS)}) = ${n(data.capacidadCcKa, 3)} kA` },
+    ];
+    if (ctx.objetivoKa !== null && ctx.comparacion) {
+      const aMin = ctx.comparacion.areaMinimaMm2;
+      pasos.push({ titulo: "Área mínima para la corriente a soportar", tex: String.raw`A_{min} = \frac{1000\, I_f}{k_1 \sqrt{\log_{10}(\ldots)/t}} = \frac{1000 \cdot ${n(ctx.objetivoKa)}}{${n(k1)} \sqrt{${n(logaritmo, 5)}/${n(p.tiempoS)}}} = ${n(aMin, 2)}\ \text{mm}^2`, texto: `Amin = 1000·If / (k1·√(log10(…)/t)) = ${n(aMin, 2)} mm²` });
+      const tAlc = (p.tempOperacionC + lam) * Math.pow(10, ((ctx.objetivoKa * 1000) / (p.areaMm2 * k1)) ** 2 * p.tiempoS) - lam;
+      if (Number.isFinite(tAlc)) pasos.push({ titulo: "Temperatura que alcanza el conductor con la falla", tex: String.raw`T = (T_1 + \lambda)\, 10^{\left(\frac{1000\, I_f}{A\, k_1}\right)^2 t} - \lambda = (${n(p.tempOperacionC)} + ${n(lam)})\, 10^{\left(\frac{1000 \cdot ${n(ctx.objetivoKa)}}{${n(p.areaMm2)} \cdot ${n(k1)}}\right)^2 \cdot ${n(p.tiempoS)}} - ${n(lam)} = ${n(tAlc, 1)}\ ^\circ\text{C}`, texto: `T = (T1 + λ)·10^((1000·If/(A·k1))²·t) − λ = ${n(tAlc, 1)} °C` });
+    }
+    return pasos;
+  }
+
   function renderResultado(data, p, ctx) {
     const wrap = container.querySelector("#resultado-wrap");
 
@@ -514,12 +547,22 @@ export async function render(container) {
             ${conObjetivo ? comparacionHtml(ctx) : ""}
           </div>`;
 
+    const textoReporte = reporteTexto(data, p, ctx);
     wrap.innerHTML = tarjetaResultadosHtml({
       resultado,
-      reporte: reporteHtml(reporteTexto(data, p, ctx), ETIQUETAS_REPORTE),
+      conDocumentos: true,
+      reporte: reporteHtml(textoReporte, ETIQUETAS_REPORTE),
       formulasPlano: FORMULAS_TEXTO,
     });
     activarPestanas(wrap, { grupos: FORMULAS_TEX, etiquetas: FORMULAS_ETIQUETAS, nota: FORMULAS_NOTA });
+    const titulosGraf = ["Soportabilidad corriente–tiempo", "Temperatura del conductor en la falla"];
+    activarReportes(wrap, {
+      titulo: "Cálculo de cortocircuito",
+      texto: textoReporte,
+      pasos: memoriaCortocircuito(data, p, ctx),
+      simbolos: simbolosCortocircuito(data, p, ctx),
+      graficos: graficos.map((g, i) => ({ titulo: titulosGraf[i] || "Gráfico", svg: g.svg })),
+    });
 
     wrap.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }

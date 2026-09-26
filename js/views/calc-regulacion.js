@@ -18,6 +18,7 @@ import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas, res
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
 import { perfilTensionSvg } from "../util/graficos.js";
+import { activarReportes, numTex } from "../util/reportes.js";
 import { revelar } from "../util/revelar.js";
 import { guardarEstado, leerEstado } from "../util/persistencia-calculo.js";
 import { aplicarDefectos } from "../util/valores-defecto.js";
@@ -684,6 +685,62 @@ export async function render(container) {
     ].join("\n");
   }
 
+  /** Parámetros de entrada con su símbolo (memoria en LaTeX). */
+  function simbolosRegulacion(base, estados, dato) {
+    const n = numTex;
+    const s = [];
+    if (dato.modo === "aparente") s.push({ tex: "S", nombre: "Potencia aparente", valor: n(dato.datoPartida), unidad: String.raw`\text{MVA}` });
+    else if (dato.modo === "corriente") s.push({ tex: "I", nombre: "Corriente", valor: n(dato.datoPartida), unidad: String.raw`\text{A}` });
+    else s.push({ tex: "P", nombre: "Potencia activa", valor: n(base.potenciaActivaMw), unidad: String.raw`\text{MW}` });
+    s.push({ tex: "V", nombre: "Tensión de línea", valor: n(base.tensionLineaKv), unidad: String.raw`\text{kV}` });
+    s.push({ tex: String.raw`\cos\varphi`, nombre: "Factor de potencia", valor: n(base.factorPotencia) });
+    const varios = estados.length > 1;
+    estados.forEach((e, i) => {
+      const sub = varios ? `_{${i + 1}}` : "";
+      const de = varios ? ` del tramo ${i + 1}` : "";
+      const N = e.numConductoresPorFase ?? 1;
+      s.push({ tex: `L${sub}`, nombre: `Longitud${de}`, valor: n(e.longitudKm), unidad: String.raw`\text{km}` });
+      s.push({ tex: `R${sub}`, nombre: `Resistencia del conductor a 75 °C${de}`, valor: n(e.resistenciaOhmKm), unidad: String.raw`\Omega/\text{km}` });
+      s.push({ tex: `RMG${sub}`, nombre: `Radio medio geométrico del conductor${de}`, valor: n(e.rmgMm), unidad: String.raw`\text{mm}` });
+      s.push({ tex: `N${sub}`, nombre: `Conductores por fase${de}`, valor: String(N) });
+      if (N > 1) s.push({ tex: `d${sub}`, nombre: `Separación entre subconductores del haz${de}`, valor: n(e.separacionHazM), unidad: String.raw`\text{m}` });
+      s.push({ tex: String.raw`D_{ab}${sub},\ D_{ac}${sub},\ D_{bc}${sub}`, nombre: `Distancias entre fases${de}`, valor: `${n(e.dabM)},\\ ${n(e.dacM)},\\ ${n(e.dbcM)}`, unidad: String.raw`\text{m}` });
+    });
+    return s;
+  }
+
+  /** Memoria de cálculo paso a paso con las MISMAS fórmulas del motor (js/calc/regulacion.js, tramo por tramo). */
+  function memoriaRegulacion(r, base, estados, dato) {
+    const n = numTex;
+    const P = base.potenciaActivaMw, V = base.tensionLineaKv, fp = base.factorPotencia, I = r.corriente;
+    const sen = Math.sin(Math.acos(fp)), tan = Math.tan(Math.acos(fp));
+    const pasos = [];
+    if (dato.modo === "aparente") pasos.push({ titulo: "Potencia activa", tex: String.raw`P = S \cos\varphi = ${n(dato.datoPartida)} \cdot ${n(fp)} = ${n(P, 3)}\ \text{MW}`, texto: `P = S·cos φ = ${n(dato.datoPartida)}·${n(fp)} = ${n(P, 3)} MW` });
+    else if (dato.modo === "corriente") pasos.push({ titulo: "Potencia activa", tex: String.raw`P = \frac{\sqrt{3}\, V\, I \cos\varphi}{1000} = \frac{\sqrt{3} \cdot ${n(V)} \cdot ${n(dato.datoPartida)} \cdot ${n(fp)}}{1000} = ${n(P, 3)}\ \text{MW}`, texto: `P = √3·V·I·cos φ / 1000 = ${n(P, 3)} MW` });
+    pasos.push({ titulo: "Corriente", tex: String.raw`I = \frac{P \cdot 1000}{\sqrt{3}\, V \cos\varphi} = \frac{${n(P)} \cdot 1000}{\sqrt{3} \cdot ${n(V)} \cdot ${n(fp)}} = ${n(I, 2)}\ \text{A}`, texto: `I = P·1000 / (√3·V·cos φ) = ${n(P)}·1000 / (√3·${n(V)}·${n(fp)}) = ${n(I, 2)} A` });
+    pasos.push({ titulo: "Potencia aparente y reactiva", tex: String.raw`S = \frac{P}{\cos\varphi} = ${n(r.potenciaS, 3)}\ \text{MVA} \qquad Q = \sqrt{S^2 - P^2} = ${n(r.potenciaQ, 3)}\ \text{MVAR}`, texto: `S = P / cos φ = ${n(r.potenciaS, 3)} MVA;  Q = √(S² − P²) = ${n(r.potenciaQ, 3)} MVAR` });
+    const varios = r.tramos.length > 1;
+    r.tramos.forEach((t, i) => {
+      const e = estados[i];
+      const N = e.numConductoresPorFase ?? 1;
+      const pre = varios ? `Tramo ${i + 1} · ` : "";
+      const sub = varios ? `_{${i + 1}}` : "";
+      const dmg = Math.cbrt(e.dabM * e.dacM * e.dbcM);
+      if (N > 1) {
+        pasos.push({ titulo: `${pre}Resistencia efectiva`, tex: String.raw`R_{ef}${sub} = \frac{R}{N} = \frac{${n(e.resistenciaOhmKm)}}{${N}} = ${n(t.resistenciaEfectivaOhmKm)}\ \Omega/\text{km}`, texto: `Ref = R / N = ${n(e.resistenciaOhmKm)} / ${N} = ${n(t.resistenciaEfectivaOhmKm)} Ω/km` });
+        const rr = (e.separacionHazM * 1000) / (2 * Math.sin(Math.PI / N));
+        pasos.push({ titulo: `${pre}RMG equivalente del haz`, tex: String.raw`r = \frac{1000\, d}{2 \sin(\pi/N)} = ${n(rr, 2)}\ \text{mm} \qquad RMG_{eq} = \sqrt[N]{N \cdot RMG \cdot r^{N-1}} = ${n(t.rmgEfectivoMm, 3)}\ \text{mm}`, texto: `r = 1000·d / (2·sen(π/N)) = ${n(rr, 2)} mm;  RMGeq = (N·RMG·r^(N−1))^(1/N) = ${n(t.rmgEfectivoMm, 3)} mm` });
+      }
+      pasos.push({ titulo: `${pre}Distancia media geométrica entre fases`, tex: String.raw`DMG = \sqrt[3]{D_{ab} D_{ac} D_{bc}} = \sqrt[3]{${n(e.dabM)} \cdot ${n(e.dacM)} \cdot ${n(e.dbcM)}} = ${n(dmg)}\ \text{m}`, texto: `DMG = ∛(Dab·Dac·Dbc) = ∛(${n(e.dabM)}·${n(e.dacM)}·${n(e.dbcM)}) = ${n(dmg)} m` });
+      pasos.push({ titulo: `${pre}Reactancia inductiva`, tex: String.raw`X_l${sub} = 0.0754 \ln\!\left(\frac{DMG}{RMG_{eq}/1000}\right) = 0.0754 \ln\!\left(\frac{${n(dmg)}}{${n(t.rmgEfectivoMm / 1000, 6)}}\right) = ${n(t.reactanciaInductiva)}\ \Omega/\text{km}`, texto: `Xl = 0.0754·ln(DMG / (RMGeq/1000)) = 0.0754·ln(${n(dmg)} / ${n(t.rmgEfectivoMm / 1000, 6)}) = ${n(t.reactanciaInductiva)} Ω/km` });
+      pasos.push({ titulo: `${pre}Impedancia efectiva`, tex: String.raw`Z${sub} = R_{ef} \cos\varphi + X_l \sin\varphi = ${n(t.resistenciaEfectivaOhmKm)} \cdot ${n(fp)} + ${n(t.reactanciaInductiva)} \cdot ${n(sen)} = ${n(t.impedanciaEfectiva)}\ \Omega/\text{km}`, texto: `Z = Ref·cos φ + Xl·sen φ = ${n(t.resistenciaEfectivaOhmKm)}·${n(fp)} + ${n(t.reactanciaInductiva)}·${n(sen)} = ${n(t.impedanciaEfectiva)} Ω/km` });
+      pasos.push({ titulo: `${pre}Constante de regulación`, tex: String.raw`K${sub} = \frac{R_{ef} + X_l \tan\varphi}{10\, V^2} = \frac{${n(t.resistenciaEfectivaOhmKm)} + ${n(t.reactanciaInductiva)} \cdot ${n(tan)}}{10 \cdot ${n(V)}^2} = ${n(t.constanteRegulacion, 8)}`, texto: `K = (Ref + Xl·tan φ) / (10·V²) = ${n(t.constanteRegulacion, 8)}` });
+      pasos.push({ titulo: `${pre}Caída de tensión`, tex: String.raw`\%\Delta V${sub} = \frac{\sqrt{3}\, I\, Z\, L \cdot 100}{V \cdot 1000} = \frac{\sqrt{3} \cdot ${n(I, 2)} \cdot ${n(t.impedanciaEfectiva)} \cdot ${n(e.longitudKm)} \cdot 100}{${n(V)} \cdot 1000} = ${n(t.caidaTensionPct, 3)}\,\%`, texto: `%ΔV = √3·I·Z·L·100 / (V·1000) = √3·${n(I, 2)}·${n(t.impedanciaEfectiva)}·${n(e.longitudKm)}·100 / (${n(V)}·1000) = ${n(t.caidaTensionPct, 3)} %` });
+    });
+    if (varios) pasos.push({ titulo: "Caída total del circuito", tex: String.raw`\%\Delta V = ${r.tramos.map((t) => n(t.caidaTensionPct, 3)).join(" + ")} = ${n(r.caidaTensionPct, 3)}\,\%`, texto: `%ΔV = ${r.tramos.map((t) => n(t.caidaTensionPct, 3)).join(" + ")} = ${n(r.caidaTensionPct, 3)} %` });
+    return pasos;
+  }
+
   function renderResultado(r, base, estados, dato) {
     const wrap = container.querySelector("#resultado-wrap");
     const clase = Number.isFinite(r.caidaTensionPct) ? clasificarRegulacion(r.caidaTensionPct) : null; // sin etiqueta si los datos no dan un numero
@@ -737,12 +794,21 @@ export async function render(container) {
             ${varios ? tablaTramosHtml(r, estados) : comparacionCalibresHtml(base, estados[0])}
           </div>`;
 
+    const textoReporte = reporteTexto(r, base, estados, dato);
     wrap.innerHTML = tarjetaResultadosHtml({
       resultado,
-      reporte: reporteHtml(reporteTexto(r, base, estados, dato), ETIQUETAS_REPORTE),
+      conDocumentos: true,
+      reporte: reporteHtml(textoReporte, ETIQUETAS_REPORTE),
       formulasPlano: FORMULAS_TEXTO,
     });
     activarPestanas(wrap, { grupos: FORMULAS_TEX, etiquetas: FORMULAS_ETIQUETAS, nota: FORMULAS_NOTA });
+    activarReportes(wrap, {
+      titulo: "Cálculo de regulación",
+      texto: textoReporte,
+      pasos: memoriaRegulacion(r, base, estados, dato),
+      simbolos: simbolosRegulacion(base, estados, dato),
+      graficos: graficos.map((g) => ({ titulo: "Perfil de tensión a lo largo de la línea", svg: g.svg })),
+    });
 
     wrap.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }

@@ -9,6 +9,7 @@ import { calcularAmpacidadAerea } from "../calc/ampacidad-aerea.js";
 import { calcularRadiacionSolar, diaDelAnio, peorDiaDelAnio, fechaDeDia } from "../calc/posicion-solar.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas, resumenConGraficosHtml } from "../util/resultados-ui.js";
 import { balanceTermicoSvg, curvasSvg, corteConductorSvg, numEje } from "../util/graficos.js";
+import { activarReportes, numTex } from "../util/reportes.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
 import { mostrar } from "../util/revelar.js";
@@ -719,6 +720,46 @@ export async function render(container) {
     return { balance: { svg: balance, ancho: 460 }, ambiente: { svg: ambiente, ancho: 460 }, temperatura: { svg: temperatura, ancho: 460 }, corte: { svg: corte, ancho: 460 } };
   }
 
+  /** Parámetros de entrada con su símbolo (memoria en LaTeX). */
+  function simbolosAerea(p) {
+    const n = numTex;
+    return [
+      { tex: "D", nombre: "Diámetro del conductor", valor: n(p.diametroMm), unidad: String.raw`\text{mm}` },
+      { tex: "R_{25}", nombre: "Resistencia AC a 25 °C", valor: n(p.rBajoOhmKm), unidad: String.raw`\Omega/\text{km}` },
+      { tex: "R_{75}", nombre: "Resistencia AC a 75 °C", valor: n(p.rAltoOhmKm), unidad: String.raw`\Omega/\text{km}` },
+      { tex: "T_a", nombre: "Temperatura ambiente", valor: n(p.taC), unidad: String.raw`^\circ\text{C}` },
+      { tex: "T_c", nombre: "Temperatura máxima del conductor", valor: n(p.tcC), unidad: String.raw`^\circ\text{C}` },
+      { tex: "V_w", nombre: "Velocidad del viento", valor: n(p.vwMs), unidad: String.raw`\text{m/s}` },
+      { tex: String.raw`\phi`, nombre: "Ángulo entre el viento y el conductor", valor: n(p.anguloVientoDeg), unidad: String.raw`^\circ` },
+      { tex: "H_e", nombre: "Elevación sobre el nivel del mar", valor: n(p.elevacionM), unidad: String.raw`\text{m}` },
+      { tex: String.raw`\varepsilon`, nombre: "Emisividad", valor: n(p.epsilon) },
+      { tex: String.raw`\alpha`, nombre: "Absortividad", valor: n(p.alfa) },
+      { tex: "Q_{se}", nombre: "Radiación solar total", valor: n(p.qseWm2, 1), unidad: String.raw`\text{W/m}^2` },
+      { tex: String.raw`\theta`, nombre: "Ángulo efectivo de incidencia solar", valor: n(p.thetaDeg, 1), unidad: String.raw`^\circ` },
+    ];
+  }
+
+  /** Memoria de cálculo con las fórmulas de IEEE Std 738 del motor (js/calc/ampacidad-aerea.js). */
+  function memoriaAerea(data, p) {
+    const n = numTex;
+    const m = data.intermedios;
+    const D = p.diametroMm / 1000, dT = p.tcC - p.taC;
+    return [
+      { titulo: "Temperatura de la película de aire", tex: String.raw`T_{film} = \frac{T_c + T_a}{2} = \frac{${n(p.tcC)} + ${n(p.taC)}}{2} = ${n(m.Tfilm, 2)}\ ^\circ\text{C}`, texto: `Tfilm = (Tc + Ta)/2 = ${n(m.Tfilm, 2)} °C` },
+      { titulo: "Densidad del aire", tex: String.raw`\rho_f = \frac{1.293 - 1.525\times10^{-4} H_e + 6.379\times10^{-9} H_e^2}{1 + 0.00367\, T_{film}} = ${n(m.rhof, 5)}\ \text{kg/m}^3`, texto: `ρf = (1.293 − 1.525e−4·He + 6.379e−9·He²)/(1 + 0.00367·Tfilm) = ${n(m.rhof, 5)} kg/m³` },
+      { titulo: "Viscosidad dinámica del aire", tex: String.raw`\mu_f = \frac{1.458\times10^{-6} (T_{film} + 273)^{1.5}}{T_{film} + 383.4} = ${n(m.muf * 1e6, 5)}\times10^{-6}\ \text{kg/(m·s)}`, texto: `μf = 1.458e−6·(Tfilm + 273)^1.5/(Tfilm + 383.4) = ${n(m.muf * 1e6, 5)}e−6 kg/(m·s)` },
+      { titulo: "Conductividad térmica del aire", tex: String.raw`k_f = 0.02424 + 7.477\times10^{-5} T_{film} - 4.407\times10^{-9} T_{film}^2 = ${n(m.kf, 6)}\ \text{W/(m·°C)}`, texto: `kf = 0.02424 + 7.477e−5·Tfilm − 4.407e−9·Tfilm² = ${n(m.kf, 6)} W/(m·°C)` },
+      { titulo: "Número de Reynolds y factor de dirección del viento", tex: String.raw`N_{Re} = \frac{D\, \rho_f\, V_w}{\mu_f} = \frac{${n(D, 5)} \cdot ${n(m.rhof, 5)} \cdot ${n(p.vwMs)}}{${n(m.muf, 9)}} = ${n(m.re, 1)} \qquad K_{angle} = 1.194 - \cos\phi + 0.194 \cos 2\phi + 0.368 \sin 2\phi = ${n(m.kangle, 4)}`, texto: `NRe = D·ρf·Vw/μf = ${n(m.re, 1)};  Kangle = 1.194 − cos φ + 0.194·cos 2φ + 0.368·sen 2φ = ${n(m.kangle, 4)}` },
+      { titulo: "Pérdida por convección natural", tex: String.raw`q_{cn} = 3.645\, \rho_f^{0.5} D^{0.75} (T_c - T_a)^{1.25} = 3.645 \cdot ${n(m.rhof, 5)}^{0.5} \cdot ${n(D, 5)}^{0.75} \cdot ${n(dT)}^{1.25} = ${n(m.qcn, 3)}\ \text{W/m}`, texto: `qcn = 3.645·ρf^0.5·D^0.75·(Tc − Ta)^1.25 = ${n(m.qcn, 3)} W/m` },
+      { titulo: "Pérdida por convección forzada (viento bajo y alto)", tex: String.raw`q_{c1} = K_{angle} (1.01 + 1.35 N_{Re}^{0.52}) k_f (T_c - T_a) = ${n(m.qc1, 3)} \qquad q_{c2} = K_{angle}\, 0.754\, N_{Re}^{0.6} k_f (T_c - T_a) = ${n(m.qc2, 3)}\ \text{W/m}`, texto: `qc1 = Kangle·(1.01 + 1.35·NRe^0.52)·kf·(Tc − Ta) = ${n(m.qc1, 3)} W/m;  qc2 = Kangle·0.754·NRe^0.6·kf·(Tc − Ta) = ${n(m.qc2, 3)} W/m` },
+      { titulo: "Convección que se usa (la mayor)", tex: String.raw`q_c = \max(q_{cn}, q_{c1}, q_{c2}) = ${n(m.qc, 3)}\ \text{W/m}`, texto: `qc = máx(qcn, qc1, qc2) = ${n(m.qc, 3)} W/m` },
+      { titulo: "Pérdida por radiación", tex: String.raw`q_r = 17.8\, D\, \varepsilon \left[\left(\frac{T_c + 273}{100}\right)^4 - \left(\frac{T_a + 273}{100}\right)^4\right] = ${n(m.qr, 3)}\ \text{W/m}`, texto: `qr = 17.8·D·ε·[((Tc + 273)/100)⁴ − ((Ta + 273)/100)⁴] = ${n(m.qr, 3)} W/m` },
+      { titulo: "Ganancia solar", tex: String.raw`q_s = \alpha\, Q_{se} \sin\theta\, D = ${n(p.alfa)} \cdot ${n(p.qseWm2, 1)} \cdot \sin(${n(p.thetaDeg, 1)}^\circ) \cdot ${n(D, 5)} = ${n(m.qs, 3)}\ \text{W/m}`, texto: `qs = α·Qse·sen θ·D = ${n(p.alfa)}·${n(p.qseWm2, 1)}·sen(${n(p.thetaDeg, 1)}°)·${n(D, 5)} = ${n(m.qs, 3)} W/m` },
+      { titulo: "Resistencia a la temperatura del conductor", tex: String.raw`R(T_c) = \frac{R_{25} + \frac{R_{75} - R_{25}}{75 - 25}(T_c - 25)}{1000} = ${n(m.r * 1e6, 4)}\times10^{-6}\ \Omega/\text{m}`, texto: `R(Tc) = [R25 + (R75 − R25)/(75 − 25)·(Tc − 25)]/1000 = ${n(m.r * 1e6, 4)}e−6 Ω/m` },
+      { titulo: "Ampacidad (balance térmico)", tex: String.raw`I = \sqrt{\frac{q_c + q_r - q_s}{R(T_c)}} = \sqrt{\frac{${n(m.qc, 3)} + ${n(m.qr, 3)} - ${n(m.qs, 3)}}{${n(m.r, 9)}}} = ${n(data.ampacidad, 2)}\ \text{A}`, texto: `I = √((qc + qr − qs)/R(Tc)) = ${n(data.ampacidad, 2)} A` },
+    ];
+  }
+
   function renderResultado(data, p, ctx) {
     const wrap = container.querySelector("#resultado-wrap");
     const hayCorriente = data.ampacidad > 0 && Number.isFinite(data.ampacidad); // sin corriente si la ganancia solar supera la disipacion
@@ -740,12 +781,28 @@ export async function render(container) {
       : `
           <div class="callout callout-warning">Con estos datos el balance térmico no admite corriente: la ganancia solar supera lo que el conductor disipa, o la temperatura máxima del conductor es menor que la ambiente.</div>`;
 
+    const textoReporte = reporteTexto(data, p, ctx, hayCorriente);
     wrap.innerHTML = tarjetaResultadosHtml({
       resultado,
-      reporte: reporteHtml(reporteTexto(data, p, ctx, hayCorriente), ETIQUETAS_REPORTE),
+      conDocumentos: true,
+      reporte: reporteHtml(textoReporte, ETIQUETAS_REPORTE),
       formulasPlano: FORMULAS_TEXTO,
     });
     activarPestanas(wrap, { grupos: FORMULAS_TEX, etiquetas: FORMULAS_ETIQUETAS, nota: FORMULAS_NOTA });
+    activarReportes(wrap, {
+      titulo: "Cálculo de ampacidad aérea",
+      texto: textoReporte,
+      pasos: hayCorriente ? memoriaAerea(data, p) : [],
+      simbolos: simbolosAerea(p),
+      graficos: g
+        ? [
+            { titulo: "Temperatura del conductor frente a la corriente", svg: g.temperatura.svg },
+            { titulo: "Ampacidad frente a la temperatura ambiente", svg: g.ambiente.svg },
+            { titulo: "Balance de calor", svg: g.balance.svg },
+            { titulo: "Corte del conductor", svg: g.corte.svg },
+          ]
+        : [],
+    });
 
     wrap.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }

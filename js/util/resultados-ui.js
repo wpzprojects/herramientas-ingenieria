@@ -55,7 +55,7 @@ export function resumenConGraficosHtml({ cifras, nota = "", graficos, cuadricula
   return `
             <div class="graf-resumen">
               <div class="graf-metricas">${cifras}${nota}</div>
-              <div class="graf-par${cuadricula ? " graf-cuadricula" : ""}" style="grid-template-columns: ${columnas}; max-width: ${maximo}px">${graficos.map((g) => `<div class="graf-item">${g.svg}</div>`).join("")}</div>
+              <div class="graf-par${cuadricula ? " graf-cuadricula" : ""}" style="grid-template-columns: ${columnas}; max-width: ${maximo}px">${graficos.map((g) => `<div class="graf-item${g.ancho < 300 ? " graf-angosto" : ""}">${g.svg}</div>`).join("")}</div>
             </div>`;
 }
 

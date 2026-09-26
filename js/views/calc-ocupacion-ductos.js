@@ -12,6 +12,7 @@ import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
 import { revelar, mostrar } from "../util/revelar.js";
 import { donaOcupacionSvg, corteDuctoSvg } from "../util/graficos.js";
+import { activarReportes, numTex } from "../util/reportes.js";
 import { guardarEstado, leerEstado } from "../util/persistencia-calculo.js";
 
 const RUTA = "/calculos/ocupacion-ductos";
@@ -506,8 +507,45 @@ export async function render(container) {
     ].join("\n");
   }
 
+  /** Parámetros de entrada con su símbolo (memoria en LaTeX). */
+  function simbolosOcupacion(data, ctx) {
+    const n = numTex;
+    const varios = data.grupos.length > 1;
+    const s = [{ tex: "D", nombre: "Diámetro interno de la tubería", valor: n(ctx.diametroTuboMm), unidad: String.raw`\text{mm}` }];
+    data.grupos.forEach((g, i) => {
+      const sub = varios ? `_{${i + 1}}` : "";
+      const de = varios ? ` (tipo ${i + 1})` : "";
+      s.push({ tex: `n${sub}`, nombre: `Número de conductores${de}`, valor: String(g.cantidad) });
+      s.push({ tex: `d${sub}`, nombre: `Diámetro exterior del conductor${de}`, valor: n(g.diametroMm), unidad: String.raw`\text{mm}` });
+    });
+    return s;
+  }
+
+  /** Memoria de cálculo con las fórmulas del motor (π = 3.1416, como el original). */
+  function memoriaOcupacion(data, ctx) {
+    const n = numTex;
+    const varios = data.grupos.length > 1;
+    const pasos = [{ titulo: "Área interna de la tubería", tex: String.raw`A_t = \pi \left(\frac{D}{2}\right)^2 = 3.1416 \left(\frac{${n(ctx.diametroTuboMm)}}{2}\right)^2 = ${n(data.areaTubo, 2)}\ \text{mm}^2`, texto: `At = π·(D/2)² = 3.1416·(${n(ctx.diametroTuboMm)}/2)² = ${n(data.areaTubo, 2)} mm²` }];
+    data.grupos.forEach((g, i) => {
+      const sub = varios ? `_{${i + 1}}` : "";
+      const pre = varios ? `Tipo ${i + 1} · ` : "";
+      pasos.push({ titulo: `${pre}Área ocupada por los conductores`, tex: String.raw`A_c${sub} = n\, \pi \left(\frac{d}{2}\right)^2 = ${g.cantidad} \cdot 3.1416 \left(\frac{${n(g.diametroMm)}}{2}\right)^2 = ${n(g.areaTotal, 2)}\ \text{mm}^2`, texto: `Ac = n·π·(d/2)² = ${g.cantidad}·3.1416·(${n(g.diametroMm)}/2)² = ${n(g.areaTotal, 2)} mm²` });
+    });
+    if (varios) pasos.push({ titulo: "Área total ocupada", tex: String.raw`A_c = ${data.grupos.map((g) => n(g.areaTotal, 2)).join(" + ")} = ${n(data.areaCables, 2)}\ \text{mm}^2`, texto: `Ac = ${data.grupos.map((g) => n(g.areaTotal, 2)).join(" + ")} = ${n(data.areaCables, 2)} mm²` });
+    pasos.push({ titulo: "Porcentaje de ocupación", tex: String.raw`\%O = \frac{A_c \cdot 100}{A_t} = \frac{${n(data.areaCables, 2)} \cdot 100}{${n(data.areaTubo, 2)}} = ${n(data.ocupacionPct, 2)}\,\% \qquad \text{disponible} = 100 - \%O = ${n(data.disponiblePct, 2)}\,\%`, texto: `%O = Ac·100 / At = ${n(data.areaCables, 2)}·100 / ${n(data.areaTubo, 2)} = ${n(data.ocupacionPct, 2)} %;  disponible = ${n(data.disponiblePct, 2)} %` });
+    pasos.push({ titulo: "Límite NTC-2050 (Cap. 9, Tabla 1)", tex: String.raw`n_{total} = ${data.totalConductores} \Rightarrow \%O_{max} = ${data.limitePct}\,\% \qquad ${n(data.ocupacionPct, 2)}\,\% ${data.cumple ? String.raw`\le` : ">"} ${data.limitePct}\,\% \Rightarrow \text{${data.cumple ? "cumple" : "no cumple"}}`, texto: `n total = ${data.totalConductores} → límite ${data.limitePct} %; ${n(data.ocupacionPct, 2)} % ${data.cumple ? "≤" : ">"} ${data.limitePct} % → ${data.cumple ? "cumple" : "no cumple"}` });
+    if (data.jammingRatio !== null && data.jammingRatio !== undefined) pasos.push({ titulo: "Relación de atascamiento (3 conductores iguales)", tex: String.raw`J = \frac{D}{d} = \frac{${n(ctx.diametroTuboMm)}}{${n(data.grupos[0].diametroMm)}} = ${n(data.jammingRatio, 3)} \quad (\text{riesgo si } 2.8 < J < 3.2)`, texto: `J = D/d = ${n(data.jammingRatio, 3)} (riesgo si 2.8 < J < 3.2)` });
+    data.grupos.forEach((g, i) => {
+      const sub = varios ? `_{${i + 1}}` : "";
+      pasos.push({ titulo: `${varios ? `Tipo ${i + 1} · ` : ""}Radio de curvatura`, tex: String.raw`R_c${sub} = 12\, d = 12 \cdot ${n(g.diametroMm)} = ${n(g.radioCurvaturaMm, 1)}\ \text{mm}`, texto: `Rc = 12·d = 12·${n(g.diametroMm)} = ${n(g.radioCurvaturaMm, 1)} mm` });
+    });
+    return pasos;
+  }
+
   function renderResultado(data, ctx) {
     const wrap = container.querySelector("#resultado-wrap");
+    const svgCorte = corteDuctoSvg({ diametroTuboMm: ctx.diametroTuboMm, tipos: ctx.estados.map((e) => ({ cantidad: e.cantidad, diametroMm: e.diametroMm })) });
+    const svgDona = donaOcupacionSvg({ pct: data.ocupacionPct, limite: data.limitePct, cumple: data.cumple, total: data.totalConductores });
 
     const jammingHtml = data.riesgoAtascamiento
       ? `<div class="callout callout-warning" style="margin-top: var(--space-4);">
@@ -538,19 +576,31 @@ export async function render(container) {
                     : ""
                 }
               </div>
-              <div class="oc-grafico oc-corte">${corteDuctoSvg({ diametroTuboMm: ctx.diametroTuboMm, tipos: ctx.estados.map((e) => ({ cantidad: e.cantidad, diametroMm: e.diametroMm })) })}</div>
-              <div class="oc-grafico oc-dona">${donaOcupacionSvg({ pct: data.ocupacionPct, limite: data.limitePct, cumple: data.cumple, total: data.totalConductores })}</div>
+              <div class="oc-grafico oc-corte">${svgCorte}</div>
+              <div class="oc-grafico oc-dona">${svgDona}</div>
             </div>
             ${data.grupos.length > 1 ? tablaGruposHtml(data, ctx) : ""}
             ${jammingHtml}
           </div>`;
 
+    const textoReporte = reporteTexto(data, ctx);
     wrap.innerHTML = tarjetaResultadosHtml({
       resultado,
-      reporte: reporteHtml(reporteTexto(data, ctx), ETIQUETAS_REPORTE),
+      conDocumentos: true,
+      reporte: reporteHtml(textoReporte, ETIQUETAS_REPORTE),
       formulasPlano: FORMULAS_TEXTO,
     });
     activarPestanas(wrap, { grupos: FORMULAS_TEX, etiquetas: FORMULAS_ETIQUETAS, nota: FORMULAS_NOTA });
+    activarReportes(wrap, {
+      titulo: "Cálculo de ocupación de ductos",
+      texto: textoReporte,
+      pasos: memoriaOcupacion(data, ctx),
+      simbolos: simbolosOcupacion(data, ctx),
+      graficos: [
+        { titulo: "Corte transversal de la tubería", svg: svgCorte },
+        { titulo: "Porcentaje de ocupación", svg: svgDona },
+      ],
+    });
 
     wrap.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
