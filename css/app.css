@@ -1067,8 +1067,8 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .rep-hoja .text-muted { color: #666; }
 /* texto plano y LaTeX con el fondo del tema, como antes (pedido del usuario); solo PDF y Word van en hoja blanca */
 .memoria-caja { font: 10.5pt/1.5 system-ui, "Segoe UI", Arial, sans-serif; color: var(--text); background: var(--bg-sunken); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-4); overflow-x: auto; }
-.memoria-paso + .memoria-paso { margin-top: 5mm; } /* más aire entre fórmulas */
-.memoria-seccion { margin: 10mm 0 3mm; font-size: 10.5pt; font-weight: 700; color: var(--text); padding-bottom: 1mm; border-bottom: 1px solid var(--border); }
+.memoria-paso + .memoria-paso { margin-top: 7mm; } /* más aire entre fórmulas */
+.memoria-seccion { margin: 14mm 0 4mm; font-size: 10.5pt; font-weight: 700; color: var(--text); padding-bottom: 1mm; border-bottom: 1px solid var(--border); }
 .memoria-seccion:first-child { margin-top: 0; }
 .memoria-tabla { width: auto; border-collapse: collapse; font-size: 9.5pt; margin-bottom: 2mm; } /* justificada a la izquierda: cada columna mide lo que su contenido */
 .memoria-tabla th { text-align: left; font-weight: 600; color: var(--text-muted); background: none; /* sin el fondo del tema de las demás tablas: ya se distingue por las mayúsculas */ padding: 1mm 6mm 1mm 0; border-bottom: 1px solid var(--border); }
