@@ -159,7 +159,9 @@ function imagen(n, ctx) {
   const id = `rIdImg${k}`;
   ctx.imagenes.push({ id, nombre: `media/imagen${k}.png`, bytes });
   const anchoPx = Number(n.dataset.ancho) || 600, altoPx = Number(n.dataset.alto) || 400;
-  const maxEmu = (ctx.ancho || ANCHO_TEXTO) * 635 * 0.85; // twips → EMU, con un margen
+  // 70 % del ancho útil, centrada (pedido del usuario, 2026-09-26); el PNG va a ~1380 px, así que se puede agrandar en
+  // Word hasta el ancho completo sin perder calidad (≈ 230 ppp)
+  const maxEmu = (ctx.ancho || ANCHO_TEXTO) * 635 * 0.7; // twips → EMU
   const escala = maxEmu / (anchoPx * 9525); // siempre al ancho útil de la página
   const cx = Math.round(anchoPx * 9525 * escala), cy = Math.round(altoPx * 9525 * escala);
   return (

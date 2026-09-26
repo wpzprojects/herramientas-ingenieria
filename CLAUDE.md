@@ -495,6 +495,9 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   indicada» si no hay), colores de serie; lo que pasa el 100 % conserva su color con borde y cifra en rojo; columna de
   costo total (gris; la recomendada con borde verde) solo si hay precios. Conductor económico: precio y costos con
   separador de miles al escribir (`campo-miles.js`, igual que Valoración integral; antes eran `type=number`).
+  3.44.2: gráficos de los reportes PDF y Word al 70 % del ancho, centrados (decidido con el usuario: a la mitad los
+  textos quedarían en ~5 pt). Word: el PNG es de ~1380 px (escala 3), se puede estirar a todo el ancho sin perder
+  calidad (~230 ppp); PDF vectorial. Memoria LaTeX: 14 mm entre secciones y 7 mm entre pasos (3.44.1).
 - **Valores por defecto (2026-09-26, pedido del usuario: calcular de una)**: `porDefecto(sel, valor)` en cada vista
   (dispara «change» para la cascada): AAAC 246.9 + primera referencia en Pérdidas y Regulación (cada tramo aéreo nuevo),
   Cortocircuito y Ampacidad aérea; Ocupación: PVC Tipo TDP de 4". Lo guardado en la sesión sigue ganando.
