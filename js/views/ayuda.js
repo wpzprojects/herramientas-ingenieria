@@ -24,13 +24,13 @@ const AYUDA_DESCRIPCIONES = {
   "#/calculos/cortocircuito":
     "Calcula la capacidad de corriente de cortocircuito admisible de un conductor según su calibre, material y tiempo de despeje de la falla. Si se indica la corriente de falla a soportar, agrega el veredicto Cumple/No cumple y sugiere el calibre más económico que sí la soporta.",
   "#/calculos/ampacidad-aerea":
-    "Calcula la corriente máxima admisible de un conductor aéreo según IEEE Std 738, a partir de las condiciones ambientales (temperatura, viento, elevación) y la radiación solar. Muestra el balance térmico completo para entender qué factor limita la capacidad.",
+    "Calcula la corriente máxima admisible de un conductor aéreo según IEEE Std 738, a partir de las condiciones ambientales (temperatura, viento, elevación) y la radiación solar, que se puede escribir o calcular con la posición del sol (latitud, fecha y hora, incluido el peor día del año). Muestra el balance térmico completo para entender qué factor limita la capacidad.",
   "#/calculos/ampacidad-subterranea":
-    "Calcula la corriente máxima admisible de un cable enterrado (solo o en banco de ductos) según IEC 60287-1-1, con la resistividad del suelo, la temperatura del terreno y el número de circuitos. En cables monopolares también calcula la corriente circulante o la tensión inducida en la pantalla.",
+    "Calcula la corriente máxima admisible de un cable enterrado (solo o en banco de ductos) según IEC 60287-1-1, con la resistividad del suelo, la temperatura del terreno y el número de circuitos. En cables monopolares también calcula la corriente circulante o la tensión inducida en la pantalla y, con puesta a tierra unipuntual, dimensiona el conductor de continuidad de tierra.",
   "#/calculos/conductor-economico":
     "Compara entre 2 y 5 opciones de conductor para una línea nueva por costo total actualizado (inversión más el valor presente de las pérdidas a varios años), con precios que escribe el propio usuario. Ayuda a decidir el calibre más económico a largo plazo, no solo el más barato de instalar.",
   "#/calculos/valoracion-integral":
-    "Evalúa de 1 a 6 alternativas para una misma conexión, cada una con su tensión y hasta 4 tramos aéreos o subterráneos. Calcula a la vez ampacidad, pérdidas, regulación, cortocircuito y, si se indican precios, el costo total actualizado; dice cuáles cumplen y cuál conviene, cuánto margen les queda y hasta qué potencia o longitud llegan. Las valoraciones se pueden guardar y exportar a PDF o Excel.",
+    "Compara de 1 a 6 alternativas de conductor para una misma conexión (la misma potencia a transmitir), cada una con su nivel de tensión y de 1 a 4 tramos en serie, aéreos o subterráneos. En un solo cálculo revisa ampacidad, pérdidas, regulación y cortocircuito y, si se indican precios, el costo total actualizado; dice cuáles cumplen todos los criterios y cuál se recomienda, cuánto margen les queda, hasta qué potencia o longitud llegan y el calibre mínimo que cumpliría. Sirve para escoger el conductor de un proyecto con todos los criterios a la vez; las valoraciones se pueden guardar y exportar a PDF, Word o Excel.",
   "#/catalogos/desnudos":
     "Ficha técnica de conductores ACSR, AAAC, ACAR, AAC y ACSS (diámetro, resistencia, capacidad, etc.), con filtro por tipo y buscador por calibre. Es la fuente de datos que usan Pérdidas, Regulación, Cortocircuito y Ampacidad aérea.",
   "#/catalogos/semiaislados":
@@ -50,13 +50,13 @@ const AYUDA_DESCRIPCIONES = {
   "#/normatividad/resoluciones":
     "Normativa CREG relevante para el sector eléctrico, con resumen y alcance de cada resolución. Ayuda a ubicar rápido qué resolución aplica a un tema sin tener que leerla completa.",
   "#/ia/analisis":
-    "Conversación con IA (Gemini) que ejecuta las calculadoras de la app para comparar escenarios (distintos calibres, longitudes o condiciones) y genera un reporte con hallazgos y recomendaciones. La IA nunca calcula por su cuenta: todos los números salen de las mismas calculadoras del menú Cálculos.",
+    "Conversación con IA (Gemini, OpenAI o Claude) que ejecuta las calculadoras de la app para comparar escenarios (distintos calibres, longitudes o condiciones) y genera un reporte con hallazgos y recomendaciones. Trae dos agentes: el estándar, para estimaciones rápidas, y el riguroso, que confirma todos los datos antes de calcular y arma una memoria de cálculo. La IA nunca calcula por su cuenta: todos los números salen de las mismas calculadoras del menú Cálculos.",
   "#/ia/redaccion":
     "Asistente de IA para redactar o corregir correos, descripciones técnicas, actas y resúmenes, con agentes configurables (instrucciones propias por tipo de texto). Incluye ajustes rápidos como «Más corto», «Más formal» o «Explica los cambios».",
   "#/ia/configuracion":
-    "Clave de API de Gemini (propia o compartida por el administrador), modelo a usar y ajustes avanzados (temperatura, rondas y cálculos máximos por pregunta). También explica qué datos se guardan en este navegador y cuáles se envían a Google.",
+    "Proveedor de IA a usar (Gemini, OpenAI o Claude) y su clave de API (en Gemini puede ser también una clave propia o compartida guardada en el servidor), el modelo y los ajustes avanzados (temperatura, rondas y cálculos máximos por pregunta). También explica qué datos se guardan en este navegador y cuáles se envían al proveedor.",
   "#/varios/codificacion":
-    "Catálogo de códigos usados para nombrar documentos y planos de un proyecto. Sirve como referencia para codificar entregables de forma consistente.",
+    "Catálogo de códigos usados para nombrar documentos y planos de un proyecto, con buscador por código o entregable y filtro por especialidad. Sirve como referencia para codificar entregables de forma consistente; el administrador lo mantiene al día desde la misma tabla.",
   "#/varios/conversion-coordenadas":
     "Convierte coordenadas entre distintos sistemas de referencia (Magna-Sirgas, Bogotá 1975, UTM, WGS84, cuadrículas urbanas, entre otros), con el conversor original de 7 sistemas o, si se habilita, entre cualquier par de cerca de 500 códigos EPSG. Acepta un punto a la vez o varios pegados de Excel.",
   "#/varios/conversion-unidades":

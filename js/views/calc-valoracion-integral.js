@@ -152,6 +152,16 @@ export async function render(container) {
             <div class="field"><label for="f-frecuencia">Frecuencia (Hz)</label><input type="number" id="f-frecuencia" min="1" max="300" step="1" value="60" required></div>
           </div>
           <div class="vi-avanzado-grupo">Cortocircuito</div>
+          <div class="grid-2 vi-cc-general">
+            <div class="field">
+              <label for="f-falla" data-info="Opcional. Corriente de cortocircuito en el punto de conexión; se verifica en todos los tramos de todas las alternativas. Vacío = solo se informa la capacidad de los conductores. Con «Por alternativa» marcada en la tensión, cada alternativa pide la suya.">Corriente de falla (kA)</label>
+              <input type="number" id="f-falla" min="0" step="any">
+            </div>
+            <div class="field">
+              <label for="f-tiempo">Tiempo de despeje de la falla (s)</label>
+              <input type="number" id="f-tiempo" min="0.01" max="60" step="any" value="0.3" required>
+            </div>
+          </div>
           <div class="grid-2">
             <div class="field"><label for="f-tfalla">Temperatura máxima admisible en falla (°C)</label><input type="number" id="f-tfalla" min="0" max="500" step="0.1" value="250" required></div>
           </div>
@@ -242,7 +252,7 @@ export async function render(container) {
   aplicarModo();
 
   // Campos comunes que se guardan tal cual (ids sin el «f-»)
-  const COMUNES = ["modo", "potencia", "aparente", "fp", "fc", "tension", "ta", "tc", "vw", "angulo", "elevacion", "epsilon", "alfa", "qse", "theta", "tempmax", "tempterreno", "rhosuelo", "uducto", "profundidad", "frecuencia", "tfalla", "precio", "escalada", "tasa", "anios", "crecimiento"];
+  const COMUNES = ["modo", "potencia", "aparente", "fp", "fc", "tension", "ta", "tc", "vw", "angulo", "elevacion", "epsilon", "alfa", "qse", "theta", "tempmax", "tempterreno", "rhosuelo", "uducto", "profundidad", "frecuencia", "falla", "tiempo", "tfalla", "precio", "escalada", "tasa", "anios", "crecimiento"];
   const campo = (id) => q(`#f-${id}`);
   const n = (id) => parseFloat(campo(id).value);
 
@@ -376,7 +386,7 @@ export async function render(container) {
             <input type="text" inputmode="decimal" id="f-costo-cond-${id}" pattern="${PATRON_MILES}" autocomplete="off">
           </div>
           <div class="field">
-            <label for="f-costo-inst-${id}" data-info="Postes, herrajes, obra civil, mano de obra… por km del tramo (sin el suministro del conductor). Si el campo se deja vacío o en cero, solo se considera el costo del conductor en el análisis.">Costo de instalación ($/km)</label>
+            <label for="f-costo-inst-${id}" data-info="Costos por km de suministro e instalación de postes, aisladores, herrajes, crucetería, estructura metálica, obra civil, etc. (sin suministro del conductor). Si el campo se deja vacío o en cero, solo se considera el costo del conductor en el análisis.">Costo de instalación ($/km)</label>
             <input type="text" inputmode="decimal" id="f-costo-inst-${id}" pattern="${PATRON_MILES}" autocomplete="off">
           </div>
         </div>
@@ -603,16 +613,18 @@ export async function render(container) {
         <div class="vi-tramos"></div>
         <details class="vi-avanzado">
           <summary>Parámetros avanzados</summary>
+          <div class="vi-cc-alt" hidden>
           <div class="vi-avanzado-grupo">Cortocircuito</div>
           <div class="grid-2">
             <div class="field">
               <label for="f-falla-${sid}" data-info="Opcional. Corriente de cortocircuito en el punto de conexión; se verifica en todos los tramos de la alternativa. Vacío = solo se informa la capacidad de los conductores.">Corriente de falla (kA)</label>
-              <input type="number" id="f-falla-${sid}" min="0" step="any">
+              <input type="number" id="f-falla-${sid}" min="0" step="any" disabled>
             </div>
             <div class="field">
               <label for="f-tiempo-${sid}">Tiempo de despeje de la falla (s)</label>
-              <input type="number" id="f-tiempo-${sid}" min="0.01" max="60" step="any" value="0.3" required>
+              <input type="number" id="f-tiempo-${sid}" min="0.01" max="60" step="any" value="0.3" required disabled>
             </div>
+          </div>
           </div>
           <div class="vi-avanzado-tramos"></div>
         </details>
@@ -631,6 +643,10 @@ export async function render(container) {
     const fTensionAlt = c(`#f-tension-${sid}`);
     const fFalla = c(`#f-falla-${sid}`);
     const fTiempo = c(`#f-tiempo-${sid}`);
+    const grupoCc = c(".vi-cc-alt");
+    // Corriente de falla y tiempo de despeje: los generales, o los de la alternativa con «Por alternativa» (2026-09-26)
+    const fallaActual = () => (porAlternativa() ? fFalla : campo("falla"));
+    const tiempoActual = () => (porAlternativa() ? fTiempo : campo("tiempo"));
     const tramosCont = c(".vi-tramos");
     const avanzadoCont = c(".vi-avanzado-tramos");
     const botonTramo = c(".vi-agregar-tramo");
@@ -685,8 +701,14 @@ export async function render(container) {
       /** Muestra u oculta la tensión propia de la alternativa (casilla «Por alternativa» de los datos de la conexión). */
       mostrarTension(visible) {
         if (visible && filaTension.hidden && !fTensionAlt.dataset.tocado) fTensionAlt.value = fTension.value; // al aparecer, arranca con la general
+        if (visible && grupoCc.hidden && !fFalla.dataset.tocado) {
+          fFalla.value = campo("falla").value; // la falla y el tiempo también arrancan con los generales
+          fTiempo.value = campo("tiempo").value;
+        }
         filaTension.hidden = !visible;
         fTensionAlt.disabled = !visible;
+        grupoCc.hidden = !visible;
+        fFalla.disabled = fTiempo.disabled = !visible;
         tramos.forEach((t) => t.alCambiarTension());
       },
       renumerar(i) {
@@ -697,7 +719,7 @@ export async function render(container) {
         const t = tramos.map((x) => x.estado());
         const varios = t.length > 1;
         const error = t.map((x, i) => (x.error ? `${varios ? `tramo ${i + 1}: ` : ""}${x.error}` : null)).filter(Boolean).join(" ");
-        return { tensionKv: tensionKv(), corrienteFallaKa: valor(fFalla), tiempoDespejeS: parseFloat(fTiempo.value), tramos: t, error: error || null };
+        return { tensionKv: tensionKv(), corrienteFallaKa: valor(fallaActual()), tiempoDespejeS: parseFloat(tiempoActual().value), tramos: t, error: error || null };
       },
       bruto: () => ({ tension: fTensionAlt.value, falla: fFalla.value, tiempo: fTiempo.value, avanzado: detalles.open, tramos: tramos.map((t) => t.bruto()) }),
       aplicarBruto(d) {
@@ -706,11 +728,13 @@ export async function render(container) {
         fTensionAlt.dataset.tocado = "1";
         fFalla.value = d.falla;
         fTiempo.value = d.tiempo;
+        fFalla.dataset.tocado = "1";
         detalles.open = !!d.avanzado;
         for (let i = tramos.length; i < d.tramos.length; i++) agregarTramo();
         tramos.forEach((t, i) => t.aplicarBruto(d.tramos[i]));
       },
       marcarTensionTocada: () => (fTensionAlt.dataset.tocado = "1"),
+      marcarFallaTocada: () => (fFalla.dataset.tocado = "1"),
     };
   }
 
@@ -772,6 +796,7 @@ export async function render(container) {
     });
     e.duplicar.addEventListener("click", () => agregarEscenario(e.bruto(), e));
     e.card.querySelector("[id^=f-tension-]").addEventListener("input", e.marcarTensionTocada);
+    e.card.querySelectorAll("[id^=f-falla-], [id^=f-tiempo-]").forEach((x) => x.addEventListener("input", e.marcarFallaTocada));
     if (despuesDe) {
       escenarios.splice(escenarios.indexOf(despuesDe) + 1, 0, e);
       despuesDe.card.after(e.card);
@@ -822,6 +847,11 @@ export async function render(container) {
       e.tramos.forEach((t) => t.filaCosto.remove());
     }
     for (const k of COMUNES) if (k in g && campo(k)) campo(k).value = g[k];
+    if (!("falla" in g) && g.escenarios[0]) {
+      // foto anterior a 3.32.0: la falla y el tiempo vivían solo en cada alternativa; los generales toman los de la primera
+      campo("falla").value = g.escenarios[0].falla ?? "";
+      if (g.escenarios[0].tiempo) campo("tiempo").value = g.escenarios[0].tiempo;
+    }
     reformatear(campo("precio"));
     aplicarModo();
     chkTensionAlt.checked = !!g.tensionPorAlternativa;

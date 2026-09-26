@@ -142,8 +142,8 @@ export function pintarCatalogosAdmin(box, backend, { confirmar = (t) => confirm(
   $("[data-todos]").addEventListener("click", (e) => {
     const hay = CATALOGOS_EDITABLES.some((c) => indice[c.nombre]);
     const texto = hay
-      ? "¿Publicar los 5 catálogos que trae la app? Los que ya están en el servidor se reemplazan (también las ediciones hechas desde la app, que quedan en el historial), y todos los usuarios los recibirán al abrir la app."
-      : "¿Publicar en el servidor los 5 catálogos que trae la app?";
+      ? `¿Publicar los ${CATALOGOS_EDITABLES.length} catálogos que trae la app? Los que ya están en el servidor se reemplazan (también las ediciones hechas desde la app, que quedan en el historial), y todos los usuarios los recibirán al abrir la app.`
+      : `¿Publicar en el servidor los ${CATALOGOS_EDITABLES.length} catálogos que trae la app?`;
     if (confirmar(texto)) ejecutar(CATALOGOS_EDITABLES, e.currentTarget);
   });
 

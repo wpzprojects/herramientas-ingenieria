@@ -165,7 +165,7 @@ await seccion("solo el administrador publica", async () => {
   ok(error && error.tipo === "permiso", "ni el administrador puede escribir un catálogo desconocido");
   const reglas = await (await fetch("../firebase/firestore.rules")).text();
   ok(/match \/catalogos\/\{id\}/.test(reglas) && /allow read: if true;/.test(reglas) && /allow write: if esAdmin\(\) &&/.test(reglas), "las reglas de Firestore: lectura pública y escritura solo del administrador");
-  ok(R.NOMBRES_EDITABLES.every((n) => reglas.includes(`'${n}'`)), "las reglas conocen los 5 catálogos");
+  ok(R.NOMBRES_EDITABLES.every((n) => reglas.includes(`'${n}'`)) && R.NOMBRES_EDITABLES.includes("codificacion"), `las reglas conocen los ${R.CATALOGOS_EDITABLES.length} catálogos (también la codificación de entregables)`);
 });
 
 await seccion("pestaña Catálogos del administrador", async () => {
@@ -180,7 +180,7 @@ await seccion("pestaña Catálogos del administrador", async () => {
   pintarCatalogosAdmin(box, mock, { confirmar: () => (preguntas++, true) });
   for (let i = 0; i < 60 && !box.querySelector("[data-publicar]"); i++) await espera(100);
   const filas = [...box.querySelectorAll("[data-filas] tr")];
-  ok(filas.length === 5 && filas.every((tr) => /No publicado/.test(tr.textContent)), "lista los 5 catálogos, todos «No publicado» al principio");
+  ok(filas.length === R.CATALOGOS_EDITABLES.length && filas.every((tr) => /No publicado/.test(tr.textContent)) && /Codificación de entregables/.test(texto(box)), `lista los ${R.CATALOGOS_EDITABLES.length} catálogos (con la codificación), todos «No publicado» al principio`);
   ok(!!box.querySelector(".form-section-title .icon") && /Catálogos en el servidor/.test(texto(box.querySelector(".form-section-title"))), "barra de título con icono");
   box.querySelector('[data-publicar="resoluciones"]').click();
   for (let i = 0; i < 60 && !/Se publicó/.test(texto(box.querySelector("[data-msg]"))); i++) await espera(100);
@@ -200,7 +200,7 @@ await seccion("Perfil > Aplicación y Datos", async () => {
   const { pintarAplicacion } = await import("../js/util/perfil-aplicacion.js");
   stage.innerHTML = `<div id="box"></div>`;
   let limpiarApp = pintarAplicacion(stage.querySelector("#box"));
-  ok(/Del servidor|1 de 5 del servidor/.test(texto(stage.querySelector("[data-catalogos]"))), `Aplicación dice de dónde vienen los catálogos: ${texto(stage.querySelector("[data-catalogos]"))}`);
+  ok(/Del servidor|1 de 6 del servidor/.test(texto(stage.querySelector("[data-catalogos]"))), `Aplicación dice de dónde vienen los catálogos: ${texto(stage.querySelector("[data-catalogos]"))}`);
   limpiarApp();
   R.borrarCopias();
   limpiarApp = pintarAplicacion(stage.querySelector("#box"));
@@ -208,7 +208,7 @@ await seccion("Perfil > Aplicación y Datos", async () => {
   limpiarApp();
   const P = await import("../js/util/perfil-datos.js");
   const cat = P.CATEGORIAS.find((c) => c.id === "catalogos");
-  ok(cat && !cat.respaldo && cat.claves.length === 5, "Datos: categoría «Catálogos descargados del servidor», fuera del respaldo");
+  ok(cat && !cat.respaldo && cat.claves.length === R.CATALOGOS_EDITABLES.length, "Datos: categoría «Catálogos descargados del servidor», fuera del respaldo");
   stage.innerHTML = "";
 });
 
@@ -365,6 +365,97 @@ await seccion("edición en las pantallas (administrador)", async () => {
   stage.innerHTML = "";
   await resLista.render(stage);
   ok(!stage.querySelector("tbody img") && /onerror/.test(texto(stage.querySelector("tbody"))), "y en la lista de resoluciones también");
+  stage.innerHTML = "";
+});
+
+await seccion("codificación de entregables: edición en la misma fila (administrador)", async () => {
+  limpiar();
+  window.__USAR_CATALOGOS_SERVIDOR__ = true;
+  const mock = crearBackendMock({ usuarios, sesion: ADMIN });
+  R.usarLector(R.lectorDesdeMock(mock));
+  const vista = await import("../js/views/codificacion.js");
+  const $ = (s) => stage.querySelector(s);
+  const filaDe = (codigo) => [...stage.querySelectorAll("tbody tr")].find((tr) => texto(tr.querySelector("td")) === codigo);
+  let preguntas = [];
+  const confirmar = (t) => (preguntas.push(t), true);
+
+  // validación (pura)
+  const base = [{ id: 1, codigo: "AB-1", entregable: "x", especialidad: "Lineas" }, { id: 2, codigo: "AB-2", entregable: "y", especialidad: "Lineas" }];
+  ok(Object.keys(vista.validarCodificacion(base, { codigo: "", entregable: "", especialidad: "" })).length === 3, "los tres campos son obligatorios");
+  ok(!!vista.validarCodificacion(base, { codigo: "ab-2", entregable: "z", especialidad: "L" }).codigo, "el código no puede repetirse (sin distinguir mayúsculas)");
+  ok(!vista.validarCodificacion(base, { codigo: "AB-2", entregable: "z", especialidad: "L" }, 2).codigo, "…salvo el del mismo registro que se edita");
+
+  await comoCuenta(mock, YO);
+  stage.innerHTML = "";
+  await vista.render(stage, {}, { confirmar });
+  ok(!$("#btn-agregar") && !$("[data-accion]") && stage.querySelectorAll("thead th").length === 3, "un usuario normal no ve Agregar, Editar ni Eliminar (solo las 3 columnas)");
+
+  await comoCuenta(mock, ADMIN);
+  stage.innerHTML = "";
+  await vista.render(stage, {}, { confirmar });
+  const cab = [...stage.querySelectorAll("thead th")].map(texto);
+  ok(cab.join("|") === "Código|Entregable|Especialidad|Editar|Eliminar", `dos columnas al final: ${cab.join(" · ")}`);
+  ok($(".toolbar").lastElementChild.contains($("#btn-agregar")), "«Agregar registro» al final de la línea de filtros");
+  const total = stage.querySelectorAll("tbody tr").length;
+  const primera = stage.querySelector("tbody tr");
+  const codigo = texto(primera.querySelector("td"));
+
+  // editar en la misma fila
+  primera.querySelector('[data-accion="editar"]').click();
+  const enEdicion = $(".cod-editando");
+  ok(enEdicion && enEdicion.querySelectorAll(".cod-campo").length === 3 && enEdicion.querySelector('[data-campo="codigo"]').value === codigo, "Editar vuelve casillas las tres celdas de esa fila, con sus valores");
+  ok(!!enEdicion.querySelector('[data-accion="guardar"]') && !!enEdicion.querySelector('[data-accion="cancelar"]') && stage.querySelectorAll("tbody tr").length === total, "los botones pasan a Guardar y Cancelar, y la fila no se mueve");
+  enEdicion.querySelector('[data-accion="cancelar"]').click();
+  ok(!$(".cod-editando") && !mock.servidor.indice.codificacion, "Cancelar vuelve a la fila normal sin publicar nada");
+
+  filaDe(codigo).querySelector('[data-accion="editar"]').click();
+  const otro = texto(stage.querySelectorAll("tbody tr")[1].querySelector("td"));
+  $('.cod-editando [data-campo="codigo"]').value = otro;
+  $('.cod-editando [data-accion="guardar"]').click();
+  await espera(30);
+  ok(/ya existe otro registro/.test(texto($("#cod-msg"))) && $('.cod-editando [data-campo="codigo"]').getAttribute("aria-invalid") === "true" && !mock.servidor.indice.codificacion, "un código repetido se marca y no se publica");
+  $('.cod-editando [data-campo="codigo"]').value = codigo;
+  $('.cod-editando [data-campo="entregable"]').value = "Entregable editado <b>x</b>";
+  preguntas = [];
+  $('.cod-editando [data-campo="entregable"]').dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  await esperarQue(() => !!mock.servidor.indice.codificacion && !$(".cod-editando"));
+  const pub = JSON.parse(mock.servidor.documentos.codificacion.datos);
+  ok(preguntas.length === 1 && pub.find((r) => r.codigo === codigo).entregable === "Entregable editado <b>x</b>" && pub.length === total, "Enter guarda: pide confirmación y publica ese registro cambiado (los demás intactos)");
+  ok(/Editó «/.test(mock.servidor.indice.codificacion.cambio) && /Se guardó/.test(texto($("#cod-msg"))), "queda el cambio en el historial y un aviso en la pantalla");
+  ok(!stage.querySelector("tbody b") && /<b>x<\/b>/.test(texto(filaDe(codigo))), "el texto se muestra como texto (no se interpreta como HTML)");
+
+  // Esc cancela
+  filaDe(codigo).querySelector('[data-accion="editar"]').click();
+  $('.cod-editando [data-campo="entregable"]').dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  ok(!$(".cod-editando"), "Esc cancela la edición");
+
+  // agregar
+  $("#btn-agregar").click();
+  const nueva = stage.querySelector("tbody tr");
+  ok(nueva.classList.contains("cod-editando") && nueva.dataset.id === "nuevo" && nueva.querySelector('[data-campo="codigo"]').value === "", "Agregar pone una fila vacía y editable arriba de la tabla");
+  ok(nueva.querySelector('[data-campo="especialidad"]').getAttribute("list") === "cod-especialidades" && $("#cod-especialidades").options.length > 0, "la especialidad sugiere las que ya existen");
+  nueva.querySelector('[data-campo="codigo"]').value = "ZZ-PRUEBA-001";
+  nueva.querySelector('[data-campo="entregable"]').value = "Plano de prueba";
+  nueva.querySelector('[data-campo="especialidad"]').value = "Pruebas";
+  nueva.querySelector('[data-accion="guardar"]').click();
+  await esperarQue(() => JSON.parse(mock.servidor.documentos.codificacion.datos).length === total + 1);
+  const agregado = JSON.parse(mock.servidor.documentos.codificacion.datos).at(-1);
+  ok(agregado.codigo === "ZZ-PRUEBA-001" && agregado.id === Math.max(...pub.map((r) => r.id)) + 1 && Object.keys(agregado).join() === Object.keys(pub[0]).join(), "el registro nuevo se publica con id = mayor + 1 y los mismos campos en el mismo orden");
+  ok(!!filaDe("ZZ-PRUEBA-001") && [...$("#f-especialidad").options].some((o) => o.value === "Pruebas"), "aparece en la tabla y su especialidad nueva entra al filtro");
+
+  // eliminar
+  preguntas = [];
+  filaDe("ZZ-PRUEBA-001").querySelector('[data-accion="eliminar"]').click();
+  await esperarQue(() => JSON.parse(mock.servidor.documentos.codificacion.datos).length === total);
+  ok(preguntas.length === 1 && /historial/.test(preguntas[0]) && !filaDe("ZZ-PRUEBA-001") && /Eliminó «ZZ-PRUEBA-001»/.test(mock.servidor.indice.codificacion.cambio), "Eliminar pide confirmación (dice que se recupera del historial), publica y quita la fila");
+
+  // conflicto
+  filaDe(codigo).querySelector('[data-accion="editar"]').click();
+  await mock.publicarCatalogo("codificacion", { datos: mock.servidor.documentos.codificacion.datos, huellaFabrica: "h", cambio: "otro administrador" });
+  $('.cod-editando [data-campo="entregable"]').value = "Otro cambio";
+  $('.cod-editando [data-accion="guardar"]').click();
+  await esperarQue(() => /cambió en el servidor/.test(texto($("#cod-msg"))));
+  ok(/cambió en el servidor mientras editabas/.test(texto($("#cod-msg"))) && !!$(".cod-editando"), "si otro cambió la tabla mientras se editaba, no se sobrescribe y se avisa (la fila sigue en edición)");
   stage.innerHTML = "";
 });
 

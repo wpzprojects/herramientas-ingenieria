@@ -294,14 +294,25 @@ button { font-family: inherit; }
 @media (max-width: 560px) { .pf-lista { grid-template-columns: 1fr; row-gap: 0; } .pf-lista dd { margin-bottom: var(--space-2); } }
 #ca-libre:not(:empty) { margin-top: var(--space-4); }
 .pf-grupo { margin: var(--space-4) 0 var(--space-2); font-size: 1rem; }
+/* Subtítulos de Perfil > Calculadoras: el mismo estilo de los de «Parámetros avanzados» de Valoración integral (barrita
+   del color del tema, texto y una línea fina hasta el borde; 2026-09-26, pedido del usuario) */
+.pf-form .pf-grupo { display: flex; align-items: center; padding-left: var(--space-2); border-left: 3px solid var(--accent); font-size: 0.9rem; font-weight: 600; color: var(--text); line-height: 1.3; }
+.pf-form .pf-grupo::after { content: ""; flex: 1 1 var(--space-4); min-width: var(--space-4); height: 1px; margin-left: var(--space-3); background: color-mix(in srgb, var(--accent) 55%, transparent); }
+.pf-form .pf-grupo .text-sm { margin-left: 0.3em; }
 /* Perfil > Calculadoras: entre filas de campos el mismo espacio que en las calculadoras (sin el row-gap de la rejilla);
    el espacio de más va entre secciones, con una línea suave */
 .pf-form .grid-2 { row-gap: 0; }
-.pf-form .pf-grupo:not(:first-child) { margin-top: var(--space-6); padding-top: var(--space-4); border-top: 1px solid var(--border); }
+.pf-form .pf-grupo:not(:first-child) { margin-top: var(--space-6); }
 /* Edición de catálogos (administrador, js/util/edicion-catalogo.js) */
 .ed-acciones { margin: 0 0 var(--space-4); }
 /* «Agregar registro» al final de la línea de filtros; si no cabe, es el primero en bajar de línea */
 .toolbar > .ed-acciones { margin: 0 0 0 auto; flex: 0 0 auto; }
+/* Codificación de entregables (administrador): Editar y Eliminar en dos columnas al final; la fila se edita en su lugar */
+.cod-tabla-admin .cod-accion { width: 1%; text-align: center; white-space: nowrap; padding-left: var(--space-2); padding-right: var(--space-2); }
+.cod-tabla-admin .cod-editando td { vertical-align: middle; padding-top: 6px; padding-bottom: 6px; }
+.cod-tabla-admin .cod-campo { width: 100%; min-width: 9rem; padding: 6px 8px; font: inherit; }
+.cod-tabla-admin .cod-campo[data-campo="codigo"] { font-family: var(--font-mono, ui-monospace, Consolas, monospace); min-width: 14rem; }
+.cod-tabla-admin .cod-campo[aria-invalid="true"] { border-color: var(--danger); }
 /* Conductor económico: «¿Puede el costo de instalación cambiar la decisión?» */
 .ce-inst-tabla th, .ce-inst-tabla td { white-space: normal; } /* la pista de peso es una frase: que baje de línea en vez de desbordar */
 .ce-inst-tabla td { vertical-align: top; }
@@ -334,7 +345,7 @@ button { font-family: inherit; }
   .pf-catalogos tr { display: block; border-bottom: 1px solid var(--border); }
   .pf-catalogos tr.abierto, .pf-catalogos tr:last-child { border-bottom: none; }
   .pf-catalogos td { display: block; border: none; padding: var(--space-1) var(--space-3); }
-  .pf-catalogos td:first-child { padding-top: var(--space-3); font-weight: 700; }
+  .pf-catalogos td:first-child { padding-top: var(--space-3); font-weight: 600; }
   .pf-catalogos td[data-etiqueta]::before { content: attr(data-etiqueta) ": "; color: var(--text-muted); font-weight: 600; }
   .pf-catalogos td:last-child { padding-bottom: var(--space-3); }
   .pf-cat-acciones { justify-content: flex-start; }
@@ -345,7 +356,11 @@ button { font-family: inherit; }
 .pf-historial li:first-child { border-top: none; }
 .pf-historial .btn { margin-left: auto; }
 .pf-grupo .text-sm { font-weight: 400; }
-.pf-datos td:first-child { font-weight: 600; }
+/* Tablas de Perfil (Usuarios, Datos y Catálogos): texto un poco más suave, como el historial de conversaciones de IA,
+   y botones sin tanto peso (2026-09-26, pedido del usuario: se veían muy intensas). Las insignias no cambian. */
+.pf-datos td, .pf-usuarios td { color: color-mix(in srgb, var(--text) 82%, var(--text-muted)); }
+.pf-datos td:first-child { font-weight: 400; color: var(--text); } /* 500 con Segoe UI se ve casi como negrilla */
+.pf-datos .btn, .pf-usuarios .btn { font-weight: 600; }
 .pf-version-cab { margin: var(--space-3) 0 var(--space-1); }
 .pf-version ul { margin: 0; padding-left: var(--space-5); font-size: 0.92rem; }
 .pf-anteriores { margin-top: var(--space-3); }

@@ -6,7 +6,7 @@
 import { ErrorAcceso, ROLES, normalizarCorreo, correoValido } from "./backend.js";
 
 const MAX_HISTORIAL = 10;
-const CATALOGOS_CONOCIDOS = ["conductores-desnudos", "conductores-semiaislados", "conductores-xlpe", "tuberias", "resoluciones"];
+const CATALOGOS_CONOCIDOS = ["conductores-desnudos", "conductores-semiaislados", "conductores-xlpe", "tuberias", "resoluciones", "codificacion"];
 
 /**
  * @param {object} [o]

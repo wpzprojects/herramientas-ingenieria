@@ -18,6 +18,7 @@ export const CATALOGOS_EDITABLES = [
   { nombre: "conductores-xlpe", titulo: "Conductores XLPE" },
   { nombre: "tuberias", titulo: "Tuberías" },
   { nombre: "resoluciones", titulo: "Resoluciones" },
+  { nombre: "codificacion", titulo: "Codificación de entregables" },
 ];
 export const NOMBRES_EDITABLES = CATALOGOS_EDITABLES.map((c) => c.nombre);
 export const PREFIJO_COPIA = "catalogo.servidor.";

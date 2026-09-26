@@ -312,7 +312,7 @@ export async function render(container, params = {}) {
         <button type="button" class="btn btn-primary" id="ca-agregar">Agregar</button>
       </div>
       <div id="ca-msg-usuarios"></div>
-      <div class="table-wrap"><table><thead><tr><th>Correo</th><th>Rol</th><th class="hide-narrow">Agregado por</th><th class="hide-narrow">Fecha</th><th></th></tr></thead><tbody id="ca-filas"></tbody></table></div>`;
+      <div class="table-wrap"><table class="pf-usuarios"><thead><tr><th>Correo</th><th>Rol</th><th class="hide-narrow">Agregado por</th><th class="hide-narrow">Fecha</th><th></th></tr></thead><tbody id="ca-filas"></tbody></table></div>`;
     activarInfos(box);
 
     const msg = box.querySelector("#ca-msg-usuarios");

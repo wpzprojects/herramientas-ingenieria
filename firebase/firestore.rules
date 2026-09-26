@@ -93,7 +93,7 @@ service cloud.firestore {
 
     // Catalogos editables: lectura publica, escritura solo del admin y solo con la forma esperada.
     function catalogoConocido(id) {
-      return id in ['conductores-desnudos', 'conductores-semiaislados', 'conductores-xlpe', 'tuberias', 'resoluciones'];
+      return id in ['conductores-desnudos', 'conductores-semiaislados', 'conductores-xlpe', 'tuberias', 'resoluciones', 'codificacion'];
     }
 
     match /catalogos/{id} {
@@ -102,7 +102,7 @@ service cloud.firestore {
         (id == '_indice'
           && request.resource.data.keys().hasOnly(['catalogos', 'fecha'])
           && request.resource.data.catalogos is map
-          && request.resource.data.catalogos.keys().hasOnly(['conductores-desnudos', 'conductores-semiaislados', 'conductores-xlpe', 'tuberias', 'resoluciones']))
+          && request.resource.data.catalogos.keys().hasOnly(['conductores-desnudos', 'conductores-semiaislados', 'conductores-xlpe', 'tuberias', 'resoluciones', 'codificacion']))
         || (catalogoConocido(id)
           && request.resource.data.keys().hasOnly(['datos', 'version'])
           && request.resource.data.datos is string

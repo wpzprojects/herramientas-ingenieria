@@ -47,7 +47,7 @@ export const GRUPOS = [
   {
     titulo: "Falla",
     donde: "Cortocircuito, conductor de continuidad de tierra (Ampacidad subterránea) y Valoración integral",
-    campos: [{ clave: "tiempo", etiqueta: "Tiempo de despeje de la falla (s)", inicial: "0.3", min: 0, max: 60, step: 0.1, en: { cortocircuito: "#f-tiempo", "ampacidad-subterranea": "#f-gcc-tiempo" } }],
+    campos: [{ clave: "tiempo", etiqueta: "Tiempo de despeje de la falla (s)", inicial: "0.3", min: 0, max: 60, step: 0.1, en: { cortocircuito: "#f-tiempo", "ampacidad-subterranea": "#f-gcc-tiempo", "valoracion-integral": "#f-tiempo" } }],
   },
 ];
 
