@@ -204,7 +204,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   ternas en paralelo en el mismo banco (máx. 6 circuitos con los ajenos); monopolar en trébol. Recomendado = menor costo
   total entre los que cumplen. Perfil → Calculadoras también la alimenta (tensión y tiempo se aplican a cada escenario
   nuevo con `leerDefectos`). Pruebas: `tools/verify_valoracion_integral.html`; `verify_acceso` cuenta 23 módulos.
-  Pendientes posibles (no pedidos): herramienta de la IA sobre el mismo motor, varios tramos por escenario, gráficos.
+  Pendiente posible (no pedido): gráficos. (La herramienta de la IA se hizo en 3.30.0 y los tramos en 3.24.0.)
   Ajustes (2026-09-25, 3.23.0, pedidos del usuario): (1) las etiquetas de la tabla YA NO llevan la unidad entre
   paréntesis («Ampacidad de la fase (A)» se leía como «fase A»): la unidad va junto al número («557.8 A») y la ampacidad
   se separa en «Ampacidad por conductor» y «Ampacidad total» (esta solo si algún escenario tiene N > 1). (2) Los grupos
@@ -695,7 +695,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   gana `SISTEMA_RIGUROSO`/`PROMPT_REPORTE_RIGUROSO` junto a los del estándar; `js/ai/agentes-analisis.js` pasa de un
   `AGENTE_PREDETERMINADO` único a `AGENTES_PREDETERMINADOS` (array, `[estándar, riguroso]`, ambos `predefinido: true` y
   congelados) — `AGENTE_PREDETERMINADO`/`ID_PREDETERMINADO` quedan como alias del estándar (compatibilidad; son los únicos
-  nombres que usan `ia-analisis.js` y las pruebas). El riguroso usa `HERRAMIENTAS_TODAS` (las 16, nueva exportación de
+  nombres que usan `ia-analisis.js` y las pruebas). El riguroso usa `HERRAMIENTAS_TODAS` (17 desde 3.30.0; nueva exportación de
   `tools.js` junto a `HERRAMIENTAS_ESTANDAR`): antes de calcular pide TODOS los parámetros por categoría (Sistema, Conductor,
   Instalación…), avisa explícitamente cada valor por defecto y pide confirmarlo o cambiarlo (nunca lo asume en silencio,
   a diferencia del estándar), reparte las preguntas en varias respuestas para no saturar, y registra cada categoría
