@@ -10,6 +10,7 @@ import { compararOpciones, sensibilidad, sensibilidadInstalacion } from "../calc
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
+import { revelar } from "../util/revelar.js";
 import { guardarEstado, leerEstado } from "../util/persistencia-calculo.js";
 import { aplicarDefectos } from "../util/valores-defecto.js";
 
@@ -473,7 +474,7 @@ export async function render(container) {
   botonAgregar.type = "button";
   botonAgregar.className = "btn btn-agregar-tramo";
   botonAgregar.innerHTML = `${icon("plus")} Agregar conductor`;
-  botonAgregar.addEventListener("click", () => agregarOpcion());
+  botonAgregar.addEventListener("click", () => revelar(agregarOpcion()?.card, { resaltar: true }));
   const filaCalcular = container.querySelector("#form-calc .btn-row");
   filaCalcular.classList.add("btn-row--agregar"); // si no caben en una linea: «Agregar» arriba y «Calcular» abajo, ambos a la izquierda
   filaCalcular.append(botonAgregar);
@@ -498,6 +499,7 @@ export async function render(container) {
     opciones.push(o);
     opcionesCont.append(o.card);
     actualizarOpciones();
+    return o;
   }
   for (let i = 0; i < MIN_OPCIONES; i++) agregarOpcion();
 

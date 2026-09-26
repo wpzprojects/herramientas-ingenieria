@@ -9,6 +9,7 @@
 
 import { loadData, distinct, debounce, escapeHtml } from "../util/format.js";
 import { icon } from "../icons.js";
+import { revelar } from "../util/revelar.js";
 import { esAdministrador, agregarRegistro, reemplazarRegistro, quitarRegistro, guardarCatalogo } from "../util/edicion-catalogo.js";
 
 const CATALOGO = "codificacion";
@@ -217,6 +218,7 @@ export async function render(container, _params, { confirmar = (t) => confirm(t)
   $("#btn-agregar").addEventListener("click", () => {
     if (editando === "nuevo" || !puedeCambiarFila()) return;
     editar("nuevo");
+    revelar($(".cod-editando"));
     $(".cod-editando .cod-campo")?.focus();
   });
 

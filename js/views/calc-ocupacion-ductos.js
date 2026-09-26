@@ -10,6 +10,7 @@ import { calcularOcupacionGrupos } from "../calc/ocupacion-grupos.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
+import { revelar, mostrar } from "../util/revelar.js";
 import { donaOcupacionSvg, corteDuctoSvg } from "../util/graficos.js";
 import { guardarEstado, leerEstado } from "../util/persistencia-calculo.js";
 
@@ -294,9 +295,10 @@ export async function render(container) {
       if (chkCatalogo.checked) fDiametro.value = fila ? fila.diametro_total_conductor_mm : "";
     }
 
-    chkCatalogo.addEventListener("change", () => {
+    chkCatalogo.addEventListener("change", (e) => {
       const cat = chkCatalogo.checked;
-      campos.hidden = !cat;
+      if (e.isTrusted) mostrar(campos, cat); // con el clic de la persona se despliega; al restaurar, al instante
+      else campos.hidden = !cat;
       fDiametro.disabled = cat;
       if (cat) cascada();
       else for (const s of [selAislamiento, selMaterial, selPantalla, selCalibre]) s.required = false;
@@ -358,7 +360,7 @@ export async function render(container) {
   botonAgregar.type = "button";
   botonAgregar.className = "btn btn-agregar-tramo";
   botonAgregar.innerHTML = `${icon("plus")} Agregar tipo de conductor`;
-  botonAgregar.addEventListener("click", () => agregarGrupo());
+  botonAgregar.addEventListener("click", () => revelar(agregarGrupo().card, { resaltar: true }));
   const filaCalcular = container.querySelector("#form-calc .btn-row");
   filaCalcular.classList.add("btn-row--agregar"); // si no caben en una linea: «Agregar» arriba y «Calcular» abajo, ambos a la izquierda
   filaCalcular.append(botonAgregar);
@@ -381,6 +383,7 @@ export async function render(container) {
     grupos.push(g);
     gruposCont.append(g.card);
     actualizarGrupos();
+    return g;
   }
   agregarGrupo();
 

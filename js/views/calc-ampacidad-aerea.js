@@ -10,6 +10,7 @@ import { calcularRadiacionSolar, diaDelAnio, peorDiaDelAnio, fechaDeDia } from "
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
+import { mostrar } from "../util/revelar.js";
 import { guardarEstado, leerEstado } from "../util/persistencia-calculo.js";
 import { aplicarDefectos } from "../util/valores-defecto.js";
 
@@ -426,9 +427,10 @@ export async function render(container) {
     fTheta.value = Math.round(r.thetaDeg * 10) / 10;
   }
 
-  chkSol.addEventListener("change", () => {
+  chkSol.addEventListener("change", (e) => {
     const activo = chkSol.checked;
-    bloqueSol.hidden = !activo;
+    if (e.isTrusted) mostrar(bloqueSol, activo); // con el clic de la persona se despliega; al restaurar, al instante
+    else bloqueSol.hidden = !activo;
     camposSol.forEach((c) => (c.disabled = !activo)); // oculto y deshabilitado: no entra en la validación del formulario
     for (const [chk, campo, valor] of [[chkQse, fQse, 1000], [chkTheta, fTheta, 90]]) {
       chk.checked = false;

@@ -4,6 +4,7 @@
 
 import { icon } from "../icons.js";
 import { escapeHtml, olvidarDato } from "./format.js";
+import { revelar } from "./revelar.js";
 import { CATALOGOS_EDITABLES, cargarFabrica, huella, textoCompacto, lectorActivo, lectorDesdeMock, sincronizarCatalogos } from "./catalogos-remotos.js";
 
 const fecha = (iso) => (iso ? new Date(iso).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" }) : "");
@@ -79,7 +80,9 @@ export function pintarCatalogosAdmin(box, backend, { confirmar = (t) => confirm(
         const abrir = !abiertos.has(n);
         abrir ? abiertos.add(n) : abiertos.delete(n);
         b.setAttribute("aria-expanded", String(abrir));
-        box.querySelector(`[data-historial="${n}"]`).hidden = !abrir;
+        const fila = box.querySelector(`[data-historial="${n}"]`);
+        fila.hidden = !abrir;
+        if (abrir) revelar(fila.querySelector(".pf-hist-panel")); // el panel se despliega bajo su fila
         box.querySelector(`[data-cat="${n}"]`).classList.toggle("abierto", abrir);
       });
     }

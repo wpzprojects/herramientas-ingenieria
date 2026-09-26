@@ -5,6 +5,7 @@ import { aplicarTema, colorMeta } from "./util/tema.js";
 import { initRouter } from "./router.js";
 import { sincronizarCatalogos } from "./util/catalogos-remotos.js";
 import { olvidarDato } from "./util/format.js";
+import { activarDetallesAnimados } from "./util/revelar.js";
 
 const shell = document.getElementById("app-shell");
 const sidebar = document.getElementById("sidebar");
@@ -123,6 +124,7 @@ backdrop.addEventListener("click", closeMobileNav);
 
 // Nivel de acceso: se aplica de inmediato lo guardado en el dispositivo y se valida en segundo plano (js/auth/acceso.js)
 iniciarAcceso();
+activarDetallesAnimados(); // los «Parámetros avanzados» y demás desplegables se abren y cierran con animación
 
 const router = initRouter({
   mount,

@@ -31,6 +31,7 @@ import { UMBRAL_OPTIMO_PCT as OPTIMO_REGULACION } from "../calc/regulacion-tramo
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables, plegarTarjeta } from "../util/tarjetas-plegables.js";
+import { revelar, mostrar } from "../util/revelar.js";
 import { guardarEstado, leerEstado } from "../util/persistencia-calculo.js";
 import { aplicarDefectos, leerDefectos } from "../util/valores-defecto.js";
 import { crearXlsx, columna, MIME_XLSX } from "../util/xlsx.js";
@@ -683,7 +684,7 @@ export async function render(container) {
       ordenarCostos();
       return t;
     }
-    botonTramo.addEventListener("click", () => agregarTramo());
+    botonTramo.addEventListener("click", () => revelar(agregarTramo()?.bloque));
     fTensionAlt.addEventListener("input", () => {
       tramos.forEach((t) => t.alCambiarTension());
       validarTensiones();
@@ -699,16 +700,17 @@ export async function render(container) {
       tensionKv,
       agregarTramo,
       /** Muestra u oculta la tensión propia de la alternativa (casilla «Por alternativa» de los datos de la conexión). */
-      mostrarTension(visible) {
+      mostrarTension(visible, animado = false) {
         if (visible && filaTension.hidden && !fTensionAlt.dataset.tocado) fTensionAlt.value = fTension.value; // al aparecer, arranca con la general
         if (visible && grupoCc.hidden && !fFalla.dataset.tocado) {
           fFalla.value = campo("falla").value; // la falla y el tiempo también arrancan con los generales
           fTiempo.value = campo("tiempo").value;
         }
-        filaTension.hidden = !visible;
         fTensionAlt.disabled = !visible;
-        grupoCc.hidden = !visible;
         fFalla.disabled = fTiempo.disabled = !visible;
+        if (animado) mostrar(filaTension, visible);
+        else filaTension.hidden = !visible;
+        grupoCc.hidden = !visible; // va dentro de «Parámetros avanzados» (plegado casi siempre): sin animación
         tramos.forEach((t) => t.alCambiarTension());
       },
       renumerar(i) {
@@ -768,7 +770,9 @@ export async function render(container) {
   botonAgregar.innerHTML = `${icon("plus")} Agregar alternativa`;
   botonAgregar.addEventListener("click", () => {
     agregarEscenario();
-    escenarios.at(-1).card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    const nueva = escenarios.at(-1).card;
+    revelar(nueva, { resaltar: true });
+    nueva.scrollIntoView({ behavior: "smooth", block: "nearest" });
   });
   q(".btn-row--agregar").append(botonAgregar);
 
@@ -794,7 +798,12 @@ export async function render(container) {
       actualizarEscenarios();
       validarTensiones();
     });
-    e.duplicar.addEventListener("click", () => agregarEscenario(e.bruto(), e));
+    e.duplicar.addEventListener("click", () => {
+      agregarEscenario(e.bruto(), e);
+      const copia = escenarios[escenarios.indexOf(e) + 1]?.card;
+      revelar(copia, { resaltar: true });
+      copia?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
     e.card.querySelector("[id^=f-tension-]").addEventListener("input", e.marcarTensionTocada);
     e.card.querySelectorAll("[id^=f-falla-], [id^=f-tiempo-]").forEach((x) => x.addEventListener("input", e.marcarFallaTocada));
     if (despuesDe) {
@@ -815,16 +824,17 @@ export async function render(container) {
   }
 
   // Tensión general o una por alternativa
-  function aplicarTensionAlt() {
+  function aplicarTensionAlt(animado = false) {
     fTension.disabled = porAlternativa();
     // con «Por alternativa», la falla y el tiempo de despeje generales se ocultan: cada alternativa pide los suyos
     const ccGeneral = q(".vi-cc-general");
-    ccGeneral.hidden = porAlternativa();
     ccGeneral.querySelectorAll("input").forEach((i) => (i.disabled = porAlternativa()));
-    escenarios.forEach((e) => e.mostrarTension(porAlternativa()));
+    if (animado) mostrar(ccGeneral, !porAlternativa());
+    else ccGeneral.hidden = porAlternativa();
+    escenarios.forEach((e) => e.mostrarTension(porAlternativa(), animado));
     validarTensiones();
   }
-  chkTensionAlt.addEventListener("change", aplicarTensionAlt);
+  chkTensionAlt.addEventListener("change", () => aplicarTensionAlt(true));
   fTension.addEventListener("input", () => {
     escenarios.forEach((e) => e.tramos.forEach((t) => t.alCambiarTension()));
     validarTensiones();
@@ -951,7 +961,7 @@ export async function render(container) {
   }
 
   function abrirCajaGuardar() {
-    cajaGuardar.hidden = false;
+    mostrar(cajaGuardar, true);
     avisoGuardado("");
     campoNombre.value = guardada?.nombre ?? "";
     accionesGuardar.innerHTML = guardada
@@ -963,7 +973,7 @@ export async function render(container) {
     campoNombre.focus();
   }
 
-  q(".vi-btn-guardar").addEventListener("click", () => (cajaGuardar.hidden ? abrirCajaGuardar() : (cajaGuardar.hidden = true)));
+  q(".vi-btn-guardar").addEventListener("click", () => (cajaGuardar.hidden || cajaGuardar._ocultando ? abrirCajaGuardar() : mostrar(cajaGuardar, false)));
   campoNombre.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       e.preventDefault(); // no enviar el formulario (Calcular)
@@ -975,7 +985,7 @@ export async function render(container) {
     if (!boton) return;
     const accion = boton.dataset.guardar;
     if (accion === "cancelar") {
-      cajaGuardar.hidden = true;
+      mostrar(cajaGuardar, false);
       return;
     }
     const nombre = campoNombre.value.trim();
@@ -1040,7 +1050,7 @@ export async function render(container) {
   }
 
   async function abrirHistorial() {
-    panelHistorial.hidden = false;
+    mostrar(panelHistorial, true);
     botonHistorial.setAttribute("aria-expanded", "true");
     pintarHistorial(listarLocales(), "Sincronizando con tu cuenta…"); // lo del dispositivo se ve al instante
     let r;
@@ -1052,10 +1062,10 @@ export async function render(container) {
     if (!panelHistorial.hidden && panelHistorial.isConnected) pintarHistorial(r.items, r.mensaje);
   }
   function cerrarHistorial() {
-    panelHistorial.hidden = true;
+    mostrar(panelHistorial, false);
     botonHistorial.setAttribute("aria-expanded", "false");
   }
-  botonHistorial.addEventListener("click", () => (panelHistorial.hidden ? abrirHistorial() : cerrarHistorial()));
+  botonHistorial.addEventListener("click", () => (panelHistorial.hidden || panelHistorial._ocultando ? abrirHistorial() : cerrarHistorial()));
   q(".vi-historial-cerrar").addEventListener("click", cerrarHistorial);
 
   listaHistorial.addEventListener("click", async (e) => {

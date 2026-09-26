@@ -12,6 +12,7 @@ import { dimensionarGcc } from "../calc/conductor-continuidad.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
+import { mostrar } from "../util/revelar.js";
 import { guardarEstado, leerEstado } from "../util/persistencia-calculo.js";
 import { aplicarDefectos } from "../util/valores-defecto.js";
 
@@ -433,12 +434,14 @@ export async function render(container) {
   // true si el GCC se dimensiona en este cálculo (cable monopolar, unipuntual y casilla marcada).
   const gccActivo = () => selTipoCable.value === "Monopolar" && selTierra.value === "Unipuntual" && chkGcc.checked;
 
-  function actualizarGcc() {
+  function actualizarGcc(e) {
     const monopolar = selTipoCable.value === "Monopolar";
-    tarjetaGcc.hidden = !(monopolar && (selTierra.value === "Unipuntual" || selTierra.value === "Cross-bonding"));
+    const animar = !!e?.isTrusted; // con un cambio de la persona se despliega; al abrir o restaurar, al instante
+    const poner = (el, visible) => (animar ? mostrar(el, visible) : (el.hidden = !visible));
+    poner(tarjetaGcc, monopolar && (selTierra.value === "Unipuntual" || selTierra.value === "Cross-bonding"));
     notaGccCb.hidden = selTierra.value !== "Cross-bonding";
     gccUnipuntual.hidden = selTierra.value !== "Unipuntual";
-    bloqueGcc.hidden = !chkGcc.checked;
+    poner(bloqueGcc, chkGcc.checked);
     camposGcc.forEach((c) => (c.disabled = !gccActivo())); // oculto y deshabilitado: no entra en la validación del formulario
   }
 

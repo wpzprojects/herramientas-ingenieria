@@ -293,6 +293,83 @@ await seccion("animación al plegar y desplegar (se avanza a mano)", async () =>
   }
 });
 
+await seccion("transiciones al aparecer contenido (revelar.js, se avanza a mano)", async () => {
+  const R = await import("../js/util/revelar.js");
+  ok(R.revelado.animar === null && stage.getClientRects().length > 0, "en los arneses no anima salvo que la prueba lo pida (animar = null)");
+  R.revelado.animar = true;
+  R.revelado.duracion = 4000;
+  try {
+    stage.innerHTML = `<div id="caja" style="padding:10px;margin:8px 0"><p style="margin:0;height:100px">contenido</p></div><details id="det"><summary>Parámetros avanzados</summary><p style="height:120px;margin:0">dentro</p></details><details class="menu-mas" id="menu"><summary>Menú</summary><p>x</p></details>`;
+    const caja = $("#caja");
+    const natural = caja.getBoundingClientRect().height;
+
+    // revelar: de 0 a la altura natural, con el contenido recortado
+    R.revelar(caja);
+    let a = caja.getAnimations();
+    ok(a.length === 1 && getComputedStyle(caja).overflow === "hidden", "revelar: una animación en curso y el contenido recortado mientras dura");
+    a[0].pause();
+    a[0].currentTime = 2000;
+    const medio = caja.getBoundingClientRect().height;
+    ok(medio > 2 && medio < natural - 2, `a mitad mide algo intermedio (${Math.round(medio)} de ${Math.round(natural)} px)`);
+    a[0].finish();
+    await espera(60);
+    ok(caja.getAnimations().length === 0 && caja.style.overflow === "" && Math.abs(caja.getBoundingClientRect().height - natural) < 1, "al terminar mide lo natural y sin estilos residuales");
+
+    // resaltar: el borde con el color del tema
+    R.revelar(caja, { resaltar: true });
+    const anims = caja.getAnimations();
+    ok(anims.length === 2 && anims.some((x) => JSON.stringify(x.effect.getKeyframes()).includes("boxShadow")), "con «resaltar» se suma el brillo del borde");
+    anims.forEach((x) => x.finish());
+    await espera(60);
+
+    // mostrar(false): hidden al terminar; mostrar(true) a mitad lo interrumpe
+    R.mostrar(caja, false);
+    ok(!caja.hidden && caja.getAnimations().length === 1, "mostrar(false): se recoge con animación (sigue visible mientras dura)");
+    caja.getAnimations()[0].pause();
+    caja.getAnimations()[0].currentTime = 2000;
+    R.mostrar(caja, true);
+    ok(!caja.hidden && caja.getAnimations().length === 1, "mostrar(true) a mitad del cierre lo interrumpe y vuelve a desplegar");
+    caja.getAnimations()[0].finish();
+    await espera(60);
+    ok(!caja.hidden && Math.abs(caja.getBoundingClientRect().height - natural) < 1, "…y termina abierta, con su altura natural");
+    R.mostrar(caja, false);
+    caja.getAnimations()[0].finish();
+    await espera(60);
+    ok(caja.hidden, "al terminar de recogerse queda oculta (hidden)");
+    R.mostrar(caja, true);
+    caja.getAnimations()[0].finish();
+    await espera(60);
+    ok(!caja.hidden, "mostrar(true) la vuelve a desplegar");
+
+    // <details> con el manejador global
+    R.activarDetallesAnimados();
+    const det = $("#det");
+    const resumen = det.querySelector("summary");
+    resumen.click();
+    ok(det.open && det.getAnimations().length === 1, "al pulsar el resumen, el <details> se abre al instante y crece con animación");
+    det.getAnimations()[0].finish();
+    await espera(60);
+    resumen.click();
+    ok(det.open && det.getAnimations().length === 1, "al cerrarlo, sigue abierto mientras se recoge…");
+    det.getAnimations()[0].finish();
+    await espera(60);
+    ok(!det.open, "…y se cierra al terminar");
+    $("#menu summary").click();
+    ok($("#menu").open && $("#menu").getAnimations().length === 0, "los menús desplegables (.menu-mas) no se animan");
+
+    // sin animación: cambio instantáneo
+    R.revelado.animar = false;
+    R.mostrar(caja, false);
+    ok(caja.hidden && caja.getAnimations().length === 0, "con la animación apagada, mostrar(false) oculta al instante");
+    resumen.click();
+    ok(det.open && det.getAnimations().length === 0, "y los <details> se abren como siempre");
+  } finally {
+    R.revelado.animar = null;
+    R.revelado.duracion = 220;
+    stage.innerHTML = "";
+  }
+});
+
 await seccion("archivos: icono, service worker y colores", async () => {
   const { icon } = await import("../js/icons.js");
   ok(icon("chevronUp").includes("m6 15 6-6 6 6") && icon("chevronDown").includes("m6 9 6 6 6-6"), "existen los chevrones hacia arriba y hacia abajo");
