@@ -159,13 +159,13 @@ function imagen(n, ctx) {
   const id = `rIdImg${k}`;
   ctx.imagenes.push({ id, nombre: `media/imagen${k}.png`, bytes });
   const anchoPx = Number(n.dataset.ancho) || 600, altoPx = Number(n.dataset.alto) || 400;
-  // 70 % del ancho útil, centrada (pedido del usuario, 2026-09-26); el PNG va a ~1380 px, así que se puede agrandar en
-  // Word hasta el ancho completo sin perder calidad (≈ 230 ppp)
-  const maxEmu = (ctx.ancho || ANCHO_TEXTO) * 635 * 0.7; // twips → EMU
+  // la mitad del ancho útil, a la izquierda (pedido del usuario, 2026-09-26); el PNG va a ~1380 px, así que se puede
+  // agrandar en Word hasta el ancho completo sin perder calidad (≈ 230 ppp)
+  const maxEmu = (ctx.ancho || ANCHO_TEXTO) * 635 * 0.5; // twips → EMU
   const escala = maxEmu / (anchoPx * 9525); // siempre al ancho útil de la página
   const cx = Math.round(anchoPx * 9525 * escala), cy = Math.round(altoPx * 9525 * escala);
   return (
-    `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="120" w:after="120"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0">` +
+    `<w:p><w:pPr><w:spacing w:before="120" w:after="120"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0">` +
     `<wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="${k}" name="Imagen ${k}"/>` +
     `<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic>` +
     `<pic:nvPicPr><pic:cNvPr id="${k}" name="imagen${k}.png"/><pic:cNvPicPr/></pic:nvPicPr>` +

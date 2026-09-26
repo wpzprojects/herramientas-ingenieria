@@ -495,8 +495,8 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   indicada» si no hay), colores de serie; lo que pasa el 100 % conserva su color con borde y cifra en rojo; columna de
   costo total (gris; la recomendada con borde verde) solo si hay precios. Conductor económico: precio y costos con
   separador de miles al escribir (`campo-miles.js`, igual que Valoración integral; antes eran `type=number`).
-  3.44.2: gráficos de los reportes PDF y Word al 70 % del ancho, centrados (decidido con el usuario: a la mitad los
-  textos quedarían en ~5 pt). Word: el PNG es de ~1380 px (escala 3), se puede estirar a todo el ancho sin perder
+  3.44.2 → 3.44.5: gráficos de los reportes PDF y Word al 50 % del ancho y a la IZQUIERDA (el usuario probó 70 %
+  centrado y los vio grandes; se le advirtió que a la mitad los textos quedan en ~5 pt impresos). Word: el PNG es de ~1380 px (escala 3), se puede estirar a todo el ancho sin perder
   calidad (~230 ppp); PDF vectorial. Memoria LaTeX: 14 mm entre secciones y 7 mm entre pasos (3.44.1).
   3.44.3: Ampacidad aérea muestra en el resultado solo 3 gráficos (temperatura vs corriente, ampacidad vs Ta y balance);
   el corte del conductor (`corteConductorSvg`) queda SOLO en los reportes PDF/Word (pedido del usuario).

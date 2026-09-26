@@ -1086,7 +1086,7 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .memoria-ecuacion .katex-display > .katex { text-align: left; }
 .memoria-texto { margin: 0; font-family: "Cambria Math", serif; font-size: 0.9rem; }
 .rep-previa .doc-impresion { display: block; }
-.rep-previa .doc-calculo .doc-figura svg { width: 70%; }
+.rep-previa .doc-calculo .doc-figura svg { width: 50%; }
 .rep-previa .doc-calculo img { max-width: 100%; height: auto; }
 @media (max-width: 560px) { .rep-hoja { padding: 16px; } .rep-cab select { min-width: 0; flex: 1 1 200px; } }
 
@@ -1109,8 +1109,8 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .doc-calculo .doc-ecuacion .katex-display > .katex { text-align: left; }
 .doc-calculo h3 { font-size: 13pt; margin: 10mm 0 3mm; padding-bottom: 1mm; border-bottom: .5pt solid #999; color: #111; break-after: avoid; } /* aire entre secciones */
 .doc-calculo .doc-figura { break-inside: avoid; margin: 3mm 0 6mm; background: #fff; width: auto; max-width: none; border: 0; border-radius: 0; overflow: visible; font-size: inherit; } /* anula el tamaño de .vista-tema */
-.doc-calculo .doc-figura figcaption { font-size: 9.5pt; font-weight: 600; margin-bottom: 2mm; text-align: center; }
-.doc-calculo .doc-figura svg { display: block; width: 70%; height: auto; margin: 0 auto; } /* 70 % del ancho, centrado: proporcionado y legible (vectorial: se ve nítido a cualquier tamaño) */
+.doc-calculo .doc-figura figcaption { font-size: 9.5pt; font-weight: 600; margin-bottom: 2mm; }
+.doc-calculo .doc-figura svg { display: block; width: 50%; height: auto; } /* mitad del ancho, a la izquierda (pedido del usuario; vectorial: nítido a cualquier tamaño) */
 
 /* ---- Documento de impresion del reporte: Carta vertical, SIEMPRE en claro (no depende del tema de la pantalla) ---- */
 @page reporte {
