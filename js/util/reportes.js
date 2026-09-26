@@ -20,6 +20,8 @@ const slug = (t) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().rep
 /** Opciones del selector (las que no traen documento solo ven el texto). */
 export function selectorReportesHtml(reporteHtmlTexto, conDocumentos) {
   if (!conDocumentos) return `<div class="report-block">${reporteHtmlTexto}</div>`;
+  // Una sola fila: el tipo de reporte y, a su derecha, la acción de ese tipo (en el celular baja a la segunda línea).
+  // Los cuatro tipos se ven igual: una hoja blanca con el contenido (pedido del usuario, 2026-09-26).
   return `
           <div class="rep-cab">
             <label for="rep-tipo">Tipo de reporte</label>
@@ -29,22 +31,13 @@ export function selectorReportesHtml(reporteHtmlTexto, conDocumentos) {
               <option value="pdf">PDF</option>
               <option value="docx">Word (.docx)</option>
             </select>
+            <button type="button" class="btn btn-primary rep-accion" data-rep-accion="copiar-txt">Copiar</button>
+            <span class="text-muted text-sm" data-rep-msg></span>
           </div>
-          <div class="rep-vista" data-rep="txt"><div class="report-block">${reporteHtmlTexto}</div></div>
-          <div class="rep-vista" data-rep="latex" hidden>
-            <div class="rep-acciones"><button type="button" class="btn btn-sm btn-con-icono" data-rep-accion="copiar-latex">Copiar LaTeX</button><span class="text-muted text-sm" data-rep-msg></span></div>
-            <div class="memoria-caja" data-memoria><p class="text-muted text-sm">Cargando la memoria de cálculo…</p></div>
-          </div>
-          <div class="rep-vista" data-rep="pdf" hidden>
-            <p class="text-muted text-sm">Documento con los datos de entrada, los resultados, el desarrollo del cálculo y los gráficos. Se abre la ventana de impresión: elige «Guardar como PDF».</p>
-            <button type="button" class="btn btn-primary" data-rep-accion="pdf">Descargar PDF</button>
-            <div class="rep-previa" data-previa="pdf"></div>
-          </div>
-          <div class="rep-vista" data-rep="docx" hidden>
-            <p class="text-muted text-sm">Documento de Word editable con los datos de entrada, los resultados, el desarrollo del cálculo (ecuaciones como texto) y los gráficos.</p>
-            <button type="button" class="btn btn-primary" data-rep-accion="docx">Descargar Word</button>
-            <div class="rep-previa" data-previa="docx"></div>
-          </div>`;
+          <div class="rep-vista rep-hoja" data-rep="txt"><div class="report-block">${reporteHtmlTexto}</div></div>
+          <div class="rep-vista rep-hoja" data-rep="latex" hidden><div class="memoria-caja" data-memoria><p class="text-muted text-sm">Cargando la memoria de cálculo…</p></div></div>
+          <div class="rep-vista rep-hoja" data-rep="pdf" hidden><div class="rep-previa" data-previa="pdf"></div></div>
+          <div class="rep-vista rep-hoja" data-rep="docx" hidden><div class="rep-previa" data-previa="docx"></div></div>`;
 }
 
 /** Líneas «Etiqueta: valor» de una sección del reporte de texto (entre su título y el siguiente título en mayúsculas). */
@@ -208,8 +201,12 @@ export function activarReportes(wrap, datos) {
       previas[tipo] = false;
     }
   }
+  // el botón de acción cambia con el tipo de reporte
+  const ACCIONES = { txt: ["copiar-txt", "Copiar"], latex: ["copiar-latex", "Copiar LaTeX"], pdf: ["pdf", "Descargar PDF"], docx: ["docx", "Descargar Word"] };
+  const botonAccion = wrap.querySelector(".rep-accion");
   sel.addEventListener("change", () => {
     vistas.forEach((v) => (v.hidden = v.dataset.rep !== sel.value));
+    [botonAccion.dataset.repAccion, botonAccion.textContent] = ACCIONES[sel.value];
     if (sel.value === "latex") pintarMemoria();
     if (sel.value === "pdf" || sel.value === "docx") pintarPrevia(sel.value);
   });
@@ -217,10 +214,10 @@ export function activarReportes(wrap, datos) {
     const b = e.target.closest("[data-rep-accion]");
     if (!b || !wrap.contains(b)) return;
     const accion = b.dataset.repAccion;
-    if (accion === "copiar-latex") {
+    if (accion === "copiar-latex" || accion === "copiar-txt") {
       const msg = wrap.querySelector("[data-rep-msg]");
       try {
-        await navigator.clipboard.writeText(memoriaLatex(datos.titulo, datos.pasos));
+        await navigator.clipboard.writeText(accion === "copiar-txt" ? datos.texto : memoriaLatex(datos.titulo, datos.pasos));
         msg.textContent = "¡Copiado!";
       } catch {
         msg.textContent = "No se pudo copiar.";

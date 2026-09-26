@@ -1023,24 +1023,27 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
   body.imprimiendo-reporte #doc-impresion { display: block; }
 }
 
-/* ---- Pestaña «Reportes» de las calculadoras (js/util/reportes.js): selector de tipo, memoria de cálculo en LaTeX ---- */
-.rep-cab { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-3); }
+/* ---- Pestaña «Reportes» de las calculadoras (js/util/reportes.js): selector + acción en una fila y los cuatro tipos como
+   la MISMA hoja blanca (texto, memoria LaTeX, vista previa del PDF y del Word) ---- */
+.rep-cab { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-4); }
 .rep-cab label { margin: 0; font-size: 0.88rem; color: var(--text-muted); }
 .rep-cab select { width: auto; min-width: 240px; }
-.rep-acciones { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); }
-.memoria-caja { background: var(--bg-sunken); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); overflow-x: auto; }
-.memoria-paso + .memoria-paso { margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border); }
-.memoria-titulo { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 2px; }
-.memoria-ecuacion .katex { font-size: 0.98em; }
+.rep-hoja { max-height: 75vh; overflow: auto; padding: 28px 32px; background: #fff; color: #111; border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-md); color-scheme: light; }
+.rep-hoja[hidden] { display: none; }
+.rep-hoja .report-block { background: none; border: 0; padding: 0; color: #111; font-size: 0.82rem; }
+.rep-hoja .report-block strong { color: #111; }
+.rep-hoja .text-muted { color: #666; }
+.memoria-caja { font: 10.5pt/1.5 system-ui, "Segoe UI", Arial, sans-serif; color: #111; }
+.memoria-paso + .memoria-paso { margin-top: 3mm; }
+.memoria-titulo { font-size: 9pt; font-weight: 600; color: #444; }
+.memoria-ecuacion .katex { font-size: 1em; }
 .memoria-ecuacion .katex-display { margin: 0.2em 0; text-align: left; }
 .memoria-ecuacion .katex-display > .katex { text-align: left; }
 .memoria-texto { margin: 0; font-family: "Cambria Math", serif; font-size: 0.9rem; }
-/* Vista previa del PDF y del Word: el documento como una hoja blanca (siempre en claro) */
-.rep-previa:not(:empty) { margin-top: var(--space-4); max-height: 75vh; overflow: auto; padding: 28px 32px; background: #fff; color: #111; border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-md); color-scheme: light; }
 .rep-previa .doc-impresion { display: block; }
 .rep-previa .doc-calculo .doc-figura svg { width: 100%; max-width: 520px; }
 .rep-previa .doc-calculo img { max-width: 100%; height: auto; }
-.rep-previa .text-muted { color: #666; }
+@media (max-width: 560px) { .rep-hoja { padding: 16px; } .rep-cab select { min-width: 0; flex: 1 1 200px; } }
 
 /* Documento de la memoria de cálculo (PDF): su propio pie de página */
 @page calculo {

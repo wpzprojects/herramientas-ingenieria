@@ -618,29 +618,29 @@ export async function render(container) {
     const P = base.potenciaActivaMw, V = base.tensionLineaKv, fp = base.factorPotencia, Fc = base.factorCarga, Fp = r.factorPerdidas, I = r.corriente;
     const pasos = [];
     if (dato.modo === "aparente") {
-      pasos.push({ titulo: "Potencia activa", tex: `P = S \cos\varphi = ${n(dato.datoPartida)} \cdot ${n(fp)} = ${n(P, 3)}\ \text{MW}`, texto: `P = S·cos φ = ${n(dato.datoPartida)}·${n(fp)} = ${n(P, 3)} MW` });
+      pasos.push({ titulo: "Potencia activa", tex: String.raw`P = S \cos\varphi = ${n(dato.datoPartida)} \cdot ${n(fp)} = ${n(P, 3)}\ \text{MW}`, texto: `P = S·cos φ = ${n(dato.datoPartida)}·${n(fp)} = ${n(P, 3)} MW` });
     } else if (dato.modo === "corriente") {
-      pasos.push({ titulo: "Potencia activa", tex: `P = \frac{\sqrt{3}\, V\, I \cos\varphi}{1000} = \frac{\sqrt{3} \cdot ${n(V)} \cdot ${n(dato.datoPartida)} \cdot ${n(fp)}}{1000} = ${n(P, 3)}\ \text{MW}`, texto: `P = √3·V·I·cos φ / 1000 = √3·${n(V)}·${n(dato.datoPartida)}·${n(fp)} / 1000 = ${n(P, 3)} MW` });
+      pasos.push({ titulo: "Potencia activa", tex: String.raw`P = \frac{\sqrt{3}\, V\, I \cos\varphi}{1000} = \frac{\sqrt{3} \cdot ${n(V)} \cdot ${n(dato.datoPartida)} \cdot ${n(fp)}}{1000} = ${n(P, 3)}\ \text{MW}`, texto: `P = √3·V·I·cos φ / 1000 = √3·${n(V)}·${n(dato.datoPartida)}·${n(fp)} / 1000 = ${n(P, 3)} MW` });
     }
-    pasos.push({ titulo: "Corriente", tex: `I = \frac{P \cdot 1000}{\sqrt{3}\, V \cos\varphi} = \frac{${n(P)} \cdot 1000}{\sqrt{3} \cdot ${n(V)} \cdot ${n(fp)}} = ${n(I, 2)}\ \text{A}`, texto: `I = P·1000 / (√3·V·cos φ) = ${n(P)}·1000 / (√3·${n(V)}·${n(fp)}) = ${n(I, 2)} A` });
-    pasos.push({ titulo: "Potencia aparente y reactiva", tex: `S = \frac{P}{\cos\varphi} = \frac{${n(P)}}{${n(fp)}} = ${n(r.potenciaS, 3)}\ \text{MVA} \qquad Q = \sqrt{S^2 - P^2} = ${n(r.potenciaQ, 3)}\ \text{MVAR}`, texto: `S = P / cos φ = ${n(P)} / ${n(fp)} = ${n(r.potenciaS, 3)} MVA;  Q = √(S² − P²) = ${n(r.potenciaQ, 3)} MVAR` });
-    pasos.push({ titulo: "Factor de pérdidas (Buller-Woodrow)", tex: `F_p = 0.3\,F_c + 0.7\,F_c^2 = 0.3 \cdot ${n(Fc)} + 0.7 \cdot ${n(Fc)}^2 = ${n(Fp)}`, texto: `Fp = 0.3·Fc + 0.7·Fc² = 0.3·${n(Fc)} + 0.7·${n(Fc)}² = ${n(Fp)}` });
+    pasos.push({ titulo: "Corriente", tex: String.raw`I = \frac{P \cdot 1000}{\sqrt{3}\, V \cos\varphi} = \frac{${n(P)} \cdot 1000}{\sqrt{3} \cdot ${n(V)} \cdot ${n(fp)}} = ${n(I, 2)}\ \text{A}`, texto: `I = P·1000 / (√3·V·cos φ) = ${n(P)}·1000 / (√3·${n(V)}·${n(fp)}) = ${n(I, 2)} A` });
+    pasos.push({ titulo: "Potencia aparente y reactiva", tex: String.raw`S = \frac{P}{\cos\varphi} = \frac{${n(P)}}{${n(fp)}} = ${n(r.potenciaS, 3)}\ \text{MVA} \qquad Q = \sqrt{S^2 - P^2} = ${n(r.potenciaQ, 3)}\ \text{MVAR}`, texto: `S = P / cos φ = ${n(P)} / ${n(fp)} = ${n(r.potenciaS, 3)} MVA;  Q = √(S² − P²) = ${n(r.potenciaQ, 3)} MVAR` });
+    pasos.push({ titulo: "Factor de pérdidas (Buller-Woodrow)", tex: String.raw`F_p = 0.3\,F_c + 0.7\,F_c^2 = 0.3 \cdot ${n(Fc)} + 0.7 \cdot ${n(Fc)}^2 = ${n(Fp)}`, texto: `Fp = 0.3·Fc + 0.7·Fc² = 0.3·${n(Fc)} + 0.7·${n(Fc)}² = ${n(Fp)}` });
     const varios = r.tramos.length > 1;
     r.tramos.forEach((t, i) => {
       const e = estados[i];
       const N = e.numConductoresPorFase ?? 1;
       const pre = varios ? `Tramo ${i + 1} · ` : "";
       const sub = varios ? `_{${i + 1}}` : "";
-      if (N > 1) pasos.push({ titulo: `${pre}Resistencia efectiva`, tex: `R_{ef}${sub} = \frac{R}{N} = \frac{${n(e.resistenciaOhmKm)}}{${N}} = ${n(t.resistenciaEfectivaOhmKm)}\ \Omega/\text{km}`, texto: `Ref = R / N = ${n(e.resistenciaOhmKm)} / ${N} = ${n(t.resistenciaEfectivaOhmKm)} Ω/km` });
+      if (N > 1) pasos.push({ titulo: `${pre}Resistencia efectiva`, tex: String.raw`R_{ef}${sub} = \frac{R}{N} = \frac{${n(e.resistenciaOhmKm)}}{${N}} = ${n(t.resistenciaEfectivaOhmKm)}\ \Omega/\text{km}`, texto: `Ref = R / N = ${n(e.resistenciaOhmKm)} / ${N} = ${n(t.resistenciaEfectivaOhmKm)} Ω/km` });
       pasos.push({
         titulo: `${pre}Porcentaje de pérdidas`,
-        tex: `\%P${sub} = \frac{\sqrt{3}\, I\, R_{ef}\, L\, F_p \cdot 100}{V \cdot 1000 \cos\varphi} = \frac{\sqrt{3} \cdot ${n(I, 2)} \cdot ${n(t.resistenciaEfectivaOhmKm)} \cdot ${n(e.longitudKm)} \cdot ${n(Fp)} \cdot 100}{${n(V)} \cdot 1000 \cdot ${n(fp)}} = ${n(t.perdidasPct, 3)}\,\%`,
+        tex: String.raw`\%P${sub} = \frac{\sqrt{3}\, I\, R_{ef}\, L\, F_p \cdot 100}{V \cdot 1000 \cos\varphi} = \frac{\sqrt{3} \cdot ${n(I, 2)} \cdot ${n(t.resistenciaEfectivaOhmKm)} \cdot ${n(e.longitudKm)} \cdot ${n(Fp)} \cdot 100}{${n(V)} \cdot 1000 \cdot ${n(fp)}} = ${n(t.perdidasPct, 3)}\,\%`,
         texto: `%P = √3·I·Ref·L·Fp·100 / (V·1000·cos φ) = √3·${n(I, 2)}·${n(t.resistenciaEfectivaOhmKm)}·${n(e.longitudKm)}·${n(Fp)}·100 / (${n(V)}·1000·${n(fp)}) = ${n(t.perdidasPct, 3)} %`,
       });
-      pasos.push({ titulo: `${pre}Pérdidas por efecto Joule`, tex: `P_p${sub} = \frac{\%P${sub}}{100}\, P = \frac{${n(t.perdidasPct, 3)}}{100} \cdot ${n(P)} = ${n(t.perdidasMw, 4)}\ \text{MW}`, texto: `Pp = %P/100 · P = ${n(t.perdidasPct, 3)}/100 · ${n(P)} = ${n(t.perdidasMw, 4)} MW` });
+      pasos.push({ titulo: `${pre}Pérdidas por efecto Joule`, tex: String.raw`P_p${sub} = \frac{\%P${sub}}{100}\, P = \frac{${n(t.perdidasPct, 3)}}{100} \cdot ${n(P)} = ${n(t.perdidasMw, 4)}\ \text{MW}`, texto: `Pp = %P/100 · P = ${n(t.perdidasPct, 3)}/100 · ${n(P)} = ${n(t.perdidasMw, 4)} MW` });
     });
     if (varios) {
-      pasos.push({ titulo: "Total del circuito", tex: `\%P = ${r.tramos.map((t) => n(t.perdidasPct, 3)).join(" + ")} = ${n(r.perdidasPct, 3)}\,\% \qquad P_p = ${n(r.perdidasMw, 4)}\ \text{MW}`, texto: `%P = ${r.tramos.map((t) => n(t.perdidasPct, 3)).join(" + ")} = ${n(r.perdidasPct, 3)} %;  Pp = ${n(r.perdidasMw, 4)} MW` });
+      pasos.push({ titulo: "Total del circuito", tex: String.raw`\%P = ${r.tramos.map((t) => n(t.perdidasPct, 3)).join(" + ")} = ${n(r.perdidasPct, 3)}\,\% \qquad P_p = ${n(r.perdidasMw, 4)}\ \text{MW}`, texto: `%P = ${r.tramos.map((t) => n(t.perdidasPct, 3)).join(" + ")} = ${n(r.perdidasPct, 3)} %;  Pp = ${n(r.perdidasMw, 4)} MW` });
     }
     return pasos;
   }
