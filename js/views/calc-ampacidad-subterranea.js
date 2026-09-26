@@ -726,7 +726,7 @@ export async function render(container) {
     // (Kennelly) y la ampacidad frente a la resistividad térmica del suelo (re-ejecutando el motor).
     const g = graficosSubterranea(data, p);
     const cifras = `
-            <div class="${pant === null ? "" : "grid-2"}">
+            <div class="${pant === null ? "" : "graf-cifras-apiladas"}">
               <div class="result-metric">
                 <div class="value">${fmt(data.ampacidad)}<span class="unit">A</span></div>
                 <div class="label">Ampacidad admisible</div>

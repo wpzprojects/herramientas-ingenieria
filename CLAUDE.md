@@ -449,6 +449,9 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   completas: las curvas se separan más (p. ej. 2–200 kA en vez de 1–1000). Ampacidad aérea: los 4 gráficos en
   matriz 2 × 2 en la columna derecha (`resumenConGraficosHtml({…, cuadricula: true})`, clase `.graf-cuadricula`; una
   columna en ≤720px), en este orden: temperatura vs corriente | ampacidad vs Ta / balance de calor | corte del conductor.
+  3.41.2: `corteZanjaSvg` usa el MISMO recuadro que `curvasSvg` (márgenes l 58, r 70, t 18, b 58; franja de superficie
+  dentro) y la nota «Conductor a … (Kennelly)» va debajo como nombre de eje. Cifras de Ampacidad subterránea en
+  `.graf-cifras-apiladas`: una debajo de otra; en ≤1180px (cuando las cifras quedan encima de los gráficos), lado a lado.
 - **Valores por defecto (2026-09-26, pedido del usuario: calcular de una)**: `porDefecto(sel, valor)` en cada vista
   (dispara «change» para la cascada): AAAC 246.9 + primera referencia en Pérdidas y Regulación (cada tramo aéreo nuevo),
   Cortocircuito y Ampacidad aérea; Ocupación: PVC Tipo TDP de 4". Lo guardado en la sesión sigue ganando.

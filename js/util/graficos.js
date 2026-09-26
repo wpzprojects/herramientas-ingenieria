@@ -476,13 +476,16 @@ export function corteConductorSvg({ nombre, construccion, diametroMm, tipo, ampa
  * el ducto: es una aproximación ilustrativa). `ductos` = [{ x, y }] (m, y = profundidad); `wPorCircuito` = W/m.
  */
 export function corteZanjaSvg({ ductos, wPorCircuito, rho, tTerreno, tConductor, monopolar, dCableM, sepFasesM }) {
-  const W = 460, H = ALTO_GRAFICO, sup = 24;
+  // el recuadro del corte mide y se ubica IGUAL que el área de curvasSvg (pedido del usuario: los dos se ven parejos);
+  // la nota del método va debajo, como el nombre de un eje
+  const W = 460, H = ALTO_GRAFICO, m = { l: 58, r: 70, t: 18, b: 58 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
+  const sup = m.t + 22; // franja de la superficie dentro del recuadro
   const cxs = ductos.map((d) => d.x), cys = ductos.map((d) => d.y);
   const xc = (Math.min(...cxs) + Math.max(...cxs)) / 2;
   const semiancho = Math.max(0.85, (Math.max(...cxs) - Math.min(...cxs)) / 2 + 0.6);
   const prof = Math.max(...cys) + 0.6;
-  const escala = Math.min(W / (2 * semiancho), (H - sup - 26) / prof);
-  const X = (x) => W / 2 + (x - xc) * escala, Y = (y) => sup + y * escala;
+  const escala = Math.min(pw / (2 * semiancho), (m.t + ph - sup - 20) / prof);
+  const X = (x) => m.l + pw / 2 + (x - xc) * escala, Y = (y) => sup + y * escala;
   const rMin = Math.max(dCableM, 0.03);
   const theta = (x, y) => tTerreno + ductos.reduce((a, d) => a + ((wPorCircuito * rho) / (2 * Math.PI)) * Math.log(Math.hypot(x - d.x, y + d.y) / Math.max(Math.hypot(x - d.x, y - d.y), rMin)), 0);
   const tmax = Math.max(theta(ductos[0].x + rMin, ductos[0].y), tTerreno + 10);
@@ -492,9 +495,9 @@ export function corteZanjaSvg({ ductos, wPorCircuito, rho, tTerreno, tConductor,
     for (let i = 1; i < paradas.length; i++) if (u <= paradas[i][0]) { const [u0, c0] = paradas[i - 1], [u1, c1] = paradas[i], k = (u - u0) / (u1 - u0); return `rgb(${c0.map((v, j) => Math.round(v + k * (c1[j] - v))).join(",")})`; }
     return "rgb(250,235,160)";
   };
-  let s = `<defs><clipPath id="zanja-recorte"><rect x="0" y="0" width="${W}" height="${H}"/></clipPath></defs><g clip-path="url(#zanja-recorte)">`;
+  let s = `<defs><clipPath id="zanja-recorte"><rect x="${m.l}" y="${m.t}" width="${pw}" height="${ph}"/></clipPath></defs><g clip-path="url(#zanja-recorte)">`;
   const paso = 6;
-  for (let px = 0; px < W; px += paso) for (let py = sup; py < H; py += paso) s += `<rect x="${px}" y="${py}" width="${paso + 0.5}" height="${paso + 0.5}" fill="${color(theta((px + paso / 2 - W / 2) / escala + xc, (py + paso / 2 - sup) / escala))}" shape-rendering="crispEdges"/>`;
+  for (let px = m.l; px < m.l + pw; px += paso) for (let py = sup; py < m.t + ph; py += paso) s += `<rect x="${px}" y="${py}" width="${paso + 0.5}" height="${paso + 0.5}" fill="${color(theta((px + paso / 2 - m.l - pw / 2) / escala + xc, (py + paso / 2 - sup) / escala))}" shape-rendering="crispEdges"/>`;
   // isotermas (cada 10 °C desde el terreno), buscadas en rayos desde el centro de los circuitos
   const yc = (Math.min(...cys) + Math.max(...cys)) / 2;
   const niveles = [];
@@ -522,9 +525,10 @@ export function corteZanjaSvg({ ductos, wPorCircuito, rho, tTerreno, tConductor,
       : [[d.x, d.y]];
     for (const [a, b] of pos) s += `<circle class="oc-aparece" cx="${f1(X(a))}" cy="${f1(Y(b))}" r="${f1(rc)}" fill="#b87333" stroke="#111" stroke-width="1.4"/>`;
   }
-  s += `<rect x="0" y="0" width="${W}" height="${sup}" style="fill:var(--bg-elevated)"/>` + `<line x1="0" y1="${sup}" x2="${W}" y2="${sup}" stroke="#6b8f5a" stroke-width="3"/>` + texto(8, 16, `Superficie · ${numEje(tTerreno)} °C`, { tam: 11.5 });
+  s += `<rect x="${m.l}" y="${m.t}" width="${pw}" height="${sup - m.t}" style="fill:var(--bg)"/>` + `<line x1="${m.l}" y1="${sup}" x2="${m.l + pw}" y2="${sup}" stroke="#6b8f5a" stroke-width="3"/>` + texto(m.l + 6, m.t + 15, `Superficie · ${numEje(tTerreno)} °C`, { tam: 11.5 });
   const d0 = ductos.reduce((a, d) => (d.y < a.y ? d : a), ductos[0]);
-  s += `<line x1="${W - 28}" y1="${sup}" x2="${W - 28}" y2="${f1(Y(d0.y))}" stroke="#fff" stroke-dasharray="3 2"/>` + `<text x="${W - 34}" y="${f1(sup + (Y(d0.y) - sup) / 2)}" font-size="11.5" font-weight="700" fill="#fff" text-anchor="end">${numEje(d0.y)} m</text>`;
-  s += `<text x="8" y="${H - 8}" font-size="11" fill="#fff">Conductor a ${numEje(tConductor)} °C · temperatura del terreno aproximada (Kennelly)</text></g>`;
+  const xm = m.l + pw - 16;
+  s += `<line x1="${xm}" y1="${sup}" x2="${xm}" y2="${f1(Y(d0.y))}" stroke="#fff" stroke-dasharray="3 2"/>` + `<text x="${xm - 6}" y="${f1(sup + (Y(d0.y) - sup) / 2)}" font-size="11.5" font-weight="700" fill="#fff" text-anchor="end">${numEje(d0.y)} m</text></g>`;
+  s += texto(m.l + pw / 2, H - 12, `Conductor a ${numEje(tConductor)} °C · temperatura del terreno aproximada (Kennelly)`, { ancla: "middle", tam: 12 });
   return envolver(W, H, `Corte de la instalación: ${ductos.length} circuito(s) a ${numEje(d0.y)} m, isotermas en el terreno`, s);
 }

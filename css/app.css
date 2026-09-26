@@ -948,6 +948,9 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .graf-resumen { display: grid; grid-template-columns: fit-content(340px) minmax(0, 1fr); column-gap: 40px; row-gap: var(--space-5); align-items: start; } /* la columna de cifras mide lo que su contenido (sin espacio sobrante) */
 .graf-resumen .graf-metricas { padding-top: 18px; } /* arranca a la altura del área del gráfico, no por encima */
 .graf-par.graf-cuadricula { row-gap: 28px; } /* matriz 2 × 2 (Ampacidad aérea) */
+/* cifras una debajo de la otra; en el celular, una al lado de la otra (Ampacidad subterránea) */
+.graf-cifras-apiladas { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: var(--space-4); max-width: 240px; }
+@media (max-width: 1180px) { .graf-cifras-apiladas { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-4); max-width: none; } }
 @media (max-width: 720px) { .graf-par.graf-cuadricula { grid-template-columns: minmax(0, 1fr) !important; } }
 .graf-par { display: grid; column-gap: 18px; align-items: start; }
 .graf-par .graf-item svg { display: block; width: 100%; height: auto; overflow: visible; }
