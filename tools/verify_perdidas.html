@@ -550,7 +550,10 @@ await seccion("vista: fórmulas con KaTeX", async () => {
   ok($("#formulas-plano").hidden, "al dibujarse las fórmulas se oculta el texto plano");
   // Subtarjeta: mismo aspecto que la caja de «Reporte» (medidas juntas, antes de ok()).
   const caja = $("#formulas-katex");
-  const reporteCaja = $(".report-block");
+  // (el reporte de texto ahora va en la «hoja» de Reportes, sin su recuadro: se compara con una caja .report-block suelta)
+  const reporteCaja = document.createElement("div");
+  reporteCaja.className = "report-block";
+  $("#formulas-katex").parentElement.append(reporteCaja);
   const cc = getComputedStyle(caja);
   const cr = getComputedStyle(reporteCaja);
   const primerTitulo = getComputedStyle($("#formulas-katex > .result-subhead:first-child"));
@@ -559,6 +562,7 @@ await seccion("vista: fórmulas con KaTeX", async () => {
   const ecuacionesEnCaja = $$("#formulas-katex .formula-katex").every((e) => { const r = e.getBoundingClientRect(); return r.left >= rc.left && r.right <= rc.right + 0.5; });
   ok(!caja.hidden && cc.display !== "none", "las fórmulas se muestran dentro de una subtarjeta");
   ok(cc.backgroundColor === cr.backgroundColor && cc.borderTopColor === cr.borderTopColor && cc.borderTopWidth === cr.borderTopWidth && cc.borderTopLeftRadius === cr.borderTopLeftRadius, `la subtarjeta tiene el fondo, borde y esquinas de la caja de Reporte (${cc.backgroundColor}, ${cc.borderTopLeftRadius})`);
+  reporteCaja.remove();
   ok(cc.fontFamily !== cr.fontFamily && !cc.fontFamily.toLowerCase().includes("mono"), "la subtarjeta usa la letra normal (no la monoespaciada del reporte) para que KaTeX se vea bien");
   ok(dentro && ecuacionesEnCaja, "las 10 ecuaciones, los títulos y las notas quedan dentro de la subtarjeta");
   const lineaSec = $$("#formulas-katex > .result-subhead")[1];
