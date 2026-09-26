@@ -464,8 +464,8 @@ await seccion("vista: exportar a Excel y a PDF", async () => {
   ok(textos.indexOf("Datos de la conexión") < iCostos && !textos.slice(textos.indexOf("Datos de la conexión"), textos.indexOf("Criterio")).some((x) => /Precio|Tasa/.test(x)), "…y no en los datos de la conexión");
   const tramosXml = a["xl/worksheets/sheet3.xml"] ?? "";
   ok(tramosXml.includes("Alternativa 2") && tramosXml.includes("Capacidad de cortocircuito (kA)"), "la hoja «Tramos» trae una fila por tramo");
-  for (const t of ["Criterio", "Unidad", "Alternativa 1", "Ampacidad", "Corriente de operación", "Ampacidad por conductor", "Costo total actualizado", "Resultado", "Datos de la conexión", "Convención:"]) ok(textos.some((x) => x.startsWith(t)), `la hoja trae «${t}»`);
-  ok(!textos.some((x) => /: clasificación|: cumplimiento|: detalle$/.test(x)), "sin filas extra de clasificación ni de detalle (la tabla queda limpia)");
+  for (const t of ["Criterio", "Unidad", "Alternativa 1", "Ampacidad", "Corriente de operación", "Ampacidad por conductor", "Costo total actualizado", "Resultado", "Datos de la conexión"]) ok(textos.some((x) => x.startsWith(t)), `la hoja trae «${t}»`);
+  ok(!textos.some((x) => /: clasificación|: cumplimiento|: detalle$|^Convención/.test(x)), "sin filas extra de clasificación, de detalle ni de convención (la tabla queda limpia)");
   const estilos = new DOMParser().parseFromString(a["xl/styles.xml"], "application/xml");
   const rellenoDe = (celda) => { const xf = estilos.querySelectorAll("cellXfs > xf")[Number(celda.getAttribute("s"))]; return estilos.querySelectorAll("fills > fill")[Number(xf.getAttribute("fillId"))]?.querySelector("fgColor")?.getAttribute("rgb"); };
   const filaUso = [...doc.querySelectorAll("row")].find((r) => r.querySelector("t")?.textContent === "Uso de la ampacidad");
@@ -799,11 +799,11 @@ await seccion("valoraciones guardadas: pantalla (guardar, historial, abrir y eli
 
     // «Nueva»: formulario en blanco, sin valoración abierta
     const nueva = $(".vi-trabajando .vi-nueva");
-    ok(nueva && nueva.textContent.includes("Nueva"), "junto a «Trabajando en» está el botón «Nueva»");
+    ok(nueva && nueva.textContent.trim() === "Nuevo" && nueva.querySelector("svg"), "junto a «Trabajando en» está el botón «Nuevo», con el + en un círculo");
     poner("#f-fp", "0.8", "input");
     nueva.click();
     await espera(30);
-    ok($(".vi-trabajando").hidden && $("#f-fp").value === "0.9" && $$(".vi-escenario").length === 1 && $("#resultado-wrap").innerHTML === "", "«Nueva» limpia el formulario, quita «Trabajando en» y el resultado");
+    ok($(".vi-trabajando").hidden && $("#f-fp").value === "0.9" && $$(".vi-escenario").length === 1 && $("#resultado-wrap").innerHTML === "", "«Nuevo» limpia el formulario, quita «Trabajando en» y el resultado");
     ok(G.listarLocales().length === 2, "…sin tocar las guardadas");
 
     // eliminar

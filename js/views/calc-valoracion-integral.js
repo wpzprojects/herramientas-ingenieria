@@ -814,7 +814,7 @@ export async function render(container) {
   function mostrarTrabajando() {
     lineaTrabajando.hidden = !guardada;
     lineaTrabajando.innerHTML = guardada
-      ? `Trabajando en: <strong>${escapeHtml(guardada.nombre)}</strong><button type="button" class="btn-enlace vi-nueva">${icon("plus")} Nueva</button>`
+      ? `Trabajando en: <strong>${escapeHtml(guardada.nombre)}</strong><button type="button" class="btn-enlace vi-nueva">${icon("circlePlus")} Nuevo</button>`
       : "";
   }
   lineaTrabajando.addEventListener("click", (e) => {
@@ -1400,7 +1400,7 @@ export async function render(container) {
         const base = f.total ? "total" : "celda";
         const esVeredicto = f.etiqueta === "Resultado";
         filas.push([
-          { v: f.etiqueta, estilo: f.total ? "total" : "etiqueta" },
+          { v: f.etiqueta, estilo: f.total ? "total" : "criterio" },
           { v: f.unidad, estilo: base },
           ...f.celdas.map((c) => {
             const estilo = tonoDe(c) ?? base;
@@ -1414,10 +1414,6 @@ export async function render(container) {
     }
     return filas;
   }
-
-  const CONVENCION = [
-    [{ v: "Convención:", estilo: "etiqueta" }, { v: "Óptimo / cumple", estilo: "bueno" }, { v: "Aceptable", estilo: "neutral" }, { v: "Elevado / no cumple", estilo: "malo" }],
-  ];
 
   /**
    * Libro de Excel: «Comparación» (la tabla, con números de verdad y la unidad en su columna), «Análisis» (márgenes y
@@ -1438,12 +1434,12 @@ export async function render(container) {
     ];
     const combinar = [`A1:${ultima}1`, `A4:${ultima}4`];
     const filas = [...encabezado, ...filasExcel(modelo, combinar, encabezado.length)];
-    filas.push([], ...CONVENCION, [{ v: `${REFERENCIAS} El valor de cada tramo está en la hoja «Tramos» y el margen y la capacidad máxima, en la hoja «Análisis».`, estilo: "nota" }]);
+    filas.push([], [{ v: `${REFERENCIAS} Verde: óptimo o cumple · amarillo: aceptable · rojo: elevado o no cumple. El valor de cada tramo está en la hoja «Tramos» y el margen y la capacidad máxima, en la hoja «Análisis».`, estilo: "nota" }]);
     combinar.push(`A${filas.length}:${ultima}${filas.length}`);
 
     const combinarA = [`A1:${ultima}1`];
     const filasA = [[{ v: "Análisis: margen frente a cada límite y capacidad máxima", estilo: "titulo" }], [], ...filasExcel(modeloA, combinarA, 2)];
-    filasA.push([], [{ v: "Convención:", estilo: "etiqueta" }, { v: "Cumple / con margen", estilo: "bueno" }, { v: "Incumple / sin margen", estilo: "malo" }], [], [{ v: "Supuestos del cálculo", estilo: "seccion" }], ...SUPUESTOS.map((s) => [{ v: `• ${s}`, estilo: "nota" }]));
+    filasA.push([], [{ v: "Supuestos del cálculo", estilo: "seccion" }], ...SUPUESTOS.map((s) => [{ v: `• ${s}`, estilo: "nota" }]));
     for (let i = filasA.length - SUPUESTOS.length + 1; i <= filasA.length; i++) combinarA.push(`A${i}:${ultima}${i}`);
 
     const numero = (v, dec) => (v === null ? { v: "—", estilo: "celda" } : { v, dec, estilo: "celda" });

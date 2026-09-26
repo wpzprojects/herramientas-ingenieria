@@ -117,6 +117,9 @@ const shapes = {
   // Tabler "device-floppy" (SVG oficial): guardar una valoración integral.
   deviceFloppy:
     '<g><path d="M6 4h10l4 4v10a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2"/><path d="M10 14a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M14 4l0 4l-6 0l0 -4"/></g>',
+  // Tabler "circle-plus" (SVG oficial): «Nuevo» en Valoración integral.
+  circlePlus:
+    '<g><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M9 12h6"/><path d="M12 9v6"/></g>',
   coin:
     '<g><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M14.8 9a2 2 0 0 0 -1.8 -1h-2a2 2 0 1 0 0 4h2a2 2 0 1 1 0 4h-2a2 2 0 0 1 -1.8 -1"/><path d="M12 7v10"/></g>',
   // Tabler "cylinder" (SVG oficial): icono de la tarjeta Tuberia (Ocupacion de ductos).

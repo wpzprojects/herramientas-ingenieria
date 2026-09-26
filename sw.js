@@ -4,7 +4,7 @@
 // para lo que no estuviera precacheado.
 
 // Versión de la app (x.y.z; ver js/util/novedades.js): cada publicación la sube, y con ella se renueva la cache.
-const CACHE_VERSION = "3.27.0";
+const CACHE_VERSION = "3.27.1";
 const CACHE_NAME = `herramientas-ingenieria-${CACHE_VERSION}`;
 
 const SCOPE = self.registration.scope;
