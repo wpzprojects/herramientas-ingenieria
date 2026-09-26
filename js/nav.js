@@ -31,7 +31,7 @@ export const sectionMenus = {
     { title: "Ampacidad aérea", desc: "Corriente admisible de conductores aéreos (IEEE Std 738).", icon: "powerTower", hash: "#/calculos/ampacidad-aerea" },
     { title: "Ampacidad subterránea", desc: "Corriente admisible de cables en banco de ductos (IEC 60287-1-1).", icon: "underground", hash: "#/calculos/ampacidad-subterranea" },
     { title: "Conductor económico", desc: "Compara conductores por costo de instalación y de pérdidas a varios años.", icon: "coin", hash: "#/calculos/conductor-economico" },
-    { title: "Valoración integral", desc: "Evalúa escenarios de conductor con ampacidad, pérdidas, regulación, cortocircuito y costos.", icon: "clipboardCheck", hash: "#/calculos/valoracion-integral" },
+    { title: "Valoración integral", desc: "Evalúa conductores con todos los cálculos técnico-económicos.", icon: "clipboardCheck", hash: "#/calculos/valoracion-integral" },
   ],
   catalogos: [
     { title: "Conductores desnudos", desc: "ACSR, AAAC, ACAR, AAC, ACSS.", icon: "conductorBare", hash: "#/catalogos/desnudos", libre: true },
@@ -54,6 +54,6 @@ export const sectionMenus = {
   ia: [
     { title: "Asistente técnico", desc: "Compara escenarios con las calculadoras de la app y genera un reporte.", icon: "chartLine", hash: "#/ia/analisis" },
     { title: "Corrector de redacción", desc: "Correos, descripciones técnicas, actas y resúmenes con agentes configurables.", icon: "pencil", hash: "#/ia/redaccion" },
-    { title: "Configuración de IA", desc: "Clave de API de Gemini, modelo y datos guardados en este navegador.", icon: "settings", hash: "#/ia/configuracion" },
+    { title: "Configuración de IA", desc: "Clave de API, modelo y datos guardados en este navegador.", icon: "settings", hash: "#/ia/configuracion" },
   ],
 };

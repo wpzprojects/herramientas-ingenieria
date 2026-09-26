@@ -217,6 +217,38 @@ await seccion("motor: comparación, costos y recomendado", async () => {
   ok(unaSola.recomendado === null, "con una sola alternativa no hay «Recomendada» (no hay con qué compararla)");
 });
 
+await seccion("motor: sensibilidad al costo de instalación y peso de los conductores", async () => {
+  const comun = { ...COMUN, potenciaActivaMw: 10, economia: ECON };
+  const costos = (c, i = null) => ({ costoConductorKm: c, costoInstalacionKm: i ?? 0, instalacionIndicada: i !== null });
+  const ACSR40 = cat.desnudos.find((c) => c.tipo === "ACSR" && c.calibre_awg_kcmil === "4/0");
+  const a = escAereo(ALLIANCE, 34.5, 1, { costos: costos(8e6) });
+  const h = escAereo(HAWK, 34.5, 1, { costos: costos(14e6) });
+  const barato = escAereo(ACSR40, 13.2, 1, { costos: costos(1e6) }); // no cumple (sobrecarga): no puede pasar a ser la mejor
+  const r = V.compararEscenarios(comun, [a, h, barato]);
+  ok(r.criterioRecomendado === "costo" && r.cumplen.includes(0) && r.cumplen.includes(1) && !r.cumplen.includes(2), "Alliance y Hawk cumplen a 10 MW; el 4/0 a 13.2 kV no");
+  const g = r.recomendado;
+  const otra = 1 - g;
+  const casos = V.sensibilidadInstalacion(r, [a, h, barato]);
+  ok(casos.length === 1 && casos[0].alternativa === otra, "solo se compara con la otra alternativa que cumple (la que no cumple queda fuera)");
+  const dif = r.escenarios[otra].economia.costoTotal - r.escenarios[g].economia.costoTotal;
+  cerca(casos[0].diferencia, dif, 1e-12, "diferencia = costo total de la otra − el de la recomendada");
+  cerca(casos[0].umbralKm, dif / 5, 1e-12, "valor de conmutación = diferencia / longitud (por km de línea)");
+  ok(casos[0].umbralKm > 0, "positivo: la recomendada es la más barata");
+  ok(casos[0].menosConductor === r.escenarios[g].economia.costoConductores < r.escenarios[otra].economia.costoConductores, "dice si el conductor de la recomendada es más barato");
+  cerca(r.escenarios[0].economia.costoConductores, 5 * 3 * 8e6, 1e-12, "costo de los conductores = L·3·N·c_cond");
+  const ambos = [escAereo(ALLIANCE, 34.5, 1, { costos: costos(8e6, 50e6) }), escAereo(HAWK, 34.5, 1, { costos: costos(14e6, 60e6) })];
+  ok(V.sensibilidadInstalacion(V.compararEscenarios(comun, ambos), ambos).length === 0, "si las dos indicaron la instalación, no aplica");
+  const unaSola = [escAereo(ALLIANCE, 34.5, 1, { costos: costos(8e6, 50e6) }), h];
+  ok(V.sensibilidadInstalacion(V.compararEscenarios(comun, unaSola), unaSola).length === 1, "si a una de las dos le falta, sí aplica");
+  ok(V.sensibilidadInstalacion(V.compararEscenarios({ ...comun, economia: null }, [a, h]), [a, h]).length === 0, "sin evaluación económica no aplica (la recomendación no es por costo)");
+  // peso: 3 × N × kg/km del catálogo; con varios tramos, promedio por longitud
+  cerca(V.pesoConductoresKgKm(escAereo(HAWK, 34.5, 2)), 3 * 2 * HAWK.masa_kg_km, 1e-12, "peso por km de línea = 3 × N × masa del catálogo");
+  const mixto = escenario(34.5, [tramoAereo(HAWK, 1, { longitudKm: 3 }), tramoAereo(ALLIANCE, 1, { longitudKm: 1 })]);
+  cerca(V.pesoConductoresKgKm(mixto), (3 * HAWK.masa_kg_km * 3 + 3 * ALLIANCE.masa_kg_km * 1) / 4, 1e-12, "con varios tramos, promedio ponderado por longitud");
+  const sub = escSubt("Cobre", "500 kcmil", 34.5, 2);
+  ok(V.pesoConductoresKgKm(sub) === 3 * 2 * sub.tramos[0].conductor.masaKgKm && sub.tramos[0].conductor.masaKgKm > 0, "subterráneo: 3 cables por circuito × circuitos × masa total del cable");
+});
+
 await seccion("motor: escenario con varios tramos (aéreo + subterráneo a 34.5 kV)", async () => {
   const comun = { ...COMUN, economia: ECON };
   const costos = (c) => ({ costoConductorKm: c, costoInstalacionKm: 0, instalacionIndicada: false });
@@ -502,7 +534,7 @@ await seccion("vista: exportar a Excel y a PDF", async () => {
   const menu = $("#resultado-wrap .vi-cabecera .vi-exportar");
   ok(menu && menu.tagName === "DETAILS" && menu.previousElementSibling.classList.contains("callout"), "botón «Exportar» a la derecha de la conclusión");
   const opciones = [...menu.querySelectorAll("[data-exportar]")].map((b) => b.dataset.exportar);
-  ok(opciones.join(",") === "pdf,xlsx", "el menú ofrece PDF y Excel");
+  ok(opciones.join(",") === "pdf,docx,xlsx", "el menú ofrece PDF, Word y Excel");
 
   // Excel: se intercepta la descarga
   const crear = URL.createObjectURL;
@@ -564,14 +596,48 @@ await seccion("vista: exportar a Excel y a PDF", async () => {
   ok(pdf.querySelectorAll(".vi-doc-matriz").length === 2 && pdf.body.textContent.includes("Análisis: margen y capacidad máxima") && pdf.querySelector(".vi-doc-supuestos li"), "el PDF trae también el análisis y los supuestos");
   ok([...pdf.querySelectorAll(".vi-doc-seccion td")].map((t) => t.textContent).includes("Pérdidas"), "con las secciones");
   ok(pdf.querySelectorAll(".vi-doc-datos tr").length === 4 && !/Precio|Tasa/.test(pdf.querySelector(".vi-doc-datos").textContent), "datos de la conexión: dato de partida, FP, Fc y tensión (sin los supuestos económicos)");
+  const filaFc = [...pdf.querySelectorAll(".vi-doc-datos tr")].find((tr) => tr.textContent.startsWith("Factor de carga"));
+  ok(filaFc && filaFc.children[1].textContent === "0.40", `el factor de carga sale con 2 decimales (${filaFc?.children[1].textContent})`);
+  const filaFcXlsx = textos.indexOf("Factor de carga (Fc)");
+  ok(filaFcXlsx >= 0 && textos[filaFcXlsx + 1] === "0.40", `…también en el Excel (${textos[filaFcXlsx + 1]})`);
   ok(/Precio de la energía perdida/.test(pdf.querySelector(".vi-doc-nota-fila")?.textContent ?? "") && pdf.querySelector(".vi-doc-nota-fila").previousElementSibling.textContent.startsWith("Costos a"), "los supuestos económicos van en la sección de costos del PDF");
   window.dispatchEvent(new Event("afterprint"));
   ok(!document.getElementById("doc-impresion") && !document.body.classList.contains("imprimiendo-reporte"), "al terminar de imprimir se quita el documento");
+
+  // Word: el mismo documento del PDF
+  const w = await descargaDe(menu, "docx");
+  ok(/^valoracion-integral-\d{4}-\d{2}-\d{2}\.docx$/.test(w.nombre ?? ""), `descarga ${w.nombre}`);
+  ok(w.blob && w.blob.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "con el tipo de Word");
+  const z = leerZip(new Uint8Array(await w.blob.arrayBuffer()));
+  const malos = Object.keys(z).filter((n) => n.endsWith(".xml") || n.endsWith(".rels")).filter((n) => new DOMParser().parseFromString(z[n], "application/xml").querySelector("parsererror"));
+  ok(z["word/document.xml"] && malos.length === 0, `Word: todos los XML bien formados${malos.length ? ": " + malos.join(", ") : ""}`);
+  const cuerpo = z["word/document.xml"] ?? "";
+  ok(cuerpo.includes("Valoración integral de conductores") && cuerpo.includes("Datos de la conexión") && cuerpo.includes("Comparación de alternativas") && cuerpo.includes("Análisis: margen y capacidad máxima") && cuerpo.includes("Supuestos del cálculo"), "Word: trae las mismas secciones del PDF");
+  ok(/<w:gridSpan w:val="4"\/>/.test(cuerpo), "Word: los títulos de sección de la tabla ocupan todas las columnas");
+  ok(/w:fill="(C6EFCE|FFC7CE)"/.test(cuerpo), "Word: las celdas llevan los colores verde/rojo del PDF");
+  ok(!cuerpo.includes('w:orient="landscape"'), "Word: con 2 alternativas la hoja va vertical");
+  ok((z["word/footer1.xml"] ?? "").includes("Valoración integral de conductores") && (z["docProps/core.xml"] ?? "").includes("<dc:title>Valoración integral de conductores</dc:title>"), "Word: el pie y el título del archivo son los de la valoración");
 });
+
+/** Pulsa una opción de «Exportar» interceptando la descarga. */
+async function descargaDe(menu, formato) {
+  const crear = URL.createObjectURL;
+  const clickA = HTMLAnchorElement.prototype.click;
+  const res = {};
+  URL.createObjectURL = (b) => ((res.blob = b), "blob:prueba");
+  HTMLAnchorElement.prototype.click = function () { res.nombre = this.download; };
+  menu.open = true;
+  menu.querySelector(`[data-exportar="${formato}"]`).click();
+  URL.createObjectURL = crear;
+  HTMLAnchorElement.prototype.click = clickA;
+  return res;
+}
 
 await seccion("vista: pestaña Análisis (margen y capacidad máxima)", async () => {
   const tab = $('#resultado-wrap .tab-btn[data-tab="analisis"]');
-  ok(tab && tab.textContent === "Análisis" && !$('#resultado-wrap .tab-btn[data-tab="formulas"]'), "la tercera pestaña es «Análisis» (ya no «Fórmulas»)");
+  ok(tab && tab.textContent === "Análisis" && !$('#resultado-wrap .tab-btn[data-tab="formulas"]'), "hay una pestaña «Análisis» (ya no «Fórmulas»)");
+  const orden = $$("#resultado-wrap .tabs .tab-btn").map((b) => b.textContent);
+  ok(orden.join(",") === "Resultado,Análisis,Reporte", `«Análisis» es la segunda pestaña (${orden.join(" · ")})`);
   tab.click();
   const panel = $('#resultado-wrap .tab-panel[data-panel="analisis"]');
   ok(!panel.hidden, "se abre al pulsarla");
@@ -597,6 +663,51 @@ await seccion("vista: pestaña Análisis (margen y capacidad máxima)", async ()
   const mEsperado = V.calibreMinimo(COMUN, escAereo(ALLIANCE, 34.5, 1, { corrienteFallaKa: 5 }), cat);
   ok(minimo && minimo.children[1].textContent.startsWith(`AAAC ${mEsperado.calibre}`) && /mayor que el actual/.test(minimo.children[1].textContent), `«Calibre mínimo que cumple» en el análisis («${minimo?.children[1].textContent}»)`);
   $('#resultado-wrap .tab-btn[data-tab="resultado"]').click();
+});
+
+await seccion("vista: sensibilidad al costo de instalación en «Análisis»", async () => {
+  // Las dos alternativas tienen el costo del conductor pero no el de instalación (sección «vista: con costos»). A 10 MW
+  // cumplen las dos, así que la recomendada es la de menor costo y aparece el bloque.
+  poner("#f-potencia", "10", "input");
+  $("#form-calc").requestSubmit();
+  await espera(30);
+  const panel = $('#resultado-wrap .tab-panel[data-panel="analisis"]');
+  const cab = $("#resultado-wrap .vi-cabecera > .callout").textContent;
+  const G = Number((cab.match(/Recomendada: Alternativa (\d)/) || [])[1]);
+  ok(G === 1 || G === 2, `hay recomendada por costo («${cab.trim()}»)`);
+  const titulo = [...panel.querySelectorAll(".result-subhead")].pop();
+  ok(titulo && titulo.textContent === "¿Puede el costo de instalación cambiar la decisión?", "el bloque va al final de la pestaña Análisis");
+  ok(!$('#resultado-wrap .tab-panel[data-panel="resultado"] .ce-inst-tabla'), "…y no en la pestaña Resultado");
+  const filas = panel.querySelectorAll(".ce-inst-tabla tbody tr");
+  ok(filas.length === 1 && filas[0].textContent.includes(`Alternativa ${3 - G}`) && /millones por km|por km/.test(filas[0].textContent), `una fila frente a la otra alternativa («${filas[0]?.textContent.trim().slice(0, 90)}…»)`);
+  ok(panel.querySelector(".ce-inst-tabla thead").textContent.includes(`La Alternativa ${G} sigue siendo la mejor mientras instalarla no cueste más de…`), "encabezado dicho desde la recomendada");
+  ok(panel.querySelector(".ce-inst-detalle summary")?.textContent === "¿De dónde sale este valor?", "detalle plegado «¿De dónde sale este valor?»");
+  const rep = $("#resultado-wrap .report-block").textContent;
+  ok(rep.includes("¿Puede el costo de instalación cambiar la decisión?") && rep.includes(`Frente a la Alternativa ${3 - G}: la Alternativa ${G} sigue siendo la mejor`), "el reporte de texto también lo trae");
+  const menu = $("#resultado-wrap .vi-exportar");
+  const imprimir = window.print;
+  let html = "";
+  window.print = () => (html = document.getElementById("doc-impresion")?.outerHTML ?? "");
+  menu.querySelector('[data-exportar="pdf"]').click();
+  window.print = imprimir;
+  window.dispatchEvent(new Event("afterprint"));
+  ok(html.includes("¿Puede el costo de instalación cambiar la decisión?") && html.includes("vi-doc-inst"), "el PDF también");
+  const x = await descargaDe(menu, "xlsx");
+  const hojaA = leerZip(new Uint8Array(await x.blob.arrayBuffer()))["xl/worksheets/sheet2.xml"] ?? "";
+  ok(hojaA.includes("¿Puede el costo de instalación cambiar la decisión?") && hojaA.includes(`Frente a la Alternativa ${3 - G}`), "y la hoja «Análisis» del Excel");
+  // con la instalación indicada en las dos alternativas, no aparece
+  const ids = $$(".tramo-block [id^=f-tension-]").map((el) => el.id.split("-").pop());
+  poner(T("costo-inst", ids[0]), "50000000", "input");
+  poner(T("costo-inst", ids[1]), "60000000", "input");
+  $("#form-calc").requestSubmit();
+  await espera(30);
+  ok(!$('#resultado-wrap .ce-inst-tabla'), "con la instalación de las dos alternativas, el bloque no aparece");
+  poner(T("costo-inst", ids[0]), "", "input");
+  poner(T("costo-inst", ids[1]), "", "input");
+  poner("#f-potencia", "30", "input");
+  $("#form-calc").requestSubmit();
+  await espera(30);
+  ok($(".vi-costos-titulo")?.textContent === "Costos de conductor e instalación", "subtítulo de la evaluación económica: «Costos de conductor e instalación»");
 });
 
 await seccion("vista: escenario subterráneo y error de catálogo", async () => {
@@ -945,7 +1056,7 @@ await seccion("registro: menú, permisos, ruta, ayuda y service worker", async (
   const css = await (await fetch("../css/app.css")).text();
   ok(!/#[0-9a-fA-F]{3,8}\b/.test(css.split("\n").filter((l) => l.includes(".vi-") && !l.includes("vi-doc")).join("\n")), "el CSS de la pantalla no lleva colores escritos a mano (solo el documento PDF, que siempre es claro)");
   ok(shell.includes("js/util/xlsx.js"), "el service worker precachea el generador de Excel");
-  ok(item.desc === "Evalúa escenarios de conductor con ampacidad, pérdidas, regulación, cortocircuito y costos.", "la tarjeta de Cálculos lleva su descripción");
+  ok(item.desc === "Evalúa conductores con todos los cálculos técnico-económicos.", "la tarjeta de Cálculos lleva su descripción");
   ok(!css.includes("vi-seccion + tr td"), "la primera fila de cada sección conserva su línea de tabla (no se le quita el borde)");
   ok(/\.vi-avanzado-grupo::after \{ content: ""; flex: 1; height: 1px; background: color-mix\(in srgb, var\(--accent\)/.test(css), "los subtítulos de «Parámetros avanzados» llevan una línea fina del color del tema hasta el borde");
 });

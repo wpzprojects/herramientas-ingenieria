@@ -14,6 +14,8 @@ import {
   compararEscenarios,
   calibreMinimo,
   analizarAlternativa,
+  sensibilidadInstalacion,
+  pesoConductoresKgKm,
   datosConductor,
   nivelAislamientoPara,
   CALIBRES_SUBTERRANEOS,
@@ -32,6 +34,7 @@ import { activarPlegables, plegarTarjeta } from "../util/tarjetas-plegables.js";
 import { guardarEstado, leerEstado } from "../util/persistencia-calculo.js";
 import { aplicarDefectos, leerDefectos } from "../util/valores-defecto.js";
 import { crearXlsx, columna, MIME_XLSX } from "../util/xlsx.js";
+import { crearDocxDocumento, MIME_DOCX } from "../ai/docx.js";
 import { activarMiles, leerMiles, reformatear, PATRON_MILES } from "../util/campo-miles.js";
 import { guardar as guardarValoracion, eliminar as eliminarValoracion, sincronizar, listarLocales, leerDatos, MAX_NOMBRE } from "../util/valoraciones-guardadas.js";
 
@@ -185,7 +188,7 @@ export async function render(container) {
             <input type="number" id="f-crecimiento" min="0" max="100" step="any" value="0" required>
           </div>
         </div>
-        <div class="vi-avanzado-grupo vi-costos-titulo">Costos de cada tramo</div>
+        <div class="vi-avanzado-grupo vi-costos-titulo">Costos de conductor e instalación</div>
         <div class="vi-costos"></div>
       </div>
 
@@ -373,7 +376,7 @@ export async function render(container) {
             <input type="text" inputmode="decimal" id="f-costo-cond-${id}" pattern="${PATRON_MILES}" autocomplete="off">
           </div>
           <div class="field">
-            <label for="f-costo-inst-${id}" data-info="Opcional: postes, herrajes, obra civil, mano de obra… por km del tramo (sin el suministro del conductor). Vacío = 0 (solo se considera el conductor).">Costo de instalación ($/km)</label>
+            <label for="f-costo-inst-${id}" data-info="Postes, herrajes, obra civil, mano de obra… por km del tramo (sin el suministro del conductor). Si el campo se deja vacío o en cero, solo se considera el costo del conductor en el análisis.">Costo de instalación ($/km)</label>
             <input type="text" inputmode="decimal" id="f-costo-inst-${id}" pattern="${PATRON_MILES}" autocomplete="off">
           </div>
         </div>
@@ -844,7 +847,7 @@ export async function render(container) {
   function mostrarTrabajando() {
     lineaTrabajando.hidden = !guardada;
     lineaTrabajando.innerHTML = guardada
-      ? `Trabajando en: <strong>${escapeHtml(guardada.nombre)}</strong><span class="vi-sin-guardar"${hayCambiosSinGuardar() ? "" : " hidden"}> · cambios sin guardar</span><button type="button" class="btn-enlace vi-nueva">${icon("circlePlus")} Nueva valoración</button>`
+      ? `<span>Trabajando en: <strong>${escapeHtml(guardada.nombre)}</strong><span class="vi-sin-guardar"${hayCambiosSinGuardar() ? "" : " hidden"}> · cambios sin guardar</span></span><button type="button" class="btn-enlace vi-nueva">${icon("circlePlus")} Nueva valoración</button>`
       : "";
   }
   // Se revisa después de cada cambio en el formulario (escribir, elegir, agregar o quitar alternativas y tramos)
@@ -1345,7 +1348,7 @@ export async function render(container) {
     return [
       ["Dato de partida", `${MODOS[modo]}: ${fmt(datoPartida)} ${modo === "potencia" ? "MW" : "MVA"}`],
       ["Factor de potencia", fmt(comun.factorPotencia)],
-      ["Factor de carga (Fc)", fmt(comun.factorCarga, 4)],
+      ["Factor de carga (Fc)", num(comun.factorCarga, 2, 4)],
       ["Tensión de línea", comun.tensionPorAlternativa ? "Una por alternativa (ver la tabla)" : `${fmt(estados[0].tensionKv)} kV`],
     ];
   }
@@ -1380,7 +1383,7 @@ export async function render(container) {
   }
 
   /** Documento de impresión (PDF): Carta, vertical hasta 3 alternativas y horizontal con más; siempre en claro. */
-  function documentoPdf(modelo, modeloA, conc, entrada, tramos) {
+  function documentoPdf(modelo, modeloA, conc, entrada, tramos, inst) {
     const doc = document.createElement("div");
     doc.id = "doc-impresion";
     doc.className = `doc-impresion vi-doc${modelo.columnas.length > 3 ? " vi-doc-apaisado" : ""}`;
@@ -1402,14 +1405,15 @@ export async function render(container) {
       `<h3>Comparación de alternativas</h3>${tablaDoc(modelo)}` +
       detalle +
       `<h3>Análisis: margen y capacidad máxima</h3>${tablaDoc(modeloA)}` +
+      instalacionHtml(inst, { doc: true }) +
       `<h3>Supuestos del cálculo</h3><ul class="vi-doc-supuestos">${SUPUESTOS.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ul>` +
       `<p class="vi-doc-nota">${escapeHtml(REFERENCIAS)} Los datos de entrada de cada alternativa están en la pestaña «Reporte» de la calculadora.</p>`;
     return doc;
   }
 
-  function exportarPdf(modelo, modeloA, conc, entrada, tramos) {
+  function exportarPdf(modelo, modeloA, conc, entrada, tramos, inst) {
     document.getElementById("doc-impresion")?.remove();
-    document.body.append(documentoPdf(modelo, modeloA, conc, entrada, tramos));
+    document.body.append(documentoPdf(modelo, modeloA, conc, entrada, tramos, inst));
     document.body.classList.add("imprimiendo-reporte");
     document.documentElement.classList.add("imprimiendo-reporte");
     window.addEventListener(
@@ -1470,7 +1474,7 @@ export async function render(container) {
    * Libro de Excel: «Comparación» (la tabla, con números de verdad y la unidad en su columna), «Análisis» (márgenes y
    * capacidad máxima), «Tramos» (una fila por tramo) y «Reporte» (el texto completo).
    */
-  function libroExcel(modelo, modeloA, conc, entrada, tramos, reporte) {
+  function libroExcel(modelo, modeloA, conc, entrada, tramos, reporte, inst) {
     const n2 = modelo.columnas.length;
     const ultima = columna(n2 + 1);
     const encabezado = [
@@ -1492,6 +1496,11 @@ export async function render(container) {
     const filasA = [[{ v: "Análisis: margen frente a cada límite y capacidad máxima", estilo: "titulo" }], [], ...filasExcel(modeloA, combinarA, 2)];
     filasA.push([], [{ v: "Supuestos del cálculo", estilo: "seccion" }], ...SUPUESTOS.map((s) => [{ v: `• ${s}`, estilo: "nota" }]));
     for (let i = filasA.length - SUPUESTOS.length + 1; i <= filasA.length; i++) combinarA.push(`A${i}:${ultima}${i}`);
+    if (inst) {
+      const lineas = [instIntro(inst), ...instLineas(inst).map((l) => `• ${l}`), instCierre(inst)];
+      filasA.push([], [{ v: INST_TITULO, estilo: "seccion" }], ...lineas.map((l) => [{ v: l.replace(/\u00a0/g, " "), estilo: "nota" }]));
+      for (let i = filasA.length - lineas.length + 1; i <= filasA.length; i++) combinarA.push(`A${i}:${ultima}${i}`);
+    }
 
     const numero = (v, dec) => (v === null ? { v: "—", estilo: "celda" } : { v, dec, estilo: "celda" });
     const hojaTramos = [
@@ -1523,6 +1532,7 @@ export async function render(container) {
         <summary class="btn btn-sm btn-con-icono" aria-label="Exportar la comparación">${icon("download")} Exportar ${icon("chevronDown")}</summary>
         <div class="menu-mas-lista">
           <button type="button" data-exportar="pdf">PDF (imprimir o guardar)</button>
+          <button type="button" data-exportar="docx">Documento de Word (.docx)</button>
           <button type="button" data-exportar="xlsx">Excel (.xlsx)</button>
         </div>
       </details>`;
@@ -1532,7 +1542,7 @@ export async function render(container) {
   // Pedido del usuario (2026-09-26): la tabla, el análisis, el PDF y el Excel ya traen el detalle; el reporte de texto
   // queda en lo esencial: los datos de entrada de cada alternativa y, por alternativa, el veredicto con los valores que
   // deciden (sin valores intermedios como la reactancia o la resistencia efectiva).
-  function reporteTexto(r, comun, estados, { modo, datoPartida }) {
+  function reporteTexto(r, comun, estados, { modo, datoPartida }, inst) {
     comunActual = comun;
     const todos = estados.flatMap((s) => s.tramos);
     const a = comun.aerea;
@@ -1579,7 +1589,7 @@ export async function render(container) {
       ``,
       `PARÁMETROS DE ENTRADA:`,
       LINEA_REPORTE,
-      `${MODOS[modo]}: ${fmt(datoPartida)} ${modo === "potencia" ? "MW" : "MVA"} · FP ${fmt(comun.factorPotencia)} · Fc ${fmt(comun.factorCarga, 4)}`,
+      `${MODOS[modo]}: ${fmt(datoPartida)} ${modo === "potencia" ? "MW" : "MVA"} · FP ${fmt(comun.factorPotencia)} · Fc ${num(comun.factorCarga, 2, 4)}`,
       ...(todos.some((t) => t.red === "Aerea") ? [`Líneas aéreas: ${fmt(a.taC)} °C ambiente, ${fmt(a.tcC)} °C máx. del conductor, viento ${fmt(a.vwMs)} m/s, ${fmt(a.elevacionM, 0)} m s. n. m.`] : []),
       ...(todos.some((t) => t.red !== "Aerea") ? [`Cables subterráneos: ${fmt(s2.tempMaxC)} °C máx. del conductor, terreno ${fmt(s2.tempTerrenoC)} °C, suelo ${fmt(s2.rhoSueloKmW)} K·m/W, profundidad ${fmt(s2.profundidadBancoM)} m`] : []),
       ...(ec ? [`Evaluación económica: energía ${fmtPesos(ec.precioKwh)}/kWh (+${fmtPercent(ec.escaladaEnergiaPct)} al año) · tasa ${fmtPercent(ec.tasaDescuentoPct)} · ${ec.anios} años`] : []),
@@ -1592,6 +1602,7 @@ export async function render(container) {
       ...resultados.slice(1),
       ``,
       `Conclusión: ${conc.titulo}${conc.detalle ? ` ${conc.detalle}` : ""}`,
+      ...(inst ? [``, `${INST_TITULO} (instalación no incluida en el costo total):`, ...instLineas(inst)] : []),
     ].join("\n");
   }
 
@@ -1686,7 +1697,85 @@ export async function render(container) {
     "Los criterios técnicos se evalúan con la demanda del año 1; el crecimiento de la demanda solo entra en los costos. La capacidad máxima escala lo calculado: la corriente, la caída y el % de pérdidas crecen en proporción a la potencia, y la caída y las pérdidas, también a la longitud.",
   ];
 
-  function analisisHtml(modeloA) {
+  // ---------- sensibilidad al costo de instalación (la de Conductor económico, 2026-09-26) ----------
+  // «$ 8.9 millones» (o el valor exacto si es menos de un millón); el «$» va unido a la cifra
+  const millonesTexto = (v) => (Math.abs(v) >= 1e6 ? `$ ${num(v / 1e6, 1, 1)} millones` : fmtPesos(v).replace("$ ", () => "$ "));
+
+  /**
+   * «¿Puede el costo de instalación cambiar la decisión?»: solo si la recomendada se eligió por costo y a ella o a otra
+   * alternativa que también cumple le falta el costo de instalación. Mismo diseño acordado para Conductor económico:
+   * todo dicho desde la recomendada, la comparación más ajustada primero, cifras en millones por km, pista por el peso
+   * de los conductores y el detalle plegado. `null` si no aplica.
+   */
+  function instalacionModelo(r, comun, estados) {
+    const casos = sensibilidadInstalacion(r, estados);
+    if (!casos.length) return null;
+    const G = r.recomendado + 1;
+    const pg = pesoConductoresKgKm(estados[r.recomendado]);
+    return {
+      G,
+      anios: comun.economia.anios,
+      longitudKm: r.escenarios[r.recomendado].longitudKm,
+      casos: casos.map((c) => {
+        const pa = pesoConductoresKgKm(estados[c.alternativa]);
+        const difPeso = pg != null && pa != null ? pg - pa : null;
+        const A = c.alternativa + 1;
+        const porque = c.menosConductor && c.menosPerdidas
+          ? "su conductor es más barato y además pierde menos energía"
+          : c.menosPerdidas
+            ? "lo que ahorra en pérdidas es mayor que lo que cuesta de más su conductor"
+            : "su conductor es más barato, aunque pierda algo más de energía";
+        const pista =
+          difPeso == null || Math.abs(difPeso) < 1
+            ? null
+            : difPeso > 0
+              ? { alerta: true, texto: `Los conductores de la Alternativa ${G} pesan ${num(difPeso, 0, 0)} kg más por km de línea que los de la Alternativa ${A}: es probable que su instalación cueste más; revisa este margen.` }
+              : { alerta: false, texto: `Los conductores de la Alternativa ${G} pesan ${num(-difPeso, 0, 0)} kg menos por km de línea que los de la Alternativa ${A}: lo probable es que su instalación no cueste más, así que este margen es aún más seguro.` };
+        return { A, empate: !(c.umbralKm > 0), diferencia: c.diferencia, umbralKm: c.umbralKm, porque, pista, conductor: estados[c.alternativa].tramos.map(tramoTexto).join(" + ") };
+      }),
+    };
+  }
+  const INST_TITULO = "¿Puede el costo de instalación cambiar la decisión?";
+  const instIntro = (m) => `El costo de instalación no se incluyó en la comparación porque falta en al menos una alternativa. Para saber si el costo de instalación podría cambiar la conclusión del análisis, abajo se compara la Alternativa ${m.G} con cada alternativa que también cumple y se indica a partir de qué diferencia en el costo de instalación por km la otra alternativa pasaría a ser la mejor.`;
+  const instValor = (c) => (c.empate ? "Empatan: cualquier diferencia en el costo de instalación decide." : `${millonesTexto(c.umbralKm)} por km por encima de la Alternativa ${c.A}`);
+  const instCierre = (m) => `Compara cada valor con la diferencia de instalación que esperas según tu experiencia: si es menor, la Alternativa ${m.G} sigue siendo la mejor.`;
+  const instDetalle = (m, c) => `con los costos que se conocen, la Alternativa ${m.G} cuesta ${millonesTexto(c.diferencia)} menos en ${m.anios} años, porque ${c.porque}. Repartido en los ${num(m.longitudKm, 0, 2)} km de línea son ${millonesTexto(c.umbralKm)} por km: es lo máximo que puede costar de más su instalación antes de que esa ventaja desaparezca.`;
+
+  /** Bloque para la pestaña Análisis y para el PDF/Word (`doc`: sin clases de pantalla). */
+  function instalacionHtml(m, { doc = false } = {}) {
+    if (!m) return "";
+    const filas = m.casos
+      .map((c) => {
+        const valor = c.empate ? escapeHtml(instValor(c)) : `<strong>${millonesTexto(c.umbralKm)} por km</strong> por encima de la Alternativa ${c.A}`;
+        const insignia = c.pista && c.pista.alerta ? (doc ? "<strong>Revisar:</strong> " : '<span class="badge badge-warning">Revisar</span> ') : "";
+        const nota = c.pista ? `<div class="${doc ? "vi-doc-sub" : "ce-inst-pista"}">${insignia}${escapeHtml(c.pista.texto)}</div>` : "";
+        return `<tr><td><strong>Alternativa ${c.A}</strong><br><span class="${doc ? "vi-doc-sub" : "text-muted text-sm"}">${escapeHtml(c.conductor)}</span></td><td>${valor}${nota}</td></tr>`;
+      })
+      .join("");
+    const detalle = m.casos
+      .filter((c) => !c.empate)
+      .map((c) => `<p><strong>Frente a la Alternativa ${c.A}:</strong> ${escapeHtml(instDetalle(m, c))}</p>`)
+      .join("");
+    const tabla = `<table${doc ? ' class="vi-doc-inst"' : ""}><thead><tr><th>Frente a</th><th>La Alternativa ${m.G} sigue siendo la mejor mientras instalarla no cueste más de…</th></tr></thead><tbody>${filas}</tbody></table>`;
+    if (doc) {
+      return `<h3>${INST_TITULO}</h3><p>${escapeHtml(instIntro(m))}</p><div class="table-wrap">${tabla}</div><p>${escapeHtml(instCierre(m))}</p>${detalle}`;
+    }
+    return `
+        <div class="result-subhead">${INST_TITULO}</div>
+        <p class="text-muted text-sm" style="margin: 0 0 var(--space-3);">${escapeHtml(instIntro(m))}</p>
+        <div class="table-wrap tabla-resultado tabla-matriz ce-inst-tabla">${tabla}</div>
+        <p class="text-muted text-sm" style="margin: var(--space-2) 0 0;">${escapeHtml(instCierre(m))}</p>
+        ${detalle ? `<details class="ce-inst-detalle"><summary>¿De dónde sale este valor?</summary>${detalle}</details>` : ""}`;
+  }
+
+  /** Líneas de texto (reporte y Excel): una por alternativa, con la pista de peso. */
+  const instLineas = (m) =>
+    m.casos.map(
+      (c) =>
+        `Frente a la Alternativa ${c.A}: ${c.empate ? "empatan; cualquier diferencia en el costo de instalación decide." : `la Alternativa ${m.G} sigue siendo la mejor mientras instalarla no cueste más de ${instValor(c).replace(/ /g, " ")}.`}${c.pista ? ` ${c.pista.texto}` : ""}`
+    );
+
+  function analisisHtml(modeloA, inst) {
     return `
       <div class="result-panel vi-panel">
         <p class="text-muted text-sm" style="margin: 0 0 var(--space-3);">Cuánto le queda a cada alternativa antes de incumplir y hasta dónde podría crecer (más potencia o más longitud) sin salirse de las referencias de diseño.</p>
@@ -1694,6 +1783,7 @@ export async function render(container) {
         <div class="result-subhead">Supuestos del cálculo</div>
         <ul class="vi-supuestos">${SUPUESTOS.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ul>
         <p class="text-muted text-sm" style="margin: var(--space-3) 0 0;">Las fórmulas están en cada calculadora: <a href="#/calculos/perdidas">Pérdidas</a> · <a href="#/calculos/regulacion">Regulación</a> · <a href="#/calculos/ampacidad-aerea">Ampacidad aérea</a> · <a href="#/calculos/ampacidad-subterranea">Ampacidad subterránea</a> · <a href="#/calculos/cortocircuito">Cortocircuito</a> · <a href="#/calculos/conductor-economico">Conductor económico</a>.</p>
+        ${instalacionHtml(inst)}
       </div>`;
   }
 
@@ -1707,7 +1797,8 @@ export async function render(container) {
     const modeloA = modeloAnalisis(r, comun, estados);
     const tramos = filasTramos(r, estados);
     const conc = conclusion(r);
-    const reporte = reporteTexto(r, comun, estados, dato);
+    const inst = instalacionModelo(r, comun, estados);
+    const reporte = reporteTexto(r, comun, estados, dato, inst);
     const resultado = `
       <div class="result-panel vi-panel">
         <div class="vi-cabecera">
@@ -1720,25 +1811,29 @@ export async function render(container) {
         ${avisosHtml(r, comun, estados)}
       </div>`;
     wrap.innerHTML = tarjetaResultadosHtml({ resultado, reporte: reporteHtml(reporte, ETIQUETAS_REPORTE), formulasPlano: "" });
-    // La tercera pestaña no son fórmulas (ya están en cada calculadora) sino el «Análisis»: margen y capacidad máxima
+    // La pestaña de fórmulas (ya están en cada calculadora) pasa a ser el «Análisis»: margen, capacidad máxima y
+    // sensibilidad al costo de instalación. Va SEGUNDA, entre Resultado y Reporte (pedido del usuario, 2026-09-26).
     wrap.firstElementChild.classList.add("vi-resultado"); // para compactar sus márgenes en el celular
-    const botonTercera = wrap.querySelector('.tab-btn[data-tab="formulas"]');
-    const panelTercera = wrap.querySelector('.tab-panel[data-panel="formulas"]');
-    botonTercera.textContent = "Análisis";
-    botonTercera.dataset.tab = "analisis";
-    panelTercera.dataset.panel = "analisis";
-    panelTercera.innerHTML = analisisHtml(modeloA);
+    const botonAnalisis = wrap.querySelector('.tab-btn[data-tab="formulas"]');
+    const panelAnalisis = wrap.querySelector('.tab-panel[data-panel="formulas"]');
+    botonAnalisis.textContent = "Análisis";
+    botonAnalisis.dataset.tab = "analisis";
+    panelAnalisis.dataset.panel = "analisis";
+    panelAnalisis.innerHTML = analisisHtml(modeloA, inst);
+    wrap.querySelector('.tab-btn[data-tab="reporte"]').before(botonAnalisis);
+    wrap.querySelector('.tab-panel[data-panel="reporte"]').before(panelAnalisis);
     activarPestanas(wrap, { grupos: [], etiquetas: [], nota: "" });
 
-    // «Exportar» abre un menú con dos formatos; se cierra al elegir uno o al pulsar fuera
+    // «Exportar» abre un menú con tres formatos; se cierra al elegir uno o al pulsar fuera
     const menu = wrap.querySelector(".vi-exportar");
     const entrada = datosEntrada(comun, estados, dato);
     menu.addEventListener("click", (e) => {
       const boton = e.target.closest("[data-exportar]");
       if (!boton) return;
       menu.open = false;
-      if (boton.dataset.exportar === "pdf") exportarPdf(modelo, modeloA, conc, entrada, tramos);
-      else descargar(`valoracion-integral-${fechaArchivo()}.xlsx`, libroExcel(modelo, modeloA, conc, entrada, tramos, reporte), MIME_XLSX);
+      if (boton.dataset.exportar === "pdf") exportarPdf(modelo, modeloA, conc, entrada, tramos, inst);
+      else if (boton.dataset.exportar === "docx") descargar(`valoracion-integral-${fechaArchivo()}.docx`, crearDocxDocumento(documentoPdf(modelo, modeloA, conc, entrada, tramos, inst), { titulo: "Valoración integral de conductores", apaisado: modelo.columnas.length > 3 }), MIME_DOCX);
+      else descargar(`valoracion-integral-${fechaArchivo()}.xlsx`, libroExcel(modelo, modeloA, conc, entrada, tramos, reporte, inst), MIME_XLSX);
     });
     const cerrarFuera = (e) => {
       if (!menu.isConnected) return document.removeEventListener("click", cerrarFuera);

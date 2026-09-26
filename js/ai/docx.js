@@ -3,6 +3,8 @@
 // Word) y las tablas de calculos (escenariosHtml). Diseno igual al del PDF: Carta vertical, margenes de 2 cm, encabezado, titulos con
 // estilos reales de Word (sirven para el panel de navegacion), «Conclusiones» sombreada, tablas con cabecera que se repite y pie
 // «Pagina X de Y».
+// crearDocxDocumento (2026-09-26) convierte con el mismo motor un documento de impresion ya armado (el PDF de la
+// Valoracion integral): celdas combinadas, colores verde/amarillo/rojo de las celdas y hoja horizontal si hace falta.
 
 import { crearZip } from "../util/zip.js";
 import { markdownAHtml } from "./markdown.js";
@@ -44,6 +46,7 @@ function enLinea(nodos, f = {}, pre = false) {
       const t = n.tagName;
       if (t === "BR") x += "<w:r><w:br/></w:r>";
       else if (t === "UL" || t === "OL") continue; // las listas anidadas se procesan aparte
+      else if (t === "DIV") x += (x ? "<w:r><w:br/></w:r>" : "") + enLinea(n.childNodes, { ...f, sz: f.sz ? f.sz - 2 : 18, color: "555555" }, pre); // subtexto de una celda
       else {
         const g = { ...f };
         if (t === "STRONG" || t === "B") g.b = true;
@@ -82,16 +85,21 @@ function parrafo(runs, o = {}) {
 
 // ---------------------------------------------------------------- tablas
 
+// Relleno de una celda segun su clase (los mismos colores «Bueno» / «Neutral» / «Malo» del Excel)
+const RELLENO_CELDA = { "vi-doc-bueno": "C6EFCE", "vi-doc-neutral": "FFEB9C", "vi-doc-malo": "FFC7CE" };
+const rellenoDe = (c) => Object.keys(RELLENO_CELDA).find((k) => c.classList.contains(k));
+
 function tabla(nodo, ctx) {
+  const ANCHO = ctx.ancho || ANCHO_TEXTO;
   const filas = [...nodo.querySelectorAll("tr")];
   if (!filas.length) return "";
-  const ncol = Math.max(...filas.map((f) => f.children.length));
+  const ncol = Math.max(...filas.map((f) => [...f.children].reduce((n, c) => n + (Number(c.getAttribute("colspan")) || 1), 0)));
   // ancho de cada columna en proporcion al contenido (con minimo y maximo), para que «Conductor» no quede apretada
   const pesos = Array.from({ length: ncol }, (_, j) => {
     let m = 5;
     filas.forEach((f) => {
       const c = f.children[j];
-      if (!c) return;
+      if (!c || Number(c.getAttribute("colspan")) > 1) return;
       const t = c.textContent.trim();
       const largo = c.tagName === "TH" ? Math.max(...t.split(/\s+/).map((w) => w.length), 4) : t.length;
       m = Math.max(m, Math.min(largo, 24));
@@ -99,11 +107,11 @@ function tabla(nodo, ctx) {
     return m;
   });
   const suma = pesos.reduce((a, b) => a + b, 0);
-  const anchos = pesos.map((p) => Math.floor((ANCHO_TEXTO * p) / suma));
-  anchos[ncol - 1] += ANCHO_TEXTO - anchos.reduce((a, b) => a + b, 0);
+  const anchos = pesos.map((p) => Math.floor((ANCHO * p) / suma));
+  anchos[ncol - 1] += ANCHO - anchos.reduce((a, b) => a + b, 0);
 
   let x =
-    `<w:tbl><w:tblPr><w:tblW w:w="${ANCHO_TEXTO}" w:type="dxa"/>` +
+    `<w:tbl><w:tblPr><w:tblW w:w="${ANCHO}" w:type="dxa"/>` +
     '<w:tblBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="999999"/><w:left w:val="single" w:sz="4" w:space="0" w:color="999999"/>' +
     '<w:bottom w:val="single" w:sz="4" w:space="0" w:color="999999"/><w:right w:val="single" w:sz="4" w:space="0" w:color="999999"/>' +
     '<w:insideH w:val="single" w:sz="4" w:space="0" w:color="BBBBBB"/><w:insideV w:val="single" w:sz="4" w:space="0" w:color="BBBBBB"/></w:tblBorders>' +
@@ -115,13 +123,19 @@ function tabla(nodo, ctx) {
     const cabecera = [...f.children].some((c) => c.tagName === "TH");
     if (!cabecera) par++;
     x += `<w:tr><w:trPr><w:cantSplit/>${cabecera ? "<w:tblHeader/>" : ""}</w:trPr>`;
-    for (let j = 0; j < ncol; j++) {
-      const c = f.children[j];
-      const fondo = cabecera ? "E9E9E9" : par % 2 === 0 ? "F6F6F6" : null;
-      x += `<w:tc><w:tcPr><w:tcW w:w="${anchos[j]}" w:type="dxa"/>${fondo ? `<w:shd w:val="clear" w:color="auto" w:fill="${fondo}"/>` : ""}</w:tcPr>`;
+    const seccion = f.classList.contains("vi-doc-seccion");
+    const negrita = cabecera || seccion || f.classList.contains("vi-doc-total");
+    for (let j = 0, k = 0; j < ncol; k++) {
+      const c = f.children[k];
+      const span = c ? Math.min(Number(c.getAttribute("colspan")) || 1, ncol - j) : 1;
+      const ancho = anchos.slice(j, j + span).reduce((a, b) => a + b, 0);
+      const clase = c && rellenoDe(c);
+      const fondo = clase ? RELLENO_CELDA[clase] : cabecera || seccion ? "E9E9E9" : par % 2 === 0 ? "F6F6F6" : null;
+      x += `<w:tc><w:tcPr><w:tcW w:w="${ancho}" w:type="dxa"/>${span > 1 ? `<w:gridSpan w:val="${span}"/>` : ""}${fondo ? `<w:shd w:val="clear" w:color="auto" w:fill="${fondo}"/>` : ""}</w:tcPr>`;
       const derecha = c && c.classList.contains("num");
-      x += parrafo(c ? enLinea(c.childNodes, { sz: 17, b: cabecera }) : "", { antes: 0, despues: 0, jc: derecha ? "right" : null });
+      x += parrafo(c ? enLinea(c.childNodes, { sz: 17, b: negrita }) : "", { antes: 0, despues: 0, jc: derecha ? "right" : null });
       x += "</w:tc>";
+      j += span;
     }
     x += "</w:tr>";
   }
@@ -222,9 +236,9 @@ function numeracion(ordenadas) {
 const campo = (instr) =>
   `<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> ${instr} </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>1</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>`;
 
-const PIE =
-  `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<w:ftr ${NS}><w:p><w:pPr><w:pStyle w:val="Footer"/><w:tabs><w:tab w:val="right" w:pos="${ANCHO_TEXTO}"/></w:tabs></w:pPr>` +
-  `${run("Herramientas de Ingeniería · Reporte de escenarios")}<w:r><w:tab/></w:r>${run("Página ")}${campo("PAGE")}${run(" de ")}${campo("NUMPAGES")}</w:p></w:ftr>`;
+const pie = (titulo = "Reporte de escenarios", ancho = ANCHO_TEXTO) =>
+  `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<w:ftr ${NS}><w:p><w:pPr><w:pStyle w:val="Footer"/><w:tabs><w:tab w:val="right" w:pos="${ancho}"/></w:tabs></w:pPr>` +
+  `${run(`Herramientas de Ingeniería · ${titulo}`)}<w:r><w:tab/></w:r>${run("Página ")}${campo("PAGE")}${run(" de ")}${campo("NUMPAGES")}</w:p></w:ftr>`;
 
 const TIPOS =
   '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
@@ -246,9 +260,9 @@ const REL_DOCUMENTO =
   '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/>' +
   '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/></Relationships>';
 
-const nucleo = (fecha) =>
+const nucleo = (fecha, titulo = "Reporte de escenarios") =>
   '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">' +
-  `<dc:title>Reporte de escenarios</dc:title><dc:creator>Herramientas de Ingeniería</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF">${fecha.toISOString()}</dcterms:created></cp:coreProperties>`;
+  `<dc:title>${esc(titulo)}</dc:title><dc:creator>Herramientas de Ingeniería</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF">${fecha.toISOString()}</dcterms:created></cp:coreProperties>`;
 
 // ---------------------------------------------------------------- documento
 
@@ -282,19 +296,54 @@ export function crearDocx({ narrativa, log, ficha, fecha, modelo, agente }) {
   cuerpo += bloques(aNodos(escenariosHtml(log)), mapaEscenarios, ctx);
   cuerpo += parrafo(run(AVISO_REPORTE, { sz: 17, color: "555555" }), { recuadro: true, antes: 360 });
 
+  return empaquetar(cuerpo, ctx, {});
+}
+
+/** Arma el paquete .docx (Carta vertical, u horizontal con `apaisado`). */
+function empaquetar(cuerpo, ctx, { titulo, apaisado = false }) {
+  const pagina = apaisado ? '<w:pgSz w:w="15840" w:h="12240" w:orient="landscape"/>' : '<w:pgSz w:w="12240" w:h="15840"/>';
   const seccion =
-    '<w:sectPr><w:footerReference w:type="default" r:id="rId3"/><w:pgSz w:w="12240" w:h="15840"/>' +
+    `<w:sectPr><w:footerReference w:type="default" r:id="rId3"/>${pagina}` +
     '<w:pgMar w:top="1134" w:right="1134" w:bottom="1247" w:left="1134" w:header="567" w:footer="567" w:gutter="0"/></w:sectPr>';
   const documento = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<w:document ${NS}><w:body>${cuerpo}${seccion}</w:body></w:document>`;
 
   return crearZip([
     { nombre: "[Content_Types].xml", contenido: TIPOS },
     { nombre: "_rels/.rels", contenido: REL_PAQUETE },
-    { nombre: "docProps/core.xml", contenido: nucleo(new Date()) },
+    { nombre: "docProps/core.xml", contenido: nucleo(new Date(), titulo) },
     { nombre: "word/document.xml", contenido: documento },
     { nombre: "word/_rels/document.xml.rels", contenido: REL_DOCUMENTO },
     { nombre: "word/styles.xml", contenido: ESTILOS },
     { nombre: "word/numbering.xml", contenido: numeracion(ctx.ordenadas) },
-    { nombre: "word/footer1.xml", contenido: PIE },
+    { nombre: "word/footer1.xml", contenido: pie(titulo, ctx.ancho || ANCHO_TEXTO) },
   ]);
+}
+
+/**
+ * Word a partir de un documento de impresion ya armado (el mismo del PDF): encabezado (.doc-cab), recuadro de
+ * conclusion (.vi-doc-conclusion), titulos h3, parrafos, listas y tablas.
+ * @param {HTMLElement} doc
+ * @param {{titulo:string, apaisado?:boolean}} o
+ * @returns {Uint8Array}
+ */
+export function crearDocxDocumento(doc, { titulo, apaisado = false }) {
+  const ctx = { ultimoNum: 1, ordenadas: [], hayTabla: false, ancho: apaisado ? 15840 - 2 * 1134 : ANCHO_TEXTO };
+  let cuerpo = "";
+  for (const n of doc.children) {
+    if (n.classList.contains("doc-cab")) {
+      const app = n.querySelector(".doc-app");
+      const h1 = n.querySelector("h1");
+      const meta = n.querySelector(".doc-meta");
+      if (app) cuerpo += parrafo(run(app.textContent.trim().toUpperCase(), { sz: 17, color: "666666" }), { keepNext: true, despues: 20 });
+      if (h1) cuerpo += parrafo(run(h1.textContent.trim()), { estilo: "Title" });
+      if (meta) cuerpo += parrafo(run(meta.textContent.trim(), { sz: 18, color: "555555" }), { bordeAbajo: 12, despues: 240 });
+    } else if (n.classList.contains("vi-doc-conclusion")) {
+      cuerpo += parrafo(enLinea(n.childNodes), { caja: true, despues: 200 });
+    } else if (n.tagName === "P") {
+      cuerpo += parrafo(enLinea(n.childNodes, { sz: 18, color: "555555" }), { antes: 120 });
+    } else {
+      cuerpo += bloques([n], { H2: "Heading1", H3: "Heading1", H4: "Heading2" }, ctx);
+    }
+  }
+  return empaquetar(cuerpo, ctx, { titulo, apaisado });
 }

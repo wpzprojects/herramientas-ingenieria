@@ -7,7 +7,7 @@ import { icon } from "../icons.js";
 const TILES = [
   {
     title: "Cálculos",
-    desc: "Ampacidad, cortocircuito, pérdidas, regulación y ocupación de ductos.",
+    desc: "Ampacidad, pérdidas, regulación, ocupación de ductos y más.",
     icon: "calculator",
     hash: "#/calculos",
   },

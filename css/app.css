@@ -988,6 +988,12 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .vi-avanzado-grupo { margin: var(--space-4) 0 var(--space-2); padding-left: var(--space-2); border-left: 3px solid var(--accent); font-size: 0.9rem; font-weight: 600; color: var(--text); line-height: 1.3; display: flex; align-items: center; gap: var(--space-3); }
 .vi-avanzado-grupo::after { content: ""; flex: 1; height: 1px; background: color-mix(in srgb, var(--accent) 55%, transparent); }
 @media (max-width: 480px) { .vi-escenario .form-section-title .vi-texto-btn { display: none; } } /* «Duplicar» y «Quitar» solo con su icono */
+/* «Duplicar» y «Quitar» de cada alternativa: sin negrilla, y el icono de duplicar con el trazo base (1.6) de la X de
+   quitar (el Tabler trae 2 y se veía más grueso). En pantalla ancha, «Quitar» un 20 % más lejos del chevron de plegar
+   (2026-09-26, pedidos del usuario). */
+.vi-escenario .form-section-title .btn-tramo-duplicar, .vi-escenario .form-section-title .btn-tramo-quitar { font-weight: 400; }
+.vi-escenario .form-section-title .btn-tramo-duplicar .icon g { stroke-width: 1.6; }
+@media (min-width: 481px) { .vi-escenario .form-section-title .btn-tramo-quitar:not([hidden]) + .btn-plegar { margin-left: 5px; } }
 .vi-avanzado > summary + .vi-avanzado-grupo { margin-top: 0; }
 /* Tramos de un escenario: con uno solo la tarjeta se ve igual que siempre; con varios, cada tramo lleva su encabezado */
 .vi-tramo-cab {
@@ -1012,7 +1018,8 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .vi-titulo { margin-bottom: var(--space-5); }
 .vi-btn-historial { color: var(--text-muted); font-weight: 500; }
 .vi-btn-historial[aria-expanded="true"] { color: var(--accent); }
-.vi-trabajando { margin: calc(-1 * var(--space-3)) 0 var(--space-4); font-size: 0.88rem; color: var(--text-muted); }
+.vi-trabajando { margin: calc(-1 * var(--space-3)) 0 var(--space-4); font-size: 0.88rem; color: var(--text-muted); display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--space-3); }
+.vi-trabajando[hidden] { display: none; }
 .vi-historial { margin-bottom: var(--space-4); }
 .vi-historial .form-section-title { justify-content: flex-start; }
 .vi-historial-cerrar { margin-left: auto; }
@@ -1063,7 +1070,7 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .vi-sin-guardar { color: var(--warning); font-weight: 600; }
 .vi-supuestos { margin: 0; padding-left: var(--space-5); font-size: 0.88rem; line-height: 1.5; color: var(--text-muted); }
 .vi-supuestos li + li { margin-top: var(--space-1); }
-.vi-trabajando .vi-nueva { display: inline-flex; align-items: center; gap: 2px; margin-left: var(--space-3); font-size: 0.85rem; font-weight: 600; text-decoration: none; vertical-align: baseline; }
+.vi-trabajando .vi-nueva { display: inline-flex; align-items: center; gap: 2px; margin-left: auto; /* justificado a la derecha de su línea */ font-size: 0.85rem; font-weight: 600; text-decoration: none; vertical-align: baseline; }
 .vi-trabajando .vi-nueva .icon { width: 14px; height: 14px; }
 /* Título de cada grupo (Ampacidad, Pérdidas…): una franja de encabezado con línea de color arriba, no una fila de datos vacía */
 .vi-matriz tr.vi-seccion th {
@@ -1075,7 +1082,7 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .vi-matriz tr.vi-seccion:hover { background: none; }
 /* Conclusión con el botón «Exportar» a la derecha; en pantalla angosta el botón baja */
 .vi-cabecera { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-3); margin: 0 0 var(--space-4); }
-.vi-cabecera > .callout { flex: 1 1 320px; margin: 0; }
+.vi-cabecera > .callout { flex: 1 1 320px; margin: 0; min-height: 40px; box-sizing: border-box; padding-top: 8px; padding-bottom: 8px; align-items: center; } /* en una línea, del mismo alto que «Exportar»; con más, crece */
 .vi-exportar { flex: 0 0 auto; margin-left: auto; } /* siempre a la derecha, también cuando baja de línea en el celular: su menú se abre hacia la izquierda y así cabe en la pantalla */
 .vi-exportar > summary { min-height: 40px; }
 .vi-exportar .menu-mas-lista { left: auto; right: 0; }

@@ -236,7 +236,7 @@ export function evaluarEscenario(comun, esc) {
 
   // Costos: solo si TODOS los tramos tienen su costo; el valor presente de las pérdidas es lineal, así que se suma
   const economia = tramos.every((t) => t.economia)
-    ? { inversion: suma((t) => t.economia.inversion), costoPerdidasVp: suma((t) => t.economia.costoPerdidasVp), costoTotal: suma((t) => t.economia.costoTotal) }
+    ? { inversion: suma((t) => t.economia.inversion), costoConductores: suma((t) => t.economia.costoConductores), costoPerdidasVp: suma((t) => t.economia.costoPerdidasVp), costoTotal: suma((t) => t.economia.costoTotal) }
     : null;
 
   const incumple = [
@@ -367,4 +367,47 @@ export function analizarAlternativa(x, potenciaMw) {
   const longitudes = { regulacion: escala(L, LIMITE_REGULACION, x.regulacion.pct), perdidas: escala(L, LIMITE_PERDIDAS, x.perdidas.pct) };
   const lMax = Object.entries(longitudes).reduce((m, k) => (k[1] < m[1] ? k : m));
   return { amp, perd, reg, cc, limita, potencias, pMax, lMax, P, L };
+}
+
+/**
+ * Sensibilidad al costo de instalación (la misma idea de Conductor económico, 2026-09-26): cuando falta el costo de
+ * instalación en la recomendada o en otra alternativa que también cumple y tiene costos, el VALOR DE CONMUTACIÓN = lo
+ * máximo que puede costar de más instalar la recomendada (por km de línea) antes de que esa otra pase a ser la mejor.
+ * Solo aplica si la recomendación se hizo por costo; las que no cumplen no pueden pasar a ser la mejor. Se da solo
+ * para pares donde al menos una de las dos no indicó su instalación en todos sus tramos. Ordenado de menor a mayor margen.
+ * @param {object} r - resultado de compararEscenarios
+ * @param {object[]} escenarios - los mismos que recibió compararEscenarios (con los costos de cada tramo)
+ * @returns {{alternativa:number, diferencia:number, umbralKm:number, menosConductor:boolean, menosPerdidas:boolean}[]}
+ */
+export function sensibilidadInstalacion(r, escenarios) {
+  if (r.criterioRecomendado !== "costo") return [];
+  const g = r.recomendado;
+  const eg = r.escenarios[g].economia;
+  const indicada = (e) => e.tramos.every((t) => t.costos && t.costos.instalacionIndicada);
+  const L = r.escenarios[g].longitudKm;
+  return r.cumplen
+    .filter((i) => i !== g && r.escenarios[i].economia && !(indicada(escenarios[g]) && indicada(escenarios[i])))
+    .map((i) => {
+      const o = r.escenarios[i].economia;
+      const diferencia = o.costoTotal - eg.costoTotal;
+      return { alternativa: i, diferencia, umbralKm: diferencia / L, menosConductor: eg.costoConductores < o.costoConductores, menosPerdidas: eg.costoPerdidasVp < o.costoPerdidasVp };
+    })
+    .sort((a, b) => a.umbralKm - b.umbralKm);
+}
+
+/**
+ * Peso de los conductores por km de línea (kg/km): 3 × conductores (o circuitos) por fase × peso por km del catálogo,
+ * promediado por longitud entre los tramos. null si a algún tramo le falta el peso. Sirve de pista: más peso suele
+ * encarecer la instalación.
+ */
+export function pesoConductoresKgKm(esc) {
+  let kg = 0;
+  let km = 0;
+  for (const t of esc.tramos) {
+    const m = t.conductor && t.conductor.ok ? t.conductor.masaKgKm : null;
+    if (!(m > 0)) return null;
+    kg += 3 * t.n * m * t.longitudKm;
+    km += t.longitudKm;
+  }
+  return km > 0 ? kg / km : null;
 }
