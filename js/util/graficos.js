@@ -3,6 +3,9 @@
 //
 // - donaOcupacionSvg: dona de porcentaje con degradado, marca del limite y cifra al centro; debajo, «Total de conductores» y el limite.
 // - corteDuctoSvg: corte transversal a ESCALA del ducto con sus conductores apoyados en el fondo (uno o varios tipos).
+// - barraReferenciaSvg: barra vertical con las zonas Óptimo / Aceptable / Elevado y la marca del resultado (Pérdidas y Regulación).
+// - curvaCargaSvg: % de pérdidas frente a la carga, en la unidad del dato de partida (Pérdidas).
+// - perfilTensionSvg: tensión a lo largo de la línea, tramo por tramo (Regulación).
 
 const COLORES_TIPO = ["var(--accent)", "var(--warning)", "var(--success)", "var(--text-muted)"];
 const f1 = (x) => x.toFixed(1);
@@ -110,4 +113,128 @@ export function corteDuctoSvg({ diametroTuboMm, tipos }) {
     <line x1="${cx + R}" y1="${yc - 7}" x2="${cx + R}" y2="${yc + 7}" style="stroke:var(--text-muted)" stroke-width="1.2"/>
     <text x="${cx}" y="${yc + 27}" text-anchor="middle" font-size="17" style="fill:var(--text-muted)">Ø interno ${f1(diametroTuboMm)} mm</text>
   </svg>`;
+}
+
+// ---------------------------------------------------------------- utilidades de ejes (Pérdidas y Regulación, 2026-09-26)
+
+/** Paso «redondo» (1, 2, 2.5 o 5 × 10ⁿ) para unas `n` divisiones entre 0 y `max`. */
+function pasoRedondo(max, n = 4) {
+  const bruto = max / n;
+  const pot = Math.pow(10, Math.floor(Math.log10(bruto)));
+  for (const m of [1, 2, 2.5, 5, 10]) if (m * pot >= bruto) return m * pot;
+  return 10 * pot;
+}
+/** Número corto y legible para los ejes: 9.9 · 18 · 27.5 · 1,200. */
+export function numEje(v) {
+  const a = Math.abs(v);
+  const dec = a === 0 ? 0 : a < 10 ? (Number.isInteger(Math.round(v * 10) / 10) ? 0 : 1) : a < 100 ? (Number.isInteger(v) ? 0 : 1) : 0;
+  return v.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: dec });
+}
+const esc = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const texto = (x, y, t, { tam = 13, color = "var(--text-muted)", ancla = "start", peso = 400 } = {}) =>
+  `<text x="${f1(x)}" y="${f1(y)}" font-size="${tam}" font-weight="${peso}" text-anchor="${ancla}" style="fill:${color}">${esc(t)}</text>`;
+const linea = (x1, y1, x2, y2, color, ancho = 1, guiones = "") =>
+  `<line x1="${f1(x1)}" y1="${f1(y1)}" x2="${f1(x2)}" y2="${f1(y2)}" style="stroke:${color}" stroke-width="${ancho}"${guiones ? ` stroke-dasharray="${guiones}"` : ""}/>`;
+
+// ---------------------------------------------------------------- barra de referencia vertical
+
+/**
+ * Barra de referencia vertical (tipo «bullet graph» de Stephen Few, de pie como un termómetro): las zonas Óptimo /
+ * Aceptable / Elevado de las referencias de diseño y la marca del resultado. `valor`, `optimo` y `aceptable` en %.
+ */
+export function barraReferenciaSvg({ valor, optimo, aceptable, etiqueta = "" }) {
+  const W = 150, H = 380, x0 = 58, ancho = 44, y0 = 34, y1 = 330;
+  const ok = Number.isFinite(valor);
+  const max = Math.max(aceptable * 5 / 3, ok ? valor * 1.15 : 0);
+  const tope = Math.ceil(max / pasoRedondo(max, 5)) * pasoRedondo(max, 5);
+  const Y = (v) => y1 - (Math.min(Math.max(v, 0), tope) / tope) * (y1 - y0);
+  const zona = (desde, hasta, color) => `<rect x="${x0}" y="${f1(Y(hasta))}" width="${ancho}" height="${f1(Y(desde) - Y(hasta))}" style="fill:${color}" opacity=".28"/>`;
+  let s = zona(0, optimo, "var(--success)") + zona(optimo, aceptable, "var(--warning)") + zona(aceptable, tope, "var(--danger)");
+  s += `<rect x="${x0}" y="${y0}" width="${ancho}" height="${y1 - y0}" rx="4" fill="none" style="stroke:var(--border-strong)"/>`;
+  for (const v of [0, optimo, aceptable, tope]) s += linea(x0 - 5, Y(v), x0, Y(v), "var(--text-muted)") + texto(x0 - 9, Y(v) + 4.5, `${numEje(v)} %`, { ancla: "end" });
+  if (ok) {
+    const yv = Y(valor);
+    s += `<rect class="oc-aparece" x="${x0 + ancho / 2 - 7}" y="${f1(yv)}" width="14" height="${f1(y1 - yv)}" rx="2" style="fill:var(--text)"/>`;
+    s += linea(x0 - 6, yv, x0 + ancho + 6, yv, "var(--accent)", 4);
+    s += texto(x0 + ancho / 2, y0 - 12, `${valor.toFixed(2)} %`, { tam: 17, color: "var(--text)", ancla: "middle", peso: 700 });
+  }
+  if (etiqueta) s += texto(x0 + ancho / 2, H - 14, etiqueta, { ancla: "middle", tam: 12.5 });
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(`${etiqueta}: ${ok ? valor.toFixed(2) : "—"} % (óptimo hasta ${optimo} %, aceptable hasta ${aceptable} %)`)}">${s}</svg>`;
+}
+
+// ---------------------------------------------------------------- pérdidas frente a la carga
+
+/**
+ * El % de pérdidas frente a la carga, de 0 al doble de la actual, en la unidad del dato de partida (MW, MVA o A). A igual
+ * tensión y FP el % de pérdidas crece en proporción a la carga (las pérdidas en kW, con su cuadrado): es una recta por el
+ * origen que pasa por el punto de hoy. Marca dónde se llega al límite aceptable.
+ */
+export function curvaCargaSvg({ pct, carga, unidad, nombreEje, optimo, aceptable }) {
+  const W = 460, H = 380, m = { l: 52, r: 18, t: 22, b: 58 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
+  const xPaso = pasoRedondo(carga * 2, 4), xmax = Math.ceil((carga * 2) / xPaso) * xPaso;
+  const yTope = Math.max(aceptable * 4 / 3, (pct * xmax) / carga);
+  const yPaso = pasoRedondo(yTope, 4), ymax = Math.ceil(yTope / yPaso) * yPaso;
+  const X = (v) => m.l + (v / xmax) * pw, Y = (v) => m.t + ph - (Math.min(v, ymax) / ymax) * ph;
+  const zona = (a, b, color) => `<rect x="${m.l}" y="${f1(Y(b))}" width="${pw}" height="${f1(Y(a) - Y(b))}" style="fill:${color}" opacity=".10"/>`;
+  let s = zona(0, optimo, "var(--success)") + zona(optimo, aceptable, "var(--warning)") + zona(aceptable, ymax, "var(--danger)");
+  for (let v = 0; v <= ymax + 1e-9; v += yPaso) s += linea(m.l, Y(v), m.l + pw, Y(v), "var(--border)") + texto(m.l - 7, Y(v) + 4.5, `${numEje(v)} %`, { ancla: "end", tam: 12 });
+  for (let v = 0; v <= xmax + 1e-9; v += xPaso) s += linea(X(v), m.t + ph, X(v), m.t + ph + 5, "var(--text-muted)") + texto(X(v), m.t + ph + 20, numEje(v), { ancla: "middle", tam: 12 });
+  s += texto(m.l + pw / 2, H - 12, `${nombreEje} (${unidad})`, { ancla: "middle", tam: 12.5 });
+  // nombres de las zonas a la DERECHA (a la izquierda chocan con la etiqueta del punto de hoy)
+  const zx = m.l + pw - 6;
+  s += texto(zx, Y(ymax) + 15, "Elevado", { color: "var(--danger)", tam: 11.5, ancla: "end" }) + texto(zx, Y(aceptable) + 15, "Aceptable", { color: "var(--warning)", tam: 11.5, ancla: "end" }) + texto(zx, Y(optimo) + 15, "Óptimo", { color: "var(--success)", tam: 11.5, ancla: "end" });
+  if (!(pct > 0 && carga > 0)) return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Pérdidas frente a la carga">${s}</svg>`;
+  // la recta, recortada donde sale por arriba
+  const xFin = Math.min(xmax, (ymax * carga) / pct);
+  s += `<path class="oc-trazo" d="M${X(0)},${Y(0)} L${f1(X(xFin))},${f1(Y((pct * xFin) / carga))}" fill="none" style="stroke:var(--accent);--largo:${f1(Math.hypot(X(xFin) - X(0), Y(0) - Y((pct * xFin) / carga)))}" stroke-width="3" stroke-dasharray="${f1(Math.hypot(X(xFin) - X(0), Y(0) - Y((pct * xFin) / carga)))}"/>`;
+  // límite aceptable
+  const xLim = (aceptable * carga) / pct;
+  if (xLim <= xmax) {
+    s += linea(X(xLim), Y(0), X(xLim), Y(aceptable), "var(--warning)", 1.4, "5 4");
+    s += texto(X(xLim) + (X(xLim) > m.l + pw * 0.62 ? -6 : 6), Y(aceptable) - 8, `${aceptable} % con ${numEje(xLim)} ${unidad}`, { color: "var(--warning)", ancla: X(xLim) > m.l + pw * 0.62 ? "end" : "start", peso: 600, tam: 12 });
+  } else {
+    s += texto(m.l + pw - 4, m.t + 14, `${aceptable} % con ${numEje(xLim)} ${unidad}`, { color: "var(--warning)", ancla: "end", peso: 600, tam: 12 });
+  }
+  // punto de hoy
+  s += `<circle class="oc-aparece" cx="${f1(X(carga))}" cy="${f1(Y(pct))}" r="6.5" style="fill:var(--accent);stroke:var(--bg-elevated)" stroke-width="2.5"/>`;
+  s += texto(X(carga) - 10, Y(pct) - 12, `Hoy: ${numEje(carga)} ${unidad} · ${pct.toFixed(2)} %`, { color: "var(--text)", ancla: "end", peso: 700, tam: 12.5 });
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(`Pérdidas frente a la carga: hoy ${numEje(carga)} ${unidad} con ${pct.toFixed(2)} %; ${aceptable} % con ${numEje(xLim)} ${unidad}`)}">${s}</svg>`;
+}
+
+// ---------------------------------------------------------------- perfil de tensión
+
+/**
+ * Perfil de tensión a lo largo de la línea (el «Voltage Profile» de CYME/ETAP): tensión en % de la nominal contra la
+ * distancia desde el inicio, tramo por tramo, con las referencias de diseño. `tramos` = [{ nombre, longitudKm, caidaPct }].
+ */
+export function perfilTensionSvg({ tramos, optimo, aceptable }) {
+  const W = 460, H = 380, m = { l: 56, r: 22, t: 22, b: 58 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
+  const L = tramos.reduce((s, t) => s + t.longitudKm, 0);
+  const caida = tramos.reduce((s, t) => s + t.caidaPct, 0);
+  const bajada = Math.max(aceptable * 1.2, caida * 1.15);
+  const yPaso = pasoRedondo(bajada, 4), ymin = 100 - Math.ceil(bajada / yPaso) * yPaso;
+  const xPaso = pasoRedondo(L, 4), xmax = Math.ceil(L / xPaso) * xPaso;
+  const X = (v) => m.l + (v / xmax) * pw, Y = (v) => m.t + ((100 - Math.max(v, ymin)) / (100 - ymin)) * ph;
+  const zona = (a, b, color) => `<rect x="${m.l}" y="${f1(Y(a))}" width="${pw}" height="${f1(Y(b) - Y(a))}" style="fill:${color}" opacity=".10"/>`;
+  let s = zona(100, 100 - optimo, "var(--success)") + zona(100 - optimo, 100 - aceptable, "var(--warning)") + zona(100 - aceptable, ymin, "var(--danger)");
+  for (let v = 100; v >= ymin - 1e-9; v -= yPaso) s += linea(m.l, Y(v), m.l + pw, Y(v), "var(--border)") + texto(m.l - 7, Y(v) + 4.5, `${numEje(v)} %`, { ancla: "end", tam: 12 });
+  for (let v = 0; v <= xmax + 1e-9; v += xPaso) s += linea(X(v), m.t + ph, X(v), m.t + ph + 5, "var(--text-muted)") + texto(X(v), m.t + ph + 20, numEje(v), { ancla: "middle", tam: 12 });
+  s += texto(m.l + pw / 2, H - 12, "Distancia desde el inicio de la línea (km)", { ancla: "middle", tam: 12.5 });
+  s += linea(m.l, Y(100 - optimo), m.l + pw, Y(100 - optimo), "var(--success)", 1.2, "5 4") + texto(m.l + pw - 4, Y(100 - optimo) - 5, `${optimo} %`, { ancla: "end", color: "var(--success)", tam: 11.5 });
+  s += linea(m.l, Y(100 - aceptable), m.l + pw, Y(100 - aceptable), "var(--warning)", 1.2, "5 4") + texto(m.l + pw - 4, Y(100 - aceptable) - 5, `${aceptable} %`, { ancla: "end", color: "var(--warning)", tam: 11.5 });
+  if (!(L > 0) || !Number.isFinite(caida)) return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Perfil de tensión">${s}</svg>`;
+  let x = 0, v = 100, puntos = "";
+  const varios = tramos.length > 1;
+  tramos.forEach((t, i) => {
+    const x2 = x + t.longitudKm, v2 = v - t.caidaPct, color = i % 2 ? "var(--accent-strong)" : "var(--accent)";
+    const largo = Math.hypot(X(x2) - X(x), Y(v2) - Y(v));
+    s += `<line class="oc-trazo" x1="${f1(X(x))}" y1="${f1(Y(v))}" x2="${f1(X(x2))}" y2="${f1(Y(v2))}" style="stroke:${color};--largo:${f1(largo)};animation-delay:${i * 0.25}s" stroke-width="4" stroke-linecap="round" stroke-dasharray="${f1(largo)}"/>`;
+    if (varios) s += texto((X(x) + X(x2)) / 2, (Y(v) + Y(v2)) / 2 - 12, t.nombre, { ancla: "middle", color, peso: 700, tam: 12 });
+    puntos += `<circle class="oc-aparece" cx="${f1(X(x2))}" cy="${f1(Y(v2))}" r="${i === tramos.length - 1 ? 6.5 : 4.5}" style="fill:${color};stroke:var(--bg-elevated)" stroke-width="2"/>`;
+    x = x2;
+    v = v2;
+  });
+  s += `<circle cx="${X(0)}" cy="${Y(100)}" r="4.5" style="fill:var(--text)"/>` + puntos;
+  s += texto(X(L) - 8, Y(v) + 24, `Al final: ${v.toFixed(2)} % (caída ${caida.toFixed(2)} %)`, { ancla: "end", color: "var(--text)", peso: 700, tam: 12.5 });
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(`Perfil de tensión: ${v.toFixed(2)} % al final de ${numEje(L)} km`)}">${s}</svg>`;
 }

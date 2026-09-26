@@ -389,6 +389,16 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   Unidades: se mantienen MW y MVA. El motor `js/calc/perdidas.js` no se toca sin que lo pida el propietario del negocio (ver
   más abajo la excepción del 2026-09-22); la suma de tramos y el dato de partida viven en
   `js/calc/perdidas-tramos.js`. La IA (`calcular_perdidas`) sigue igual (un tramo). Pruebas: `tools/verify_perdidas.html`.
+- **Gráficos de Pérdidas y Regulación (2026-09-26, 3.37.0; reemplaza el «sin gráficos» de arriba)**: elegidos por el
+  usuario de un mock-up de 15 propuestas (fuera del repo): Pérdidas = P3 + P2, Regulación = R3 + R1. En `js/util/graficos.js`:
+  `barraReferenciaSvg` (barra VERTICAL tipo bullet de Stephen Few con zonas Óptimo/Aceptable/Elevado y la marca del
+  resultado), `curvaCargaSvg` (% de pérdidas frente a la carga, recta por el origen — a igual tensión y FP el % crece en
+  proporción a la carga —, eje X en la unidad del DATO DE PARTIDA (MW, MVA o A; pedido del usuario: el % de carga no
+  decía nada), de 0 al doble con pasos redondos, punto «Hoy», y dónde se llega al 3 %) y `perfilTensionSvg` (tensión en %
+  contra los km, tramo por tramo, con 5 % y 10 %). Distribución `.graf-resumen` como Ocupación: barra · gráfico · cifras
+  (≤1280px las cifras bajan; ≤560px barra más angosta). Nombres de zona a la derecha en la curva (a la izquierda chocaban
+  con «Hoy»). Los demás gráficos del mock-up (Cortocircuito, Ampacidad aérea y subterránea) están pendientes de que el
+  usuario elija. Pruebas: «gráficos» en `verify_perdidas.html` y `verify_regulacion.html`.
 - Umbrales 1 % / 3 %: solo «referencias de diseño» (Óptimo / Aceptable / Elevado). NUNCA escribir «fuera de norma».
 - Factor de pérdidas (`js/calc/perdidas.js`, 2026-09-22): usa la forma cuadrática de Buller-Woodrow, `Fp = 0.3·Fc + 0.7·Fc²`.
   Hasta esta fecha usaba la forma LINEAL (`0.7·Fc + 0.3`) para replicar la app original de Power Apps (ya retirada del repo);

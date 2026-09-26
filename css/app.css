@@ -942,6 +942,17 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 /* Ocupacion de ductos: resultado en TRES columnas (corte transversal a escala | dona | cifras); en pantalla angosta pasan a una columna */
 .oc-resumen { display: grid; grid-template-columns: 230px 230px auto; justify-content: start; column-gap: 40px; align-items: center; } /* corte y dona del mismo tamaño, y a continuacion las cifras */
 .oc-grafico svg { display: block; width: 100%; height: auto; overflow: visible; }
+/* Pérdidas y Regulación (2026-09-26): barra de referencia vertical · gráfico principal · cifras, como Ocupación de ductos.
+   Pantalla media: los dos gráficos arriba y las cifras debajo; celular: una sola columna. */
+.graf-resumen { display: grid; grid-template-columns: 120px minmax(300px, 440px) minmax(0, 1fr); column-gap: 32px; row-gap: var(--space-4); align-items: center; }
+.graf-resumen .graf-barra svg, .graf-resumen .graf-curva svg { display: block; width: 100%; height: auto; overflow: visible; }
+@media (max-width: 1280px) {
+  .graf-resumen { grid-template-columns: 120px minmax(0, 460px); justify-content: start; }
+  .graf-resumen .graf-metricas { grid-column: 1 / -1; }
+}
+@media (max-width: 560px) {
+  .graf-resumen { grid-template-columns: 90px minmax(0, 1fr); column-gap: var(--space-3); }
+}
 @media (max-width: 900px) {
   .oc-resumen { grid-template-columns: 1fr; justify-items: center; gap: var(--space-5); }
   .oc-grafico { width: 100%; max-width: 260px; }

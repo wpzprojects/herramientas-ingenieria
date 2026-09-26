@@ -17,6 +17,7 @@ import {
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
+import { barraReferenciaSvg, curvaCargaSvg } from "../util/graficos.js";
 import { revelar } from "../util/revelar.js";
 import { guardarEstado, leerEstado } from "../util/persistencia-calculo.js";
 import { aplicarDefectos } from "../util/valores-defecto.js";
@@ -596,8 +597,20 @@ export async function render(container) {
     const clase = Number.isFinite(r.perdidasPct) ? clasificarPerdidas(r.perdidasPct) : null; // sin etiqueta si los datos no dan un numero
     const varios = r.tramos.length > 1;
 
+    // Gráficos (2026-09-26, elegidos por el usuario: P3 + P2 del mock-up): barra vertical con las referencias de diseño y el %
+    // de pérdidas frente a la carga en la unidad del dato de partida; luego las cifras (como Ocupación de ductos).
+    const conGraficos = Number.isFinite(r.perdidasPct) && r.perdidasPct > 0;
+    const eje = { potencia: ["Potencia activa", "MW"], aparente: ["Potencia aparente", "MVA"], corriente: ["Corriente", "A"] }[dato.modo];
+    const graficos = conGraficos
+      ? `<div class="graf-barra">${barraReferenciaSvg({ valor: r.perdidasPct, optimo: UMBRAL_OPTIMO_PCT, aceptable: UMBRAL_ACEPTABLE_PCT, etiqueta: "Pérdidas" })}</div>
+         <div class="graf-curva">${curvaCargaSvg({ pct: r.perdidasPct, carga: dato.datoPartida, unidad: eje[1], nombreEje: eje[0], optimo: UMBRAL_OPTIMO_PCT, aceptable: UMBRAL_ACEPTABLE_PCT })}</div>`
+      : "";
+
     const resultado = `
           <div class="result-panel">
+            <div class="${conGraficos ? "graf-resumen" : ""}">
+            ${graficos}
+            <div class="graf-metricas">
             <div class="grid-2">
               <div class="result-metric">
                 <div class="value">${fmt(base.potenciaActivaMw)}<span class="unit">MW</span></div>
@@ -625,6 +638,8 @@ export async function render(container) {
               </div>
             </div>
             <p class="text-muted text-sm" style="margin: var(--space-3) 0 0;">Referencias de diseño: hasta ${UMBRAL_OPTIMO_PCT}% óptimo · hasta ${UMBRAL_ACEPTABLE_PCT}% aceptable.</p>
+            </div>
+            </div>
             ${varios ? tablaTramosHtml(r, estados) : comparacionCalibresHtml(base, estados[0])}
           </div>`;
 
