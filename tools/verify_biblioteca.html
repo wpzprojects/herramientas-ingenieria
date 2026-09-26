@@ -146,6 +146,8 @@ await seccion("visor: fuente, contenido, texto arriba e imágenes debajo", async
   ok(img().style.width === "150%" && texto(fig.querySelector(".bib-zoom-valor")) === "150 %" && marco.scrollWidth > marco.clientWidth + 10, "«+» la agranda dentro de su recuadro (a 150 % el recuadro se desplaza)");
   for (let k = 0; k < 10; k++) mas.click();
   ok(img().style.width === "300%" && mas.disabled, "llega hasta 300 % y «+» se deshabilita");
+  await esperarQue(() => img().complete);
+  ok(Math.abs(marco.getBoundingClientRect().height - img().getBoundingClientRect().height - parseFloat(getComputedStyle(marco).paddingTop) - parseFloat(getComputedStyle(marco).paddingBottom) - (marco.offsetHeight - marco.clientHeight)) < 3 && marco.scrollHeight <= marco.clientHeight + 1, "el recuadro crece con la altura de la imagen: sin barra vertical, ni siquiera a 300 %");
   for (let k = 0; k < 12; k++) menos.click();
   ok(img().style.width === "40%" && menos.disabled && !mas.disabled, "«−» baja hasta 40 % y se deshabilita");
   ok(figuras[1].querySelector(".bib-marco img").style.width === "80%", "cada imagen tiene su propio zoom");
