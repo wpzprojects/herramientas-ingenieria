@@ -297,3 +297,48 @@ export function compararEscenarios(comun, escenarios) {
     costosCompletos: conCosto.length === res.length,
   };
 }
+
+/**
+ * Calibre más pequeño del mismo tipo/material que hace cumplir TODOS los criterios a la alternativa, cambiando solo un
+ * tramo: el que falla en ampacidad o en cortocircuito; si esos cumplen, el que más aporta a la caída de tensión. Se
+ * conservan la red, los conductores por fase, la disposición y, en subterránea, la pantalla y el aislamiento. En aérea
+ * cada calibre se prueba con su primera referencia del catálogo (con la del usuario si es el calibre actual).
+ * Cada tramo del escenario debe traer `eleccion` (la que da la pantalla: red, material, calibre, referencia, pantalla…).
+ * @returns {{tramo:number, calibre:string, referencia:string|null, esActual:boolean, menorQueActual:boolean} | {tramo:number, ninguno:true}}
+ */
+export function calibreMinimo(comun, esc, cat) {
+  const x = evaluarEscenario(comun, esc);
+  let j;
+  if (!x.ampacidad.cumple) j = x.ampacidad.tramo;
+  else if (x.cortocircuito.cumple === false) j = x.cortocircuito.tramo;
+  else j = x.tramos.reduce((m, t, i) => (t.regulacion.pct > x.tramos[m].regulacion.pct ? i : m), 0);
+  const e = esc.tramos[j].eleccion;
+  if (!e) return { tramo: j, ninguno: true };
+  const aerea = e.red === "Aerea";
+  const area = (c) => c.areaMm2;
+  const actual = datosConductor({ ...e, tensionKv: esc.tensionKv }, cat);
+  const candidatos = [];
+  if (aerea) {
+    const vistos = new Set();
+    for (const f of [...cat.desnudos].filter((f) => f.tipo === e.material).sort((a, b) => a.area_seccion_aluminio_mm2 - b.area_seccion_aluminio_mm2)) {
+      if (vistos.has(f.calibre_awg_kcmil)) continue;
+      vistos.add(f.calibre_awg_kcmil);
+      const referencia = f.calibre_awg_kcmil === e.calibre && e.referencia ? e.referencia : f.nombre_clave;
+      const c = datosConductor({ red: "Aerea", material: e.material, calibre: f.calibre_awg_kcmil, referencia }, cat);
+      if (c.ok) candidatos.push({ calibre: f.calibre_awg_kcmil, referencia, conductor: c });
+    }
+  } else {
+    for (const k of CALIBRES_SUBTERRANEOS) {
+      const c = datosConductor({ ...e, calibre: k, tensionKv: esc.tensionKv }, cat);
+      if (c.ok) candidatos.push({ calibre: k, referencia: null, conductor: c });
+    }
+  }
+  for (const c of candidatos) {
+    const tramos = esc.tramos.map((t, i) => (i === j ? { ...t, conductor: c.conductor } : t));
+    if (evaluarEscenario(comun, { ...esc, tramos }).cumpleTodo) {
+      const esActual = c.calibre === e.calibre && (!aerea || c.referencia === e.referencia);
+      return { tramo: j, calibre: c.calibre, referencia: c.referencia, esActual, menorQueActual: !esActual && actual.ok && area(c.conductor) < area(actual) };
+    }
+  }
+  return { tramo: j, ninguno: true };
+}

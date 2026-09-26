@@ -94,11 +94,11 @@ const partir = (extra) => [Object.fromEntries(Object.entries(extra).filter(([k])
 const escenario = (tensionKv, tramos, extra = {}) => ({ tensionKv, corrienteFallaKa: null, tiempoDespejeS: 0.3, tramos, ...extra });
 function tramoAereo(fila, n, extra = {}) {
   const conductor = V.datosConductor({ red: "Aerea", material: fila.tipo, calibre: fila.calibre_awg_kcmil, referencia: fila.nombre_clave }, cat);
-  return { red: "Aerea", n, longitudKm: 5, conductor, dabM: 2, dacM: 2.84, dbcM: 0.84, separacionHazM: n > 1 ? 0.4 : 0, costos: null, ...extra };
+  return { red: "Aerea", n, longitudKm: 5, conductor, eleccion: { red: "Aerea", material: fila.tipo, calibre: fila.calibre_awg_kcmil, referencia: fila.nombre_clave }, dabM: 2, dacM: 2.84, dbcM: 0.84, separacionHazM: n > 1 ? 0.4 : 0, costos: null, ...extra };
 }
 function tramoSubt(material, calibre, tensionKv, n, extra = {}) {
   const conductor = V.datosConductor({ red: "Subterranea", material, calibre, tipoPantalla: "Hilos", nivelAislamientoPct: 100, tensionKv }, cat);
-  return { red: "Subterranea", n, longitudKm: 5, conductor, puestaTierra: "Unipuntual", separacionFasesM: 0.04, separacionDuctosM: 0.2, otrosCircuitos: 0, costos: null, ...extra };
+  return { red: "Subterranea", n, longitudKm: 5, conductor, eleccion: { red: "Subterranea", material, calibre, tipoPantalla: "Hilos", nivelAislamientoPct: 100 }, puestaTierra: "Unipuntual", separacionFasesM: 0.04, separacionDuctosM: 0.2, otrosCircuitos: 0, costos: null, ...extra };
 }
 function escAereo(fila, tensionKv, n, extra = {}) {
   const [e, tr] = partir(extra);
@@ -244,6 +244,31 @@ await seccion("motor: escenario con varios tramos (aéreo + subterráneo a 34.5 
   ok(!rf.cumpleTodo && rf.incumple.includes("ampacidad") && rf.ampacidad.tramo === 1, "un tramo sobrecargado basta para que el escenario no cumpla");
 });
 
+await seccion("motor: calibre mínimo que cumple", async () => {
+  // AAAC 246.9 a 34.5 kV se sobrecarga: el mínimo es un AAAC más grande, y el anterior de la lista no cumple
+  const e = escAereo(ALLIANCE, 34.5, 1);
+  const m = V.calibreMinimo(COMUN, e, cat);
+  ok(!m.ninguno && m.tramo === 0 && !m.esActual && !m.menorQueActual, `AAAC 246.9 no cumple: sugiere un AAAC mayor (${m.calibre} · ${m.referencia})`);
+  const conCalibre = (calibre, referencia) => ({ ...e, tramos: [{ ...e.tramos[0], conductor: V.datosConductor({ red: "Aerea", material: "AAAC", calibre, referencia }, cat) }] });
+  ok(V.evaluarEscenario(COMUN, conCalibre(m.calibre, m.referencia)).cumpleTodo, "con el sugerido la alternativa cumple todo");
+  const aaac = [...cat.desnudos].filter((f) => f.tipo === "AAAC").sort((a, b) => a.area_seccion_aluminio_mm2 - b.area_seccion_aluminio_mm2);
+  const unicos = aaac.filter((f, i) => aaac.findIndex((g) => g.calibre_awg_kcmil === f.calibre_awg_kcmil) === i);
+  const i = unicos.findIndex((f) => f.calibre_awg_kcmil === m.calibre);
+  ok(i > 0 && !V.evaluarEscenario(COMUN, conCalibre(unicos[i - 1].calibre_awg_kcmil, unicos[i - 1].nombre_clave)).cumpleTodo, "…y el calibre anterior de la lista no cumple (es el mínimo)");
+  // Hawk a 34.5 kV cumple: el mínimo es el mismo o uno menor
+  const h = V.calibreMinimo(COMUN, escAereo(HAWK, 34.5, 1), cat);
+  ok(!h.ninguno && (h.esActual || h.menorQueActual), `ACSR 477 cumple: el mínimo es el actual o uno menor (${h.calibre})`);
+  // en subterránea conserva pantalla y aislamiento
+  const s = V.calibreMinimo(COMUN, escSubt("Cobre", "500 kcmil", 34.5, 1), cat);
+  ok(s.ninguno || V.CALIBRES_SUBTERRANEOS.includes(s.calibre), `subterráneo: busca entre los calibres del catálogo de cables (${s.ninguno ? "ninguno" : s.calibre})`);
+  // con varios tramos cambia el que limita
+  const a = tramoAereo(HAWK, 1, { longitudKm: 3 });
+  const f = tramoAereo(cat.desnudos.find((c) => c.tipo === "ACSR" && c.calibre_awg_kcmil === "4/0"), 1, { longitudKm: 1 });
+  const mt = V.calibreMinimo(COMUN, escenario(34.5, [a, f]), cat);
+  ok(mt.tramo === 1, "con varios tramos cambia el que limita (el 4/0 sobrecargado)");
+  ok(V.calibreMinimo(COMUN, { ...e, tramos: [{ ...e.tramos[0], eleccion: undefined }] }, cat).ninguno, "sin datos de la elección no falla: dice «ninguno»");
+});
+
 // ---------- vista ----------
 const stage = document.getElementById("stage");
 const $ = (s) => stage.querySelector(s);
@@ -261,6 +286,8 @@ const respaldoDefectos = localStorage.getItem(D.CLAVE_DEFECTOS);
 D.guardarDefectos({});
 guardarEstado("/calculos/valoracion-integral", null);
 let salir = await vista.render(stage);
+const potenciaInicial = $("#f-potencia").value;
+poner("#f-potencia", "30", "input"); // las pruebas de la vista comparan contra cálculos con 30 MW
 
 await seccion("vista: tensión general o por alternativa", async () => {
   const general = $("#f-tension");
@@ -299,6 +326,9 @@ await seccion("vista: tarjetas y alternativas", async () => {
   while ($$(".tramo-block").length > 1) $$(".btn-tramo-quitar").at(-1).click();
   ok($$(".tramo-block").length === 1 && !agregar.hidden && $(".btn-tramo-quitar").hidden, "se pueden quitar hasta quedar uno");
   ok($$("details.vi-avanzado").every((d) => !d.open), "«Parámetros avanzados» nacen plegados");
+  const dup = $(".vi-escenario .btn-tramo-duplicar");
+  ok(dup && dup.closest(".form-section-title") && dup.nextElementSibling.classList.contains("btn-tramo-quitar"), "«Duplicar» en la barra de título de la alternativa, junto a «Quitar»");
+  ok(potenciaInicial === "9.9" && $("#f-aparente").value === "11", "potencia por defecto: 9.9 MW (11 MVA con FP 0.9)");
   ok(!$("#f-modo").innerHTML.includes("corriente"), "el dato de partida no ofrece corriente (depende de la tensión de cada escenario)");
 });
 
@@ -535,6 +565,9 @@ await seccion("vista: pestaña Análisis (margen y capacidad máxima)", async ()
   ok(fila("Ampacidad").children[1].classList.contains(x.ampacidad.cumple ? "vi-tono-bueno" : "vi-tono-malo"), "el margen va en verde si cumple y en rojo si no");
   ok(fila("Criterio que limita").children[1].textContent.startsWith("Ampacidad"), "dice qué criterio limita la alternativa");
   ok(panel.querySelectorAll(".vi-supuestos li").length === 5 && panel.querySelector('a[href="#/calculos/perdidas"]'), "supuestos del cálculo y enlaces a las fórmulas de cada calculadora");
+  const minimo = fila("Calibre mínimo que cumple");
+  const mEsperado = V.calibreMinimo(COMUN, escAereo(ALLIANCE, 34.5, 1, { corrienteFallaKa: 5 }), cat);
+  ok(minimo && minimo.children[1].textContent.startsWith(`AAAC ${mEsperado.calibre}`) && /mayor que el actual/.test(minimo.children[1].textContent), `«Calibre mínimo que cumple» en el análisis («${minimo?.children[1].textContent}»)`);
   $('#resultado-wrap .tab-btn[data-tab="resultado"]').click();
 });
 
@@ -554,6 +587,23 @@ await seccion("vista: escenario subterráneo y error de catálogo", async () => 
   poner(T("pantalla", b), "Cinta");
   ok([...$(T("pct", b)).options].map((o) => o.value).join(",") === "100", "a 44 kV (46 kV) solo hay aislamiento al 100 %");
   poner(T("tension", b), "13.2", "input");
+});
+
+await seccion("vista: duplicar una alternativa", async () => {
+  const antes = $$(".vi-escenario");
+  const original = antes[0];
+  const sid = original.querySelector("[id^=f-tension-]").id.split("-").pop();
+  const material = $(T("material", sid)).value;
+  const calibre = $(T("calibre", sid)).value;
+  original.querySelector(".btn-tramo-duplicar").click();
+  const despues = $$(".vi-escenario");
+  ok(despues.length === antes.length + 1 && despues[1] !== antes[1] && despues[0] === original, "la copia aparece justo después de la original");
+  const copia = despues[1];
+  const sc = copia.querySelector("[id^=f-tension-]").id.split("-").pop();
+  ok($(T("material", sc)).value === material && $(T("calibre", sc)).value === calibre && $(T("n", sc)).value === $(T("n", sid)).value, "con los mismos datos (conductor, calibre, conductores por fase)");
+  ok($$(".tramo-titulo").slice(0, 2).map((x) => x.textContent).join(",") === "Alternativa 1,Alternativa 2", "las alternativas se renumeran");
+  copia.querySelector(".btn-tramo-quitar").click();
+  ok($$(".vi-escenario").length === antes.length, "se quita la copia de prueba");
 });
 
 await seccion("vista: tramos dentro de un escenario", async () => {
@@ -869,6 +919,7 @@ await seccion("registro: menú, permisos, ruta, ayuda y service worker", async (
   ok(shell.includes("js/util/xlsx.js"), "el service worker precachea el generador de Excel");
   ok(item.desc === "Evalúa escenarios de conductor con ampacidad, pérdidas, regulación, cortocircuito y costos.", "la tarjeta de Cálculos lleva su descripción");
   ok(!css.includes("vi-seccion + tr td"), "la primera fila de cada sección conserva su línea de tabla (no se le quita el borde)");
+  ok(/\.vi-avanzado-grupo::after \{ content: ""; flex: 1; height: 1px; background: color-mix\(in srgb, var\(--accent\)/.test(css), "los subtítulos de «Parámetros avanzados» llevan una línea fina del color del tema hasta el borde");
 });
 
 guardarEstado("/calculos/valoracion-integral", null);

@@ -117,11 +117,11 @@ export async function render(container) {
         <details class="menu-mas" id="menu-descargar">
           <summary class="btn btn-sm btn-con-icono" aria-label="Descargar el reporte">Descargar ${icon("chevronDown")}</summary>
           <div class="menu-mas-lista">
+            <button type="button" id="btn-imprimir">PDF (imprimir o guardar)</button>
             <button type="button" id="btn-docx">Documento de Word (.docx)</button>
             <button type="button" id="btn-md">Markdown (.md)</button>
           </div>
         </details>
-        <button type="button" class="btn btn-sm" id="btn-imprimir">Imprimir / PDF</button>
       </div>
       <p class="text-muted text-sm" id="reporte-meta" style="margin-top:0"></p>
       <div id="reporte-cuerpo"></div>

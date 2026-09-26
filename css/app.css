@@ -484,6 +484,9 @@ input:disabled, select:disabled { opacity: 0.55; }
    ambos a la izquierda (pedido del usuario 2026-09-21). El orden de tabulacion sigue siendo Calcular -> Agregar. */
 .btn-row.btn-row--agregar { flex-wrap: wrap-reverse; justify-content: space-between; }
 .btn.btn-tramo-quitar { margin-left: auto; padding: 2px 8px; font-size: 0.72rem; text-transform: none; letter-spacing: normal; }
+.btn.btn-tramo-duplicar { margin-left: auto; padding: 2px 8px; font-size: 0.72rem; text-transform: none; letter-spacing: normal; }
+.form-section-title .btn-tramo-duplicar:not([hidden]) + .btn-tramo-quitar { margin-left: 0; } /* «Duplicar» ya empuja a la derecha */
+.form-section-title .btn-tramo-duplicar:not([hidden]) ~ .btn-plegar { margin-left: 0; }
 .input-with-toggle { display: flex; align-items: center; gap: var(--space-3); }
 .input-with-toggle input[type="number"] { flex: 1 1 auto; min-width: 0; }
 .input-with-toggle .checkbox-row { white-space: nowrap; }
@@ -982,7 +985,9 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .vi-avanzado[open] > summary { margin-bottom: var(--space-3); }
 /* Subtítulos dentro de «Parámetros avanzados»: tipo oración, color del texto y una barrita del color del tema a la
    izquierda (se leen como subtítulo, no como algo que se pueda pulsar como el desplegable, que es del color del tema) */
-.vi-avanzado-grupo { margin: var(--space-4) 0 var(--space-2); padding-left: var(--space-2); border-left: 3px solid var(--accent); font-size: 0.9rem; font-weight: 600; color: var(--text); line-height: 1.3; }
+.vi-avanzado-grupo { margin: var(--space-4) 0 var(--space-2); padding-left: var(--space-2); border-left: 3px solid var(--accent); font-size: 0.9rem; font-weight: 600; color: var(--text); line-height: 1.3; display: flex; align-items: center; gap: var(--space-3); }
+.vi-avanzado-grupo::after { content: ""; flex: 1; height: 1px; background: color-mix(in srgb, var(--accent) 55%, transparent); }
+@media (max-width: 480px) { .btn-tramo-duplicar .vi-texto-btn { display: none; } }
 .vi-avanzado > summary + .vi-avanzado-grupo { margin-top: 0; }
 /* Tramos de un escenario: con uno solo la tarjeta se ve igual que siempre; con varios, cada tramo lleva su encabezado */
 .vi-tramo-cab {

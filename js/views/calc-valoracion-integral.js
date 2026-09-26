@@ -12,6 +12,7 @@ import { icon } from "../icons.js";
 import { potenciaActivaMw } from "../calc/circuito.js";
 import {
   compararEscenarios,
+  calibreMinimo,
   datosConductor,
   nivelAislamientoPara,
   CALIBRES_SUBTERRANEOS,
@@ -84,11 +85,11 @@ export async function render(container) {
           </div>
           <div class="field" id="wrap-potencia">
             <label for="f-potencia">Potencia activa (MW)</label>
-            <input type="number" id="f-potencia" min="0" step="any" value="30" required>
+            <input type="number" id="f-potencia" min="0" step="any" value="9.9" required>
           </div>
           <div class="field" id="wrap-aparente" hidden>
             <label for="f-aparente">Potencia aparente (MVA)</label>
-            <input type="number" id="f-aparente" min="0" step="any" value="33.33">
+            <input type="number" id="f-aparente" min="0" step="any" value="11">
           </div>
         </div>
         <div class="grid-2">
@@ -586,6 +587,7 @@ export async function render(container) {
       <div class="card tarjeta-borde form-section tramo-block vi-escenario">
         <div class="form-section-title">
           ${icon("conductorCableado")} <span class="tramo-titulo">Alternativa 1</span>
+          <button type="button" class="btn btn-ghost btn-tramo-duplicar">${icon("copy")} <span class="vi-texto-btn">Duplicar</span></button>
           <button type="button" class="btn btn-ghost btn-tramo-quitar" hidden>${icon("close")} Quitar</button>
         </div>
         <div class="grid-2 vi-tension-alt" hidden>
@@ -671,6 +673,7 @@ export async function render(container) {
       card,
       titulo: c(".tramo-titulo"),
       quitar: c(".btn-tramo-quitar"),
+      duplicar: c(".btn-tramo-duplicar"),
       tramos,
       campoTension: () => (porAlternativa() ? fTensionAlt : fTension),
       tensionKv,
@@ -740,13 +743,15 @@ export async function render(container) {
     escenarios.forEach((e, i) => {
       e.titulo.textContent = `Alternativa ${i + 1}`;
       e.quitar.hidden = escenarios.length <= MIN_ESCENARIOS;
+      e.duplicar.hidden = escenarios.length >= MAX_ESCENARIOS;
       e.renumerar(i);
     });
     botonAgregar.hidden = escenarios.length >= MAX_ESCENARIOS;
     ordenarCostos();
   }
 
-  function agregarEscenario() {
+  /** Agrega una alternativa al final o, con `despuesDe`, justo después de esa (con los datos `datos`, al duplicar). */
+  function agregarEscenario(datos = null, despuesDe = null) {
     if (escenarios.length >= MAX_ESCENARIOS) return;
     const e = crearAlternativa(siguienteId++);
     e.quitar.addEventListener("click", () => {
@@ -756,12 +761,23 @@ export async function render(container) {
       actualizarEscenarios();
       validarTensiones();
     });
+    e.duplicar.addEventListener("click", () => agregarEscenario(e.bruto(), e));
     e.card.querySelector("[id^=f-tension-]").addEventListener("input", e.marcarTensionTocada);
-    escenarios.push(e);
-    escCont.append(e.card);
+    if (despuesDe) {
+      escenarios.splice(escenarios.indexOf(despuesDe) + 1, 0, e);
+      despuesDe.card.after(e.card);
+    } else {
+      escenarios.push(e);
+      escCont.append(e.card);
+    }
     e.agregarTramo();
     e.mostrarTension(porAlternativa());
+    if (datos) {
+      e.aplicarBruto(datos);
+      e.mostrarTension(porAlternativa());
+    }
     actualizarEscenarios();
+    validarTensiones();
   }
 
   // Tensión general o una por alternativa
@@ -1511,6 +1527,7 @@ export async function render(container) {
   // queda en lo esencial: los datos de entrada de cada alternativa y, por alternativa, el veredicto con los valores que
   // deciden (sin valores intermedios como la reactancia o la resistencia efectiva).
   function reporteTexto(r, comun, estados, { modo, datoPartida }) {
+    comunActual = comun;
     const todos = estados.flatMap((s) => s.tramos);
     const a = comun.aerea;
     const s2 = comun.subterranea;
@@ -1540,6 +1557,12 @@ export async function render(container) {
         `  Cortocircuito ${fmt(cc.totalKa)} kA en ${fmt(e.tiempoDespejeS)} s${deTramo(cc.tramo)}${cc.corrienteFallaKa === null ? "" : ` · ${cc.cumple ? "soporta" : "no soporta"} ${fmt(cc.corrienteFallaKa)} kA`}`,
         ...(x.economia ? [`  Costo total actualizado ${fmtPesos(x.economia.costoTotal)} (inversión ${fmtPesos(x.economia.inversion)})`] : []),
         ...(an.pMax ? [`  Potencia máxima ${num(an.pMax[1], 1, 1)} MW (la limita ${TEXTO_CRITERIO[an.pMax[0]].toLowerCase()})`] : []),
+        ...(() => {
+          const m = calibreMinimoDe(e);
+          if (!m) return [];
+          if (m.ninguno) return [`  Calibre mínimo que cumple: ninguno del mismo tipo${deTramo(m.tramo)}`];
+          return [`  Calibre mínimo que cumple: ${textoCalibreMinimo(e, m)}${deTramo(m.tramo)}${m.esActual ? " (el actual)" : ""}`];
+        })(),
       ];
     });
 
@@ -1592,6 +1615,36 @@ export async function render(container) {
     return { amp, perd, reg, cc, limita, potencias, pMax, lMax, P, L };
   }
 
+  /**
+   * «Calibre mínimo que cumple»: el calibre más pequeño del mismo tipo que hace cumplir todo, cambiando solo el tramo que
+   * limita (ver calibreMinimo en el motor). Si falla la búsqueda, la celda lo dice y la pantalla sigue.
+   */
+  function calibreMinimoDe(s) {
+    try {
+      return calibreMinimo(comunActual, s, catalogos);
+    } catch {
+      return null;
+    }
+  }
+  function textoCalibreMinimo(s, m) {
+    if (!m || m.ninguno) return null;
+    return `${s.tramos[m.tramo].eleccion.material} ${m.calibre}${m.referencia ? ` · ${m.referencia}` : ""}`;
+  }
+  function celdaCalibreMinimo(s) {
+    const m = calibreMinimoDe(s);
+    if (!m) return { v: "—", texto: true };
+    if (m.ninguno) return { v: "Ninguno del mismo tipo", texto: true, tono: "malo", sub: varios(s) ? `cambiando el tramo ${m.tramo + 1}` : null };
+    const n = s.tramos[m.tramo].n;
+    const que = m.esActual ? "es el actual" : m.menorQueActual ? "menor que el actual" : "mayor que el actual";
+    return {
+      v: textoCalibreMinimo(s, m),
+      texto: true,
+      tono: m.esActual || m.menorQueActual ? "bueno" : null,
+      sub: [que, varios(s) ? `en el tramo ${m.tramo + 1}` : null, n > 1 ? `con ${n} por fase` : null].filter(Boolean).join(" · "),
+    };
+  }
+  let comunActual = null; // los datos comunes del último cálculo (los usa la búsqueda del calibre mínimo)
+
   /** Tabla del análisis con el mismo modelo de la tabla comparativa (así se dibuja igual en pantalla, PDF y Excel). */
   function modeloAnalisis(r, comun, estados) {
     const A = r.escenarios.map((x) => analisisAlternativa(x, comun));
@@ -1627,6 +1680,7 @@ export async function render(container) {
             fila(`Potencia máxima por pérdidas (${LIMITE_PERDIDAS} %)`, "MW", (a) => (finito(a.potencias.perdidas) ? { v: a.potencias.perdidas, dec: 1 } : { v: "—", texto: true })),
             fila("Potencia máxima", "MW", (a) => (!a.pMax ? { v: "No calculable", texto: true, tono: "malo" } : { v: a.pMax[1], dec: 1, tono: tono(a.pMax[1] >= a.P), sub: `la limita ${TEXTO_CRITERIO[a.pMax[0]].toLowerCase()} · hoy ${num(a.P, 1, 1)} MW` }), { total: true }),
             fila("Longitud máxima con esta potencia", "km", (a) => (finito(a.lMax[1]) ? { v: a.lMax[1], dec: 1, tono: tono(a.lMax[1] >= a.L), sub: `la limita ${TEXTO_CRITERIO[a.lMax[0]].toLowerCase()} · hoy ${num(a.L, 2, 2)} km` } : { v: "—", texto: true }), { total: true }),
+            fila("Calibre mínimo que cumple", "", (a, x, s) => celdaCalibreMinimo(s)),
           ],
         },
       ],
@@ -1657,6 +1711,7 @@ export async function render(container) {
 
   function renderResultado(r, comun, estados, dato) {
     const wrap = q("#resultado-wrap");
+    comunActual = comun;
     const modelo = modeloMatriz(r, comun, estados);
     const modeloA = modeloAnalisis(r, comun, estados);
     const tramos = filasTramos(r, estados);
