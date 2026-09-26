@@ -412,6 +412,20 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   `corteZanjaSvg` (Kennelly, terreno homogéneo, con `clipPath`) + ampacidad vs resistividad (re-ejecuta el motor; punto
   rojo con suelo al doble de resistividad, máx. 3). Los motores NO se tocaron. PENDIENTE: proponer gráficos para
   Conductor económico y Valoración integral (solo en la pestaña «Gráficos»).
+- **Pestaña «Reportes» (2026-09-26, 3.40.0; PILOTO en Pérdidas)**: orden de pestañas en TODAS: Resultado · Fórmulas ·
+  Gráficos · Reportes (antes «Reporte»; `data-tab` sigue siendo «reporte»). `tarjetaResultadosHtml({…, conDocumentos: true})`
+  pone el selector «Tipo de reporte» (`js/util/reportes.js`): Texto (TXT) · Memoria de cálculo (LaTeX: `pasos` = [{titulo,
+  tex, texto}], cada uno fórmula = valores = resultado, KaTeX en letra pequeña, «Copiar LaTeX» con `memoriaLatex`) · PDF
+  (vista previa + impresión con `@page calculo`, como el Asistente técnico) · Word (vista previa + descarga; `docx.js`
+  ganó IMÁGENES PNG (`<img data-ancho data-alto>`, media + relaciones) y `<p class="ecuacion">` en Cambria Math; carga
+  perezosa). Documento = encabezado, datos de entrada y resultados (leídos del reporte de texto: `seccionDelReporte`),
+  desarrollo del cálculo y gráficos (en tema claro: `.vista-tema[data-vista=light]`; para Word, `svgAPng` fija los colores
+  calculados). Uso: `activarReportes(wrap, {titulo, texto, pasos, graficos})`; Pérdidas arma sus pasos en
+  `memoriaPerdidas` con las mismas fórmulas del motor. PENDIENTE (tras aprobar el piloto): replicar en Regulación,
+  Cortocircuito, Ocupación y las Ampacidades.
+- **Valores por defecto (2026-09-26, pedido del usuario: calcular de una)**: `porDefecto(sel, valor)` en cada vista
+  (dispara «change» para la cascada): AAAC 246.9 + primera referencia en Pérdidas y Regulación (cada tramo aéreo nuevo),
+  Cortocircuito y Ampacidad aérea; Ocupación: PVC Tipo TDP de 4". Lo guardado en la sesión sigue ganando.
 - Umbrales 1 % / 3 %: solo «referencias de diseño» (Óptimo / Aceptable / Elevado). NUNCA escribir «fuera de norma».
 - Factor de pérdidas (`js/calc/perdidas.js`, 2026-09-22): usa la forma cuadrática de Buller-Woodrow, `Fp = 0.3·Fc + 0.7·Fc²`.
   Hasta esta fecha usaba la forma LINEAL (`0.7·Fc + 0.3`) para replicar la app original de Power Apps (ya retirada del repo);

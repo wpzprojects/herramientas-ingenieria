@@ -18,6 +18,7 @@ import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas, res
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
 import { curvaCargaSvg } from "../util/graficos.js";
+import { activarReportes } from "../util/reportes.js";
 import { revelar } from "../util/revelar.js";
 import { guardarEstado, leerEstado } from "../util/persistencia-calculo.js";
 import { aplicarDefectos } from "../util/valores-defecto.js";
@@ -105,6 +106,16 @@ const MODOS = {
   potencia: "Potencia activa",
   aparente: "Potencia aparente",
   corriente: "Corriente",
+};
+
+// Valor por defecto de un desplegable (pedido del usuario, 2026-09-26: poder calcular de una sin elegir nada). Si la opción
+// no existe no hace nada; sin valor toma la primera opción real. Dispara «change» para que la cascada se complete.
+const porDefecto = (sel, v) => {
+  const valor = v ?? [...sel.options].find((o) => o.value)?.value;
+  if (valor && [...sel.options].some((o) => o.value === valor)) {
+    sel.value = valor;
+    sel.dispatchEvent(new Event("change"));
+  }
 };
 
 export async function render(container) {
@@ -337,6 +348,12 @@ export async function render(container) {
       if (!chkResistencia.checked) syncResistencia();
     });
     poblarMaterial();
+    // Conductor por defecto: AAAC 246.9 con su primera referencia (se puede calcular de una)
+    if (selRed.value === "Aerea") {
+      porDefecto(selMaterial, "AAAC");
+      porDefecto(selCalibre, "246.9");
+      porDefecto(selReferencia);
+    }
 
     return {
       card,
@@ -592,6 +609,42 @@ export async function render(container) {
     ].join("\n");
   }
 
+  /**
+   * Memoria de cálculo (pestaña Reportes → LaTeX, PDF y Word): cada paso con la fórmula, los valores reemplazados y el
+   * resultado, con las MISMAS fórmulas del motor (js/calc/perdidas.js). `tex` para KaTeX y `texto` para Word.
+   */
+  function memoriaPerdidas(r, base, estados, dato) {
+    const n = (v, d = 4) => String(Number(Number(v).toFixed(d)));
+    const P = base.potenciaActivaMw, V = base.tensionLineaKv, fp = base.factorPotencia, Fc = base.factorCarga, Fp = r.factorPerdidas, I = r.corriente;
+    const pasos = [];
+    if (dato.modo === "aparente") {
+      pasos.push({ titulo: "Potencia activa", tex: `P = S \cos\varphi = ${n(dato.datoPartida)} \cdot ${n(fp)} = ${n(P, 3)}\ \text{MW}`, texto: `P = S·cos φ = ${n(dato.datoPartida)}·${n(fp)} = ${n(P, 3)} MW` });
+    } else if (dato.modo === "corriente") {
+      pasos.push({ titulo: "Potencia activa", tex: `P = \frac{\sqrt{3}\, V\, I \cos\varphi}{1000} = \frac{\sqrt{3} \cdot ${n(V)} \cdot ${n(dato.datoPartida)} \cdot ${n(fp)}}{1000} = ${n(P, 3)}\ \text{MW}`, texto: `P = √3·V·I·cos φ / 1000 = √3·${n(V)}·${n(dato.datoPartida)}·${n(fp)} / 1000 = ${n(P, 3)} MW` });
+    }
+    pasos.push({ titulo: "Corriente", tex: `I = \frac{P \cdot 1000}{\sqrt{3}\, V \cos\varphi} = \frac{${n(P)} \cdot 1000}{\sqrt{3} \cdot ${n(V)} \cdot ${n(fp)}} = ${n(I, 2)}\ \text{A}`, texto: `I = P·1000 / (√3·V·cos φ) = ${n(P)}·1000 / (√3·${n(V)}·${n(fp)}) = ${n(I, 2)} A` });
+    pasos.push({ titulo: "Potencia aparente y reactiva", tex: `S = \frac{P}{\cos\varphi} = \frac{${n(P)}}{${n(fp)}} = ${n(r.potenciaS, 3)}\ \text{MVA} \qquad Q = \sqrt{S^2 - P^2} = ${n(r.potenciaQ, 3)}\ \text{MVAR}`, texto: `S = P / cos φ = ${n(P)} / ${n(fp)} = ${n(r.potenciaS, 3)} MVA;  Q = √(S² − P²) = ${n(r.potenciaQ, 3)} MVAR` });
+    pasos.push({ titulo: "Factor de pérdidas (Buller-Woodrow)", tex: `F_p = 0.3\,F_c + 0.7\,F_c^2 = 0.3 \cdot ${n(Fc)} + 0.7 \cdot ${n(Fc)}^2 = ${n(Fp)}`, texto: `Fp = 0.3·Fc + 0.7·Fc² = 0.3·${n(Fc)} + 0.7·${n(Fc)}² = ${n(Fp)}` });
+    const varios = r.tramos.length > 1;
+    r.tramos.forEach((t, i) => {
+      const e = estados[i];
+      const N = e.numConductoresPorFase ?? 1;
+      const pre = varios ? `Tramo ${i + 1} · ` : "";
+      const sub = varios ? `_{${i + 1}}` : "";
+      if (N > 1) pasos.push({ titulo: `${pre}Resistencia efectiva`, tex: `R_{ef}${sub} = \frac{R}{N} = \frac{${n(e.resistenciaOhmKm)}}{${N}} = ${n(t.resistenciaEfectivaOhmKm)}\ \Omega/\text{km}`, texto: `Ref = R / N = ${n(e.resistenciaOhmKm)} / ${N} = ${n(t.resistenciaEfectivaOhmKm)} Ω/km` });
+      pasos.push({
+        titulo: `${pre}Porcentaje de pérdidas`,
+        tex: `\%P${sub} = \frac{\sqrt{3}\, I\, R_{ef}\, L\, F_p \cdot 100}{V \cdot 1000 \cos\varphi} = \frac{\sqrt{3} \cdot ${n(I, 2)} \cdot ${n(t.resistenciaEfectivaOhmKm)} \cdot ${n(e.longitudKm)} \cdot ${n(Fp)} \cdot 100}{${n(V)} \cdot 1000 \cdot ${n(fp)}} = ${n(t.perdidasPct, 3)}\,\%`,
+        texto: `%P = √3·I·Ref·L·Fp·100 / (V·1000·cos φ) = √3·${n(I, 2)}·${n(t.resistenciaEfectivaOhmKm)}·${n(e.longitudKm)}·${n(Fp)}·100 / (${n(V)}·1000·${n(fp)}) = ${n(t.perdidasPct, 3)} %`,
+      });
+      pasos.push({ titulo: `${pre}Pérdidas por efecto Joule`, tex: `P_p${sub} = \frac{\%P${sub}}{100}\, P = \frac{${n(t.perdidasPct, 3)}}{100} \cdot ${n(P)} = ${n(t.perdidasMw, 4)}\ \text{MW}`, texto: `Pp = %P/100 · P = ${n(t.perdidasPct, 3)}/100 · ${n(P)} = ${n(t.perdidasMw, 4)} MW` });
+    });
+    if (varios) {
+      pasos.push({ titulo: "Total del circuito", tex: `\%P = ${r.tramos.map((t) => n(t.perdidasPct, 3)).join(" + ")} = ${n(r.perdidasPct, 3)}\,\% \qquad P_p = ${n(r.perdidasMw, 4)}\ \text{MW}`, texto: `%P = ${r.tramos.map((t) => n(t.perdidasPct, 3)).join(" + ")} = ${n(r.perdidasPct, 3)} %;  Pp = ${n(r.perdidasMw, 4)} MW` });
+    }
+    return pasos;
+  }
+
   function renderResultado(r, base, estados, dato) {
     const wrap = container.querySelector("#resultado-wrap");
     const clase = Number.isFinite(r.perdidasPct) ? clasificarPerdidas(r.perdidasPct) : null; // sin etiqueta si los datos no dan un numero
@@ -642,13 +695,21 @@ export async function render(container) {
             ${varios ? tablaTramosHtml(r, estados) : comparacionCalibresHtml(base, estados[0])}
           </div>`;
 
+    const textoReporte = reporteTexto(r, base, estados, dato);
     wrap.innerHTML = tarjetaResultadosHtml({
       resultado,
-      reporte: reporteHtml(reporteTexto(r, base, estados, dato), ETIQUETAS_REPORTE),
+      conDocumentos: true,
+      reporte: reporteHtml(textoReporte, ETIQUETAS_REPORTE),
       formulasPlano: FORMULAS_TEXTO,
       graficos: conGraficos ? pestanaGraficosHtml([{ titulo: "Pérdidas frente a la carga", graficos }]) : "",
     });
     activarPestanas(wrap, { grupos: FORMULAS_TEX, etiquetas: FORMULAS_ETIQUETAS, nota: FORMULAS_NOTA });
+    activarReportes(wrap, {
+      titulo: "Cálculo de pérdidas",
+      texto: textoReporte,
+      pasos: memoriaPerdidas(r, base, estados, dato),
+      graficos: graficos.map((g) => ({ titulo: "Pérdidas frente a la carga", svg: g.svg })),
+    });
 
     wrap.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }

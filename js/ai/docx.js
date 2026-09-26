@@ -13,7 +13,7 @@ import { escenariosHtml, fichaHtml, AVISO_REPORTE } from "./reporte.js";
 export const MIME_DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 const ANCHO_TEXTO = 9972; // twips: Carta (12240) menos 2 x 2 cm (1134)
-const NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
+const NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"';
 
 const esc = (s) =>
   String(s)
@@ -27,6 +27,7 @@ const esc = (s) =>
 function rPr(f = {}) {
   let x = "";
   if (f.code) x += '<w:rFonts w:ascii="Consolas" w:hAnsi="Consolas" w:cs="Consolas"/>';
+  if (f.math) x += '<w:rFonts w:ascii="Cambria Math" w:hAnsi="Cambria Math" w:cs="Cambria Math"/>';
   if (f.b) x += "<w:b/>";
   if (f.i) x += "<w:i/>";
   if (f.color) x += `<w:color w:val="${f.color}"/>`;
@@ -143,6 +144,35 @@ function tabla(nodo, ctx) {
   return x + "</w:tbl>" + parrafo("", { antes: 0, despues: 60 }); // Word exige un parrafo despues de una tabla
 }
 
+// ---------------------------------------------------------------- imágenes (PNG en data URL; 2026-09-26, gráficos de los reportes)
+
+/** <img src="data:image/png;base64,…" data-ancho data-alto> → dibujo en línea de Word, ajustado al ancho de la página. */
+function imagen(n, ctx) {
+  const src = n.getAttribute("src") || "";
+  const m = src.match(/^data:image\/png;base64,(.+)$/);
+  if (!m) return "";
+  const bin = atob(m[1]);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  ctx.imagenes = ctx.imagenes || [];
+  const k = ctx.imagenes.length + 1;
+  const id = `rIdImg${k}`;
+  ctx.imagenes.push({ id, nombre: `media/imagen${k}.png`, bytes });
+  const anchoPx = Number(n.dataset.ancho) || 600, altoPx = Number(n.dataset.alto) || 400;
+  const maxEmu = (ctx.ancho || ANCHO_TEXTO) * 635 * 0.85; // twips → EMU, con un margen
+  const escala = Math.min(1, maxEmu / (anchoPx * 9525));
+  const cx = Math.round(anchoPx * 9525 * escala), cy = Math.round(altoPx * 9525 * escala);
+  return (
+    `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="120" w:after="120"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0">` +
+    `<wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="${k}" name="Imagen ${k}"/>` +
+    `<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic>` +
+    `<pic:nvPicPr><pic:cNvPr id="${k}" name="imagen${k}.png"/><pic:cNvPicPr/></pic:nvPicPr>` +
+    `<pic:blipFill><a:blip r:embed="${id}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>` +
+    `<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>` +
+    `</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`
+  );
+}
+
 // ---------------------------------------------------------------- bloques
 
 function lista(nodo, nivel, ctx, caja) {
@@ -172,6 +202,8 @@ function bloques(nodos, mapa, ctx) {
     if (/^H[1-6]$/.test(t)) {
       const estilo = typeof mapa[t] === "function" ? mapa[t](n) : mapa[t] || "Heading3";
       x += parrafo(enLinea(n.childNodes), { estilo, caja });
+    } else if (t === "P" && n.classList.contains("ecuacion")) {
+      x += parrafo(enLinea(n.childNodes, { math: true }), { antes: 40, despues: 80 });
     } else if (t === "P") {
       const comun = n.classList.contains("comunes");
       x += parrafo(enLinea(n.childNodes, comun ? { sz: 17, color: "555555" } : {}), { caja, despues: comun ? 60 : null });
@@ -182,6 +214,7 @@ function bloques(nodos, mapa, ctx) {
       x += parrafo("", { antes: 0, despues: 60 });
     } else if (t === "HR") x += parrafo("", { bordeAbajo: 4, despues: 120 });
     else if (t === "TABLE") x += tabla(n, ctx);
+    else if (t === "IMG") x += imagen(n, ctx);
     else x += bloques(n.childNodes, mapa, ctx); // div, section, .table-wrap…
   }
   return x;
@@ -242,7 +275,7 @@ const pie = (titulo = "Reporte de escenarios", ancho = ANCHO_TEXTO) =>
 
 const TIPOS =
   '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
-  '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>' +
+  '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/>' +
   '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
   '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>' +
   '<Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/>' +
@@ -312,7 +345,8 @@ function empaquetar(cuerpo, ctx, { titulo, apaisado = false }) {
     { nombre: "_rels/.rels", contenido: REL_PAQUETE },
     { nombre: "docProps/core.xml", contenido: nucleo(new Date(), titulo) },
     { nombre: "word/document.xml", contenido: documento },
-    { nombre: "word/_rels/document.xml.rels", contenido: REL_DOCUMENTO },
+    { nombre: "word/_rels/document.xml.rels", contenido: (ctx.imagenes || []).length ? REL_DOCUMENTO.replace("</Relationships>", ctx.imagenes.map((im) => `<Relationship Id="${im.id}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="${im.nombre}"/>`).join("") + "</Relationships>") : REL_DOCUMENTO },
+    ...(ctx.imagenes || []).map((im) => ({ nombre: `word/${im.nombre}`, contenido: im.bytes })),
     { nombre: "word/styles.xml", contenido: ESTILOS },
     { nombre: "word/numbering.xml", contenido: numeracion(ctx.ordenadas) },
     { nombre: "word/footer1.xml", contenido: pie(titulo, ctx.ancho || ANCHO_TEXTO) },
@@ -339,6 +373,8 @@ export function crearDocxDocumento(doc, { titulo, apaisado = false }) {
       if (meta) cuerpo += parrafo(run(meta.textContent.trim(), { sz: 18, color: "555555" }), { bordeAbajo: 12, despues: 240 });
     } else if (n.classList.contains("vi-doc-conclusion")) {
       cuerpo += parrafo(enLinea(n.childNodes), { caja: true, despues: 200 });
+    } else if (n.tagName === "P" && n.classList.contains("ecuacion")) {
+      cuerpo += parrafo(enLinea(n.childNodes, { math: true }), { antes: 40, despues: 80 });
     } else if (n.tagName === "P") {
       cuerpo += parrafo(enLinea(n.childNodes, { sz: 18, color: "555555" }), { antes: 120 });
     } else {

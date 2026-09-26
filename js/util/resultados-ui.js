@@ -3,6 +3,7 @@
 
 import { escapeHtml } from "./format.js";
 import { cargarKatex, ecuacionHtml } from "./katex.js";
+import { selectorReportesHtml } from "./reportes.js";
 
 /** Linea divisoria del reporte de texto: corta (30 caracteres) para que no se parta en pantallas angostas. */
 export const LINEA_REPORTE = "-".repeat(30);
@@ -21,24 +22,24 @@ export function reporteHtml(texto, etiquetas) {
  * @param {string} o.reporte - HTML del reporte (ver reporteHtml)
  * @param {string} o.formulasPlano - texto plano de respaldo de las fórmulas (se ve mientras carga KaTeX o si no carga)
  */
-export function tarjetaResultadosHtml({ resultado, reporte, formulasPlano, graficos = "" }) {
+export function tarjetaResultadosHtml({ resultado, reporte, formulasPlano, graficos = "", conDocumentos = false }) {
+  // Orden (2026-09-26, pedido del usuario): Resultado · Fórmulas · Gráficos · Reportes. «Reportes» (antes «Reporte») trae
+  // un selector de tipo cuando la calculadora arma documentos (ver js/util/reportes.js).
   return `
       <div class="card tarjeta-borde">
         <div class="tabs">
           <button type="button" class="tab-btn active" data-tab="resultado">Resultado</button>
-          <button type="button" class="tab-btn" data-tab="reporte">Reporte</button>
           <button type="button" class="tab-btn" data-tab="formulas">Fórmulas</button>
           ${graficos ? `<button type="button" class="tab-btn" data-tab="graficos">Gráficos</button>` : ""}
+          <button type="button" class="tab-btn" data-tab="reporte">Reportes</button>
         </div>
         <div class="tab-panel" data-panel="resultado">${resultado}</div>
-        <div class="tab-panel" data-panel="reporte" hidden>
-          <div class="report-block">${reporte}</div>
-        </div>
         <div class="tab-panel" data-panel="formulas" hidden>
           <div id="formulas-katex" class="formula-caja" hidden></div>
           <div class="formula-block" id="formulas-plano">${escapeHtml(formulasPlano)}</div>
         </div>
         ${graficos ? `<div class="tab-panel" data-panel="graficos" hidden>${graficos}</div>` : ""}
+        <div class="tab-panel" data-panel="reporte" hidden>${selectorReportesHtml(reporte, conDocumentos)}</div>
       </div>`;
 }
 

@@ -77,6 +77,16 @@ const ETIQUETAS_REPORTE = ["CÁLCULO DE CORTOCIRCUITO", "PARÁMETROS DE ENTRADA:
 const INFO_REFERENCIA =
   "Un mismo calibre puede tener varias construcciones (número de hilos, diámetro) con área ligeramente distinta. Solo aplica a conductores aéreos: en subterráneo (XLPE) no hay varias referencias por calibre.";
 
+// Valor por defecto de un desplegable (pedido del usuario, 2026-09-26: poder calcular de una sin elegir nada). Si la opción
+// no existe no hace nada; sin valor toma la primera opción real. Dispara «change» para que la cascada se complete.
+const porDefecto = (sel, v) => {
+  const valor = v ?? [...sel.options].find((o) => o.value)?.value;
+  if (valor && [...sel.options].some((o) => o.value === valor)) {
+    sel.value = valor;
+    sel.dispatchEvent(new Event("change"));
+  }
+};
+
 export async function render(container) {
   const desnudos = await loadData("conductores-desnudos");
   const xlpe = await loadData("conductores-xlpe");
@@ -283,6 +293,12 @@ export async function render(container) {
   // inicializacion
   poblarMaterial();
   fTop.value = defaultTop();
+  // Conductor por defecto: AAAC 246.9 con su primera referencia (se puede calcular de una)
+  if (selRed.value === "Aereo") {
+    porDefecto(selMaterial, "AAAC");
+    porDefecto(selCalibre, "246.9");
+    porDefecto(selReferencia);
+  }
 
   // ---------- restaurar lo que habia si se volvio de otra seccion (no sobrevive a un recargue) ----------
   const guardado = leerEstado(RUTA);

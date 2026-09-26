@@ -103,6 +103,16 @@ function dedupeOrdered(rows, key) {
 
 const opciones = (valores, etiqueta = (v) => v) => valores.map((v) => `<option value="${escapeHtml(v)}">${escapeHtml(etiqueta(v))}</option>`).join("");
 
+// Valor por defecto de un desplegable (pedido del usuario, 2026-09-26: poder calcular de una sin elegir nada). Si la opción
+// no existe no hace nada; sin valor toma la primera opción real. Dispara «change» para que la cascada se complete.
+const porDefecto = (sel, v) => {
+  const valor = v ?? [...sel.options].find((o) => o.value)?.value;
+  if (valor && [...sel.options].some((o) => o.value === valor)) {
+    sel.value = valor;
+    sel.dispatchEvent(new Event("change"));
+  }
+};
+
 export async function render(container) {
   const tuberias = await loadData("tuberias");
   const xlpe = await loadData("conductores-xlpe");
@@ -388,6 +398,10 @@ export async function render(container) {
   agregarGrupo();
 
   // ---------- restaurar lo que habia si se volvio de otra seccion (no sobrevive a un recargue) ----------
+  // Tubería por defecto: PVC tipo TDP de 4" (se puede calcular de una)
+  porDefecto(selTipo, "PVC Tipo TDP");
+  porDefecto(selNominal, '4"');
+
   const guardado = leerEstado(RUTA);
   if (guardado) {
     selTipo.value = guardado.tipo;

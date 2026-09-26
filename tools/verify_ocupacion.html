@@ -151,6 +151,8 @@ await seccion("vista: tarjetas de tubería y conductores", async () => {
 });
 
 await seccion("vista: tubería (catálogo y manual)", async () => {
+  ok($("#f-tipo").value === "PVC Tipo TDP" && $("#f-nominal").value === '4"' && $("#f-interno").disabled && parseFloat($("#f-interno").value) > 0, `por defecto: PVC tipo TDP de 4" con su diámetro interno del catálogo (${$("#f-interno").value} mm), para calcular de una`);
+  elegir("#f-tipo", "");
   ok($("#f-interno").disabled && $("#f-interno").value === "", "el diámetro interno está bloqueado y vacío mientras no se elija tubería");
   elegir("#f-tipo", TIPO);
   ok(!$("#f-nominal").disabled, "al elegir el tipo se habilita el diámetro nominal");

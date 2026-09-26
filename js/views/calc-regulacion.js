@@ -123,6 +123,16 @@ const MODOS = {
   corriente: "Corriente",
 };
 
+// Valor por defecto de un desplegable (pedido del usuario, 2026-09-26: poder calcular de una sin elegir nada). Si la opción
+// no existe no hace nada; sin valor toma la primera opción real. Dispara «change» para que la cascada se complete.
+const porDefecto = (sel, v) => {
+  const valor = v ?? [...sel.options].find((o) => o.value)?.value;
+  if (valor && [...sel.options].some((o) => o.value === valor)) {
+    sel.value = valor;
+    sel.dispatchEvent(new Event("change"));
+  }
+};
+
 export async function render(container) {
   const desnudos = await loadData("conductores-desnudos");
   const xlpe = await loadData("conductores-xlpe");
@@ -392,6 +402,12 @@ export async function render(container) {
       fSepHaz.required = n > 1;
     });
     poblarMaterial();
+    // Conductor por defecto: AAAC 246.9 con su primera referencia (se puede calcular de una)
+    if (selRed.value === "Aerea") {
+      porDefecto(selMaterial, "AAAC");
+      porDefecto(selCalibre, "246.9");
+      porDefecto(selReferencia);
+    }
 
     return {
       card,

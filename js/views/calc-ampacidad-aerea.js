@@ -159,6 +159,16 @@ const INFO_HORA_SOLAR = "12 es el mediodía solar (el sol en su punto más alto)
 const INFO_ATMOSFERA = "Clara: cielo limpio (valor más alto, conservador). Industrial: aire con contaminación o bruma, que atenúa la radiación. En ambos casos sin nubes.";
 const LATITUD_INICIAL = 4.6;
 
+// Valor por defecto de un desplegable (pedido del usuario, 2026-09-26: poder calcular de una sin elegir nada). Si la opción
+// no existe no hace nada; sin valor toma la primera opción real. Dispara «change» para que la cascada se complete.
+const porDefecto = (sel, v) => {
+  const valor = v ?? [...sel.options].find((o) => o.value)?.value;
+  if (valor && [...sel.options].some((o) => o.value === valor)) {
+    sel.value = valor;
+    sel.dispatchEvent(new Event("change"));
+  }
+};
+
 export async function render(container) {
   const conductores = await loadData("conductores-desnudos");
   const tipos = distinct(conductores, "tipo");
@@ -493,6 +503,11 @@ export async function render(container) {
       conductores.find((c) => c.tipo === tipo && c.calibre_awg_kcmil === calibre && c.nombre_clave === nombre) || null;
     syncDefaults();
   });
+
+  // Conductor por defecto: AAAC 246.9 con su primera referencia (se puede calcular de una)
+  porDefecto(selTipo, "AAAC");
+  porDefecto(selCalibre, "246.9");
+  porDefecto(selReferencia);
 
   // ---------- restaurar lo que habia si se volvio de otra seccion (no sobrevive a un recargue) ----------
   const guardado = leerEstado(RUTA);

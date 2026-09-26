@@ -202,7 +202,8 @@ export function curvaCargaSvg({ pct, carga, unidad, nombreEje, optimo, aceptable
   s += texto(m.l + pw / 2, H - 12, `${nombreEje} (${unidad})`, { ancla: "middle", tam: 12.5 });
   // nombres de las zonas a la DERECHA (a la izquierda chocan con la etiqueta del punto de hoy)
   const zx = m.l + pw - 6;
-  s += texto(zx, Y(ymax) + 15, "Elevado", { color: "var(--danger)", tam: 11.5, ancla: "end" }) + texto(zx, Y(aceptable) + 15, "Aceptable", { color: "var(--warning)", tam: 11.5, ancla: "end" }) + texto(zx, Y(optimo) + 15, "Óptimo", { color: "var(--success)", tam: 11.5, ancla: "end" });
+  // en el borde INFERIOR de cada franja: así no chocan con la etiqueta del límite, que va bajo la línea del 3 %
+  s += texto(zx, Y(aceptable) - 6, "Elevado", { color: "var(--danger)", tam: 11.5, ancla: "end" }) + texto(zx, Y(optimo) - 6, "Aceptable", { color: "var(--warning)", tam: 11.5, ancla: "end" }) + texto(zx, Y(0) - 6, "Óptimo", { color: "var(--success)", tam: 11.5, ancla: "end" });
   if (!(pct > 0 && carga > 0)) return envolver(W, H, "Pérdidas frente a la carga", s);
   const xFin = Math.min(xmax, (ymax * carga) / pct);
   const largo = Math.hypot(X(xFin) - X(0), Y(0) - Y((pct * xFin) / carga));

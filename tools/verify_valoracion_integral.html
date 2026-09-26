@@ -652,7 +652,7 @@ await seccion("vista: pestaña Análisis (margen y capacidad máxima)", async ()
   const tab = $('#resultado-wrap .tab-btn[data-tab="analisis"]');
   ok(tab && tab.textContent === "Análisis" && !$('#resultado-wrap .tab-btn[data-tab="formulas"]'), "hay una pestaña «Análisis» (ya no «Fórmulas»)");
   const orden = $$("#resultado-wrap .tabs .tab-btn").map((b) => b.textContent);
-  ok(orden.join(",") === "Resultado,Análisis,Reporte", `«Análisis» es la segunda pestaña (${orden.join(" · ")})`);
+  ok(orden.join(",") === "Resultado,Análisis,Reportes", `«Análisis» es la segunda pestaña (${orden.join(" · ")})`);
   tab.click();
   const panel = $('#resultado-wrap .tab-panel[data-panel="analisis"]');
   ok(!panel.hidden, "se abre al pulsarla");

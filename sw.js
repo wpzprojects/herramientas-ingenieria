@@ -4,7 +4,7 @@
 // para lo que no estuviera precacheado.
 
 // Versión de la app (x.y.z; ver js/util/novedades.js): cada publicación la sube, y con ella se renueva la cache.
-const CACHE_VERSION = "3.39.0";
+const CACHE_VERSION = "3.40.0";
 const CACHE_NAME = `herramientas-ingenieria-${CACHE_VERSION}`;
 
 const SCOPE = self.registration.scope;
@@ -35,6 +35,7 @@ const APP_SHELL = [
   "js/util/tarjetas-plegables.js",
   "js/util/revelar.js",
   "js/util/zoom-imagen.js",
+  "js/util/reportes.js",
   "js/util/persistencia-calculo.js",
   "js/util/valores-defecto.js",
   "js/util/perfil-aplicacion.js",
