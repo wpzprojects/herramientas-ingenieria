@@ -996,7 +996,11 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 /* Evaluación económica: un bloque de costos por tramo, con su título «Alternativa N · Tramo M» */
 .vi-costos-titulo { margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--border); }
 .vi-costo-titulo { font-size: 0.85rem; font-weight: 600; color: var(--accent); margin: var(--space-2) 0 var(--space-2); }
-.vi-costo-tramo + .vi-costo-tramo { margin-top: var(--space-2); }
+.vi-costo-tramo + .vi-costo-tramo { margin-top: var(--space-3); }
+.vi-costo-titulo { margin-bottom: 0; }
+.vi-costo-detalle { font-size: 0.82rem; color: var(--text-muted); margin: 2px 0 var(--space-2); }
+/* «Agregar alternativa»: debajo de la última alternativa, a la izquierda */
+.vi-fila-agregar { display: flex; justify-content: flex-start; margin-top: var(--space-4); }
 .vi-agregar-tramo { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; font-size: 0.88rem; text-decoration: none; font-weight: 600; }
 .vi-agregar-tramo .icon { width: 16px; height: 16px; }
 .vi-detalle-tramos { margin-top: var(--space-4); }

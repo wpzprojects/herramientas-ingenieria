@@ -225,6 +225,8 @@ export async function render(container) {
 
       <div id="tramos-container"></div>
 
+      <div class="vi-fila-agregar"></div>
+
       <div class="card tarjeta-borde form-section vi-economia" style="margin-top: var(--space-4);">
         <div class="form-section-title">${icon("coin")} Evaluación económica (opcional)</div>
         <div class="grid-2">
@@ -359,16 +361,16 @@ export async function render(container) {
         <div class="vi-avanzado-grupo vi-tramo-avz-titulo">Disposición del conductor</div>
         <div class="vi-solo-aerea">
           <div class="grid-2">
-            <div class="field">
-              <label for="f-sephaz-${id}" data-info="Solo aplica con más de un conductor por fase.">Separación entre subconductores del haz (m)</label>
+            <div class="field" hidden>
+              <label for="f-sephaz-${id}" data-info="Distancia entre los conductores de una misma fase (haz). Aparece solo con más de un conductor por fase.">Separación entre subconductores del haz (m)</label>
               <input type="number" id="f-sephaz-${id}" min="0.01" max="5" step="0.01" value="0.4" disabled>
             </div>
+          </div>
+          <div class="grid-3">
             <div class="field">
               <label for="f-dab-${id}" data-info="Las tres distancias vienen con los valores iniciales de la calculadora de Regulación; ajústalas a la estructura del tramo.">Distancia entre fases A-B (m)</label>
               <input type="number" id="f-dab-${id}" min="0.01" step="0.01" value="2" required>
             </div>
-          </div>
-          <div class="grid-2">
             <div class="field">
               <label for="f-dac-${id}">Distancia entre fases A-C (m)</label>
               <input type="number" id="f-dac-${id}" min="0.01" step="0.01" value="2.84" required>
@@ -421,6 +423,7 @@ export async function render(container) {
       </div>
       <div class="vi-costo-tramo">
         <div class="vi-costo-titulo">Alternativa 1</div>
+        <div class="vi-costo-detalle"></div>
         <div class="grid-2">
           <div class="field">
             <label for="f-costo-cond-${id}" data-info="Precio de un solo conductor por km; se multiplica por las 3 fases, los conductores por fase y la longitud del tramo. Si falta en algún tramo, la alternativa no entra en la comparación de costos.">Costo del conductor ($/km)</label>
@@ -444,6 +447,7 @@ export async function render(container) {
     const titulo = bloque.querySelector(".vi-tramo-titulo");
     const tituloAvz = avanzado.querySelector(".vi-tramo-avz-titulo");
     const tituloCosto = filaCosto.querySelector(".vi-costo-titulo");
+    const detalleCosto = filaCosto.querySelector(".vi-costo-detalle");
     let numero = 1;
     let alternativa = 1;
     let variosTramos = false;
@@ -460,7 +464,14 @@ export async function render(container) {
       const red = nombreRed(f.red.value);
       titulo.textContent = `Tramo ${numero} · ${red}`;
       tituloAvz.textContent = variosTramos ? `Tramo ${numero} · ${red}: disposición del conductor` : `Disposición del conductor (${red.toLowerCase()})`;
-      tituloCosto.textContent = variosTramos ? `Alternativa ${alternativa} · Tramo ${numero} (${red.toLowerCase()})` : `Alternativa ${alternativa}`;
+      tituloCosto.textContent = variosTramos ? `Alternativa ${alternativa} · Tramo ${numero}` : `Alternativa ${alternativa}`;
+      // Qué conductor es, para no tener que subir a buscarlo: red · conductor · tensión · conductores por fase · longitud
+      const nn = parseInt(f.n.value, 10) || 1;
+      const conductor = f.calibre.value ? `${f.material.value} ${f.calibre.value}${esAerea() && f.referencia.value ? ` · ${f.referencia.value}` : ""}` : "conductor sin elegir";
+      const porFase = `${nn} ${esAerea() ? (nn > 1 ? "conductores" : "conductor") : nn > 1 ? "circuitos" : "circuito"} por fase`;
+      const kv = tensionKv();
+      const longitud = parseFloat(f.longitud.value);
+      detalleCosto.textContent = [red, conductor, kv > 0 ? `${fmt(kv, 1)} kV` : null, porFase, longitud > 0 ? `${fmt(longitud)} km` : null].filter(Boolean).join(" · ");
     }
 
     function poblarMaterial() {
@@ -515,20 +526,25 @@ export async function render(container) {
       if (esAerea()) {
         f.sephaz.disabled = nn <= 1;
         f.sephaz.required = nn > 1;
+        f.sephaz.closest(".field").hidden = nn <= 1;
+        f.sephaz.closest(".grid-2").hidden = nn <= 1;
         f.n.setCustomValidity("");
       } else {
         const total = nn + (parseInt(f.otros.value, 10) || 0);
         f.sepductos.disabled = total <= 1;
         f.sepductos.required = total > 1;
+        f.sepductos.closest(".field").hidden = total <= 1;
         f.n.setCustomValidity(total > MAX_CIRCUITOS_BANCO ? `El banco de ductos admite hasta ${MAX_CIRCUITOS_BANCO} circuitos en total (conductores por fase + otros circuitos).` : "");
       }
     }
 
     f.material.addEventListener("change", poblarCalibre);
+    // el título de los costos se actualiza con cada dato del conductor
     f.calibre.addEventListener("change", () => {
       poblarReferencia();
       poblarPct();
     });
+    for (const k of ["material", "calibre", "referencia", "n", "longitud"]) f[k].addEventListener(k === "n" || k === "longitud" ? "input" : "change", () => ponerTitulos());
     f.pantalla.addEventListener("change", poblarPct);
     f.n.addEventListener("input", syncDependientes);
     f.otros.addEventListener("input", syncDependientes);
@@ -551,7 +567,10 @@ export async function render(container) {
         bloque.querySelector(".vi-tramo-cab").hidden = !varios;
       },
       alCambiarRed: poblarMaterial,
-      alCambiarTension: poblarPct,
+      alCambiarTension: () => {
+        poblarPct();
+        ponerTitulos();
+      },
       esSubterraneo: () => !esAerea(),
       /** Datos del tramo para el motor (con `error` si el conductor no se pudo resolver en los catálogos). */
       estado() {
@@ -611,6 +630,7 @@ export async function render(container) {
         poblarPct();
         f.pct.value = d.pct;
         syncDependientes();
+        ponerTitulos();
       },
     };
   }
@@ -764,15 +784,13 @@ export async function render(container) {
     for (const e of escenarios) for (const t of e.tramos) costosCont.append(t.filaCosto);
   }
 
-  // «Agregar alternativa» va en la fila de «Calcular», justificado a la derecha (fuera de las tarjetas, siempre a la vista)
+  // «Agregar alternativa» va justo debajo de la última alternativa, a la izquierda, antes de la evaluación económica
   const botonAgregar = document.createElement("button");
   botonAgregar.type = "button";
   botonAgregar.className = "btn btn-agregar-tramo";
   botonAgregar.innerHTML = `${icon("plus")} Agregar alternativa`;
   botonAgregar.addEventListener("click", () => agregarEscenario());
-  const filaCalcular = q("#form-calc .btn-row");
-  filaCalcular.classList.add("btn-row--agregar");
-  filaCalcular.append(botonAgregar);
+  q(".vi-fila-agregar").append(botonAgregar);
 
   function actualizarEscenarios() {
     escenarios.forEach((e, i) => {

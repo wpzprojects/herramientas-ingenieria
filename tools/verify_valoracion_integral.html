@@ -273,12 +273,15 @@ await seccion("vista: tarjetas y alternativas", async () => {
   const titulos = $$(".form-section-title").map((t) => t.textContent.replace(/\s+/g, " ").trim());
   ok(titulos[0].startsWith("Datos de la conexión") && titulos[1].startsWith("Alternativa 1") && titulos.at(-1).startsWith("Evaluación económica (opcional)"), `tarjetas: ${titulos.join(" | ")}`);
   ok($(".vi-economia").classList.contains("plegada"), "«Evaluación económica (opcional)» va al final y nace plegada");
-  ok($(".vi-economia").nextElementSibling.classList.contains("btn-row"), "…justo antes de los botones Calcular y Agregar alternativa");
+  ok($(".vi-economia").nextElementSibling.classList.contains("btn-row") && !$(".vi-economia").nextElementSibling.querySelector(".btn-agregar-tramo"), "…justo antes del botón Calcular");
+  const filaAgregar = $(".vi-economia").previousElementSibling;
+  ok(filaAgregar.classList.contains("vi-fila-agregar") && filaAgregar.querySelector(".btn-agregar-tramo") && getComputedStyle(filaAgregar).justifyContent === "flex-start", "«Agregar alternativa» va antes de la evaluación económica, a la izquierda");
   ok($$("details.vi-avanzado > summary").every((s) => s.textContent === "Parámetros avanzados"), "los desplegables dicen solo «Parámetros avanzados»");
   const avzAlt = $(".vi-escenario details.vi-avanzado");
   ok(avzAlt.querySelector("[id^=f-falla-]") && avzAlt.querySelector("[id^=f-tiempo-]"), "la corriente de falla y el tiempo de despeje van en «Parámetros avanzados» de la alternativa");
   ok($(".vi-economia [id^=f-costo-cond-]") && $(".vi-economia [id^=f-costo-inst-]") && !$(".vi-escenario [id^=f-costo-cond-]"), "los costos de cada tramo van en la tarjeta económica, no en la alternativa");
   ok($(".vi-economia .vi-costo-titulo").textContent === "Alternativa 1", "cada bloque de costos dice a qué alternativa pertenece");
+  ok(/^Aérea · .* · 34\.5 kV · 1 conductor por fase · 5\.00 km$/.test($(".vi-economia .vi-costo-detalle").textContent), `…y qué conductor lleva («${$(".vi-economia .vi-costo-detalle").textContent}»)`);
   ok($$(".tramo-block").length === 1 && $(".btn-tramo-quitar").hidden, "arranca con UNA alternativa, sin «Quitar»");
   const agregar = $(".btn-agregar-tramo");
   ok(agregar && agregar.textContent.includes("Agregar alternativa") && !agregar.hidden, "botón «Agregar alternativa» en la fila de Calcular");
@@ -295,9 +298,9 @@ await seccion("vista: campos del escenario según la red", async () => {
   const id = $(".tramo-block [id^=f-tension-]").id.split("-").pop();
   const g = (k) => $(T(k, id));
   ok(g("red").value === "Aerea" && !$(".vi-solo-aerea").hidden && $(".vi-solo-subt").hidden, "aérea: se ven las distancias entre fases, no los datos del cable subterráneo");
-  ok(g("sephaz").disabled, "separación del haz deshabilitada con 1 conductor por fase");
+  ok(g("sephaz").disabled && g("sephaz").closest(".field").hidden, "separación del haz oculta con 1 conductor por fase");
   poner(T("n", id), "2", "input");
-  ok(!g("sephaz").disabled && g("sephaz").required, "con 2 conductores por fase se pide la separación del haz");
+  ok(!g("sephaz").disabled && g("sephaz").required && !g("sephaz").closest(".field").hidden, "con 2 conductores por fase se muestra y se pide la separación del haz");
   poner(T("material", id), "AAAC");
   poner(T("calibre", id), "246.9");
   ok(g("referencia").value === "Alliance (7)", "una sola referencia: se elige sola");
@@ -312,7 +315,7 @@ await seccion("vista: campos del escenario según la red", async () => {
   ok([...g("pct").options].map((o) => o.value).join(",") === "100,133", "a 34.5 kV (35 kV) hay aislamiento al 100 y 133 %");
   ok(!g("sepductos").disabled, "2 circuitos en el banco: se pide la separación entre ductos");
   poner(T("n", id), "1", "input");
-  ok(g("sepductos").disabled, "un solo circuito: separación entre ductos deshabilitada");
+  ok(g("sepductos").disabled && g("sepductos").closest(".field").hidden, "un solo circuito: separación entre ductos oculta");
   poner(T("otros", id), "6", "input");
   ok(!g("n").validity.valid, "más de 6 circuitos en el banco: no deja calcular");
   poner(T("otros", id), "0", "input");
@@ -532,7 +535,7 @@ await seccion("vista: tramos dentro de un escenario", async () => {
   ok(card.querySelectorAll(".vi-tramo").length === 2 && !agregarTramo.hidden, "se pueden quitar tramos");
   ok(getComputedStyle(agregarTramo.parentElement).justifyContent === "flex-end", "«Agregar tramo» va justificado a la derecha");
   const titulosCosto = $$(".vi-economia .vi-costo-titulo").map((x) => x.textContent);
-  ok(titulosCosto.includes(`Alternativa ${col} · Tramo 1 (aérea)`) && titulosCosto.includes(`Alternativa ${col} · Tramo 2 (aérea)`), "en la tarjeta económica cada tramo tiene su bloque de costos");
+  ok(titulosCosto.includes(`Alternativa ${col} · Tramo 1`) && titulosCosto.includes(`Alternativa ${col} · Tramo 2`), "en la tarjeta económica cada tramo tiene su bloque de costos");
   ok(card.querySelectorAll("details.vi-avanzado .vi-tramo-avanzado").length === 2, "un solo «Parámetros avanzados» por alternativa, con la disposición de cada tramo");
   poner(T("tension", sid), "34.5", "input");
   poner(T("material", sid, 0), "ACSR");
@@ -548,6 +551,8 @@ await seccion("vista: tramos dentro de un escenario", async () => {
   ok(!$(T("tension", sid)).validity.valid, "la tensión es del escenario: con un tramo subterráneo, 69 kV no es válido");
   poner(T("tension", sid), "34.5", "input");
   ok($(T("tension", sid)).validity.valid && [...$(T("pct", sid, 1)).options].map((o) => o.value).join(",") === "100,133", "a 34.5 kV sí, y el cable del tramo subterráneo toma el nivel de 35 kV");
+  const detalleCosto = $(T("costo-cond", sid, 1)).closest(".vi-costo-tramo").querySelector(".vi-costo-detalle").textContent;
+  ok(detalleCosto === "Subterránea · Cobre 500 kcmil · 34.5 kV · 1 circuito por fase · 2.50 km", `el bloque de costos del tramo 2 se actualiza con su conductor, tensión y longitud («${detalleCosto}»)`);
   $("#form-calc").requestSubmit();
   await espera(30);
   const fila = (nombre) => $$("#resultado-wrap .vi-matriz tr").find((tr) => tr.querySelector(":scope > td.etiqueta-fila")?.textContent === nombre);
