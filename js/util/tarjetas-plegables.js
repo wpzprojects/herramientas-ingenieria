@@ -14,6 +14,12 @@
 // (el cuerpo sigue a la vista con overflow oculto); al terminar se quita y el CSS lo oculta. Se puede interrumpir con otro clic (parte de la
 // altura actual). No anima con `prefers-reduced-motion`, si el navegador no tiene `element.animate`, ni con la tarjeta oculta.
 
+// Plegar desde abajo (2026-09-26, propuesta del usuario): si la tarjeta es más alta que la pantalla (la barra de arriba
+// ya no se ve al llegar al final), aparece al pie un enlace sutil «Plegar tarjeta». Al usarlo, la tarjeta se pliega y la
+// página se desplaza para dejar su barra de título a la vista (si no, el contenido de abajo subiría de golpe). La altura
+// se revisa solo cuando algo cambia de tamaño (ResizeObserver y el cambio de tamaño de la ventana), no de forma continua.
+// En Valoración integral el enlace va a la izquierda, en la línea de «Agregar tramo» (.vi-tramo-pie).
+
 import { icon } from "../icons.js";
 
 /** Ajustes de la animacion. Las pruebas ponen `animar = false` (Edge sin pantalla no avanza las animaciones de forma fiable). */
@@ -111,6 +117,72 @@ function instalarEventos() {
   );
 }
 
+// ------------------------------------------------------------------ plegar desde abajo
+
+const conPie = new Set();
+let observador = null;
+
+/** Alto disponible bajo la barra fija superior de la app. */
+function altoBarraApp() {
+  const v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--topbar-h"));
+  return Number.isFinite(v) ? v : 56;
+}
+
+/** Muestra el enlace del pie solo si la tarjeta (abierta) es más alta que la pantalla visible. */
+export function revisarPie(tarjeta) {
+  const pie = tarjeta._piePlegar;
+  if (!pie) return;
+  if (!tarjeta.isConnected) {
+    conPie.delete(tarjeta);
+    observador?.unobserve(tarjeta);
+    return;
+  }
+  const alta = !tarjeta.classList.contains("plegada") && tarjeta.getBoundingClientRect().height > window.innerHeight - altoBarraApp();
+  if (pie.hidden === alta) pie.hidden = !alta;
+}
+const revisarTodas = () => conPie.forEach(revisarPie);
+
+/** Pliega desde el pie y desplaza la página para que la barra de título quede a la vista, bajo la barra de la app. */
+function plegarDesdeAbajo(tarjeta) {
+  const arriba = tarjeta.getBoundingClientRect().top;
+  const margen = altoBarraApp() + 8;
+  plegarTarjeta(tarjeta, true, { animado: true });
+  if (arriba < margen) {
+    const suave = plegado.animar && !sinMovimiento(); // (en las pruebas la animación está apagada: salto directo)
+    window.scrollTo({ top: window.scrollY + arriba - margen, behavior: suave ? "smooth" : "auto" });
+  }
+  tarjeta.querySelector(":scope > .form-section-title > .btn-plegar")?.focus({ preventScroll: true });
+}
+
+function agregarPie(tarjeta) {
+  const cuerpo = cuerpoDe(tarjeta);
+  if (!cuerpo || tarjeta._piePlegar) return;
+  const boton = document.createElement("button");
+  boton.type = "button";
+  boton.className = "btn-plegar-pie";
+  boton.innerHTML = `${icon("chevronUp")} Plegar tarjeta`;
+  boton.hidden = true;
+  boton.addEventListener("click", () => plegarDesdeAbajo(tarjeta));
+  const pieExistente = cuerpo.querySelector(":scope > .vi-tramo-pie");
+  if (pieExistente) pieExistente.prepend(boton);
+  else {
+    const pie = document.createElement("div");
+    pie.className = "plegable-pie";
+    pie.append(boton);
+    cuerpo.append(pie);
+  }
+  tarjeta._piePlegar = boton;
+  conPie.add(tarjeta);
+  if (typeof ResizeObserver === "function") {
+    if (!observador) {
+      observador = new ResizeObserver((entradas) => entradas.forEach((e) => revisarPie(e.target)));
+      window.addEventListener("resize", revisarTodas);
+    }
+    observador.observe(tarjeta);
+  }
+  revisarPie(tarjeta);
+}
+
 /** Envuelve todo lo que va bajo la barra en un solo cuerpo (para poder animar su altura). */
 function envolver(tarjeta, barra) {
   if (cuerpoDe(tarjeta)) return;
@@ -132,6 +204,7 @@ export function activarPlegables(raiz) {
     boton.innerHTML = icon("chevronUp");
     barra.append(boton);
     plegarTarjeta(barra.parentElement, barra.parentElement.classList.contains("plegada"));
+    agregarPie(barra.parentElement);
     boton.addEventListener("click", () => {
       const tarjeta = barra.parentElement;
       plegarTarjeta(tarjeta, !tarjeta.classList.contains("plegada"), { animado: true });

@@ -569,6 +569,15 @@ input:disabled, select:disabled { opacity: 0.55; }
    `.card.form-section.plegada` (3 clases, despues de `.card.tarjeta-borde.form-section`) gana al relleno inferior de las tarjetas de datos. */
 .plegable-cuerpo { display: flow-root; } /* (js/util/tarjetas-plegables.js) envuelve todo lo que va bajo la barra; flow-root: contiene los margenes de sus hijos, asi la altura que se anima es la real */
 .form-section.plegada:not(.animando) > .plegable-cuerpo { display: none; }
+/* «Plegar tarjeta» al pie (solo en tarjetas más altas que la pantalla): enlace sutil, gris, sin recuadro; toma el color del tema al pasar el cursor */
+.plegable-pie { display: flex; margin-top: var(--space-2); }
+.plegable-pie:has(> .btn-plegar-pie[hidden]) { display: none; } /* oculto no deja espacio al pie de la tarjeta */
+.btn-plegar-pie { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 0 2px; border: 0; background: none; color: var(--text-muted); font: inherit; font-size: 0.8rem; font-weight: 400; cursor: pointer; }
+.btn-plegar-pie .icon { width: 14px; height: 14px; }
+.btn-plegar-pie:hover, .btn-plegar-pie:focus-visible { color: var(--accent); }
+.btn-plegar-pie[hidden] { display: none; }
+.vi-tramo-pie:has(> .btn-plegar-pie:not([hidden])) { justify-content: space-between; }
+.vi-tramo-pie > .vi-agregar-tramo { margin-left: auto; }
 .form-section.animando > .plegable-cuerpo { overflow: hidden; } /* mientras se recoge/despliega (la altura y el relleno inferior los anima el JS) */
 .form-section.plegada > .form-section-title { margin-bottom: 0; }
 .form-section.plegada:not(.animando) > .form-section-title { border-bottom-color: transparent; border-radius: calc(var(--radius-lg) - 1px); } /* la linea y las esquinas cambian al TERMINAR de plegar (al desplegar, al empezar) */

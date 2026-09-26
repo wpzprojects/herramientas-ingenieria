@@ -370,6 +370,61 @@ await seccion("transiciones al aparecer contenido (revelar.js, se avanza a mano)
   }
 });
 
+await seccion("plegar desde abajo (solo en tarjetas más altas que la pantalla)", async () => {
+  const P = await import("../js/util/tarjetas-plegables.js");
+  // una tarjeta a la vista (no en el escenario fuera de la pantalla) para poder medir y desplazar
+  const zona = document.createElement("div");
+  zona.style.cssText = "width:800px";
+  document.body.append(zona);
+  try {
+    zona.innerHTML = `<div class="card tarjeta-borde form-section" id="t1"><div class="form-section-title">Corta</div><div style="height:100px"></div></div>
+      <div class="card tarjeta-borde form-section" id="t2"><div class="form-section-title">Alta</div><div class="relleno" style="height:${window.innerHeight + 400}px"></div></div>
+      <div style="height:${window.innerHeight * 2}px"></div>`;
+    P.activarPlegables(zona);
+    const corta = zona.querySelector("#t1");
+    const alta = zona.querySelector("#t2");
+    const pieDe = (t) => t.querySelector(".btn-plegar-pie");
+    P.revisarPie(corta);
+    P.revisarPie(alta);
+    ok(!!pieDe(corta) && pieDe(corta).hidden, "una tarjeta que cabe en la pantalla no muestra «Plegar tarjeta»");
+    ok(!pieDe(alta).hidden && /Plegar tarjeta/.test(pieDe(alta).textContent) && pieDe(alta).closest(".plegable-cuerpo") === alta.querySelector(".plegable-cuerpo"), "una tarjeta más alta que la pantalla sí, al pie de su contenido");
+    const estilo = getComputedStyle(pieDe(alta));
+    ok(parseFloat(estilo.fontSize) < 14 && Number(estilo.fontWeight) <= 400 && estilo.borderStyle === "none" && estilo.backgroundColor === "rgba(0, 0, 0, 0)", "es un enlace sutil: letra pequeña, sin negrilla, sin borde ni fondo");
+    // al pie: la barra de título quedó muy arriba, fuera de la vista
+    window.scrollTo(0, alta.getBoundingClientRect().top + window.scrollY + window.innerHeight);
+    ok(alta.getBoundingClientRect().top < 0, "estando al final de la tarjeta, su barra de título no se ve");
+    pieDe(alta).click();
+    await espera(100);
+    const barraApp = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--topbar-h")) || 56;
+    const topBarra = alta.getBoundingClientRect().top;
+    ok(alta.classList.contains("plegada"), "al pulsarlo la tarjeta se pliega");
+    ok(topBarra >= barraApp - 1 && topBarra <= barraApp + 20, `y la página se desplaza para dejar su barra a la vista, bajo la barra de la app (${Math.round(topBarra)} px)`);
+    P.revisarPie(alta);
+    ok(pieDe(alta).hidden, "plegada, el enlace se oculta");
+    // la corta crece: aparece
+    corta.querySelector(".plegable-cuerpo > div").style.height = `${window.innerHeight + 200}px`;
+    P.revisarPie(corta);
+    ok(!pieDe(corta).hidden, "si la tarjeta crece por encima de la pantalla (p. ej. al abrir «Parámetros avanzados»), aparece");
+
+    // Valoración integral: a la izquierda, en la línea de «Agregar tramo»
+    zona.innerHTML = "";
+    const { render } = await import("../js/views/calc-valoracion-integral.js");
+    await render(zona, {});
+    const alt = zona.querySelector(".vi-escenario");
+    const pie = alt.querySelector(".vi-tramo-pie");
+    ok(pie && pie.firstElementChild.classList.contains("btn-plegar-pie") && pie.querySelector(".vi-agregar-tramo"), "en Valoración integral va en la misma línea de «Agregar tramo», a la izquierda");
+    alt.querySelector("details.vi-avanzado").open = true;
+    alt.querySelector(".vi-tramos").style.minHeight = `${window.innerHeight}px`;
+    P.revisarPie(alt);
+    const bPie = pie.querySelector(".btn-plegar-pie").getBoundingClientRect();
+    const bAgregar = pie.querySelector(".vi-agregar-tramo").getBoundingClientRect();
+    ok(!pie.querySelector(".btn-plegar-pie").hidden && bPie.left < bAgregar.left && Math.abs(bPie.top + bPie.height / 2 - (bAgregar.top + bAgregar.height / 2)) < 2, "con la alternativa alta: «Plegar tarjeta» a la izquierda y «Agregar tramo» a la derecha, alineados");
+  } finally {
+    zona.remove();
+    window.scrollTo(0, 0);
+  }
+});
+
 await seccion("archivos: icono, service worker y colores", async () => {
   const { icon } = await import("../js/icons.js");
   ok(icon("chevronUp").includes("m6 15 6-6 6 6") && icon("chevronDown").includes("m6 9 6 6 6-6"), "existen los chevrones hacia arriba y hacia abajo");
