@@ -11,7 +11,7 @@ export const GRUPOS = [
     titulo: "Sistema",
     donde: "Pérdidas, Regulación, Conductor económico, Ampacidad subterránea y Valoración integral",
     campos: [
-      { clave: "tension", etiqueta: "Tensión de línea (kV)", inicial: "34.5", min: 0, step: 0.01, en: { perdidas: "#f-tension", regulacion: "#f-tension", "conductor-economico": "#f-tension", "ampacidad-subterranea": "#f-tension" }, info: "En Ampacidad subterránea solo se aplica hasta 46 kV (el máximo de esa calculadora)." },
+      { clave: "tension", etiqueta: "Tensión de línea (kV)", inicial: "34.5", min: 0, step: 0.01, en: { perdidas: "#f-tension", regulacion: "#f-tension", "conductor-economico": "#f-tension", "ampacidad-subterranea": "#f-tension", "valoracion-integral": "#f-tension" }, info: "En Ampacidad subterránea solo se aplica hasta 46 kV (el máximo de esa calculadora)." },
       { clave: "fp", etiqueta: "Factor de potencia", inicial: "0.9", min: 0, max: 1, step: 0.01, en: { perdidas: "#f-fp", regulacion: "#f-fp", "conductor-economico": "#f-fp", "valoracion-integral": "#f-fp" } },
       { clave: "fc", etiqueta: "Factor de carga (Fc)", inicial: "0.4", min: 0, max: 1, step: 0.0001, en: { perdidas: "#f-fc", "conductor-economico": "#f-fc", "valoracion-integral": "#f-fc" } },
     ],

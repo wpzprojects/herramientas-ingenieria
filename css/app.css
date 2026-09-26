@@ -988,7 +988,15 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
   margin: var(--space-3) 0 var(--space-3); padding: var(--space-2) 0 0; border-top: 1px solid var(--border);
 }
 .vi-tramo-titulo { font-size: 0.8rem; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; }
-.vi-tramo-pie { margin-top: var(--space-3); padding-top: var(--space-2); border-top: 1px solid var(--border); }
+.vi-tramo-pie { display: flex; justify-content: flex-end; margin-top: var(--space-2); }
+.vi-tension-alt { margin-bottom: var(--space-1); }
+/* sin tensión propia, el primer tramo arranca pegado al título de la alternativa (sin línea ni hueco arriba) */
+.vi-tension-alt[hidden] + .vi-tramos > .vi-tramo:first-child > .vi-tramo-cab { margin-top: 0; padding-top: 0; border-top: 0; }
+.vi-tramo-avanzado + .vi-tramo-avanzado { margin-top: var(--space-3); }
+/* Evaluación económica: un bloque de costos por tramo, con su título «Alternativa N · Tramo M» */
+.vi-costos-titulo { margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--border); }
+.vi-costo-titulo { font-size: 0.85rem; font-weight: 600; color: var(--accent); margin: var(--space-2) 0 var(--space-2); }
+.vi-costo-tramo + .vi-costo-tramo { margin-top: var(--space-2); }
 .vi-agregar-tramo { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; font-size: 0.88rem; text-decoration: none; font-weight: 600; }
 .vi-agregar-tramo .icon { width: 16px; height: 16px; }
 .vi-detalle-tramos { margin-top: var(--space-4); }

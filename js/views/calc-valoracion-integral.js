@@ -1,10 +1,11 @@
-// Valoración integral: evalúa de 1 a 6 escenarios para una misma conexión (misma potencia) con todos los criterios a la vez
+// Valoración integral: evalúa de 1 a 6 alternativas para una misma conexión (misma potencia) con todos los criterios a la vez
 // (ampacidad, pérdidas, regulación, cortocircuito y costo total actualizado). Pedida por el usuario (2026-09-25) para no
-// depender de la IA en las validaciones integrales. Cada escenario es un circuito a una tensión con 1 a 4 tramos en serie
-// (cada tramo con su red, conductor, conductores por fase, longitud y costos). Sigue el patrón de Conductor económico:
-// tarjeta «Datos de la conexión», tarjeta «Evaluación económica» y una tarjeta por escenario (agregar/quitar). Lo que casi
-// nunca cambia va plegado en «Parámetros avanzados». La lógica vive en ../calc/valoracion-integral.js, que combina los
-// motores de las demás calculadoras sin tocarlos.
+// depender de la IA en las validaciones integrales. Cada alternativa es un circuito a una tensión con 1 a 4 tramos en serie
+// (cada tramo con su red, conductor, conductores por fase y longitud). Tarjetas: «Datos de la conexión» (con la tensión
+// general o, con la casilla «Por alternativa», una tensión en cada alternativa), una tarjeta por alternativa y, al final y
+// plegada, «Evaluación económica (opcional)» con los supuestos y los costos de cada tramo (lo que no es técnico va aparte).
+// Lo que casi nunca cambia va plegado en «Parámetros avanzados». La lógica vive en ../calc/valoracion-integral.js, que
+// combina los motores de las demás calculadoras sin tocarlos. (Internamente cada alternativa se sigue llamando «escenario».)
 
 import { fmt, fmtPercent, loadData, distinct, escapeHtml } from "../util/format.js";
 import { icon } from "../icons.js";
@@ -25,7 +26,7 @@ import { UMBRAL_OPTIMO_PCT as OPTIMO_PERDIDAS } from "../calc/perdidas-tramos.js
 import { UMBRAL_OPTIMO_PCT as OPTIMO_REGULACION } from "../calc/regulacion-tramos.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 import { activarInfos } from "../util/info-campo.js";
-import { activarPlegables } from "../util/tarjetas-plegables.js";
+import { activarPlegables, plegarTarjeta } from "../util/tarjetas-plegables.js";
 import { guardarEstado, leerEstado } from "../util/persistencia-calculo.js";
 import { aplicarDefectos, leerDefectos } from "../util/valores-defecto.js";
 import { crearXlsx, columna, MIME_XLSX } from "../util/xlsx.js";
@@ -42,7 +43,7 @@ const FORMULAS_TEX = [
     ecuaciones: [
       String.raw`I_{adm,1} = \sqrt{\dfrac{Q_c + Q_r - Q_s}{R(T_c)}} \quad \text{(aérea, IEEE Std 738)}`,
       String.raw`I_{adm,1} = \sqrt{\dfrac{\Delta\theta - W_d\left[0.5\,T_1 + n\,(T_2 + T_3 + T_4)\right]}{R\,T_1 + n\,R\,(1+\lambda_1)\,T_2 + n\,R\,(1+\lambda_1)(T_3 + T_4)}} \quad \text{(subterránea, IEC 60287)}`,
-      String.raw`I_{adm} = N \cdot I_{adm,1} \qquad \%\,uso = \max_{j}\,\dfrac{I}{I_{adm,j}} \cdot 100`,
+      String.raw`I_{adm} = \min_{j}\; N_j \cdot I_{adm,1,j} \qquad \%\,uso = \dfrac{I}{I_{adm}} \cdot 100`,
     ],
   },
   {
@@ -74,9 +75,9 @@ const FORMULAS_TEX = [
 
 const FORMULAS_ETIQUETAS = [
   { tex: "P,\\,S", texto: "Potencia activa [MW] y aparente [MVA] de la conexión" },
-  { tex: "V", texto: "Tensión de línea del escenario [kV]" },
+  { tex: "V", texto: "Tensión de línea de la alternativa [kV]" },
   { tex: "I", texto: "Corriente de operación [A] (la misma en todos los tramos)" },
-  { tex: "j", texto: "Tramo del escenario" },
+  { tex: "j", texto: "Tramo de la alternativa" },
   { tex: "N", texto: "Conductores por fase (en subterránea: circuitos en paralelo)" },
   { tex: "I_{adm,1},\\,I_{adm}", texto: "Ampacidad de un conductor y del conjunto de la fase [A]" },
   { tex: "F_c,\\,F_p", texto: "Factor de carga y factor de pérdidas" },
@@ -92,11 +93,11 @@ const FORMULAS_ETIQUETAS = [
   { tex: "E_t,\\,p_t,\\,r", texto: "Energía perdida y precio de la energía del año t, y tasa de descuento" },
 ];
 
-const FORMULAS_NOTA = `Cada escenario usa las mismas fórmulas de las calculadoras de Pérdidas, Regulación, Ampacidad aérea, Ampacidad subterránea, Cortocircuito y Conductor económico, con los datos comunes de la conexión (potencia, factor de potencia y factor de carga) y los de cada tramo.
+const FORMULAS_NOTA = `Cada alternativa usa las mismas fórmulas de las calculadoras de Pérdidas, Regulación, Ampacidad aérea, Ampacidad subterránea, Cortocircuito y Conductor económico, con los datos comunes de la conexión (potencia, factor de potencia y factor de carga) y los de cada tramo.
 
-Un escenario es un circuito a una sola tensión con uno o más tramos en serie, por los que pasa la misma corriente: las pérdidas, la caída de tensión y los costos son la suma de los tramos; en ampacidad manda el tramo más cargado y en cortocircuito el de menor capacidad. La corriente de falla es una sola por escenario y se aplica a todos los tramos (conservador: en realidad baja a lo largo de la línea).
+Una alternativa es un circuito a una sola tensión con uno o más tramos en serie, por los que pasa la misma corriente: las pérdidas, la caída de tensión y los costos son la suma de los tramos. La ampacidad y el cortocircuito se evalúan con el tramo de menor capacidad, que es el más exigido. La corriente de falla es una sola por alternativa y se aplica a todos los tramos (conservador: en realidad baja a lo largo de la línea).
 
-Criterios: la corriente de operación no debe superar la ampacidad; las pérdidas hasta ${LIMITE_PERDIDAS} % y la regulación hasta ${LIMITE_REGULACION} % son las referencias de diseño de «aceptable» (óptimo hasta ${OPTIMO_PERDIDAS} % y ${OPTIMO_REGULACION} %); el cortocircuito se evalúa solo si se indica la corriente de falla. Gana, entre los escenarios que cumplen todo, el de menor costo total actualizado.
+Criterios: la corriente de operación no debe superar la ampacidad; las pérdidas hasta ${LIMITE_PERDIDAS} % y la regulación hasta ${LIMITE_REGULACION} % son las referencias de diseño de «aceptable» (óptimo hasta ${OPTIMO_PERDIDAS} % y ${OPTIMO_REGULACION} %); el cortocircuito se evalúa solo si se indica la corriente de falla. Se recomienda, entre las alternativas que cumplen todo, la de menor costo total actualizado.
 
 Varios conductores por fase en red aérea forman un haz: la resistencia es R/N, el radio medio geométrico es el del haz y la ampacidad y la capacidad de cortocircuito son N veces las de un conductor.
 
@@ -105,7 +106,7 @@ Varios conductores por fase en red subterránea son N circuitos (ternas) en para
 La temperatura de operación del cortocircuito es la máxima del conductor en servicio (la de los parámetros avanzados: 75 °C en aérea y 90 °C en subterránea por defecto). Los criterios técnicos se evalúan con la demanda indicada (año 1); el crecimiento de la demanda solo entra en los costos.`;
 
 const FORMULAS_TEXTO = `I = P·1000 / (√3·V·cos φ)   [A]
-Iadm = N · Iadm,1 (IEEE Std 738 en aérea, IEC 60287 en subterránea)   %uso = máx. de los tramos de I / Iadm · 100
+Iadm = mín. de los tramos de N · Iadm,1 (IEEE Std 738 en aérea, IEC 60287 en subterránea)   %uso = I / Iadm · 100
 Fp = 0.3·Fc + 0.7·Fc²   Ref = R75 / N
 %P = Σ tramos √3·I·Ref·L·Fp·100 / (V·1000·cos φ)
 Xl = 0.0754·ln(∛(Dab·Dac·Dbc) / (RMGeq/1000))   Z = Ref·cos φ + Xl·sen φ
@@ -119,8 +120,7 @@ const ETIQUETAS_REPORTE = ["CÁLCULO DE VALORACIÓN INTEGRAL", "PARÁMETROS DE E
 
 const MODOS = { potencia: "Potencia activa", aparente: "Potencia aparente" };
 
-const INFO_REFERENCIA =
-  "Un mismo calibre puede tener varias construcciones (número de hilos, diámetro) con resistencia distinta. Solo aplica a conductores aéreos.";
+const INFO_REFERENCIA = "Un mismo calibre puede tener varias construcciones (número de hilos, diámetro) con resistencia distinta.";
 const INFO_N_AEREA = "Con más de uno forman un haz: resistencia R/N, radio medio geométrico del haz y N veces la ampacidad de un conductor.";
 const INFO_N_SUBT = "En subterránea son circuitos (ternas) en paralelo, cada uno en su ducto del mismo banco de ductos.";
 
@@ -146,7 +146,7 @@ export async function render(container) {
         <div class="form-section-title">${icon("circuitVoltmeter")} Datos de la conexión</div>
         <div class="grid-2">
           <div class="field">
-            <label for="f-modo" data-info="La corriente no se ofrece como dato de partida porque depende de la tensión, y cada escenario puede tener la suya.">Dato de partida</label>
+            <label for="f-modo" data-info="La corriente no se ofrece como dato de partida porque depende de la tensión, y cada alternativa puede tener la suya.">Dato de partida</label>
             <select id="f-modo">
               <option value="potencia">${MODOS.potencia}</option>
               <option value="aparente">${MODOS.aparente}</option>
@@ -161,7 +161,7 @@ export async function render(container) {
             <input type="number" id="f-aparente" min="0" step="any" value="33.33">
           </div>
         </div>
-        <div class="grid-2 ultima">
+        <div class="grid-2">
           <div class="field">
             <label for="f-fp">Factor de potencia</label>
             <input type="number" id="f-fp" min="0.01" max="1" step="0.01" value="0.9" required>
@@ -171,9 +171,18 @@ export async function render(container) {
             <input type="number" id="f-fc" min="0" max="1" step="0.0001" value="0.4" required>
           </div>
         </div>
+        <div class="grid-2 ultima">
+          <div class="field">
+            <label for="f-tension" data-info="La misma para todas las alternativas. Marca «Por alternativa» para comparar tensiones distintas (p. ej. 34.5 kV frente a 13.2 kV): entonces cada alternativa pide la suya.">Tensión de línea (kV)</label>
+            <div class="input-with-toggle">
+              <input type="number" id="f-tension" min="0.1" step="any" value="34.5" required>
+              <label class="checkbox-row"><input type="checkbox" id="chk-tension-alt"> Por alternativa</label>
+            </div>
+          </div>
+        </div>
 
         <details class="vi-avanzado">
-          <summary>Parámetros avanzados (ambiente, terreno y falla)</summary>
+          <summary>Parámetros avanzados</summary>
           <div class="vi-avanzado-grupo">Líneas aéreas</div>
           <div class="grid-2">
             <div class="field"><label for="f-ta">Temperatura ambiente (°C)</label><input type="number" id="f-ta" min="-50" max="60" step="0.1" value="25" required></div>
@@ -214,8 +223,10 @@ export async function render(container) {
         </details>
       </div>
 
-      <div class="card tarjeta-borde form-section" style="margin-top: var(--space-4);">
-        <div class="form-section-title">${icon("coin")} Evaluación económica</div>
+      <div id="tramos-container"></div>
+
+      <div class="card tarjeta-borde form-section vi-economia" style="margin-top: var(--space-4);">
+        <div class="form-section-title">${icon("coin")} Evaluación económica (opcional)</div>
         <div class="grid-2">
           <div class="field">
             <label for="f-precio" data-info="Lo que cuesta la energía que se pierde en la línea (compra o costo reconocido), valor del año 1. Si se deja vacío no se comparan costos; también hace falta el costo del conductor de cada tramo.">Precio de la energía perdida ($/kWh)</label>
@@ -236,15 +247,15 @@ export async function render(container) {
             <input type="number" id="f-anios" min="1" max="60" step="1" value="25" required>
           </div>
         </div>
-        <div class="grid-2 ultima">
+        <div class="grid-2">
           <div class="field">
             <label for="f-crecimiento" data-info="Aumento anual de la demanda a partir del año 1. Con 0 % la demanda se mantiene (p. ej. una planta de generación). Solo afecta los costos: los criterios técnicos se evalúan con la demanda indicada.">Crecimiento anual de la demanda (%)</label>
             <input type="number" id="f-crecimiento" min="0" max="100" step="any" value="0" required>
           </div>
         </div>
+        <div class="vi-avanzado-grupo vi-costos-titulo">Costos de cada tramo</div>
+        <div class="vi-costos"></div>
       </div>
-
-      <div id="tramos-container"></div>
 
       <div class="btn-row">
         <button type="submit" class="btn btn-primary">Calcular</button>
@@ -263,6 +274,11 @@ export async function render(container) {
   const selModo = q("#f-modo");
   const fPotencia = q("#f-potencia");
   const fAparente = q("#f-aparente");
+  const fTension = q("#f-tension");
+  const chkTensionAlt = q("#chk-tension-alt");
+  const tarjetaEconomia = q(".vi-economia");
+  const costosCont = q(".vi-costos");
+  plegarTarjeta(tarjetaEconomia, true); // opcional: nace plegada para pasar rápido por ella
   const campoPorModo = {
     potencia: { wrap: q("#wrap-potencia"), input: fPotencia },
     aparente: { wrap: q("#wrap-aparente"), input: fAparente },
@@ -278,22 +294,24 @@ export async function render(container) {
   aplicarModo();
 
   // Campos comunes que se guardan tal cual (ids sin el «f-»)
-  const COMUNES = ["modo", "potencia", "aparente", "fp", "fc", "ta", "tc", "vw", "angulo", "elevacion", "epsilon", "alfa", "qse", "theta", "tempmax", "tempterreno", "rhosuelo", "uducto", "profundidad", "frecuencia", "tfalla", "precio", "escalada", "tasa", "anios", "crecimiento"];
+  const COMUNES = ["modo", "potencia", "aparente", "fp", "fc", "tension", "ta", "tc", "vw", "angulo", "elevacion", "epsilon", "alfa", "qse", "theta", "tempmax", "tempterreno", "rhosuelo", "uducto", "profundidad", "frecuencia", "tfalla", "precio", "escalada", "tasa", "anios", "crecimiento"];
   const campo = (id) => q(`#f-${id}`);
   const n = (id) => parseFloat(campo(id).value);
 
-  // Si falta un dato obligatorio dentro de «Parámetros avanzados» plegado, se abre solo (como las tarjetas plegables).
+  // Si falta un dato obligatorio dentro de un «Parámetros avanzados» plegado, se abre solo (como las tarjetas plegables).
   form.addEventListener("invalid", (e) => {
     const det = e.target.closest("details");
     if (det) det.open = true;
   }, true);
 
   const nombreRed = (red) => (red === "Aerea" ? "Aérea" : "Subterránea");
+  const porAlternativa = () => chkTensionAlt.checked;
 
   // ---------- tramos ----------
   /**
-   * Un tramo dentro de un escenario (id = «escenario-tramo», p. ej. «0-1»). `tensionKv()` da la tensión del escenario, que
-   * decide el nivel de aislamiento de los cables subterráneos.
+   * Un tramo dentro de una alternativa (id = «alternativa-tramo», p. ej. «0-1»). Tiene tres partes que viven en sitios
+   * distintos: sus datos principales (en la tarjeta de la alternativa), su disposición (dentro del «Parámetros avanzados»
+   * de la alternativa) y sus costos (en la tarjeta «Evaluación económica»). `tensionKv()` da la tensión de la alternativa.
    */
   function crearTramo(id, tensionKv, longitudInicial) {
     const cont = document.createElement("div");
@@ -326,8 +344,8 @@ export async function render(container) {
             <select id="f-calibre-${id}" required></select>
           </div>
         </div>
-        <div class="grid-2">
-          <div class="field">
+        <div class="grid-2 ultima">
+          <div class="field vi-campo-referencia">
             <label for="f-referencia-${id}" data-info="${INFO_REFERENCIA}">Referencia</label>
             <select id="f-referencia-${id}" required></select>
           </div>
@@ -336,9 +354,76 @@ export async function render(container) {
             <input type="number" id="f-n-${id}" min="1" max="8" step="1" value="1" required>
           </div>
         </div>
-        <div class="grid-2 ultima">
+      </div>
+      <div class="vi-tramo-avanzado">
+        <div class="vi-avanzado-grupo vi-tramo-avz-titulo">Disposición del conductor</div>
+        <div class="vi-solo-aerea">
+          <div class="grid-2">
+            <div class="field">
+              <label for="f-sephaz-${id}" data-info="Solo aplica con más de un conductor por fase.">Separación entre subconductores del haz (m)</label>
+              <input type="number" id="f-sephaz-${id}" min="0.01" max="5" step="0.01" value="0.4" disabled>
+            </div>
+            <div class="field">
+              <label for="f-dab-${id}" data-info="Las tres distancias vienen con los valores iniciales de la calculadora de Regulación; ajústalas a la estructura del tramo.">Distancia entre fases A-B (m)</label>
+              <input type="number" id="f-dab-${id}" min="0.01" step="0.01" value="2" required>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="field">
+              <label for="f-dac-${id}">Distancia entre fases A-C (m)</label>
+              <input type="number" id="f-dac-${id}" min="0.01" step="0.01" value="2.84" required>
+            </div>
+            <div class="field">
+              <label for="f-dbc-${id}">Distancia entre fases B-C (m)</label>
+              <input type="number" id="f-dbc-${id}" min="0.01" step="0.01" value="0.84" required>
+            </div>
+          </div>
+        </div>
+        <div class="vi-solo-subt" hidden>
+          <div class="grid-2">
+            <div class="field">
+              <label for="f-pantalla-${id}">Tipo de pantalla</label>
+              <select id="f-pantalla-${id}" required>
+                <option value="Hilos">Hilos</option>
+                <option value="Cinta">Cinta</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="f-pct-${id}" data-info="El nivel de aislamiento (15, 35 o 46 kV) se elige solo según la tensión de la alternativa.">Nivel de aislamiento (%)</label>
+              <select id="f-pct-${id}" required></select>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="field">
+              <label for="f-tierra-${id}">Puesta a tierra de las pantallas</label>
+              <select id="f-tierra-${id}" required>
+                <option value="Unipuntual">Unipuntual</option>
+                <option value="Ambos Extremos">Ambos Extremos</option>
+                <option value="Cross-bonding">Cross-bonding</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="f-sepfases-${id}" data-info="Distancia entre centros de los cables de un circuito (trébol). Se usa en la ampacidad y en la regulación.">Separación entre fases (m)</label>
+              <input type="number" id="f-sepfases-${id}" min="0.01" max="1" step="0.001" value="0.04" required>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="field">
+              <label for="f-otros-${id}" data-info="Circuitos ajenos a esta línea que comparten el banco de ductos y la calientan. El banco admite hasta ${MAX_CIRCUITOS_BANCO} circuitos en total.">Otros circuitos en el banco</label>
+              <input type="number" id="f-otros-${id}" min="0" max="${MAX_CIRCUITOS_BANCO - 1}" step="1" value="0" required>
+            </div>
+            <div class="field">
+              <label for="f-sepductos-${id}" data-info="Solo aplica con más de un circuito en el banco.">Separación entre ductos (m)</label>
+              <input type="number" id="f-sepductos-${id}" min="0.05" max="1" step="0.01" value="0.2" disabled>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="vi-costo-tramo">
+        <div class="vi-costo-titulo">Alternativa 1</div>
+        <div class="grid-2">
           <div class="field">
-            <label for="f-costo-cond-${id}" data-info="Precio de un solo conductor por km; se multiplica por las 3 fases, los conductores por fase y la longitud del tramo. Si falta en algún tramo, el escenario no entra en la comparación de costos.">Costo del conductor ($/km)</label>
+            <label for="f-costo-cond-${id}" data-info="Precio de un solo conductor por km; se multiplica por las 3 fases, los conductores por fase y la longitud del tramo. Si falta en algún tramo, la alternativa no entra en la comparación de costos.">Costo del conductor ($/km)</label>
             <input type="number" id="f-costo-cond-${id}" min="0" step="any">
           </div>
           <div class="field">
@@ -346,82 +431,22 @@ export async function render(container) {
             <input type="number" id="f-costo-inst-${id}" min="0" step="any">
           </div>
         </div>
-
-        <details class="vi-avanzado">
-          <summary>Parámetros avanzados (disposición del conductor)</summary>
-          <div class="vi-solo-aerea">
-            <div class="grid-2">
-              <div class="field">
-                <label for="f-sephaz-${id}" data-info="Solo aplica con más de un conductor por fase.">Separación entre subconductores del haz (m)</label>
-                <input type="number" id="f-sephaz-${id}" min="0.01" max="5" step="0.01" value="0.4" disabled>
-              </div>
-              <div class="field">
-                <label for="f-dab-${id}" data-info="Las tres distancias vienen con los valores iniciales de la calculadora de Regulación; ajústalas a la estructura del tramo.">Distancia entre fases A-B (m)</label>
-                <input type="number" id="f-dab-${id}" min="0.01" step="0.01" value="2" required>
-              </div>
-            </div>
-            <div class="grid-2">
-              <div class="field">
-                <label for="f-dac-${id}">Distancia entre fases A-C (m)</label>
-                <input type="number" id="f-dac-${id}" min="0.01" step="0.01" value="2.84" required>
-              </div>
-              <div class="field">
-                <label for="f-dbc-${id}">Distancia entre fases B-C (m)</label>
-                <input type="number" id="f-dbc-${id}" min="0.01" step="0.01" value="0.84" required>
-              </div>
-            </div>
-          </div>
-          <div class="vi-solo-subt" hidden>
-            <div class="grid-2">
-              <div class="field">
-                <label for="f-pantalla-${id}">Tipo de pantalla</label>
-                <select id="f-pantalla-${id}" required>
-                  <option value="Hilos">Hilos</option>
-                  <option value="Cinta">Cinta</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="f-pct-${id}" data-info="El nivel de aislamiento (15, 35 o 46 kV) se elige solo según la tensión del escenario.">Nivel de aislamiento (%)</label>
-                <select id="f-pct-${id}" required></select>
-              </div>
-            </div>
-            <div class="grid-2">
-              <div class="field">
-                <label for="f-tierra-${id}">Puesta a tierra de las pantallas</label>
-                <select id="f-tierra-${id}" required>
-                  <option value="Unipuntual">Unipuntual</option>
-                  <option value="Ambos Extremos">Ambos Extremos</option>
-                  <option value="Cross-bonding">Cross-bonding</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="f-sepfases-${id}" data-info="Distancia entre centros de los cables de un circuito (trébol). Se usa en la ampacidad y en la regulación.">Separación entre fases (m)</label>
-                <input type="number" id="f-sepfases-${id}" min="0.01" max="1" step="0.001" value="0.04" required>
-              </div>
-            </div>
-            <div class="grid-2">
-              <div class="field">
-                <label for="f-otros-${id}" data-info="Circuitos ajenos a esta línea que comparten el banco de ductos y la calientan. El banco admite hasta ${MAX_CIRCUITOS_BANCO} circuitos en total.">Otros circuitos en el banco</label>
-                <input type="number" id="f-otros-${id}" min="0" max="${MAX_CIRCUITOS_BANCO - 1}" step="1" value="0" required>
-              </div>
-              <div class="field">
-                <label for="f-sepductos-${id}" data-info="Solo aplica con más de un circuito en el banco.">Separación entre ductos (m)</label>
-                <input type="number" id="f-sepductos-${id}" min="0.05" max="1" step="0.01" value="0.2" disabled>
-              </div>
-            </div>
-          </div>
-        </details>
       </div>`;
-    const bloque = cont.firstElementChild;
-    activarInfos(bloque);
-    const c = (s) => bloque.querySelector(s);
+    const [bloque, avanzado, filaCosto] = cont.children;
+    [bloque, avanzado, filaCosto].forEach((el) => activarInfos(el));
+    const buscar = (s) => bloque.querySelector(s) ?? avanzado.querySelector(s) ?? filaCosto.querySelector(s);
     const f = Object.fromEntries(
-      [["red", "red"], ["longitud", "longitud"], ["material", "material"], ["calibre", "calibre"], ["referencia", "referencia"], ["n", "n"], ["costoCond", "costo-cond"], ["costoInst", "costo-inst"], ["sephaz", "sephaz"], ["dab", "dab"], ["dac", "dac"], ["dbc", "dbc"], ["pantalla", "pantalla"], ["pct", "pct"], ["tierra", "tierra"], ["sepfases", "sepfases"], ["otros", "otros"], ["sepductos", "sepductos"]].map(([k, s]) => [k, c(`#f-${s}-${id}`)])
+      [["red", "red"], ["longitud", "longitud"], ["material", "material"], ["calibre", "calibre"], ["referencia", "referencia"], ["n", "n"], ["costoCond", "costo-cond"], ["costoInst", "costo-inst"], ["sephaz", "sephaz"], ["dab", "dab"], ["dac", "dac"], ["dbc", "dbc"], ["pantalla", "pantalla"], ["pct", "pct"], ["tierra", "tierra"], ["sepfases", "sepfases"], ["otros", "otros"], ["sepductos", "sepductos"]].map(([k, s]) => [k, buscar(`#f-${s}-${id}`)])
     );
-    const grupoAerea = c(".vi-solo-aerea");
-    const grupoSubt = c(".vi-solo-subt");
-    const titulo = c(".vi-tramo-titulo");
+    const grupoAerea = avanzado.querySelector(".vi-solo-aerea");
+    const grupoSubt = avanzado.querySelector(".vi-solo-subt");
+    const campoReferencia = bloque.querySelector(".vi-campo-referencia");
+    const titulo = bloque.querySelector(".vi-tramo-titulo");
+    const tituloAvz = avanzado.querySelector(".vi-tramo-avz-titulo");
+    const tituloCosto = filaCosto.querySelector(".vi-costo-titulo");
     let numero = 1;
+    let alternativa = 1;
+    let variosTramos = false;
     const esAerea = () => f.red.value === "Aerea";
     const opciones = (lista, vacio) =>
       lista.length ? `<option value="">Seleccione…</option>` + lista.map((v) => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join("") : `<option value="">${vacio}</option>`;
@@ -431,17 +456,22 @@ export async function render(container) {
       grupo.hidden = !visible;
       grupo.querySelectorAll("input, select").forEach((el) => (el.disabled = !visible));
     }
-    const ponerTitulo = () => (titulo.textContent = `Tramo ${numero} · ${nombreRed(f.red.value)}`);
+    function ponerTitulos() {
+      const red = nombreRed(f.red.value);
+      titulo.textContent = `Tramo ${numero} · ${red}`;
+      tituloAvz.textContent = variosTramos ? `Tramo ${numero} · ${red}: disposición del conductor` : `Disposición del conductor (${red.toLowerCase()})`;
+      tituloCosto.textContent = variosTramos ? `Alternativa ${alternativa} · Tramo ${numero} (${red.toLowerCase()})` : `Alternativa ${alternativa}`;
+    }
 
     function poblarMaterial() {
       const lista = esAerea() ? tiposAereos : materialesSubt;
       f.material.innerHTML = lista.map((m) => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join("");
       mostrarGrupo(grupoAerea, esAerea());
       mostrarGrupo(grupoSubt, !esAerea());
-      const infoN = c(".vi-label-n + .info-popover"); // el cuadro «i» copia el texto al crearse: se actualiza aparte
+      const infoN = bloque.querySelector(".vi-label-n + .info-popover"); // el cuadro «i» copia el texto al crearse: se actualiza aparte
       if (infoN) infoN.textContent = esAerea() ? INFO_N_AEREA : INFO_N_SUBT;
       f.n.max = esAerea() ? 8 : MAX_CIRCUITOS_BANCO;
-      ponerTitulo();
+      ponerTitulos();
       poblarCalibre();
       syncDependientes();
     }
@@ -455,9 +485,11 @@ export async function render(container) {
       poblarPct();
     }
 
+    // La referencia (construcción exacta) solo existe en los conductores aéreos: en subterránea el campo ni se muestra.
     function poblarReferencia() {
+      campoReferencia.hidden = !esAerea();
       if (!esAerea()) {
-        f.referencia.innerHTML = `<option value="">No aplica (solo conductores aéreos)</option>`;
+        f.referencia.innerHTML = "";
         f.referencia.disabled = true;
         return;
       }
@@ -467,7 +499,7 @@ export async function render(container) {
       if (refs.length === 1) f.referencia.value = refs[0]; // una sola construcción: se elige sola
     }
 
-    // % de aislamiento disponible para el cable (según material, calibre, pantalla y el nivel que da la tensión del escenario)
+    // % de aislamiento disponible para el cable (según material, calibre, pantalla y el nivel que da la tensión)
     function poblarPct() {
       if (esAerea()) return;
       const nivel = nivelAislamientoPara(tensionKv());
@@ -506,13 +538,17 @@ export async function render(container) {
 
     return {
       bloque,
+      avanzado,
+      filaCosto,
       red: f.red,
-      quitar: c(".vi-quitar-tramo"),
-      /** Numera el tramo y muestra su encabezado solo si el escenario tiene más de uno. */
-      numerar(i, varios) {
+      quitar: bloque.querySelector(".vi-quitar-tramo"),
+      /** Numera el tramo; el encabezado «Tramo N» solo se muestra si la alternativa tiene más de uno. */
+      numerar(alt, i, varios) {
+        alternativa = alt;
         numero = i + 1;
-        ponerTitulo();
-        c(".vi-tramo-cab").hidden = !varios;
+        variosTramos = varios;
+        ponerTitulos();
+        bloque.querySelector(".vi-tramo-cab").hidden = !varios;
       },
       alCambiarRed: poblarMaterial,
       alCambiarTension: poblarPct,
@@ -559,7 +595,6 @@ export async function render(container) {
         referencia: f.referencia.value,
         pantalla: f.pantalla.value,
         pct: f.pct.value,
-        avanzado: c("details").open,
         ...Object.fromEntries(CAMPOS_BRUTO.map((k) => [k, f[k].value])),
       }),
       aplicarBruto(d) {
@@ -571,72 +606,72 @@ export async function render(container) {
         f.pantalla.value = d.pantalla;
         f.calibre.value = d.calibre;
         f.calibre.dispatchEvent(new Event("change"));
-        f.referencia.value = d.referencia ?? "";
+        if (d.referencia) f.referencia.value = d.referencia;
         for (const k of CAMPOS_BRUTO) f[k].value = d[k];
         poblarPct();
         f.pct.value = d.pct;
         syncDependientes();
-        c("details").open = !!d.avanzado;
       },
     };
   }
 
-  // ---------- escenarios ----------
-  function crearEscenario(sid) {
+  // ---------- alternativas ----------
+  function crearAlternativa(sid) {
     const cont = document.createElement("div");
     cont.innerHTML = `
       <div class="card tarjeta-borde form-section tramo-block vi-escenario">
         <div class="form-section-title">
-          ${icon("conductorCableado")} <span class="tramo-titulo">Escenario 1</span>
+          ${icon("conductorCableado")} <span class="tramo-titulo">Alternativa 1</span>
           <button type="button" class="btn btn-ghost btn-tramo-quitar" hidden>${icon("close")} Quitar</button>
         </div>
-        <div class="grid-2">
+        <div class="grid-2 vi-tension-alt" hidden>
           <div class="field">
             <label for="f-tension-${sid}">Tensión de línea (kV)</label>
-            <input type="number" id="f-tension-${sid}" min="0.1" step="any" value="34.5" required>
-          </div>
-          <div class="field">
-            <label for="f-falla-${sid}" data-info="Opcional. Corriente de cortocircuito en el punto de conexión; se verifica en todos los tramos del escenario. Vacío = solo se informa la capacidad de los conductores.">Corriente de falla (kA)</label>
-            <input type="number" id="f-falla-${sid}" min="0" step="any">
-          </div>
-        </div>
-        <div class="grid-2 ultima">
-          <div class="field">
-            <label for="f-tiempo-${sid}">Tiempo de despeje de la falla (s)</label>
-            <input type="number" id="f-tiempo-${sid}" min="0.01" max="60" step="any" value="0.3" required>
+            <input type="number" id="f-tension-${sid}" min="0.1" step="any" value="34.5" required disabled>
           </div>
         </div>
         <div class="vi-tramos"></div>
+        <details class="vi-avanzado">
+          <summary>Parámetros avanzados</summary>
+          <div class="vi-avanzado-grupo">Cortocircuito</div>
+          <div class="grid-2">
+            <div class="field">
+              <label for="f-falla-${sid}" data-info="Opcional. Corriente de cortocircuito en el punto de conexión; se verifica en todos los tramos de la alternativa. Vacío = solo se informa la capacidad de los conductores.">Corriente de falla (kA)</label>
+              <input type="number" id="f-falla-${sid}" min="0" step="any">
+            </div>
+            <div class="field">
+              <label for="f-tiempo-${sid}">Tiempo de despeje de la falla (s)</label>
+              <input type="number" id="f-tiempo-${sid}" min="0.01" max="60" step="any" value="0.3" required>
+            </div>
+          </div>
+          <div class="vi-avanzado-tramos"></div>
+        </details>
         <div class="vi-tramo-pie">
           <button type="button" class="btn-enlace vi-agregar-tramo">${icon("plus")} Agregar tramo</button>
         </div>
       </div>`;
     const card = cont.firstElementChild;
-    // Tensión y tiempo de despeje: valores por defecto personales (Perfil > Calculadoras); sus ids llevan el número del escenario.
+    // Tiempo de despeje: valor por defecto personal (Perfil > Calculadoras); su id lleva el número de la alternativa.
     const defectos = leerDefectos();
-    if (defectos.tension > 0) card.querySelector(`#f-tension-${sid}`).value = defectos.tension;
     if (defectos.tiempo >= 0.01) card.querySelector(`#f-tiempo-${sid}`).value = defectos.tiempo;
     activarInfos(card);
     activarPlegables(card);
     const c = (s) => card.querySelector(s);
-    const fTension = c(`#f-tension-${sid}`);
+    const filaTension = c(".vi-tension-alt");
+    const fTensionAlt = c(`#f-tension-${sid}`);
     const fFalla = c(`#f-falla-${sid}`);
     const fTiempo = c(`#f-tiempo-${sid}`);
-    const cont2 = c(".vi-tramos");
+    const tramosCont = c(".vi-tramos");
+    const avanzadoCont = c(".vi-avanzado-tramos");
     const botonTramo = c(".vi-agregar-tramo");
+    const detalles = c("details.vi-avanzado");
     const tramos = [];
     let siguienteTramo = 0;
-    const tensionKv = () => parseFloat(fTension.value);
-
-    // Los cables subterráneos solo llegan a 46 kV: la tensión no es válida si algún tramo es subterráneo y la supera.
-    function validarTension() {
-      const kv = tensionKv();
-      const malo = tramos.some((t) => t.esSubterraneo()) && kv > 0 && nivelAislamientoPara(kv) === null;
-      fTension.setCustomValidity(malo ? "El catálogo de cables subterráneos llega hasta 46 kV." : "");
-    }
+    let numero = 1;
+    const tensionKv = () => parseFloat(porAlternativa() ? fTensionAlt.value : fTension.value);
 
     function numerar() {
-      tramos.forEach((t, i) => t.numerar(i, tramos.length > 1));
+      tramos.forEach((t, i) => t.numerar(numero, i, tramos.length > 1));
       botonTramo.hidden = tramos.length >= MAX_TRAMOS;
     }
 
@@ -645,46 +680,66 @@ export async function render(container) {
       const t = crearTramo(`${sid}-${siguienteTramo++}`, tensionKv, tramos.length ? 1 : 5);
       t.red.addEventListener("change", () => {
         t.alCambiarRed();
-        validarTension();
+        validarTensiones();
       });
       t.quitar.addEventListener("click", () => {
         tramos.splice(tramos.indexOf(t), 1);
         t.bloque.remove();
+        t.avanzado.remove();
+        t.filaCosto.remove();
         numerar();
-        validarTension();
+        validarTensiones();
       });
       tramos.push(t);
-      cont2.append(t.bloque);
+      tramosCont.append(t.bloque);
+      avanzadoCont.append(t.avanzado);
       numerar();
+      ordenarCostos();
       return t;
     }
     botonTramo.addEventListener("click", () => agregarTramo());
-    fTension.addEventListener("input", () => {
+    fTensionAlt.addEventListener("input", () => {
       tramos.forEach((t) => t.alCambiarTension());
-      validarTension();
+      validarTensiones();
     });
-    agregarTramo();
 
     return {
       card,
       titulo: c(".tramo-titulo"),
       quitar: c(".btn-tramo-quitar"),
+      tramos,
+      campoTension: () => (porAlternativa() ? fTensionAlt : fTension),
+      tensionKv,
+      agregarTramo,
+      /** Muestra u oculta la tensión propia de la alternativa (casilla «Por alternativa» de los datos de la conexión). */
+      mostrarTension(visible) {
+        if (visible && filaTension.hidden && !fTensionAlt.dataset.tocado) fTensionAlt.value = fTension.value; // al aparecer, arranca con la general
+        filaTension.hidden = !visible;
+        fTensionAlt.disabled = !visible;
+        tramos.forEach((t) => t.alCambiarTension());
+      },
+      renumerar(i) {
+        numero = i + 1;
+        numerar();
+      },
       estado() {
         const t = tramos.map((x) => x.estado());
         const varios = t.length > 1;
         const error = t.map((x, i) => (x.error ? `${varios ? `tramo ${i + 1}: ` : ""}${x.error}` : null)).filter(Boolean).join(" ");
         return { tensionKv: tensionKv(), corrienteFallaKa: valor(fFalla), tiempoDespejeS: parseFloat(fTiempo.value), tramos: t, error: error || null };
       },
-      bruto: () => ({ tension: fTension.value, falla: fFalla.value, tiempo: fTiempo.value, tramos: tramos.map((t) => t.bruto()) }),
+      bruto: () => ({ tension: fTensionAlt.value, falla: fFalla.value, tiempo: fTiempo.value, avanzado: detalles.open, tramos: tramos.map((t) => t.bruto()) }),
       aplicarBruto(d) {
         if (!d) return;
-        fTension.value = d.tension;
+        fTensionAlt.value = d.tension;
+        fTensionAlt.dataset.tocado = "1";
         fFalla.value = d.falla;
         fTiempo.value = d.tiempo;
+        detalles.open = !!d.avanzado;
         for (let i = tramos.length; i < d.tramos.length; i++) agregarTramo();
         tramos.forEach((t, i) => t.aplicarBruto(d.tramos[i]));
-        validarTension();
       },
+      marcarTensionTocada: () => (fTensionAlt.dataset.tocado = "1"),
     };
   }
 
@@ -692,11 +747,28 @@ export async function render(container) {
   const escenarios = [];
   let siguienteId = 0;
 
-  // «Agregar escenario» va en la fila de «Calcular», justificado a la derecha (fuera de las tarjetas, siempre a la vista)
+  // Los cables subterráneos solo llegan a 46 kV: la tensión (general o de la alternativa) no es válida si alguna
+  // alternativa que la usa tiene un tramo subterráneo y la supera.
+  function validarTensiones() {
+    const MENSAJE = "El catálogo de cables subterráneos llega hasta 46 kV.";
+    const malo = (e) => e.tramos.some((t) => t.esSubterraneo()) && e.tensionKv() > 0 && nivelAislamientoPara(e.tensionKv()) === null;
+    fTension.setCustomValidity(!porAlternativa() && escenarios.some(malo) ? MENSAJE : "");
+    for (const e of escenarios) {
+      const propio = e.card.querySelector("[id^=f-tension-]");
+      propio.setCustomValidity(porAlternativa() && malo(e) ? MENSAJE : "");
+    }
+  }
+
+  // Los costos de todos los tramos viven en la tarjeta «Evaluación económica», en el orden de las alternativas y sus tramos.
+  function ordenarCostos() {
+    for (const e of escenarios) for (const t of e.tramos) costosCont.append(t.filaCosto);
+  }
+
+  // «Agregar alternativa» va en la fila de «Calcular», justificado a la derecha (fuera de las tarjetas, siempre a la vista)
   const botonAgregar = document.createElement("button");
   botonAgregar.type = "button";
   botonAgregar.className = "btn btn-agregar-tramo";
-  botonAgregar.innerHTML = `${icon("plus")} Agregar escenario`;
+  botonAgregar.innerHTML = `${icon("plus")} Agregar alternativa`;
   botonAgregar.addEventListener("click", () => agregarEscenario());
   const filaCalcular = q("#form-calc .btn-row");
   filaCalcular.classList.add("btn-row--agregar");
@@ -704,24 +776,44 @@ export async function render(container) {
 
   function actualizarEscenarios() {
     escenarios.forEach((e, i) => {
-      e.titulo.textContent = `Escenario ${i + 1}`;
+      e.titulo.textContent = `Alternativa ${i + 1}`;
       e.quitar.hidden = escenarios.length <= MIN_ESCENARIOS;
+      e.renumerar(i);
     });
     botonAgregar.hidden = escenarios.length >= MAX_ESCENARIOS;
+    ordenarCostos();
   }
 
   function agregarEscenario() {
     if (escenarios.length >= MAX_ESCENARIOS) return;
-    const e = crearEscenario(siguienteId++);
+    const e = crearAlternativa(siguienteId++);
     e.quitar.addEventListener("click", () => {
       escenarios.splice(escenarios.indexOf(e), 1);
       e.card.remove();
+      e.tramos.forEach((t) => t.filaCosto.remove());
       actualizarEscenarios();
+      validarTensiones();
     });
+    e.card.querySelector("[id^=f-tension-]").addEventListener("input", e.marcarTensionTocada);
     escenarios.push(e);
     escCont.append(e.card);
+    e.agregarTramo();
+    e.mostrarTension(porAlternativa());
     actualizarEscenarios();
   }
+
+  // Tensión general o una por alternativa
+  function aplicarTensionAlt() {
+    fTension.disabled = porAlternativa();
+    escenarios.forEach((e) => e.mostrarTension(porAlternativa()));
+    validarTensiones();
+  }
+  chkTensionAlt.addEventListener("change", aplicarTensionAlt);
+  fTension.addEventListener("input", () => {
+    escenarios.forEach((e) => e.tramos.forEach((t) => t.alCambiarTension()));
+    validarTensiones();
+  });
+
   agregarEscenario();
 
   // ---------- restaurar lo que había si se volvió de otra sección (no sobrevive a un recargue) ----------
@@ -729,15 +821,20 @@ export async function render(container) {
   if (guardado?.escenarios?.[0]?.tramos) {
     for (const k of COMUNES) if (k in guardado) campo(k).value = guardado[k];
     aplicarModo();
+    chkTensionAlt.checked = !!guardado.tensionPorAlternativa;
     q("details.vi-avanzado").open = !!guardado.avanzado;
     for (let i = escenarios.length; i < guardado.escenarios.length; i++) agregarEscenario();
     escenarios.forEach((e, i) => e.aplicarBruto(guardado.escenarios[i]));
+    aplicarTensionAlt();
+    if (guardado.economiaAbierta) plegarTarjeta(tarjetaEconomia, false);
   }
 
   function antesDeSalir() {
     guardarEstado(RUTA, {
       ...Object.fromEntries(COMUNES.map((k) => [k, campo(k).value])),
+      tensionPorAlternativa: porAlternativa(),
       avanzado: q("details.vi-avanzado").open,
+      economiaAbierta: !tarjetaEconomia.classList.contains("plegada"),
       escenarios: escenarios.map((e) => e.bruto()),
     });
   }
@@ -755,6 +852,7 @@ export async function render(container) {
       potenciaActivaMw: potenciaActivaMw({ modo, potenciaMw: n("potencia"), potenciaMva: n("aparente"), factorPotencia }),
       factorPotencia,
       factorCarga: n("fc"),
+      tensionPorAlternativa: porAlternativa(),
       aerea: { taC: n("ta"), tcC: n("tc"), vwMs: n("vw"), anguloVientoDeg: n("angulo"), elevacionM: n("elevacion"), epsilon: n("epsilon"), alfa: n("alfa"), qseWm2: n("qse"), thetaDeg: n("theta") },
       subterranea: { tempMaxC: n("tempmax"), tempTerrenoC: n("tempterreno"), rhoSueloKmW: n("rhosuelo"), uDuctoKmW: n("uducto"), profundidadBancoM: n("profundidad"), frecuenciaHz: n("frecuencia") },
       tempFallaC: n("tfalla"),
@@ -764,7 +862,7 @@ export async function render(container) {
           : { anios: parseInt(campo("anios").value, 10), tasaDescuentoPct: n("tasa"), precioKwh: precio, escaladaEnergiaPct: n("escalada"), crecimientoDemandaPct: n("crecimiento") },
     };
     const estados = escenarios.map((s) => s.estado());
-    const errores = estados.map((s, i) => (s.error ? `Escenario ${i + 1}, ${s.error}` : null)).filter(Boolean);
+    const errores = estados.map((s, i) => (s.error ? `Alternativa ${i + 1}, ${s.error}` : null)).filter(Boolean);
     if (errores.length) {
       renderError(errores);
       return;
@@ -794,12 +892,12 @@ export async function render(container) {
   function conclusion(r) {
     const total = r.escenarios.length;
     if (!r.cumplen.length) {
-      return { ok: false, titulo: `${total === 1 ? "El escenario no cumple" : "Ningún escenario cumple"} todos los criterios.`, detalle: "Revisa en la tabla qué criterio falla en cada uno." };
+      return { ok: false, titulo: `${total === 1 ? "La alternativa no cumple" : "Ninguna alternativa cumple"} todos los criterios.`, detalle: "Revisa en la tabla qué criterio falla en cada una." };
     }
     return {
       ok: true,
-      titulo: total === 1 ? "El escenario cumple todos los criterios." : `Cumplen todos los criterios: ${r.cumplen.map((i) => `Escenario ${i + 1}`).join(", ")}.`,
-      detalle: r.recomendado !== null ? `Recomendado: Escenario ${r.recomendado + 1}, el de menor costo total entre los que cumplen.` : "",
+      titulo: total === 1 ? "La alternativa cumple todos los criterios." : `Cumplen todos los criterios: ${r.cumplen.map((i) => `Alternativa ${i + 1}`).join(", ")}.`,
+      detalle: r.recomendado !== null ? `Recomendada: Alternativa ${r.recomendado + 1}, la de menor costo total entre las que cumplen.` : "",
     };
   }
 
@@ -809,19 +907,21 @@ export async function render(container) {
   }
 
   /**
-   * Modelo de la tabla comparativa: secciones con filas, y en cada fila una celda por escenario. La pantalla, el PDF y el
+   * Modelo de la tabla comparativa: secciones con filas, y en cada fila una celda por alternativa. La pantalla, el PDF y el
    * Excel se arman con él. La unidad va aparte (en pantalla, junto al número: «557.8 A»; en PDF y Excel, en su columna):
-   * así «(A)» no se confunde con la fase A. Con varios tramos, la ampacidad y el cortocircuito son los del tramo que manda.
+   * así «(A)» no se confunde con la fase A. Con varios tramos, la ampacidad y el cortocircuito muestran el valor de cada
+   * tramo (T1, T2…) y se evalúan con el de menor capacidad, que es el valor principal de la celda.
    * celda = { v: número | texto | null, dec, texto?, pesos?, signo?, estado?: {texto, clase}, sub?: texto }
    */
   function modeloMatriz(r, comun, estados) {
     const X = r.escenarios;
     const fila = (etiqueta, unidad, celda, extra = {}) => ({ etiqueta, unidad, celdas: X.map((x, i) => celda(x, estados[i], i)), ...extra });
     const conN = (t) => (t.n > 1 ? `${t.n} ${t.red === "Aerea" ? "conductores" : "circuitos"} por fase` : null);
-    const quien = (s, j, que) => (varios(s) ? `Tramo ${j + 1} (${que})` : null);
     const unir = (...partes) => partes.filter(Boolean).join(" · ") || null;
+    const porTramo = (x, texto) => x.tramos.map((t, j) => `T${j + 1} ${texto(t)}`).join(" · ");
+    const conElMenor = (s, j) => (varios(s) ? `Con T${j + 1}, el de menor capacidad` : null);
     const hayVarios = estados.some(varios);
-    const hayN = X.some((x, i) => estados[i].tramos[x.ampacidad.tramo].n > 1);
+    const hayN = estados.some((s) => s.tramos.some((t) => t.n > 1));
     const hayFalla = estados.some((s) => s.corrienteFallaKa !== null);
     const secciones = [
       {
@@ -837,10 +937,18 @@ export async function render(container) {
         titulo: "Ampacidad",
         filas: [
           fila("Ampacidad por conductor", "A", (x, s) =>
-            x.ampacidad.error ? { v: null, estado: { texto: "No calculable", clase: "badge-danger" }, sub: quien(s, x.ampacidad.tramo, "no calculable") } : { v: x.ampacidad.porConductorA, dec: 0, sub: hayN ? null : quien(s, x.ampacidad.tramo, "el más cargado") }
+            x.ampacidad.error
+              ? { v: null, estado: { texto: "No calculable", clase: "badge-danger" }, sub: varios(s) ? `T${x.ampacidad.tramo + 1}` : null }
+              : { v: x.ampacidad.porConductorA, dec: 0, sub: varios(s) ? porTramo(x, (t) => (t.ampacidad.error ? "no calculable" : `${num(t.ampacidad.porConductorA, 0, 0)} A`)) : null }
           ),
-          ...(hayN ? [fila("Ampacidad total", "A", (x, s) => (x.ampacidad.error ? { v: null } : { v: x.ampacidad.totalA, dec: 0, sub: unir(conN(s.tramos[x.ampacidad.tramo]), quien(s, x.ampacidad.tramo, "el más cargado")) }))] : []),
-          fila("Uso de la ampacidad", "%", (x) => (x.ampacidad.error ? { v: null } : { v: x.ampacidad.usoPct, dec: 1, estado: estadoCumple(x.ampacidad.cumple, "Cumple", "Sobrecarga") }), { etiquetaEstado: "Ampacidad: cumplimiento" }),
+          ...(hayN
+            ? [
+                fila("Ampacidad total", "A", (x, s) =>
+                  x.ampacidad.error ? { v: null } : { v: x.ampacidad.totalA, dec: 0, sub: varios(s) ? porTramo(x, (t) => (t.ampacidad.error ? "no calculable" : `${num(t.ampacidad.totalA, 0, 0)} A`)) : conN(s.tramos[0]) }
+                ),
+              ]
+            : []),
+          fila("Uso de la ampacidad", "%", (x, s) => (x.ampacidad.error ? { v: null } : { v: x.ampacidad.usoPct, dec: 1, estado: estadoCumple(x.ampacidad.cumple, "Cumple", "Sobrecarga"), sub: conElMenor(s, x.ampacidad.tramo) }), { etiquetaEstado: "Ampacidad: cumplimiento" }),
         ],
       },
       {
@@ -858,13 +966,13 @@ export async function render(container) {
       {
         titulo: "Cortocircuito",
         filas: [
-          fila("Capacidad de cortocircuito", "kA", (x, s) => ({ v: x.cortocircuito.totalKa, dec: 2, sub: unir(conN(s.tramos[x.cortocircuito.tramo]), `en ${fmt(s.tiempoDespejeS)} s`, quien(s, x.cortocircuito.tramo, "el de menor capacidad")) })),
+          fila("Capacidad de cortocircuito", "kA", (x, s) => ({ v: x.cortocircuito.totalKa, dec: 2, sub: unir(varios(s) ? porTramo(x, (t) => `${num(t.cortocircuito.totalKa, 2, 2)} kA`) : conN(s.tramos[0]), `en ${fmt(s.tiempoDespejeS)} s`) })),
           ...(hayFalla
             ? [
                 fila(
                   "Corriente de falla",
                   "kA",
-                  (x) => (x.cortocircuito.corrienteFallaKa === null ? { v: "Sin dato", texto: true } : { v: x.cortocircuito.corrienteFallaKa, dec: 2, estado: estadoCumple(x.cortocircuito.cumple, "Soporta", "No soporta") }),
+                  (x, s) => (x.cortocircuito.corrienteFallaKa === null ? { v: "Sin dato", texto: true } : { v: x.cortocircuito.corrienteFallaKa, dec: 2, estado: estadoCumple(x.cortocircuito.cumple, "Soporta", "No soporta"), sub: conElMenor(s, x.cortocircuito.tramo) }),
                   { etiquetaEstado: "Cortocircuito: cumplimiento" }
                 ),
               ]
@@ -893,16 +1001,16 @@ export async function render(container) {
         fila("Resultado", "", (x) => ({ v: x.cumpleTodo ? "Cumple todo" : "No cumple", texto: true, estado: estadoCumple(x.cumpleTodo, "Cumple todo", "No cumple"), sub: x.cumpleTodo ? null : `Falla: ${x.incumple.join(", ")}` }), { total: true }),
       ],
     });
-    return { secciones, hayVarios, recomendado: r.recomendado, columnas: X.map((x, i) => `Escenario ${i + 1}`) };
+    return { secciones, hayVarios, recomendado: r.recomendado, columnas: X.map((x, i) => `Alternativa ${i + 1}`) };
   }
 
-  /** Detalle por tramo (una fila por tramo de cada escenario), para la pantalla, el PDF y la hoja «Tramos» del Excel. */
+  /** Detalle por tramo (una fila por tramo de cada alternativa), para la pantalla, el PDF y la hoja «Tramos» del Excel. */
   function filasTramos(r, estados) {
     return r.escenarios.flatMap((x, i) =>
       x.tramos.map((t, j) => {
         const e = estados[i].tramos[j];
         return {
-          escenario: `Escenario ${i + 1}`,
+          alternativa: `Alternativa ${i + 1}`,
           tramo: j + 1,
           conductor: tramoTexto(e),
           longitudKm: e.longitudKm,
@@ -930,7 +1038,7 @@ export async function render(container) {
 
   function matrizHtml(modelo) {
     const cab = modelo.columnas
-      .map((t, i) => `<th class="num${i === modelo.recomendado ? " col-mejor" : ""}">${t}${i === modelo.recomendado ? ` ${insignia("Recomendado", "badge-success")}` : ""}</th>`)
+      .map((t, i) => `<th class="num${i === modelo.recomendado ? " col-mejor" : ""}">${t}${i === modelo.recomendado ? ` ${insignia("Recomendada", "badge-success")}` : ""}</th>`)
       .join("");
     const ncol = modelo.columnas.length + 1;
     const celdaHtml = (c, f) => {
@@ -959,7 +1067,7 @@ export async function render(container) {
     const cuerpo = filas
       .map(
         (f) =>
-          `<tr><td>${escapeHtml(f.escenario)}</td><td class="num">${f.tramo}</td><td class="wrap">${escapeHtml(f.conductor)}</td><td class="num">${celda(f.longitudKm, 2, "km")}</td>` +
+          `<tr><td>${escapeHtml(f.alternativa)}</td><td class="num">${f.tramo}</td><td class="wrap">${escapeHtml(f.conductor)}</td><td class="num">${celda(f.longitudKm, 2, "km")}</td>` +
           `<td class="num">${celda(f.ampacidadA, 0, "A")}</td><td class="num">${f.usoPct === null ? insignia("No calculable", "badge-danger") : `${celda(f.usoPct, 1, "%")}${f.ampacidadCumple ? "" : ` ${insignia("Sobrecarga", "badge-danger")}`}`}</td>` +
           `<td class="num">${celda(f.perdidasPct, 2, "%")}</td><td class="num">${celda(f.caidaPct, 2, "%")}</td><td class="num">${celda(f.capacidadKa, 2, "kA")}</td></tr>`
       )
@@ -968,7 +1076,7 @@ export async function render(container) {
       <details class="vi-detalle-tramos">
         <summary>Detalle por tramo</summary>
         <div class="table-wrap tabla-resultado tabla-matriz"><table>
-          <thead><tr><th>Escenario</th><th class="num">Tramo</th><th>Conductor</th><th class="num">Longitud</th><th class="num">Ampacidad total</th><th class="num">Uso de la ampacidad</th><th class="num">Pérdidas</th><th class="num">Caída de tensión</th><th class="num">Capacidad de cortocircuito</th></tr></thead>
+          <thead><tr><th>Alternativa</th><th class="num">Tramo</th><th>Conductor</th><th class="num">Longitud</th><th class="num">Ampacidad total</th><th class="num">Uso de la ampacidad</th><th class="num">Pérdidas</th><th class="num">Caída de tensión</th><th class="num">Capacidad de cortocircuito</th></tr></thead>
           <tbody>${cuerpo}</tbody>
         </table></div>
       </details>`;
@@ -978,17 +1086,17 @@ export async function render(container) {
     const avisos = [];
     r.escenarios.forEach((x, i) => {
       x.tramos.forEach((t, j) => {
-        if (t.ampacidad.error) avisos.push(`Escenario ${i + 1}${varios(estados[i]) ? `, tramo ${j + 1}` : ""}: ${t.ampacidad.error}`);
+        if (t.ampacidad.error) avisos.push(`Alternativa ${i + 1}${varios(estados[i]) ? `, tramo ${j + 1}` : ""}: ${t.ampacidad.error}`);
       });
     });
     const sinCosto = estados.map((s, i) => (s.tramos.every((t) => t.costos) ? -1 : i)).filter((i) => i >= 0);
     if (comun.economia && sinCosto.length && sinCosto.length < estados.length) {
-      avisos.push(`Falta el costo del conductor en algún tramo, así que no entra en la comparación de costos: ${sinCosto.map((i) => `Escenario ${i + 1}`).join(", ")}.`);
+      avisos.push(`Falta el costo del conductor en algún tramo, así que no entra en la comparación de costos: ${sinCosto.map((i) => `Alternativa ${i + 1}`).join(", ")}.`);
     }
     if (!comun.economia && estados.some((s) => s.tramos.some((t) => t.costos))) avisos.push("Para comparar costos falta el precio de la energía perdida (tarjeta «Evaluación económica»).");
     const longitudes = r.escenarios.map((x) => x.longitudKm);
     if (longitudes.length > 1 && Math.max(...longitudes) - Math.min(...longitudes) > 1e-6 * Math.max(...longitudes)) {
-      avisos.push(`Los escenarios no tienen la misma longitud total (${longitudes.map((l, i) => `Escenario ${i + 1}: ${fmt(l)} km`).join(", ")}): revisa que comparen la misma conexión.`);
+      avisos.push(`Las alternativas no tienen la misma longitud total (${longitudes.map((l, i) => `Alternativa ${i + 1}: ${fmt(l)} km`).join(", ")}): revisa que comparen la misma conexión.`);
     }
     return avisos.length ? `<div class="callout callout-warning" style="margin-top: var(--space-4);"><div>${avisos.map(escapeHtml).join("<br>")}</div></div>` : "";
   }
@@ -1009,22 +1117,23 @@ export async function render(container) {
   }
 
   /** Datos de la conexión en pares [etiqueta, valor] (PDF y Excel). Los supuestos económicos van en la sección de costos. */
-  function datosEntrada(comun, { modo, datoPartida }) {
+  function datosEntrada(comun, estados, { modo, datoPartida }) {
     return [
       ["Dato de partida", `${MODOS[modo]}: ${fmt(datoPartida)} ${modo === "potencia" ? "MW" : "MVA"}`],
       ["Factor de potencia", fmt(comun.factorPotencia)],
       ["Factor de carga (Fc)", fmt(comun.factorCarga, 4)],
+      ["Tensión de línea", comun.tensionPorAlternativa ? "Una por alternativa (ver la tabla)" : `${fmt(estados[0].tensionKv)} kV`],
     ];
   }
 
   const REFERENCIAS = `Referencias de diseño: pérdidas hasta ${OPTIMO_PERDIDAS} % óptimo · hasta ${LIMITE_PERDIDAS} % aceptable; regulación hasta ${OPTIMO_REGULACION} % óptimo · hasta ${LIMITE_REGULACION} % aceptable. La corriente de operación no debe superar la ampacidad.`;
 
-  /** Documento de impresión (PDF): Carta, vertical hasta 3 escenarios y horizontal con más; siempre en claro. */
+  /** Documento de impresión (PDF): Carta, vertical hasta 3 alternativas y horizontal con más; siempre en claro. */
   function documentoPdf(modelo, conc, entrada, tramos) {
     const doc = document.createElement("div");
     doc.id = "doc-impresion";
     doc.className = `doc-impresion vi-doc${modelo.columnas.length > 3 ? " vi-doc-apaisado" : ""}`;
-    const cab = modelo.columnas.map((t, i) => `<th class="num">${t}${i === modelo.recomendado ? "<br><small>Recomendado</small>" : ""}</th>`).join("");
+    const cab = modelo.columnas.map((t, i) => `<th class="num">${t}${i === modelo.recomendado ? "<br><small>Recomendada</small>" : ""}</th>`).join("");
     const ncol = modelo.columnas.length + 2;
     const cuerpo = modelo.secciones
       .map(
@@ -1048,11 +1157,11 @@ export async function render(container) {
       .join("");
     const celda = (v, dec) => (v === null ? "—" : num(v, dec, dec));
     const detalle = modelo.hayVarios
-      ? `<h3>Detalle por tramo</h3><div class="table-wrap"><table class="vi-doc-tramos"><thead><tr><th>Escenario</th><th class="num">Tramo</th><th>Conductor</th><th class="num">Longitud (km)</th><th class="num">Ampacidad total (A)</th><th class="num">Uso (%)</th><th class="num">Pérdidas (%)</th><th class="num">Caída (%)</th><th class="num">Cortocircuito (kA)</th></tr></thead><tbody>` +
+      ? `<h3>Detalle por tramo</h3><div class="table-wrap"><table class="vi-doc-tramos"><thead><tr><th>Alternativa</th><th class="num">Tramo</th><th>Conductor</th><th class="num">Longitud (km)</th><th class="num">Ampacidad total (A)</th><th class="num">Uso (%)</th><th class="num">Pérdidas (%)</th><th class="num">Caída (%)</th><th class="num">Cortocircuito (kA)</th></tr></thead><tbody>` +
         tramos
           .map(
             (f) =>
-              `<tr><td>${escapeHtml(f.escenario)}</td><td class="num">${f.tramo}</td><td>${escapeHtml(f.conductor)}</td><td class="num">${celda(f.longitudKm, 2)}</td><td class="num">${celda(f.ampacidadA, 0)}</td><td class="num">${celda(f.usoPct, 1)}</td><td class="num">${celda(f.perdidasPct, 2)}</td><td class="num">${celda(f.caidaPct, 2)}</td><td class="num">${celda(f.capacidadKa, 2)}</td></tr>`
+              `<tr><td>${escapeHtml(f.alternativa)}</td><td class="num">${f.tramo}</td><td>${escapeHtml(f.conductor)}</td><td class="num">${celda(f.longitudKm, 2)}</td><td class="num">${celda(f.ampacidadA, 0)}</td><td class="num">${celda(f.usoPct, 1)}</td><td class="num">${celda(f.perdidasPct, 2)}</td><td class="num">${celda(f.caidaPct, 2)}</td><td class="num">${celda(f.capacidadKa, 2)}</td></tr>`
           )
           .join("") +
         `</tbody></table></div>`
@@ -1061,9 +1170,9 @@ export async function render(container) {
       `<header class="doc-cab"><div class="doc-app">Herramientas de Ingeniería</div><h1>Valoración integral de conductores</h1><p class="doc-meta">${escapeHtml(fechaLarga())}</p></header>` +
       `<div class="vi-doc-conclusion${conc.ok ? "" : " malo"}"><strong>${escapeHtml(conc.titulo)}</strong> ${escapeHtml(conc.detalle)}</div>` +
       `<h3>Datos de la conexión</h3><table class="vi-doc-datos"><tbody>${entrada.map(([k, v]) => `<tr><td>${escapeHtml(k)}</td><td>${escapeHtml(v)}</td></tr>`).join("")}</tbody></table>` +
-      `<h3>Comparación de escenarios</h3><div class="table-wrap"><table class="vi-doc-matriz"><thead><tr><th>Criterio</th><th>Unidad</th>${cab}</tr></thead><tbody>${cuerpo}</tbody></table></div>` +
+      `<h3>Comparación de alternativas</h3><div class="table-wrap"><table class="vi-doc-matriz"><thead><tr><th>Criterio</th><th>Unidad</th>${cab}</tr></thead><tbody>${cuerpo}</tbody></table></div>` +
       detalle +
-      `<p class="vi-doc-nota">${escapeHtml(REFERENCIAS)} El detalle de cada escenario (datos de entrada y valores intermedios) está en la pestaña «Reporte» de la calculadora.</p>`;
+      `<p class="vi-doc-nota">${escapeHtml(REFERENCIAS)} El detalle de cada alternativa (datos de entrada y valores intermedios) está en la pestaña «Reporte» de la calculadora.</p>`;
     return doc;
   }
 
@@ -1101,7 +1210,7 @@ export async function render(container) {
       [{ v: "Datos de la conexión", estilo: "seccion" }, { v: "", estilo: "seccion" }],
       ...entrada.map(([k, v]) => [{ v: k, estilo: "etiqueta" }, { v, estilo: "celda" }]),
       [],
-      [{ v: "Criterio", estilo: "cabecera" }, { v: "Unidad", estilo: "cabecera" }, ...modelo.columnas.map((t, i) => ({ v: i === modelo.recomendado ? `${t} (recomendado)` : t, estilo: "cabecera" }))],
+      [{ v: "Criterio", estilo: "cabecera" }, { v: "Unidad", estilo: "cabecera" }, ...modelo.columnas.map((t, i) => ({ v: i === modelo.recomendado ? `${t} (recomendada)` : t, estilo: "cabecera" }))],
     ];
     const combinar = [`A1:${ultima}1`, `A4:${ultima}4`];
     for (const s of modelo.secciones) {
@@ -1132,7 +1241,7 @@ export async function render(container) {
         if (f.etiquetaEstado && f.celdas.some((c) => c.estado)) {
           filas.push([{ v: f.etiquetaEstado, estilo: "etiqueta" }, { v: "", estilo }, ...f.celdas.map((c) => ({ v: c.estado?.texto ?? "—", estilo }))]);
         }
-        // lo que en pantalla va debajo del número (p. ej. «2 conductores por fase») también se conserva
+        // lo que en pantalla va debajo del número (p. ej. «T1 663 A · T2 435 A») también se conserva
         if (!esVeredicto && f.celdas.some((c) => c.sub)) {
           filas.push([{ v: `${f.etiqueta}: detalle`, estilo: "etiqueta" }, { v: "", estilo }, ...f.celdas.map((c) => ({ v: c.sub ?? "", estilo }))]);
         }
@@ -1143,9 +1252,9 @@ export async function render(container) {
 
     const numero = (v, dec) => (v === null ? { v: "—", estilo: "celda" } : { v, dec, estilo: "celda" });
     const hojaTramos = [
-      ["Escenario", "Tramo", "Conductor", "Longitud (km)", "Ampacidad total (A)", "Uso de la ampacidad (%)", "Pérdidas (%)", "Caída de tensión (%)", "Capacidad de cortocircuito (kA)", "Costo total actualizado ($)"].map((v) => ({ v, estilo: "cabecera" })),
+      ["Alternativa", "Tramo", "Conductor", "Longitud (km)", "Ampacidad total (A)", "Uso de la ampacidad (%)", "Pérdidas (%)", "Caída de tensión (%)", "Capacidad de cortocircuito (kA)", "Costo total actualizado ($)"].map((v) => ({ v, estilo: "cabecera" })),
       ...tramos.map((f) => [
-        { v: f.escenario, estilo: "celda" },
+        { v: f.alternativa, estilo: "celda" },
         { v: f.tramo, dec: 0, estilo: "celda" },
         { v: f.conductor, estilo: "celda" },
         numero(f.longitudKm, 2),
@@ -1159,7 +1268,7 @@ export async function render(container) {
     ];
     return crearXlsx([
       { nombre: "Comparación", anchos: [38, 9, ...modelo.columnas.map(() => 34)], combinar, filas },
-      { nombre: "Tramos", anchos: [13, 8, 44, 13, 15, 15, 12, 14, 18, 20], filas: hojaTramos },
+      { nombre: "Tramos", anchos: [14, 8, 44, 13, 15, 15, 12, 14, 18, 20], filas: hojaTramos },
       { nombre: "Reporte", anchos: [120], filas: reporte.split("\n").map((l) => [l]) },
     ]);
   }
@@ -1208,19 +1317,25 @@ export async function render(container) {
               ...(t.n + t.otrosCircuitos > 1 ? [p(`Separación entre ductos: ${fmt(t.separacionDuctosM)} m`)] : []),
             ]),
         p(`Resistencia AC a 75°C (por conductor, catálogo): ${fmt(t.conductor.resistenciaOhmKm, 4)} Ω/km`),
-        p(`Costo del conductor: ${t.costos ? `${fmtPesos(t.costos.costoConductorKm)}/km` : "no indicado"}`),
-        ...(t.costos ? [p(`Costo de instalación: ${t.costos.instalacionIndicada ? `${fmtPesos(t.costos.costoInstalacionKm)}/km` : "no indicado (solo se considera el conductor)"}`)] : []),
       ];
     };
     const parametros = estados.map((e, i) =>
       [
         ``,
-        `Escenario ${i + 1}:`,
-        `  Tensión de línea: ${fmt(e.tensionKv)} kV`,
+        `Alternativa ${i + 1}:`,
+        ...(comun.tensionPorAlternativa ? [`  Tensión de línea: ${fmt(e.tensionKv)} kV`] : []),
         `  Corriente de falla: ${e.corrienteFallaKa === null ? "no indicada" : `${fmt(e.corrienteFallaKa)} kA`}`,
         `  Tiempo de despeje de la falla: ${fmt(e.tiempoDespejeS)} s`,
         ...(varios(e) ? e.tramos.flatMap((t, j) => [`  Tramo ${j + 1}:`, ...parametrosTramo(t, "    ")]) : parametrosTramo(e.tramos[0], "  ")),
       ].join("\n")
+    );
+    // Costos de cada tramo: junto con los supuestos económicos, al final de los parámetros (no son datos técnicos)
+    const costos = estados.flatMap((e, i) =>
+      e.tramos.map((t, j) => {
+        const quien = varios(e) ? `Alternativa ${i + 1}, tramo ${j + 1}` : `Alternativa ${i + 1}`;
+        if (!t.costos) return `  ${quien}: sin costo del conductor`;
+        return `  ${quien}: conductor ${fmtPesos(t.costos.costoConductorKm)}/km · instalación ${t.costos.instalacionIndicada ? `${fmtPesos(t.costos.costoInstalacionKm)}/km` : "no indicada (solo se considera el conductor)"}`;
+      })
     );
 
     const resultadosTramo = (x, t, e, sangria) => {
@@ -1246,14 +1361,16 @@ export async function render(container) {
     };
     const resultados = r.escenarios.map((x, i) => {
       const e = estados[i];
-      const titulo = varios(e) ? `Escenario ${i + 1} — ${fmt(e.tensionKv)} kV · ${e.tramos.length} tramos · ${fmt(x.longitudKm)} km:` : `Escenario ${i + 1} — ${tramoTexto(e.tramos[0])} a ${fmt(e.tensionKv)} kV, ${fmt(x.longitudKm)} km:`;
+      const titulo = varios(e) ? `Alternativa ${i + 1} — ${fmt(e.tensionKv)} kV · ${e.tramos.length} tramos · ${fmt(x.longitudKm)} km:` : `Alternativa ${i + 1} — ${tramoTexto(e.tramos[0])} a ${fmt(e.tensionKv)} kV, ${fmt(x.longitudKm)} km:`;
       const totales = [
         `  Pérdidas${varios(e) ? " totales" : ""}: ${fmtPercent(x.perdidas.pct)} (${x.perdidas.clase.etiqueta}) · ${fmt(x.perdidas.kw, 1)} kW · ${num(x.perdidas.energiaMwhAnio, 1, 1)} MWh al año`,
         `  Caída de tensión${varios(e) ? " total" : ""}: ${fmtPercent(x.regulacion.pct)} (${x.regulacion.clase.etiqueta})`,
         ...(varios(e)
           ? [
-              x.ampacidad.error ? `  Ampacidad: no calculable en el tramo ${x.ampacidad.tramo + 1}` : `  Ampacidad: manda el tramo ${x.ampacidad.tramo + 1}, con ${fmtPercent(x.ampacidad.usoPct, 1)} de uso (${x.ampacidad.cumple ? "cumple" : "sobrecarga"})`,
-              `  Cortocircuito: manda el tramo ${x.cortocircuito.tramo + 1}, con ${fmt(x.cortocircuito.totalKa)} kA${x.cortocircuito.corrienteFallaKa === null ? "" : ` (${x.cortocircuito.cumple ? "soporta" : "no soporta"} los ${fmt(x.cortocircuito.corrienteFallaKa)} kA)`}`,
+              x.ampacidad.error
+                ? `  Ampacidad: no calculable en el tramo ${x.ampacidad.tramo + 1}`
+                : `  Ampacidad: se evalúa con el tramo ${x.ampacidad.tramo + 1}, el de menor capacidad (${fmt(x.ampacidad.totalA, 1)} A): ${fmtPercent(x.ampacidad.usoPct, 1)} de uso (${x.ampacidad.cumple ? "cumple" : "sobrecarga"})`,
+              `  Cortocircuito: se evalúa con el tramo ${x.cortocircuito.tramo + 1}, el de menor capacidad (${fmt(x.cortocircuito.totalKa)} kA)${x.cortocircuito.corrienteFallaKa === null ? "" : `: ${x.cortocircuito.cumple ? "soporta" : "no soporta"} los ${fmt(x.cortocircuito.corrienteFallaKa)} kA`}`,
             ]
           : []),
         ...(x.economia
@@ -1267,7 +1384,7 @@ export async function render(container) {
       const detalle = varios(e)
         ? x.tramos.flatMap((t, j) => [`  Tramo ${j + 1} — ${tramoTexto(e.tramos[j])}, ${fmt(e.tramos[j].longitudKm)} km:`, ...resultadosTramo(t, e.tramos[j], e, "    ")])
         : resultadosTramo(x.tramos[0], e.tramos[0], e, "  ").filter((l) => !/^\s+(Pérdidas|Caída de tensión):/.test(l));
-      return [``, titulo, `  Corriente de operación: ${fmt(x.corrienteA)} A`, ...detalle, ...(varios(e) ? [`  Totales del escenario:`] : []), ...totales].join("\n");
+      return [``, titulo, `  Corriente de operación: ${fmt(x.corrienteA)} A`, ...detalle, ...(varios(e) ? [`  Totales de la alternativa:`] : []), ...totales].join("\n");
     });
     const conc = conclusion(r);
     return [
@@ -1279,6 +1396,7 @@ export async function render(container) {
       `Dato de partida: ${MODOS[modo]} (${fmt(datoPartida)} ${modo === "potencia" ? "MW" : "MVA"})`,
       `Factor de potencia: ${fmt(comun.factorPotencia)}`,
       `Factor de carga (Fc): ${fmt(comun.factorCarga, 4)}`,
+      comun.tensionPorAlternativa ? `Tensión de línea: una por alternativa` : `Tensión de línea: ${fmt(estados[0].tensionKv)} kV`,
       ...(hayAerea
         ? [
             `Líneas aéreas: temperatura ambiente ${fmt(a.taC)} °C, máxima del conductor ${fmt(a.tcC)} °C, viento ${fmt(a.vwMs)} m/s a ${fmt(a.anguloVientoDeg, 0)}°, elevación ${fmt(a.elevacionM, 0)} m`,
@@ -1296,12 +1414,13 @@ export async function render(container) {
       ``,
       ...(ec
         ? [
-            `Supuestos económicos:`,
+            `Evaluación económica:`,
             `  Precio de la energía perdida (año 1): ${fmtPesos(ec.precioKwh)}/kWh`,
             `  Aumento anual del precio: ${fmtPercent(ec.escaladaEnergiaPct)}`,
             `  Tasa de descuento: ${fmtPercent(ec.tasaDescuentoPct)}`,
             `  Años de análisis: ${ec.anios}`,
             `  Crecimiento anual de la demanda: ${fmtPercent(ec.crecimientoDemandaPct)}`,
+            ...costos,
           ]
         : [`Evaluación económica: no incluida (sin precio de la energía)`]),
       ``,
@@ -1341,7 +1460,7 @@ export async function render(container) {
 
     // «Exportar» abre un menú con dos formatos; se cierra al elegir uno o al pulsar fuera
     const menu = wrap.querySelector(".vi-exportar");
-    const entrada = datosEntrada(comun, dato);
+    const entrada = datosEntrada(comun, estados, dato);
     menu.addEventListener("click", (e) => {
       const boton = e.target.closest("[data-exportar]");
       if (!boton) return;

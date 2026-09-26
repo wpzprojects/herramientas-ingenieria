@@ -1,8 +1,9 @@
 // Valoración integral de conductores: evalúa de 1 a 6 escenarios para una misma conexión (misma potencia) con TODOS los
 // criterios a la vez: ampacidad (aérea IEEE 738 o subterránea IEC 60287), pérdidas, regulación, cortocircuito y, si hay
 // precios, el costo total actualizado. Cada escenario es un circuito a una sola tensión formado por 1 a 4 tramos en serie
-// (cada uno con su red, conductor, conductores por fase y longitud): pérdidas, regulación y costos se suman; en ampacidad
-// manda el tramo más cargado y en cortocircuito el más débil (la corriente de falla es una por escenario, conservador).
+// (cada uno con su red, conductor, conductores por fase y longitud): pérdidas, regulación y costos se suman; la ampacidad
+// y el cortocircuito se evalúan con el tramo de menor capacidad (la corriente de falla es una por escenario, conservador).
+// En la pantalla cada escenario se llama «alternativa».
 // Sin DOM y SIN fórmulas nuevas: combina los motores de las demás calculadoras, que no se tocan. Los límites son las
 // referencias de diseño que ya usa la app (pérdidas 3 %, regulación 10 %) y, en ampacidad, que la corriente no la supere.
 //
@@ -223,9 +224,10 @@ export function evaluarEscenario(comun, esc) {
   const regulacion = { pct: pctRegulacion, clase: clasificarRegulacion(pctRegulacion) };
   regulacion.cumple = regulacion.pct <= LIMITE_REGULACION;
 
-  // Ampacidad: si algún tramo no se puede calcular, el escenario no cumple; si no, manda el de mayor % de uso.
+  // Ampacidad: si algún tramo no se puede calcular, el escenario no cumple; si no, se evalúa con el tramo de MENOR
+  // ampacidad (como la corriente es la misma en todos, es también el de mayor % de uso).
   const conError = tramos.findIndex((t) => t.ampacidad.error);
-  const iAmp = conError >= 0 ? conError : indice((t, m) => t.ampacidad.usoPct > m.ampacidad.usoPct);
+  const iAmp = conError >= 0 ? conError : indice((t, m) => t.ampacidad.totalA < m.ampacidad.totalA);
   const ampacidad = { ...tramos[iAmp].ampacidad, tramo: iAmp };
 
   // Cortocircuito: manda el tramo de menor capacidad

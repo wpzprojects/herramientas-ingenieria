@@ -223,7 +223,8 @@ await seccion("motor: escenario con varios tramos (aéreo + subterráneo a 34.5 
   cerca(r.perdidas.pct, perdidasPct({ ...COMUN, longitudKm: 3 }, 34.5, HAWK.r_ac_75c_ohm_km, 1) + perdidasPct({ ...COMUN, longitudKm: 2 }, 34.5, s.conductor.resistenciaOhmKm, 2), 1e-9, "…y coincide con 3·I²·R·L de cada tramo, calculado aparte");
   cerca(r.regulacion.pct, ra.regulacion.pct + rs.regulacion.pct, 1e-12, "caída de tensión = suma de los tramos");
   const usos = [ra.ampacidad.usoPct, rs.ampacidad.usoPct];
-  ok(r.ampacidad.tramo === usos.indexOf(Math.max(...usos)) && r.ampacidad.usoPct === Math.max(...usos), `ampacidad: manda el tramo más cargado (tramo ${r.ampacidad.tramo + 1})`);
+  ok(r.ampacidad.tramo === usos.indexOf(Math.max(...usos)) && r.ampacidad.usoPct === Math.max(...usos), `ampacidad: se evalúa con el tramo de menor capacidad, que es el más cargado (tramo ${r.ampacidad.tramo + 1})`);
+  ok(r.ampacidad.totalA === Math.min(ra.ampacidad.totalA, rs.ampacidad.totalA), "la ampacidad de la alternativa es la menor de sus tramos");
   const caps = [ra.cortocircuito.totalKa, rs.cortocircuito.totalKa];
   ok(r.cortocircuito.tramo === caps.indexOf(Math.min(...caps)) && r.cortocircuito.totalKa === Math.min(...caps), `cortocircuito: manda el tramo de menor capacidad (tramo ${r.cortocircuito.tramo + 1})`);
   ok(r.cortocircuito.cumple === Math.min(...caps) >= 30, "la falla del escenario se compara con el tramo más débil");
@@ -253,16 +254,37 @@ D.guardarDefectos({});
 guardarEstado("/calculos/valoracion-integral", null);
 let salir = await vista.render(stage);
 
-await seccion("vista: tarjetas y escenarios", async () => {
+await seccion("vista: tensión general o por alternativa", async () => {
+  const general = $("#f-tension");
+  const chk = $("#chk-tension-alt");
+  const filaAlt = $(".vi-tension-alt");
+  ok(!chk.checked && !general.disabled && filaAlt.hidden && $(".vi-tension-alt input").disabled, "por defecto hay una sola tensión, en «Datos de la conexión»; la alternativa no la pide");
+  poner("#f-tension", "13.2", "input");
+  chk.checked = true;
+  chk.dispatchEvent(new Event("change"));
+  ok(general.disabled && !filaAlt.hidden && $(".vi-tension-alt input").value === "13.2", "con «Por alternativa» la general se bloquea y cada alternativa pide la suya (arranca con la general)");
+  ok($(".vi-escenario .grid-2").classList.contains("vi-tension-alt") && $(".vi-escenario .grid-2 input").id.startsWith("f-tension-"), "la tensión es lo primero de la alternativa");
+  poner(".vi-tension-alt input", "34.5", "input");
+  poner("#f-tension", "34.5", "input");
+});
+
+await seccion("vista: tarjetas y alternativas", async () => {
   ok($(".page-title").textContent === "Valoración integral", "título");
   const titulos = $$(".form-section-title").map((t) => t.textContent.replace(/\s+/g, " ").trim());
-  ok(titulos[0].startsWith("Datos de la conexión") && titulos[1].startsWith("Evaluación económica") && titulos[2].startsWith("Escenario 1"), `tarjetas: ${titulos.join(" | ")}`);
-  ok($$(".tramo-block").length === 1 && $(".btn-tramo-quitar").hidden, "arranca con UN escenario, sin «Quitar»");
+  ok(titulos[0].startsWith("Datos de la conexión") && titulos[1].startsWith("Alternativa 1") && titulos.at(-1).startsWith("Evaluación económica (opcional)"), `tarjetas: ${titulos.join(" | ")}`);
+  ok($(".vi-economia").classList.contains("plegada"), "«Evaluación económica (opcional)» va al final y nace plegada");
+  ok($(".vi-economia").nextElementSibling.classList.contains("btn-row"), "…justo antes de los botones Calcular y Agregar alternativa");
+  ok($$("details.vi-avanzado > summary").every((s) => s.textContent === "Parámetros avanzados"), "los desplegables dicen solo «Parámetros avanzados»");
+  const avzAlt = $(".vi-escenario details.vi-avanzado");
+  ok(avzAlt.querySelector("[id^=f-falla-]") && avzAlt.querySelector("[id^=f-tiempo-]"), "la corriente de falla y el tiempo de despeje van en «Parámetros avanzados» de la alternativa");
+  ok($(".vi-economia [id^=f-costo-cond-]") && $(".vi-economia [id^=f-costo-inst-]") && !$(".vi-escenario [id^=f-costo-cond-]"), "los costos de cada tramo van en la tarjeta económica, no en la alternativa");
+  ok($(".vi-economia .vi-costo-titulo").textContent === "Alternativa 1", "cada bloque de costos dice a qué alternativa pertenece");
+  ok($$(".tramo-block").length === 1 && $(".btn-tramo-quitar").hidden, "arranca con UNA alternativa, sin «Quitar»");
   const agregar = $(".btn-agregar-tramo");
-  ok(agregar && agregar.textContent.includes("Agregar escenario") && !agregar.hidden, "botón «Agregar escenario» en la fila de Calcular");
+  ok(agregar && agregar.textContent.includes("Agregar alternativa") && !agregar.hidden, "botón «Agregar alternativa» en la fila de Calcular");
   for (let i = 0; i < 7; i++) agregar.click();
-  ok($$(".tramo-block").length === 6 && agregar.hidden, "máximo 6 escenarios: luego «Agregar» se oculta");
-  ok($$(".tramo-titulo").map((t) => t.textContent).join(",") === "Escenario 1,Escenario 2,Escenario 3,Escenario 4,Escenario 5,Escenario 6", "numeración 1…6");
+  ok($$(".tramo-block").length === 6 && agregar.hidden, "máximo 6 alternativas: luego «Agregar» se oculta");
+  ok($$(".tramo-titulo").map((t) => t.textContent).join(",") === "Alternativa 1,Alternativa 2,Alternativa 3,Alternativa 4,Alternativa 5,Alternativa 6", "numeración 1…6");
   while ($$(".tramo-block").length > 1) $$(".btn-tramo-quitar").at(-1).click();
   ok($$(".tramo-block").length === 1 && !agregar.hidden && $(".btn-tramo-quitar").hidden, "se pueden quitar hasta quedar uno");
   ok($$("details.vi-avanzado").every((d) => !d.open), "«Parámetros avanzados» nacen plegados");
@@ -281,7 +303,7 @@ await seccion("vista: campos del escenario según la red", async () => {
   ok(g("referencia").value === "Alliance (7)", "una sola referencia: se elige sola");
   poner(T("red", id), "Subterranea");
   ok($(".vi-solo-aerea").hidden && !$(".vi-solo-subt").hidden && g("dab").disabled && !g("sepfases").disabled, "subterránea: se ocultan y deshabilitan las distancias aéreas");
-  ok(g("referencia").disabled && g("referencia").textContent.includes("No aplica"), "referencia: no aplica");
+  ok(g("referencia").disabled && g("referencia").closest(".field").hidden, "subterránea: el campo Referencia ni se muestra");
   ok([...g("material").options].map((o) => o.value).join(",") === "Aluminio,Cobre", "materiales del catálogo de cables subterráneos");
   poner(T("material", id), "Cobre");
   const calibres = [...g("calibre").options].map((o) => o.value).filter(Boolean);
@@ -345,7 +367,7 @@ await seccion("vista: cálculo con dos escenarios (el ejemplo del usuario)", asy
   ok(rep[0] === "CÁLCULO DE VALORACIÓN INTEGRAL" && iP > 0 && iR > iP && rep[iP + 1] === "-".repeat(30) && rep[iR + 1] === "-".repeat(30), "reporte: título, parámetros y resultados con su línea de 30 guiones debajo");
   ok($$("#resultado-wrap .report-block strong").length === 3, "las tres etiquetas del reporte en negrita");
   const texto = rep.join("\n");
-  ok(texto.includes("Escenario 2 — Aérea · ACSR 477") && texto.includes("×2") && texto.includes("Conclusión:"), "el reporte trae cada escenario y la conclusión");
+  ok(texto.includes("Alternativa 2 — Aérea · ACSR 477") && texto.includes("×2") && texto.includes("Conclusión:"), "el reporte trae cada escenario y la conclusión");
   ok(texto.includes("Evaluación económica: no incluida"), "el reporte dice que no hay evaluación económica");
 });
 
@@ -357,14 +379,14 @@ await seccion("vista: con costos", async () => {
   await espera(30);
   const etiquetas = $$("#resultado-wrap .vi-matriz td.etiqueta-fila").map((t) => t.textContent);
   ok(etiquetas.includes("Costo total actualizado"), "con precio y al menos un costo aparecen las filas de costos");
-  ok($$("#resultado-wrap .callout-warning").some((c) => c.textContent.includes("Sin costo del conductor: Escenario 2") || c.textContent.includes("no entra en la comparación de costos: Escenario 2")), "avisa qué escenario queda fuera de la comparación de costos");
+  ok($$("#resultado-wrap .callout-warning").some((c) => c.textContent.includes("no entra en la comparación de costos: Alternativa 2")), "avisa qué escenario queda fuera de la comparación de costos");
   poner(T("costo-cond", ids[1]), "14000000", "input");
   $("#form-calc").requestSubmit();
   await espera(30);
   const rep = $("#resultado-wrap .report-block").textContent;
   ok(rep.includes("Precio de la energía perdida (año 1): $ 350/kWh") && rep.includes("Costo total actualizado:"), "el reporte trae los supuestos y los costos");
   const cumplen = $("#resultado-wrap .vi-cabecera > .callout").textContent;
-  ok(/Recomendado: Escenario \d/.test(cumplen) || /Ningún escenario cumple/.test(cumplen), `conclusión: «${cumplen.trim()}»`);
+  ok(/Recomendada: Alternativa \d/.test(cumplen) || /Ninguna alternativa cumple/.test(cumplen), `conclusión: «${cumplen.trim()}»`);
 });
 
 // Lee un ZIP sin compresión (el que arma js/util/zip.js): { nombre: texto }
@@ -437,8 +459,8 @@ await seccion("vista: exportar a Excel y a PDF", async () => {
   ok(iCostos > 0 && iPrecio === iCostos + 1, "los supuestos económicos van en la sección de costos, justo bajo su título");
   ok(textos.indexOf("Datos de la conexión") < iCostos && !textos.slice(textos.indexOf("Datos de la conexión"), textos.indexOf("Criterio")).some((x) => /Precio|Tasa/.test(x)), "…y no en los datos de la conexión");
   const tramosXml = a["xl/worksheets/sheet2.xml"] ?? "";
-  ok(tramosXml.includes("Escenario 2") && tramosXml.includes("Capacidad de cortocircuito (kA)"), "la hoja «Tramos» trae una fila por tramo");
-  for (const t of ["Criterio", "Unidad", "Escenario 1", "Ampacidad", "Corriente de operación", "Ampacidad por conductor", "Pérdidas: clasificación", "Costo total actualizado", "Resultado", "Datos de la conexión"]) ok(textos.some((x) => x.startsWith(t)), `la hoja trae «${t}»`);
+  ok(tramosXml.includes("Alternativa 2") && tramosXml.includes("Capacidad de cortocircuito (kA)"), "la hoja «Tramos» trae una fila por tramo");
+  for (const t of ["Criterio", "Unidad", "Alternativa 1", "Ampacidad", "Corriente de operación", "Ampacidad por conductor", "Pérdidas: clasificación", "Costo total actualizado", "Resultado", "Datos de la conexión"]) ok(textos.some((x) => x.startsWith(t)), `la hoja trae «${t}»`);
   // la corriente de operación va como número (no como texto con la unidad)
   const filaCorriente = [...doc.querySelectorAll("row")].find((r) => r.querySelector("t")?.textContent === "Corriente de operación");
   const valores = filaCorriente ? [...filaCorriente.querySelectorAll("c > v")].map((v) => Number(v.textContent)) : [];
@@ -462,7 +484,7 @@ await seccion("vista: exportar a Excel y a PDF", async () => {
   ok(pdf.querySelector("h1")?.textContent === "Valoración integral de conductores" && pdf.querySelector(".vi-doc-conclusion"), "título y conclusión");
   ok(pdf.querySelectorAll(".vi-doc-matriz thead th").length === 4, "tabla: criterio, unidad y una columna por escenario");
   ok([...pdf.querySelectorAll(".vi-doc-seccion td")].map((t) => t.textContent).includes("Pérdidas"), "con las secciones");
-  ok(pdf.querySelectorAll(".vi-doc-datos tr").length === 3 && !/Precio|Tasa/.test(pdf.querySelector(".vi-doc-datos").textContent), "datos de la conexión: dato de partida, FP y Fc (sin los supuestos económicos)");
+  ok(pdf.querySelectorAll(".vi-doc-datos tr").length === 4 && !/Precio|Tasa/.test(pdf.querySelector(".vi-doc-datos").textContent), "datos de la conexión: dato de partida, FP, Fc y tensión (sin los supuestos económicos)");
   ok(/Precio de la energía perdida/.test(pdf.querySelector(".vi-doc-nota-fila")?.textContent ?? "") && pdf.querySelector(".vi-doc-nota-fila").previousElementSibling.textContent.startsWith("Costos a"), "los supuestos económicos van en la sección de costos del PDF");
   window.dispatchEvent(new Event("afterprint"));
   ok(!document.getElementById("doc-impresion") && !document.body.classList.contains("imprimiendo-reporte"), "al terminar de imprimir se quita el documento");
@@ -488,7 +510,7 @@ await seccion("vista: escenario subterráneo y error de catálogo", async () => 
 });
 
 await seccion("vista: tramos dentro de un escenario", async () => {
-  $(".btn-agregar-tramo").click(); // escenario nuevo, al final
+  $(".btn-agregar-tramo").click(); // alternativa nueva, al final
   const cards = $$(".vi-escenario");
   const card = cards.at(-1);
   const col = cards.length; // su columna en la tabla (la 0 es la de etiquetas)
@@ -508,6 +530,10 @@ await seccion("vista: tramos dentro de un escenario", async () => {
   card.querySelectorAll(".vi-quitar-tramo")[3].click();
   card.querySelectorAll(".vi-quitar-tramo")[2].click();
   ok(card.querySelectorAll(".vi-tramo").length === 2 && !agregarTramo.hidden, "se pueden quitar tramos");
+  ok(getComputedStyle(agregarTramo.parentElement).justifyContent === "flex-end", "«Agregar tramo» va justificado a la derecha");
+  const titulosCosto = $$(".vi-economia .vi-costo-titulo").map((x) => x.textContent);
+  ok(titulosCosto.includes(`Alternativa ${col} · Tramo 1 (aérea)`) && titulosCosto.includes(`Alternativa ${col} · Tramo 2 (aérea)`), "en la tarjeta económica cada tramo tiene su bloque de costos");
+  ok(card.querySelectorAll("details.vi-avanzado .vi-tramo-avanzado").length === 2, "un solo «Parámetros avanzados» por alternativa, con la disposición de cada tramo");
   poner(T("tension", sid), "34.5", "input");
   poner(T("material", sid, 0), "ACSR");
   poner(T("calibre", sid, 0), "477");
@@ -530,13 +556,14 @@ await seccion("vista: tramos dentro de un escenario", async () => {
   const longitud = fila("Longitud").children[col].textContent;
   ok(longitud.startsWith("5.50 km") && longitud.includes("2 tramos"), `longitud total del escenario y cuántos tramos («${longitud}»)`);
   const amp = (fila("Ampacidad total") ?? fila("Ampacidad por conductor")).children[col].textContent;
-  ok(/Tramo \d \(el más cargado\)/.test(amp), "la ampacidad dice qué tramo manda");
-  ok(/Tramo \d \(el de menor capacidad\)/.test(fila("Capacidad de cortocircuito").children[col].textContent), "el cortocircuito dice qué tramo manda");
+  ok(/T1 [\d,]+ A · T2 [\d,]+ A/.test(amp), `la ampacidad muestra la de cada tramo («${amp}»)`);
+  ok(/Con T\d, el de menor capacidad/.test(fila("Uso de la ampacidad").children[col].textContent), "el uso se evalúa con el tramo de menor capacidad");
+  ok(/T1 [\d.]+ kA · T2 [\d.]+ kA/.test(fila("Capacidad de cortocircuito").children[col].textContent), "el cortocircuito muestra la capacidad de cada tramo");
   const det = $("#resultado-wrap .vi-detalle-tramos");
   ok(det && !det.open && det.querySelectorAll("tbody tr").length === $$(".vi-tramo").length, "«Detalle por tramo» plegado, con una fila por tramo de todos los escenarios");
-  ok($$("#resultado-wrap .callout-warning").some((c) => c.textContent.includes("no tienen la misma longitud total")), "avisa que los escenarios no suman la misma longitud");
+  ok($$("#resultado-wrap .callout-warning").some((c) => c.textContent.includes("no tienen la misma longitud total")), "avisa que las alternativas no suman la misma longitud");
   const rep = $("#resultado-wrap .report-block").textContent;
-  ok(rep.includes(`Escenario ${col} — 34.50 kV · 2 tramos · 5.50 km:`) && rep.includes("  Tramo 2 — Subterránea") && rep.includes("  Totales del escenario:") && rep.includes("Ampacidad: manda el tramo"), "el reporte detalla cada tramo y los totales del escenario");
+  ok(rep.includes(`Alternativa ${col} — 34.50 kV · 2 tramos · 5.50 km:`) && rep.includes("  Tramo 2 — Subterránea") && rep.includes("  Totales de la alternativa:") && rep.includes("Ampacidad: se evalúa con el tramo"), "el reporte detalla cada tramo y los totales del escenario");
   ok(rep.includes("  Tramo 1:\n    Tipo de red: Aérea\n    Longitud: 3.00 km"), "los parámetros de entrada van por tramo");
   card.querySelector(".btn-tramo-quitar").click(); // se deja la pantalla como estaba para las pruebas siguientes
   ok($$(".vi-escenario").length === col - 1, "se quita el escenario de prueba");
