@@ -156,6 +156,96 @@ const envolver = (W, H, etiqueta, s) => `<svg viewBox="0 0 ${W} ${H}" role="img"
 /** Los gráficos que van en pareja miden lo mismo de alto (380) para quedar parejos lado a lado. */
 export const ALTO_GRAFICO = 380;
 
+// ---------------------------------------------------------------- conductor económico (CE1 y CE2, elegidos por el usuario)
+
+/** Colores de las series: bien distintos entre sí y sin rojos (el rojo es «pasa el límite»; pedidos del usuario). */
+export const SERIES = ["var(--serie-1)", "var(--serie-2)", "var(--serie-3)", "var(--serie-4)", "var(--text-faint)"];
+
+/**
+ * Costo total por opción en barras apiladas: conductor + instalación + valor presente de las pérdidas (millones de pesos).
+ * `opciones` = [{ nombre, sub, conductor, instalacion, perdidas, mejor }] en pesos.
+ */
+export function costoTotalApiladoSvg({ opciones }) {
+  const W = 460, H = ALTO_GRAFICO, m = { l: 72, r: 14, t: 34, b: 86 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
+  const M = (v) => v / 1e6;
+  const total = (o) => M(o.conductor + o.instalacion + o.perdidas);
+  const yPaso = pasoRedondo(Math.max(...opciones.map(total)) * 1.08, 5), ymax = Math.ceil((Math.max(...opciones.map(total)) * 1.08) / yPaso) * yPaso;
+  const Y = (v) => m.t + ph - (v / ymax) * ph;
+  let s = fondo(m.l, m.t, pw, ph, 0);
+  for (let v = yPaso / 2; v < ymax; v += yPaso) s += linea(m.l, Y(v), m.l + pw, Y(v), "var(--border)", 1, "2 4");
+  for (let v = 0; v <= ymax + 1e-9; v += yPaso) s += linea(m.l, Y(v), m.l + pw, Y(v), "var(--border)") + texto(m.l - 7, Y(v) + 4.5, numEje(v), { ancla: "end", tam: 12 });
+  const partes = [["conductor", "Conductor", "var(--serie-1)"], ["instalacion", "Instalación", "var(--serie-4)"], ["perdidas", "Pérdidas (valor presente)", "var(--serie-2)"]].filter(([k]) => opciones.some((o) => o[k] > 0));
+  const paso = pw / opciones.length, bw = Math.min(72, paso * 0.56);
+  opciones.forEach((o, k) => {
+    const x = m.l + paso * k + (paso - bw) / 2;
+    let base = 0;
+    for (const [clave, , color] of partes) {
+      const v = M(o[clave]);
+      if (v > 0) s += `<rect class="oc-aparece" x="${f1(x)}" y="${f1(Y(base + v))}" width="${f1(bw)}" height="${f1(Y(base) - Y(base + v))}" style="fill:${color}"/>`;
+      base += v;
+    }
+    s += texto(x + bw / 2, Y(base) - 8, `$ ${num1(base)}`, { ancla: "middle", peso: 700, color: "var(--text)", tam: 12.5 });
+    if (o.mejor) s += `<rect x="${f1(x - 4)}" y="${f1(Y(base) - 3)}" width="${f1(bw + 8)}" height="${f1(Y(0) - Y(base) + 3)}" rx="3" fill="none" style="stroke:var(--success)" stroke-width="2.5"/>` + texto(x + bw / 2, Y(base) - 25, "Menor costo", { ancla: "middle", color: "var(--success)", peso: 700, tam: 11.5 });
+    s += texto(x + bw / 2, m.t + ph + 18, o.nombre, { ancla: "middle", color: "var(--text)", peso: o.mejor ? 700 : 400, tam: 12 }) + texto(x + bw / 2, m.t + ph + 33, o.sub, { ancla: "middle", tam: 10.5 });
+  });
+  s += `<text x="14" y="${m.t + ph / 2}" font-size="12.5" text-anchor="middle" transform="rotate(-90 14 ${m.t + ph / 2})" style="fill:var(--text-muted)">Millones de pesos (valor presente)</text>`;
+  let lx = m.l;
+  for (const [, nombre, color] of partes) {
+    s += `<rect x="${f1(lx)}" y="${H - 26}" width="12" height="12" rx="2" style="fill:${color}"/>` + texto(lx + 17, H - 16, nombre, { tam: 11.5 });
+    lx += nombre.length * 6.3 + 34;
+  }
+  return envolver(W, H, `Costo total por opción: ${opciones.map((o) => `${o.nombre} ${num1(total(o))} millones`).join(", ")}`, s);
+}
+const num1 = (v) => v.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+/**
+ * Costo acumulado (valor presente) año a año: cada opción arranca en su inversión y sube con sus pérdidas. Marca el año en
+ * que la de menor costo total alcanza a la de menor inversión (su punto de equilibrio), si lo hay.
+ * `series` = [{ nombre, acumulado: [pesos por año, índice 0 = inversión], mejor }]; `equilibrio` = { anio, de, frente } o null.
+ */
+export function costoAcumuladoSvg({ series, equilibrio = null }) {
+  const W = 460, H = ALTO_GRAFICO, m = { l: 72, r: 84, t: 20, b: 58 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
+  const M = (v) => v / 1e6;
+  const anios = series[0].acumulado.length - 1;
+  const todos = series.flatMap((s) => s.acumulado.map(M));
+  const bruto0 = Math.min(...todos), bruto1 = Math.max(...todos);
+  const yPaso = pasoRedondo((bruto1 - bruto0) * 1.1 || 1, 5);
+  const y0 = Math.max(0, Math.floor(bruto0 / yPaso) * yPaso), y1 = Math.ceil(bruto1 / yPaso) * yPaso;
+  const xPaso = pasoRedondo(anios, 5);
+  const X = (a) => m.l + (a / anios) * pw, Y = (v) => m.t + ph - ((v - y0) / (y1 - y0)) * ph;
+  let s = fondo(m.l, m.t, pw, ph, 0);
+  for (let v = y0 + yPaso / 2; v < y1; v += yPaso) s += linea(m.l, Y(v), m.l + pw, Y(v), "var(--border)", 1, "2 4");
+  for (let v = y0; v <= y1 + 1e-9; v += yPaso) s += linea(m.l, Y(v), m.l + pw, Y(v), "var(--border)") + texto(m.l - 7, Y(v) + 4.5, numEje(v), { ancla: "end", tam: 12 });
+  for (let a = 0; a <= anios + 1e-9; a += xPaso) s += linea(X(a), m.t + ph, X(a), m.t + ph + 5, "var(--text-muted)") + texto(X(a), m.t + ph + 20, numEje(a), { ancla: "middle", tam: 12 });
+  s += texto(m.l + pw / 2, H - 12, "Años de operación", { ancla: "middle", tam: 12.5 });
+  s += `<text x="14" y="${m.t + ph / 2}" font-size="12.5" text-anchor="middle" transform="rotate(-90 14 ${m.t + ph / 2})" style="fill:var(--text-muted)">Costo acumulado (millones, VP)</text>`;
+  const finales = [];
+  series.forEach((serie, k) => {
+    const color = SERIES[k % SERIES.length];
+    const d = serie.acumulado.map((v, a) => `${a ? "L" : "M"}${f1(X(a))},${f1(Y(M(v)))}`).join("");
+    const largo = pw * 1.6;
+    s += `<path class="oc-trazo" d="${d}" fill="none" style="stroke:${color};--largo:${f1(largo)}" stroke-width="${serie.mejor ? 3.2 : 2}" stroke-dasharray="${f1(largo)}"/>`;
+    finales.push({ y: Y(M(serie.acumulado[anios])), serie, color });
+  });
+  finales.sort((a, b) => a.y - b.y);
+  for (let i = 1; i < finales.length; i++) if (finales[i].y - finales[i - 1].y < 14) finales[i].y = finales[i - 1].y + 14;
+  for (const f of finales) s += texto(m.l + pw + 6, f.y + 4, f.serie.nombre, { tam: 11.5, color: f.color, peso: f.serie.mejor ? 700 : 400 });
+  if (equilibrio) {
+    // año exacto del cruce, interpolando entre el año anterior y el del equilibrio
+    const a = series[equilibrio.de].acumulado, b = series[equilibrio.frente].acumulado, t = equilibrio.anio;
+    const d0 = a[t - 1] - b[t - 1], d1 = a[t] - b[t];
+    const tc = t - 1 + (d0 > 0 && d0 !== d1 ? d0 / (d0 - d1) : 1);
+    const vc = M(a[t - 1] + (a[t] - a[t - 1]) * (tc - (t - 1)));
+    const px = X(tc), py = Y(vc);
+    s += linea(px, py, px, m.t + ph, "var(--text)", 1.2, "4 4");
+    s += `<circle class="oc-aparece" cx="${f1(px)}" cy="${f1(py)}" r="6" style="fill:${SERIES[equilibrio.de % SERIES.length]};stroke:var(--bg)" stroke-width="2.5"/>`;
+    const lineas = [{ t: `Año ${num1(tc)}: se paga sola`, peso: 700 }, { t: `${series[equilibrio.de].nombre} alcanza a ${series[equilibrio.frente].nombre}`, color: "var(--text-muted)", tam: 11.5 }];
+    const izq = px > m.l + pw * 0.55;
+    s += recuadro(izq ? px - 12 : px + 12, Math.max(m.t + 4, py - 64), lineas, { ancla: izq ? "end" : "start" });
+  }
+  return envolver(W, H, `Costo acumulado de ${series.length} opciones en ${anios} años`, s);
+}
+
 // ---------------------------------------------------------------- barra de referencia vertical
 
 /**
@@ -402,7 +492,10 @@ export function curvasSvg({ series, ejeX, ejeY, punto = null, extra = null, marc
     if (Number.isInteger(Math.round(v * 1e6) / 1e6)) s += texto(m.l - 7, Y(v) + 4, numEje(v), { ancla: "end", tam: 10, color: "var(--text-faint)" });
   }
   for (let v = y0; v <= y1 + 1e-9; v += yPaso) s += linea(m.l, Y(v), m.l + pw, Y(v), "var(--border)") + texto(m.l - 7, Y(v) + 4.5, numEje(v), { ancla: "end", tam: 12 });
-  for (let v = Math.ceil(x0 / xPaso) * xPaso; v <= x1 + 1e-9; v += xPaso) s += linea(X(v), m.t + ph, X(v), m.t + ph + 5, "var(--text-muted)") + texto(X(v), m.t + ph + 20, numEje(v), { ancla: "middle", tam: 12 });
+  // líneas verticales (pedido del usuario: para cruzar los datos en los dos ejes): principales en cada división y
+  // secundarias punteadas a mitad, del mismo gris suave que las horizontales
+  for (let v = Math.ceil(x0 / xPaso) * xPaso - xPaso / 2; v < x1; v += xPaso) if (v > x0) s += linea(X(v), m.t, X(v), m.t + ph, "var(--border)", 1, "2 4");
+  for (let v = Math.ceil(x0 / xPaso) * xPaso; v <= x1 + 1e-9; v += xPaso) s += (v > x0 && v < x1 - 1e-9 ? linea(X(v), m.t, X(v), m.t + ph, "var(--border)") : "") + linea(X(v), m.t + ph, X(v), m.t + ph + 5, "var(--text-muted)") + texto(X(v), m.t + ph + 20, numEje(v), { ancla: "middle", tam: 12 });
   s += texto(m.l + pw / 2, H - 12, ejeX, { ancla: "middle", tam: 12.5 });
   s += `<text x="14" y="${m.t + ph / 2}" font-size="12.5" text-anchor="middle" transform="rotate(-90 14 ${m.t + ph / 2})" style="fill:var(--text-muted)">${esc(ejeY)}</text>`;
   if (marcaY) s += linea(m.l, Y(marcaY.y), m.l + pw, Y(marcaY.y), "var(--danger)", 1.3, "5 4") + texto(m.l + 6, Y(marcaY.y) - 6, marcaY.texto, { color: "var(--danger)", tam: 11.5, peso: 600 });
@@ -537,6 +630,6 @@ export function corteZanjaSvg({ ductos, wPorCircuito, rho, tTerreno, tConductor,
   const d0 = ductos.reduce((a, d) => (d.y < a.y ? d : a), ductos[0]);
   const xm = m.l + pw - 16;
   s += `<line x1="${xm}" y1="${sup}" x2="${xm}" y2="${f1(Y(d0.y))}" stroke="#fff" stroke-dasharray="3 2"/>` + `<text x="${xm - 6}" y="${f1(sup + (Y(d0.y) - sup) / 2)}" font-size="11.5" font-weight="700" fill="#fff" text-anchor="end">${numEje(d0.y)} m</text></g>`;
-  s += texto(m.l + pw / 2, H - 12, `Conductor a ${numEje(tConductor)} °C · temperatura del terreno aproximada (Kennelly)`, { ancla: "middle", tam: 12 });
+  s += texto(m.l + pw / 2, m.t + ph + 24, `Conductor a ${numEje(tConductor)} °C · temperatura del terreno aproximada (Kennelly)`, { ancla: "middle", tam: 12 });
   return envolver(W, H, `Corte de la instalación: ${ductos.length} circuito(s) a ${numEje(d0.y)} m, isotermas en el terreno`, s);
 }

@@ -498,7 +498,8 @@ await seccion("vista: aspecto (barra de título, 16 px laterales y espaciado uni
     });
     ok(new Set(m.barras.map((b) => b.altura)).size === 1, `ancho ${nombre}: las barras tienen la misma altura`);
     const l = m.lateral;
-    ok(Object.values(l).every((v) => v === 17), `ancho ${nombre}: 17 px del borde al contenido (1 + 16) en tarjetas, resultados y panel (${Object.values(l).join(", ")})`);
+    // en pantalla angosta los resultados llevan menos margen (10 px de relleno + 1 de borde; pedido del usuario, 2026-09-26)
+    ok(Object.entries(l).every(([k, v]) => v === (nombre === "600 px" && (k === "tabs" || k === "panel") ? 11 : 17)), `ancho ${nombre}: 17 px del borde al contenido en las tarjetas y ${nombre === "600 px" ? "11" : "17"} px en los resultados (${Object.values(l).join(", ")})`);
   }
   mAng.separaciones.forEach((s, i) => {
     ok(s.length >= 1 && s.every((v) => Math.abs(v - 16) <= 0.6), `ancho 600 px, tarjeta ${i + 1}: todos los campos a 16 px unos de otros (${s.map((v) => v.toFixed(0)).join(", ")})`);

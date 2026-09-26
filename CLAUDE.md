@@ -475,6 +475,20 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   Cortocircuito: título «Calibre» sobre los nombres de las curvas. Mockup de gráficos de Conductor económico (CE1 costo
   total apilado, CE2 costo acumulado con cruce, CE3 tornado) y Valoración integral (VI1 uso de cada límite, VI2 capacidad
   máxima, VI3 costo frente a pérdidas) publicado para que el usuario elija; irán al FINAL de «Resultado» (ancha y celular).
+  **3.43.0**: el usuario eligió CE1 y CE2 → `costoTotalApiladoSvg` (conductor/instalación/pérdidas VP, «Menor costo» con
+  borde verde) y `costoAcumuladoSvg` (`acumulado` del motor; recuadro «Año N: se paga sola» cuando la mejor no es la de
+  menor inversión y tiene `puntoEquilibrio`, año interpolado), al final del resultado de Conductor económico en
+  `.graf-final` (dos columnas de hasta 460 px a la izquierda; una en ≤900px) bajo el subtítulo «Costos en el tiempo».
+  Paleta de SERIES en `tokens.css` (`--serie-1..4`; `SERIES` en graficos.js) = colores SECUNDARIOS de la colorimetría de
+  Celsia (la guía los reserva para íconos, gráficos y tablas): azul #003fa2 (en oscuro #5b8fe6, aclarado), naranja
+  #d5752d (el primario), azul claro #13a2e1 y verde #00be91. SIN el rojo #ca0045 (en los gráficos el rojo = «pasa el
+  límite»; pedido del usuario: ninguna serie puede ser roja) ni el amarillo #fff65e (no se ve sobre fondo claro).
+  CE1: conductor serie-1, instalación serie-4, pérdidas serie-2. `curvasSvg` lleva líneas VERTICALES principales y
+  secundarias punteadas (como las horizontales). La nota del corte del terreno va a 24 px del recuadro. VI: ninguno le convenció del todo; se le propuso «VI1
+  revisado» (colores de serie, lo que pasa el límite conserva su color con borde rojo y cifra en rojo, y columna de costo
+  total a la derecha): PENDIENTE de su decisión. Ampacidad subterránea: primero la curva (suelo) y luego el corte (en
+  pantalla y en los reportes). KaTeX: dentro de `\text{}` NO poner «·» ni «°» (salen en rojo como `\cdotp`): escribir
+  `\text{K}\cdot\text{m/W}`. Celular: `#resultado-wrap` con 10 px de relleno en la tarjeta y 12 px en el panel.
 - **Valores por defecto (2026-09-26, pedido del usuario: calcular de una)**: `porDefecto(sel, valor)` en cada vista
   (dispara «change» para la cascada): AAAC 246.9 + primera referencia en Pérdidas y Regulación (cada tramo aéreo nuevo),
   Cortocircuito y Ampacidad aérea; Ocupación: PVC Tipo TDP de 4". Lo guardado en la sesión sigue ganando.

@@ -292,8 +292,10 @@ await seccion("vista: espacio lateral de 16 px en las tarjetas y el panel de res
   ancho.remove();
   for (const [nombre, m] of [["600 px", mAng], ["1000 px", mAnc]]) {
     ok(m.tramoACampo === 17 && m.datosACampo === 17, `ancho ${nombre}: tarjetas de datos y de conductor: del borde de la tarjeta al campo 17 px (1 de borde + 16 de relleno) (${m.datosACampo} y ${m.tramoACampo})`);
-    ok(m.resATabs === 17 && m.resAPanel === 17, `ancho ${nombre}: tarjeta de resultados: del borde a las pestañas y al panel 17 px (${m.resATabs} y ${m.resAPanel})`);
-    ok(m.panelATexto === 17 && m.panelAEtiqueta === 17, `ancho ${nombre}: dentro del panel azul: del borde del panel a los números 17 px (${m.panelATexto} y ${m.panelAEtiqueta})`);
+    // en pantalla angosta los resultados llevan menos margen (tarjeta 10 + 1, panel 12 + 1; pedido del usuario, 2026-09-26)
+    const [enTarjeta, enPanel] = nombre === "600 px" ? [11, 13] : [17, 17];
+    ok(m.resATabs === enTarjeta && m.resAPanel === enTarjeta, `ancho ${nombre}: tarjeta de resultados: del borde a las pestañas y al panel ${enTarjeta} px (${m.resATabs} y ${m.resAPanel})`);
+    ok(m.panelATexto === enPanel && m.panelAEtiqueta === enPanel, `ancho ${nombre}: dentro del panel azul: del borde del panel a los números ${enPanel} px (${m.panelATexto} y ${m.panelAEtiqueta})`);
     ok(m.tramoAIcono === 17 && m.datosAIcono === 17, `ancho ${nombre}: el icono del título queda alineado con los campos (${m.datosAIcono} y ${m.tramoAIcono})`);
     ok(m.cardNormal === "24px" && m.panelNormal === "24px", `ancho ${nombre}: una tarjeta y un panel de otras pantallas conservan 24 px (${m.cardNormal}, ${m.panelNormal})`);
   }

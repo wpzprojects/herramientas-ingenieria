@@ -45,6 +45,13 @@
   --warning-soft: #fdf1de;
   --danger: #c22b34;
   --danger-soft: #fbe6e6;
+  /* series de los gráficos (2026-09-26): colores secundarios de la colorimetría de Celsia, que la guía reserva para
+     íconos, gráficos y tablas; sin el rojo (#ca0045), que aquí significa «pasa el límite», ni el amarillo (#fff65e),
+     que no se ve sobre fondo claro */
+  --serie-1: #003fa2;
+  --serie-2: #d5752d;
+  --serie-3: #13a2e1;
+  --serie-4: #00be91;
 
   --focus-ring: #0e7c7b;
   color-scheme: light;
@@ -89,6 +96,10 @@
     --warning-soft: #2e2618;
     --danger: #f2766c;
     --danger-soft: #301c1c;
+    --serie-1: #5b8fe6; /* el azul #003fa2 de Celsia, aclarado: sobre negro no se distingue */
+    --serie-2: #d5752d;
+    --serie-3: #13a2e1;
+    --serie-4: #00be91;
 
     --focus-ring: #4c9eff;
     color-scheme: dark;
@@ -132,6 +143,10 @@
   --warning-soft: #2e2618;
   --danger: #f2766c;
   --danger-soft: #301c1c;
+  --serie-1: #5b8fe6; /* el azul #003fa2 de Celsia, aclarado: sobre negro no se distingue */
+  --serie-2: #d5752d;
+  --serie-3: #13a2e1;
+  --serie-4: #00be91;
 
   --focus-ring: #4c9eff;
   color-scheme: dark;

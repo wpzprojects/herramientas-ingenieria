@@ -961,6 +961,10 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .graf-resumen { display: grid; grid-template-columns: fit-content(340px) minmax(0, 1fr); column-gap: 40px; row-gap: var(--space-5); align-items: start; } /* la columna de cifras mide lo que su contenido (sin espacio sobrante) */
 .graf-resumen .graf-metricas { padding-top: 18px; } /* arranca a la altura del área del gráfico, no por encima */
 .graf-par.graf-cuadricula { row-gap: 28px; } /* matriz 2 × 2 (Ampacidad aérea) */
+/* gráficos al FINAL del resultado (Conductor económico): dos lado a lado, justificados a la izquierda; uno debajo del otro en el celular */
+.graf-final { display: grid; grid-template-columns: repeat(2, minmax(0, 460px)); column-gap: 40px; row-gap: var(--space-5); align-items: start; }
+.graf-final .graf-item svg { display: block; width: 100%; height: auto; overflow: visible; }
+@media (max-width: 900px) { .graf-final { grid-template-columns: minmax(0, 1fr); } }
 /* cifras una debajo de la otra; en el celular, una al lado de la otra (Ampacidad subterránea) */
 .graf-cifras-apiladas { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: var(--space-4); max-width: 240px; }
 @media (max-width: 1180px) { .graf-cifras-apiladas { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-4); max-width: none; } }
@@ -1287,3 +1291,8 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .doc-impresion .vi-doc-matriz td.vi-doc-bueno { color: #1d6b3c; }
 .doc-impresion .vi-doc-matriz td.vi-doc-malo { color: #b3261e; }
 .doc-impresion .vi-doc-supuestos { margin: 0; padding-left: 5mm; font-size: 8.5pt; color: #333; }
+/* Celular (pedido del usuario, 2026-09-26): los resultados aprovechan el ancho; menos margen alrededor de los gráficos */
+@media (max-width: 720px) {
+  #resultado-wrap > .card.tarjeta-borde { padding: 10px; }
+  #resultado-wrap .result-panel { padding: 12px; }
+}

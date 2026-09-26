@@ -483,7 +483,9 @@ await seccion("vista: aspecto (barra de título, 16 px laterales y espaciado uni
     });
     ok(new Set(m.barras.map((b) => b.altura)).size === 1, `ancho ${nombre}: las barras tienen la misma altura`);
     const l = m.lateral;
-    ok(l.datos === 17 && l.tramo === 17 && l.iconoTramo === 17 && l.tabs === 17 && l.panel === 17 && l.texto === 17, `ancho ${nombre}: 17 px del borde al contenido (1 + 16) en tarjetas, resultados y panel (${Object.values(l).join(", ")})`);
+    // en pantalla angosta los resultados llevan menos margen (tarjeta 10 + 1, panel 12 + 1; pedido del usuario, 2026-09-26)
+    const [enTarjeta, enPanel] = nombre === "600 px" ? [11, 13] : [17, 17];
+    ok(l.datos === 17 && l.tramo === 17 && l.iconoTramo === 17 && l.tabs === enTarjeta && l.panel === enTarjeta && l.texto === enPanel, `ancho ${nombre}: 17 px del borde al contenido en las tarjetas y ${enTarjeta}/${enPanel} px en los resultados (${Object.values(l).join(", ")})`);
   }
   ok(mAng.columnasDistancias === 1 && mAnc.columnasDistancias === 3, `las tres distancias entre fases van en 3 columnas (ancho) y en 1 (angosto): ${mAnc.columnasDistancias} y ${mAng.columnasDistancias}`);
   mAng.separaciones.forEach((s, i) => {

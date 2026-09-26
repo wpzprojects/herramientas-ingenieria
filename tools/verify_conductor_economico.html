@@ -493,7 +493,9 @@ await seccion("vista: costo de instalación opcional", async () => {
   const repInst = $('[data-panel="reporte"] .report-block').textContent;
   ok(repInst.includes("¿Puede el costo de instalación cambiar la decisión? (instalación no incluida en el costo total):") && /Frente a la Opción \d: la Opción \d sigue siendo la mejor mientras instalarla no cueste más de \$ [\d.]+ millones por km por encima de la Opción \d\./.test(repInst), "el reporte lleva una línea por alternativa, con la misma frase");
   const subheads = [...$$(".result-subhead")].map(texto);
-  ok(subheads.at(-1).includes("¿Puede el costo de instalación cambiar la decisión?") && subheads.at(-2).startsWith("Sensibilidad a los supuestos del análisis (costo total actualizado"), `va al final, después de la sensibilidad de escenarios (${subheads.join(" | ")})`);
+  // desde 3.43.0 los gráficos («Costos en el tiempo») van al final de todo; justo antes, esta sección
+  ok(subheads.at(-1) === "Costos en el tiempo" && subheads.at(-2).includes("¿Puede el costo de instalación cambiar la decisión?") && subheads.at(-3).startsWith("Sensibilidad a los supuestos del análisis (costo total actualizado"), `va después de la sensibilidad de escenarios y antes de los gráficos (${subheads.join(" | ")})`);
+  ok($$(".graf-final svg").length === 2, "al final van los dos gráficos: costo total por partes y costo acumulado");
   ok(repInst.indexOf("¿Puede el costo de instalación") > repInst.indexOf("Sensibilidad a los supuestos del análisis (opción de menor costo"), "en el reporte también va después de la sensibilidad de escenarios");
   ok(!/\d×|lo que cuesta el conductor/.test(tablaInst.parentElement.innerHTML.slice(tablaInst.parentElement.innerHTML.indexOf("¿Puede el costo"))), "sin la comparación «× lo que cuesta el conductor»");
   ok(!/\(\s*[^()]*\([^()]*\([^()]*\)/.test(texto($(".callout-success"))), `el aviso verde no anida paréntesis: ${texto($(".callout-success"))}`);

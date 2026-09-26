@@ -8,6 +8,7 @@ import { icon } from "../icons.js";
 import { potenciaActivaMw } from "../calc/circuito.js";
 import { compararOpciones, sensibilidad, sensibilidadInstalacion } from "../calc/conductor-economico.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
+import { costoTotalApiladoSvg, costoAcumuladoSvg } from "../util/graficos.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
 import { revelar } from "../util/revelar.js";
@@ -798,6 +799,22 @@ export async function render(container) {
     ].join("\n");
   }
 
+  /**
+   * Gráficos (2026-09-26, elegidos por el usuario del mockup: CE1 y CE2), al FINAL del resultado: de qué está hecho el costo
+   * total de cada opción y cómo se acumula en el tiempo, con el año en que la mejor alcanza a la de menor inversión.
+   */
+  function graficosHtml(r, estados) {
+    const corto = (e) => `${e.material} ${e.calibre}${e.numConductoresPorFase > 1 ? ` ×${e.numConductoresPorFase}` : ""}`;
+    const apilado = costoTotalApiladoSvg({
+      opciones: r.opciones.map((o, i) => ({ nombre: `Opción ${i + 1}`, sub: corto(estados[i]), conductor: o.costoConductores, instalacion: o.costoInstalacion, perdidas: o.costoPerdidasVp, mejor: i === r.mejor })),
+    });
+    const eq = r.mejor !== r.indiceBase && r.opciones[r.mejor].puntoEquilibrio ? { anio: r.opciones[r.mejor].puntoEquilibrio, de: r.mejor, frente: r.indiceBase } : null;
+    const acumulado = costoAcumuladoSvg({ series: r.opciones.map((o, i) => ({ nombre: `Opción ${i + 1}`, acumulado: o.acumulado, mejor: i === r.mejor })), equilibrio: eq });
+    return `
+            <h4 class="result-subhead">Costos en el tiempo</h4>
+            <div class="graf-final"><div class="graf-item">${apilado}</div><div class="graf-item">${acumulado}</div></div>`;
+  }
+
   function renderResultado(r, s, base, estados, dato) {
     const wrap = q("#resultado-wrap");
     const calculable = r.opciones.every((o) => Number.isFinite(o.costoTotal));
@@ -826,6 +843,7 @@ export async function render(container) {
             ${matrizHtml(r, estados, base)}
             ${sensibilidadHtml(s, r)}
             ${sensibilidadInstalacionHtml(r, estados, base)}
+            ${graficosHtml(r, estados)}
           </div>`;
     }
 

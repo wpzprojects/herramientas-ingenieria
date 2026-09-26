@@ -439,7 +439,8 @@ await seccion("vista: aspecto (barra de título, 16 px laterales y espaciado uni
       ok(b.llegaBordes && b.arriba && b.fondo && b.linea && b.icono && b.centrado, `ancho ${nombre}, «${t}»: barra de borde a borde con el color atenuado, línea 35 % menos intensa, icono en color pleno y centrado`);
     });
     ok(new Set(m.barras.map((b) => b.altura)).size === 1, `ancho ${nombre}: las barras tienen la misma altura`);
-    ok(Object.values(m.lateral).every((v) => v === 17), `ancho ${nombre}: 17 px del borde al contenido (1 + 16) en tarjetas, resultados y panel (${Object.values(m.lateral).join(", ")})`);
+    // en pantalla angosta los resultados llevan menos margen (10 px de relleno + 1 de borde; pedido del usuario, 2026-09-26)
+    ok(Object.entries(m.lateral).every(([k, v]) => v === (nombre === "600 px" && (k === "tabs" || k === "panel") ? 11 : 17)), `ancho ${nombre}: 17 px del borde al contenido en las tarjetas (1 + 16) y en los resultados ${nombre === "600 px" ? "11 px (1 + 10)" : "17 px"} (${Object.values(m.lateral).join(", ")})`);
   }
   mAng.separaciones.forEach((s, i) => {
     ok(s.length >= 2 && s.every((v) => Math.abs(v - 16) <= 0.6), `ancho 600 px, tarjeta ${i + 1}: todos los campos a 16 px unos de otros (${s.map((v) => v.toFixed(0)).join(", ")})`);
