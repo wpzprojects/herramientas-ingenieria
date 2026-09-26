@@ -14,7 +14,7 @@ import {
   UMBRAL_OPTIMO_PCT,
   UMBRAL_ACEPTABLE_PCT,
 } from "../calc/regulacion-tramos.js";
-import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
+import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas, resumenConGraficosHtml, pestanaGraficosHtml } from "../util/resultados-ui.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
 import { barraReferenciaSvg, perfilTensionSvg } from "../util/graficos.js";
@@ -673,19 +673,16 @@ export async function render(container) {
     const clase = Number.isFinite(r.caidaTensionPct) ? clasificarRegulacion(r.caidaTensionPct) : null; // sin etiqueta si los datos no dan un numero
     const varios = r.tramos.length > 1;
 
-    // Gráficos (2026-09-26, elegidos por el usuario: R3 + R1 del mock-up): barra vertical con las referencias de diseño y el
-    // perfil de tensión a lo largo de la línea, tramo por tramo; luego las cifras (como Ocupación de ductos).
+    // Gráficos (2026-09-26, elegidos por el usuario: R1 + R3 del mock-up): primero las cifras y después el perfil de tensión
+    // a lo largo de la línea, tramo por tramo, y la barra vertical con las referencias de diseño, del mismo alto.
     const conGraficos = Number.isFinite(r.caidaTensionPct) && r.caidaTensionPct > 0 && estados.every((e) => e.longitudKm > 0);
     const graficos = conGraficos
-      ? `<div class="graf-barra">${barraReferenciaSvg({ valor: r.caidaTensionPct, optimo: UMBRAL_OPTIMO_PCT, aceptable: UMBRAL_ACEPTABLE_PCT, etiqueta: "Caída de tensión" })}</div>
-         <div class="graf-curva">${perfilTensionSvg({ tramos: r.tramos.map((t, i) => ({ nombre: `T${i + 1} · ${estados[i].calibre}`, longitudKm: estados[i].longitudKm, caidaPct: t.caidaTensionPct })), optimo: UMBRAL_OPTIMO_PCT, aceptable: UMBRAL_ACEPTABLE_PCT })}</div>`
-      : "";
-
-    const resultado = `
-          <div class="result-panel">
-            <div class="${conGraficos ? "graf-resumen" : ""}">
-            ${graficos}
-            <div class="graf-metricas">
+      ? [
+          { svg: perfilTensionSvg({ tramos: r.tramos.map((t, i) => ({ nombre: `T${i + 1} · ${estados[i].calibre}`, longitudKm: estados[i].longitudKm, caidaPct: t.caidaTensionPct })), optimo: UMBRAL_OPTIMO_PCT, aceptable: UMBRAL_ACEPTABLE_PCT }), ancho: 460 },
+          { svg: barraReferenciaSvg({ valor: r.caidaTensionPct, optimo: UMBRAL_OPTIMO_PCT, aceptable: UMBRAL_ACEPTABLE_PCT, etiqueta: "Caída de tensión" }), ancho: 150 },
+        ]
+      : [];
+    const cifras = `
             <div class="grid-2">
               <div class="result-metric">
                 <div class="value">${fmt(base.potenciaActivaMw)}<span class="unit">MW</span></div>
@@ -713,12 +710,15 @@ export async function render(container) {
               }
               <div class="result-metric">
                 <div class="value">${fmtPercent(r.caidaTensionPct)}</div>
-                <div class="label">Caída de tensión${varios ? " total" : ""}${clase ? ` <span class="badge ${clase.clase}">${clase.etiqueta}</span>` : ""}</div>
+                <div class="label">Caída de tensión${varios ? " total" : ""}</div>
+                ${clase ? `<div class="metric-badge"><span class="badge ${clase.clase}">${clase.etiqueta}</span></div>` : ""}
               </div>
-            </div>
-            <p class="text-muted text-sm" style="margin: var(--space-3) 0 0;">Referencias de diseño: hasta ${UMBRAL_OPTIMO_PCT}% óptimo · hasta ${UMBRAL_ACEPTABLE_PCT}% aceptable.</p>
-            </div>
-            </div>
+            </div>`;
+    const nota = `<p class="text-muted text-sm" style="margin: var(--space-3) 0 0;">Referencias de diseño: hasta ${UMBRAL_OPTIMO_PCT}% óptimo · hasta ${UMBRAL_ACEPTABLE_PCT}% aceptable.</p>`;
+
+    const resultado = `
+          <div class="result-panel">
+            ${conGraficos ? resumenConGraficosHtml({ cifras, nota, graficos }) : cifras + nota}
             ${varios ? tablaTramosHtml(r, estados) : comparacionCalibresHtml(base, estados[0])}
           </div>`;
 
@@ -726,6 +726,7 @@ export async function render(container) {
       resultado,
       reporte: reporteHtml(reporteTexto(r, base, estados, dato), ETIQUETAS_REPORTE),
       formulasPlano: FORMULAS_TEXTO,
+      graficos: conGraficos ? pestanaGraficosHtml([{ titulo: "Perfil de tensión y referencias de diseño", graficos }]) : "",
     });
     activarPestanas(wrap, { grupos: FORMULAS_TEX, etiquetas: FORMULAS_ETIQUETAS, nota: FORMULAS_NOTA });
 

@@ -942,17 +942,22 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 /* Ocupacion de ductos: resultado en TRES columnas (corte transversal a escala | dona | cifras); en pantalla angosta pasan a una columna */
 .oc-resumen { display: grid; grid-template-columns: 230px 230px auto; justify-content: start; column-gap: 40px; align-items: center; } /* corte y dona del mismo tamaño, y a continuacion las cifras */
 .oc-grafico svg { display: block; width: 100%; height: auto; overflow: visible; }
-/* Pérdidas y Regulación (2026-09-26): barra de referencia vertical · gráfico principal · cifras, como Ocupación de ductos.
-   Pantalla media: los dos gráficos arriba y las cifras debajo; celular: una sola columna. */
-.graf-resumen { display: grid; grid-template-columns: 120px minmax(300px, 440px) minmax(0, 1fr); column-gap: 32px; row-gap: var(--space-4); align-items: center; }
-.graf-resumen .graf-barra svg, .graf-resumen .graf-curva svg { display: block; width: 100%; height: auto; overflow: visible; }
-@media (max-width: 1280px) {
-  .graf-resumen { grid-template-columns: 120px minmax(0, 460px); justify-content: start; }
-  .graf-resumen .graf-metricas { grid-column: 1 / -1; }
+/* Resultado con gráficos (Pérdidas, Regulación, Ocupación, Cortocircuito y Ampacidades; 2026-09-26): PRIMERO las cifras (dos
+   columnas angostas, con la nota debajo) y DESPUÉS los gráficos lado a lado, del mismo alto (columnas en la proporción de sus
+   viewBox). Pantalla media y celular: las cifras arriba y los gráficos debajo. Pestaña «Gráficos»: cada uno en su recuadro. */
+.graf-resumen { display: grid; grid-template-columns: minmax(250px, 360px) minmax(0, 760px); column-gap: 36px; row-gap: var(--space-5); align-items: center; }
+.graf-par { display: grid; column-gap: 18px; align-items: start; }
+.graf-par .graf-item svg { display: block; width: 100%; height: auto; overflow: visible; }
+.graf-metricas .grid-2 { column-gap: var(--space-4); }
+.metric-badge { margin-top: 6px; }
+@media (max-width: 1180px) {
+  .graf-resumen { grid-template-columns: minmax(0, 1fr); }
+  .graf-resumen .graf-par { max-width: 760px; }
 }
-@media (max-width: 560px) {
-  .graf-resumen { grid-template-columns: 90px minmax(0, 1fr); column-gap: var(--space-3); }
-}
+.graf-pestana { display: flex; flex-wrap: wrap; gap: var(--space-4); }
+.graf-caja { flex: 1 1 420px; max-width: 820px; margin: 0; padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-elevated); }
+.graf-caja figcaption { font-size: 0.9rem; font-weight: 600; margin: 0 0 var(--space-3); }
+.graf-caja p { margin: var(--space-2) 0 0; }
 @media (max-width: 900px) {
   .oc-resumen { grid-template-columns: 1fr; justify-items: center; gap: var(--space-5); }
   .oc-grafico { width: 100%; max-width: 260px; }

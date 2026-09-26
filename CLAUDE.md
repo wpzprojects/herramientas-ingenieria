@@ -399,6 +399,17 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   (≤1280px las cifras bajan; ≤560px barra más angosta). Nombres de zona a la derecha en la curva (a la izquierda chocaban
   con «Hoy»). Los demás gráficos del mock-up (Cortocircuito, Ampacidad aérea y subterránea) están pendientes de que el
   usuario elija. Pruebas: «gráficos» en `verify_perdidas.html` y `verify_regulacion.html`.
+- **Gráficos, fase 2 (2026-09-26, 3.38.0, EN CURSO)**. Hecho: orden «cifras → gráficos» (`resumenConGraficosHtml` y
+  `pestanaGraficosHtml` en `resultados-ui.js`; `tarjetaResultadosHtml({…, graficos})` agrega la pestaña «Gráficos» AL
+  FINAL; columnas del par en la proporción de sus viewBox → mismo alto), fondo sólido `var(--bg)` detrás de las zonas,
+  etiqueta del 3 % sin tapar «Elevado», badge debajo del %, en Pérdidas y Regulación. Ya escritos en `graficos.js` pero
+  AÚN SIN USAR: `soportabilidadSvg`, `termometroFallaSvg`, `balanceTermicoSvg`, `curvasSvg`, `corteConductorSvg`,
+  `corteZanjaSvg`. PENDIENTE (lista del usuario): Ocupación (cifras, luego corte y dona + pestaña Gráficos); Cortocircuito
+  (Resultado: cifras + C1 soportabilidad + C2 termómetro; pestaña con ambos; etiquetas en recuadro sin tapar curvas);
+  Ampacidad aérea (Resultado: A1 balance + A2 ampacidad vs Ta con 3 vientos; pestaña: A1, A2, A3 corte del conductor y
+  curva temperatura del conductor vs corriente estilo PLS-CADD, todo con el motor sin tocarlo); Ampacidad subterránea
+  (Resultado: S1 corte con isotermas + S3 ampacidad vs resistividad re-ejecutando el motor; etiquetas sin tapar líneas).
+  Fase siguiente: proponer gráficos para Conductor económico y Valoración integral (solo en la pestaña «Gráficos»).
 - Umbrales 1 % / 3 %: solo «referencias de diseño» (Óptimo / Aceptable / Elevado). NUNCA escribir «fuera de norma».
 - Factor de pérdidas (`js/calc/perdidas.js`, 2026-09-22): usa la forma cuadrática de Buller-Woodrow, `Fp = 0.3·Fc + 0.7·Fc²`.
   Hasta esta fecha usaba la forma LINEAL (`0.7·Fc + 0.3`) para replicar la app original de Power Apps (ya retirada del repo);

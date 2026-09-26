@@ -3,6 +3,7 @@
 // La PRIMERA entrada debe coincidir con CACHE_VERSION de sw.js (lo comprueba tools/verify_perfil.html).
 // El historial anterior a 3.16.0 se reconstruyó a partir de git el 2026-09-24 (antes solo había un contador v1…v296).
 export const NOVEDADES = [
+  { version: "3.38.0", fecha: "2026-09-26", cambios: ["Pérdidas y Regulación: primero las cifras y después los gráficos, del mismo alto; los gráficos tienen fondo propio (los colores se ven mejor) y la etiqueta del 3 % ya no tapa «Elevado».", "Nueva pestaña «Gráficos» en Pérdidas y Regulación."] },
   { version: "3.37.0", fecha: "2026-09-26", cambios: ["Pérdidas: el resultado muestra una barra con las referencias de diseño (1 % y 3 %) y el % de pérdidas frente a la carga, en la unidad del dato de partida, con la carga a la que se llegaría al 3 %.", "Regulación: el resultado muestra una barra con las referencias (5 % y 10 %) y el perfil de tensión a lo largo de la línea, tramo por tramo."] },
   { version: "3.36.4", fecha: "2026-09-26", cambios: ["Biblioteca técnica: en el celular, Agregar, Editar y Eliminar caben en una fila sin salirse del borde."] },
   { version: "3.36.3", fecha: "2026-09-26", cambios: ["Detalle de tokens más claro: «Enviado a la IA» (instrucciones, herramientas, historial y resultados) y «Respondido por la IA»."] },

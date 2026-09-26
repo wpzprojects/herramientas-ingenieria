@@ -21,13 +21,14 @@ export function reporteHtml(texto, etiquetas) {
  * @param {string} o.reporte - HTML del reporte (ver reporteHtml)
  * @param {string} o.formulasPlano - texto plano de respaldo de las fórmulas (se ve mientras carga KaTeX o si no carga)
  */
-export function tarjetaResultadosHtml({ resultado, reporte, formulasPlano }) {
+export function tarjetaResultadosHtml({ resultado, reporte, formulasPlano, graficos = "" }) {
   return `
       <div class="card tarjeta-borde">
         <div class="tabs">
           <button type="button" class="tab-btn active" data-tab="resultado">Resultado</button>
           <button type="button" class="tab-btn" data-tab="reporte">Reporte</button>
           <button type="button" class="tab-btn" data-tab="formulas">Fórmulas</button>
+          ${graficos ? `<button type="button" class="tab-btn" data-tab="graficos">Gráficos</button>` : ""}
         </div>
         <div class="tab-panel" data-panel="resultado">${resultado}</div>
         <div class="tab-panel" data-panel="reporte" hidden>
@@ -37,7 +38,39 @@ export function tarjetaResultadosHtml({ resultado, reporte, formulasPlano }) {
           <div id="formulas-katex" class="formula-caja" hidden></div>
           <div class="formula-block" id="formulas-plano">${escapeHtml(formulasPlano)}</div>
         </div>
+        ${graficos ? `<div class="tab-panel" data-panel="graficos" hidden>${graficos}</div>` : ""}
       </div>`;
+}
+
+/**
+ * Resultado con gráficos (2026-09-26, pedido del usuario): primero las cifras (con su nota debajo) y después los gráficos,
+ * lado a lado y del mismo alto. `graficos` = [{ svg, ancho }]: `ancho` es el ancho del viewBox de cada SVG (todos miden
+ * ALTO_GRAFICO de alto), así las columnas van en esa proporción y los gráficos quedan parejos.
+ */
+export function resumenConGraficosHtml({ cifras, nota = "", graficos }) {
+  const columnas = graficos.map((g) => `${g.ancho}fr`).join(" ");
+  return `
+            <div class="graf-resumen">
+              <div class="graf-metricas">${cifras}${nota}</div>
+              <div class="graf-par" style="grid-template-columns: ${columnas}">${graficos.map((g) => `<div class="graf-item">${g.svg}</div>`).join("")}</div>
+            </div>`;
+}
+
+/**
+ * Pestaña «Gráficos»: cada gráfico en su recuadro con título. `items` = [{ titulo, graficos: [{ svg, ancho }], nota? }]
+ * (un recuadro puede llevar varios gráficos en pareja, p. ej. la curva con su barra de referencia).
+ */
+export function pestanaGraficosHtml(items) {
+  return `<div class="graf-pestana">${items
+    .map(
+      (it) => `
+      <figure class="graf-caja">
+        <figcaption>${escapeHtml(it.titulo)}</figcaption>
+        <div class="graf-par" style="grid-template-columns: ${it.graficos.map((g) => `${g.ancho}fr`).join(" ")}">${it.graficos.map((g) => `<div class="graf-item">${g.svg}</div>`).join("")}</div>
+        ${it.nota ? `<p class="text-muted text-sm">${escapeHtml(it.nota)}</p>` : ""}
+      </figure>`
+    )
+    .join("")}</div>`;
 }
 
 /**

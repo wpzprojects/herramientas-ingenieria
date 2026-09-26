@@ -6,6 +6,9 @@
 // - barraReferenciaSvg: barra vertical con las zonas Óptimo / Aceptable / Elevado y la marca del resultado (Pérdidas y Regulación).
 // - curvaCargaSvg: % de pérdidas frente a la carga, en la unidad del dato de partida (Pérdidas).
 // - perfilTensionSvg: tensión a lo largo de la línea, tramo por tramo (Regulación).
+// - soportabilidadSvg y termometroFallaSvg (Cortocircuito); balanceTermicoSvg, curvasSvg y corteConductorSvg (Ampacidad
+//   aérea); corteZanjaSvg y curvasSvg (Ampacidad subterránea). Todos con fondo SÓLIDO en el área del gráfico y el mismo alto
+//   (ALTO_GRAFICO) para ir en pareja; las etiquetas de puntos van en recuadros para no tapar las líneas.
 
 const COLORES_TIPO = ["var(--accent)", "var(--warning)", "var(--success)", "var(--text-muted)"];
 const f1 = (x) => x.toFixed(1);
@@ -115,7 +118,7 @@ export function corteDuctoSvg({ diametroTuboMm, tipos }) {
   </svg>`;
 }
 
-// ---------------------------------------------------------------- utilidades de ejes (Pérdidas y Regulación, 2026-09-26)
+// ---------------------------------------------------------------- utilidades de ejes (Pérdidas, Regulación, Cortocircuito y Ampacidades)
 
 /** Paso «redondo» (1, 2, 2.5 o 5 × 10ⁿ) para unas `n` divisiones entre 0 y `max`. */
 function pasoRedondo(max, n = 4) {
@@ -135,6 +138,21 @@ const texto = (x, y, t, { tam = 13, color = "var(--text-muted)", ancla = "start"
   `<text x="${f1(x)}" y="${f1(y)}" font-size="${tam}" font-weight="${peso}" text-anchor="${ancla}" style="fill:${color}">${esc(t)}</text>`;
 const linea = (x1, y1, x2, y2, color, ancho = 1, guiones = "") =>
   `<line x1="${f1(x1)}" y1="${f1(y1)}" x2="${f1(x2)}" y2="${f1(y2)}" style="stroke:${color}" stroke-width="${ancho}"${guiones ? ` stroke-dasharray="${guiones}"` : ""}/>`;
+/** Fondo SÓLIDO del área del gráfico (pedido del usuario): las zonas de color no se mezclan con el fondo del panel. */
+const fondo = (x, y, w, h, r = 4) => `<rect x="${f1(x)}" y="${f1(y)}" width="${f1(w)}" height="${f1(h)}" rx="${r}" style="fill:var(--bg)"/>`;
+/** Recuadro con texto (etiqueta que no debe tapar las líneas): fondo sólido y borde suave. */
+function recuadro(x, y, lineas, { ancla = "start", tam = 12.5 } = {}) {
+  const alto = lineas.length * (tam + 5) + 8;
+  const ancho = Math.max(...lineas.map((l) => l.t.length)) * tam * 0.56 + 16;
+  const x0 = ancla === "end" ? x - ancho : x;
+  return (
+    `<rect x="${f1(x0)}" y="${f1(y)}" width="${f1(ancho)}" height="${f1(alto)}" rx="5" style="fill:var(--bg-elevated);stroke:var(--border-strong)"/>` +
+    lineas.map((l, i) => texto(x0 + 8, y + 6 + (i + 1) * (tam + 5) - 4, l.t, { tam: l.tam || tam, color: l.color || "var(--text)", peso: l.peso || 400 })).join("")
+  );
+}
+const envolver = (W, H, etiqueta, s) => `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(etiqueta)}">${s}</svg>`;
+/** Los gráficos que van en pareja miden lo mismo de alto (380) para quedar parejos lado a lado. */
+export const ALTO_GRAFICO = 380;
 
 // ---------------------------------------------------------------- barra de referencia vertical
 
@@ -143,14 +161,14 @@ const linea = (x1, y1, x2, y2, color, ancho = 1, guiones = "") =>
  * Aceptable / Elevado de las referencias de diseño y la marca del resultado. `valor`, `optimo` y `aceptable` en %.
  */
 export function barraReferenciaSvg({ valor, optimo, aceptable, etiqueta = "" }) {
-  const W = 150, H = 380, x0 = 58, ancho = 44, y0 = 34, y1 = 330;
+  const W = 150, H = ALTO_GRAFICO, x0 = 58, ancho = 44, y0 = 34, y1 = 330;
   const ok = Number.isFinite(valor);
   const max = Math.max(aceptable * 5 / 3, ok ? valor * 1.15 : 0);
   const tope = Math.ceil(max / pasoRedondo(max, 5)) * pasoRedondo(max, 5);
   const Y = (v) => y1 - (Math.min(Math.max(v, 0), tope) / tope) * (y1 - y0);
-  const zona = (desde, hasta, color) => `<rect x="${x0}" y="${f1(Y(hasta))}" width="${ancho}" height="${f1(Y(desde) - Y(hasta))}" style="fill:${color}" opacity=".28"/>`;
-  let s = zona(0, optimo, "var(--success)") + zona(optimo, aceptable, "var(--warning)") + zona(aceptable, tope, "var(--danger)");
-  s += `<rect x="${x0}" y="${y0}" width="${ancho}" height="${y1 - y0}" rx="4" fill="none" style="stroke:var(--border-strong)"/>`;
+  const zona = (desde, hasta, color) => `<rect x="${x0}" y="${f1(Y(hasta))}" width="${ancho}" height="${f1(Y(desde) - Y(hasta))}" style="fill:${color}" opacity=".42"/>`;
+  let s = fondo(x0, y0, ancho, y1 - y0, 0) + zona(0, optimo, "var(--success)") + zona(optimo, aceptable, "var(--warning)") + zona(aceptable, tope, "var(--danger)");
+  s += `<rect x="${x0}" y="${y0}" width="${ancho}" height="${y1 - y0}" rx="3" fill="none" style="stroke:var(--border-strong)"/>`;
   for (const v of [0, optimo, aceptable, tope]) s += linea(x0 - 5, Y(v), x0, Y(v), "var(--text-muted)") + texto(x0 - 9, Y(v) + 4.5, `${numEje(v)} %`, { ancla: "end" });
   if (ok) {
     const yv = Y(valor);
@@ -159,7 +177,7 @@ export function barraReferenciaSvg({ valor, optimo, aceptable, etiqueta = "" }) 
     s += texto(x0 + ancho / 2, y0 - 12, `${valor.toFixed(2)} %`, { tam: 17, color: "var(--text)", ancla: "middle", peso: 700 });
   }
   if (etiqueta) s += texto(x0 + ancho / 2, H - 14, etiqueta, { ancla: "middle", tam: 12.5 });
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(`${etiqueta}: ${ok ? valor.toFixed(2) : "—"} % (óptimo hasta ${optimo} %, aceptable hasta ${aceptable} %)`)}">${s}</svg>`;
+  return envolver(W, H, `${etiqueta}: ${ok ? valor.toFixed(2) : "—"} % (óptimo hasta ${optimo} %, aceptable hasta ${aceptable} %)`, s);
 }
 
 // ---------------------------------------------------------------- pérdidas frente a la carga
@@ -170,35 +188,35 @@ export function barraReferenciaSvg({ valor, optimo, aceptable, etiqueta = "" }) 
  * origen que pasa por el punto de hoy. Marca dónde se llega al límite aceptable.
  */
 export function curvaCargaSvg({ pct, carga, unidad, nombreEje, optimo, aceptable }) {
-  const W = 460, H = 380, m = { l: 52, r: 18, t: 22, b: 58 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
+  const W = 460, H = ALTO_GRAFICO, m = { l: 52, r: 18, t: 22, b: 58 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
   const xPaso = pasoRedondo(carga * 2, 4), xmax = Math.ceil((carga * 2) / xPaso) * xPaso;
   const yTope = Math.max(aceptable * 4 / 3, (pct * xmax) / carga);
   const yPaso = pasoRedondo(yTope, 4), ymax = Math.ceil(yTope / yPaso) * yPaso;
   const X = (v) => m.l + (v / xmax) * pw, Y = (v) => m.t + ph - (Math.min(v, ymax) / ymax) * ph;
-  const zona = (a, b, color) => `<rect x="${m.l}" y="${f1(Y(b))}" width="${pw}" height="${f1(Y(a) - Y(b))}" style="fill:${color}" opacity=".10"/>`;
-  let s = zona(0, optimo, "var(--success)") + zona(optimo, aceptable, "var(--warning)") + zona(aceptable, ymax, "var(--danger)");
+  const zona = (a, b, color) => `<rect x="${m.l}" y="${f1(Y(b))}" width="${pw}" height="${f1(Y(a) - Y(b))}" style="fill:${color}" opacity=".16"/>`;
+  let s = fondo(m.l, m.t, pw, ph, 0) + zona(0, optimo, "var(--success)") + zona(optimo, aceptable, "var(--warning)") + zona(aceptable, ymax, "var(--danger)");
   for (let v = 0; v <= ymax + 1e-9; v += yPaso) s += linea(m.l, Y(v), m.l + pw, Y(v), "var(--border)") + texto(m.l - 7, Y(v) + 4.5, `${numEje(v)} %`, { ancla: "end", tam: 12 });
   for (let v = 0; v <= xmax + 1e-9; v += xPaso) s += linea(X(v), m.t + ph, X(v), m.t + ph + 5, "var(--text-muted)") + texto(X(v), m.t + ph + 20, numEje(v), { ancla: "middle", tam: 12 });
   s += texto(m.l + pw / 2, H - 12, `${nombreEje} (${unidad})`, { ancla: "middle", tam: 12.5 });
   // nombres de las zonas a la DERECHA (a la izquierda chocan con la etiqueta del punto de hoy)
   const zx = m.l + pw - 6;
   s += texto(zx, Y(ymax) + 15, "Elevado", { color: "var(--danger)", tam: 11.5, ancla: "end" }) + texto(zx, Y(aceptable) + 15, "Aceptable", { color: "var(--warning)", tam: 11.5, ancla: "end" }) + texto(zx, Y(optimo) + 15, "Óptimo", { color: "var(--success)", tam: 11.5, ancla: "end" });
-  if (!(pct > 0 && carga > 0)) return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Pérdidas frente a la carga">${s}</svg>`;
-  // la recta, recortada donde sale por arriba
+  if (!(pct > 0 && carga > 0)) return envolver(W, H, "Pérdidas frente a la carga", s);
   const xFin = Math.min(xmax, (ymax * carga) / pct);
-  s += `<path class="oc-trazo" d="M${X(0)},${Y(0)} L${f1(X(xFin))},${f1(Y((pct * xFin) / carga))}" fill="none" style="stroke:var(--accent);--largo:${f1(Math.hypot(X(xFin) - X(0), Y(0) - Y((pct * xFin) / carga)))}" stroke-width="3" stroke-dasharray="${f1(Math.hypot(X(xFin) - X(0), Y(0) - Y((pct * xFin) / carga)))}"/>`;
-  // límite aceptable
+  const largo = Math.hypot(X(xFin) - X(0), Y(0) - Y((pct * xFin) / carga));
+  s += `<path class="oc-trazo" d="M${X(0)},${Y(0)} L${f1(X(xFin))},${f1(Y((pct * xFin) / carga))}" fill="none" style="stroke:var(--accent);--largo:${f1(largo)}" stroke-width="3" stroke-dasharray="${f1(largo)}"/>`;
   const xLim = (aceptable * carga) / pct;
   if (xLim <= xmax) {
+    const derecha = X(xLim) > m.l + pw * 0.62;
     s += linea(X(xLim), Y(0), X(xLim), Y(aceptable), "var(--warning)", 1.4, "5 4");
-    s += texto(X(xLim) + (X(xLim) > m.l + pw * 0.62 ? -6 : 6), Y(aceptable) - 8, `${aceptable} % con ${numEje(xLim)} ${unidad}`, { color: "var(--warning)", ancla: X(xLim) > m.l + pw * 0.62 ? "end" : "start", peso: 600, tam: 12 });
+    s += texto(X(xLim) + (derecha ? -6 : 6), Y(aceptable) + 30, `${aceptable} % con ${numEje(xLim)} ${unidad}`, { color: "var(--warning)", ancla: derecha ? "end" : "start", peso: 600, tam: 12 });
   } else {
-    s += texto(m.l + pw - 4, m.t + 14, `${aceptable} % con ${numEje(xLim)} ${unidad}`, { color: "var(--warning)", ancla: "end", peso: 600, tam: 12 });
+    // el 3 % queda fuera del eje: la nota va DEBAJO del nombre «Elevado», sin taparlo
+    s += texto(zx, Y(ymax) + 32, `${aceptable} % con ${numEje(xLim)} ${unidad}`, { color: "var(--warning)", ancla: "end", peso: 600, tam: 12 });
   }
-  // punto de hoy
-  s += `<circle class="oc-aparece" cx="${f1(X(carga))}" cy="${f1(Y(pct))}" r="6.5" style="fill:var(--accent);stroke:var(--bg-elevated)" stroke-width="2.5"/>`;
+  s += `<circle class="oc-aparece" cx="${f1(X(carga))}" cy="${f1(Y(pct))}" r="6.5" style="fill:var(--accent);stroke:var(--bg)" stroke-width="2.5"/>`;
   s += texto(X(carga) - 10, Y(pct) - 12, `Hoy: ${numEje(carga)} ${unidad} · ${pct.toFixed(2)} %`, { color: "var(--text)", ancla: "end", peso: 700, tam: 12.5 });
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(`Pérdidas frente a la carga: hoy ${numEje(carga)} ${unidad} con ${pct.toFixed(2)} %; ${aceptable} % con ${numEje(xLim)} ${unidad}`)}">${s}</svg>`;
+  return envolver(W, H, `Pérdidas frente a la carga: hoy ${numEje(carga)} ${unidad} con ${pct.toFixed(2)} %; ${aceptable} % con ${numEje(xLim)} ${unidad}`, s);
 }
 
 // ---------------------------------------------------------------- perfil de tensión
@@ -208,21 +226,21 @@ export function curvaCargaSvg({ pct, carga, unidad, nombreEje, optimo, aceptable
  * distancia desde el inicio, tramo por tramo, con las referencias de diseño. `tramos` = [{ nombre, longitudKm, caidaPct }].
  */
 export function perfilTensionSvg({ tramos, optimo, aceptable }) {
-  const W = 460, H = 380, m = { l: 56, r: 22, t: 22, b: 58 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
+  const W = 460, H = ALTO_GRAFICO, m = { l: 56, r: 22, t: 22, b: 58 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
   const L = tramos.reduce((s, t) => s + t.longitudKm, 0);
   const caida = tramos.reduce((s, t) => s + t.caidaPct, 0);
   const bajada = Math.max(aceptable * 1.2, caida * 1.15);
   const yPaso = pasoRedondo(bajada, 4), ymin = 100 - Math.ceil(bajada / yPaso) * yPaso;
   const xPaso = pasoRedondo(L, 4), xmax = Math.ceil(L / xPaso) * xPaso;
   const X = (v) => m.l + (v / xmax) * pw, Y = (v) => m.t + ((100 - Math.max(v, ymin)) / (100 - ymin)) * ph;
-  const zona = (a, b, color) => `<rect x="${m.l}" y="${f1(Y(a))}" width="${pw}" height="${f1(Y(b) - Y(a))}" style="fill:${color}" opacity=".10"/>`;
-  let s = zona(100, 100 - optimo, "var(--success)") + zona(100 - optimo, 100 - aceptable, "var(--warning)") + zona(100 - aceptable, ymin, "var(--danger)");
+  const zona = (a, b, color) => `<rect x="${m.l}" y="${f1(Y(a))}" width="${pw}" height="${f1(Y(b) - Y(a))}" style="fill:${color}" opacity=".16"/>`;
+  let s = fondo(m.l, m.t, pw, ph, 0) + zona(100, 100 - optimo, "var(--success)") + zona(100 - optimo, 100 - aceptable, "var(--warning)") + zona(100 - aceptable, ymin, "var(--danger)");
   for (let v = 100; v >= ymin - 1e-9; v -= yPaso) s += linea(m.l, Y(v), m.l + pw, Y(v), "var(--border)") + texto(m.l - 7, Y(v) + 4.5, `${numEje(v)} %`, { ancla: "end", tam: 12 });
   for (let v = 0; v <= xmax + 1e-9; v += xPaso) s += linea(X(v), m.t + ph, X(v), m.t + ph + 5, "var(--text-muted)") + texto(X(v), m.t + ph + 20, numEje(v), { ancla: "middle", tam: 12 });
   s += texto(m.l + pw / 2, H - 12, "Distancia desde el inicio de la línea (km)", { ancla: "middle", tam: 12.5 });
-  s += linea(m.l, Y(100 - optimo), m.l + pw, Y(100 - optimo), "var(--success)", 1.2, "5 4") + texto(m.l + pw - 4, Y(100 - optimo) - 5, `${optimo} %`, { ancla: "end", color: "var(--success)", tam: 11.5 });
-  s += linea(m.l, Y(100 - aceptable), m.l + pw, Y(100 - aceptable), "var(--warning)", 1.2, "5 4") + texto(m.l + pw - 4, Y(100 - aceptable) - 5, `${aceptable} %`, { ancla: "end", color: "var(--warning)", tam: 11.5 });
-  if (!(L > 0) || !Number.isFinite(caida)) return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Perfil de tensión">${s}</svg>`;
+  s += linea(m.l, Y(100 - optimo), m.l + pw, Y(100 - optimo), "var(--success)", 1.2, "5 4") + texto(m.l + 6, Y(100 - optimo) + 15, `${optimo} %`, { color: "var(--success)", tam: 11.5 });
+  s += linea(m.l, Y(100 - aceptable), m.l + pw, Y(100 - aceptable), "var(--warning)", 1.2, "5 4") + texto(m.l + 6, Y(100 - aceptable) + 15, `${aceptable} %`, { color: "var(--warning)", tam: 11.5 });
+  if (!(L > 0) || !Number.isFinite(caida)) return envolver(W, H, "Perfil de tensión", s);
   let x = 0, v = 100, puntos = "";
   const varios = tramos.length > 1;
   tramos.forEach((t, i) => {
@@ -230,11 +248,268 @@ export function perfilTensionSvg({ tramos, optimo, aceptable }) {
     const largo = Math.hypot(X(x2) - X(x), Y(v2) - Y(v));
     s += `<line class="oc-trazo" x1="${f1(X(x))}" y1="${f1(Y(v))}" x2="${f1(X(x2))}" y2="${f1(Y(v2))}" style="stroke:${color};--largo:${f1(largo)};animation-delay:${i * 0.25}s" stroke-width="4" stroke-linecap="round" stroke-dasharray="${f1(largo)}"/>`;
     if (varios) s += texto((X(x) + X(x2)) / 2, (Y(v) + Y(v2)) / 2 - 12, t.nombre, { ancla: "middle", color, peso: 700, tam: 12 });
-    puntos += `<circle class="oc-aparece" cx="${f1(X(x2))}" cy="${f1(Y(v2))}" r="${i === tramos.length - 1 ? 6.5 : 4.5}" style="fill:${color};stroke:var(--bg-elevated)" stroke-width="2"/>`;
+    puntos += `<circle class="oc-aparece" cx="${f1(X(x2))}" cy="${f1(Y(v2))}" r="${i === tramos.length - 1 ? 6.5 : 4.5}" style="fill:${color};stroke:var(--bg)" stroke-width="2"/>`;
     x = x2;
     v = v2;
   });
   s += `<circle cx="${X(0)}" cy="${Y(100)}" r="4.5" style="fill:var(--text)"/>` + puntos;
   s += texto(X(L) - 8, Y(v) + 24, `Al final: ${v.toFixed(2)} % (caída ${caida.toFixed(2)} %)`, { ancla: "end", color: "var(--text)", peso: 700, tam: 12.5 });
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(`Perfil de tensión: ${v.toFixed(2)} % al final de ${numEje(L)} km`)}">${s}</svg>`;
+  return envolver(W, H, `Perfil de tensión: ${v.toFixed(2)} % al final de ${numEje(L)} km`, s);
+}
+
+// ---------------------------------------------------------------- cortocircuito: soportabilidad corriente–tiempo
+
+/**
+ * Curvas de soportabilidad (formato de las gráficas de ICEA P-32-382 y de los fabricantes), escalas logarítmicas: corriente
+ * admisible frente al tiempo de despeje, una línea por calibre (el elegido resaltado) y, si se indicó, el punto de la falla.
+ * `capacidad(area, t)` = kA (la calcula el motor, sin fórmulas nuevas). La etiqueta va en un recuadro en la esquina superior
+ * derecha (zona siempre libre: por encima de todas las curvas) con una línea al punto.
+ */
+export function soportabilidadSvg({ calibres, capacidad, falla, tiempoS }) {
+  const W = 460, H = ALTO_GRAFICO, m = { l: 54, r: 58, t: 16, b: 56 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
+  const tmin = 0.05, tmax = 5;
+  const vals = calibres.flatMap((c) => [capacidad(c.area, tmin), capacidad(c.area, tmax)]).concat(falla ? [falla.ka] : []);
+  const imin = Math.pow(10, Math.floor(Math.log10(Math.min(...vals) * 0.8)));
+  const imax = Math.pow(10, Math.ceil(Math.log10(Math.max(...vals) * 1.25)));
+  const X = (t) => m.l + ((Math.log10(t) - Math.log10(tmin)) / (Math.log10(tmax) - Math.log10(tmin))) * pw;
+  const Y = (i) => m.t + ph - ((Math.log10(i) - Math.log10(imin)) / (Math.log10(imax) - Math.log10(imin))) * ph;
+  let s = fondo(m.l, m.t, pw, ph, 0);
+  for (const t of [0.05, 0.1, 0.2, 0.5, 1, 2, 5]) s += linea(X(t), m.t, X(t), m.t + ph, "var(--border)") + texto(X(t), m.t + ph + 18, numEje(t), { ancla: "middle", tam: 12 });
+  for (let d = imin; d <= imax * 1.001; d *= 10) for (const k of [1, 2, 5]) { const i = d * k; if (i <= imax * 1.001) s += linea(m.l, Y(i), m.l + pw, Y(i), "var(--border)") + texto(m.l - 7, Y(i) + 4.5, numEje(i), { ancla: "end", tam: 12 }); }
+  s += texto(m.l + pw / 2, H - 10, "Tiempo de despeje (s)", { ancla: "middle", tam: 12.5 });
+  s += `<text x="14" y="${m.t + ph / 2}" font-size="12.5" text-anchor="middle" transform="rotate(-90 14 ${m.t + ph / 2})" style="fill:var(--text-muted)">Corriente de cortocircuito (kA)</text>`;
+  const actual = calibres.find((c) => c.actual) || calibres[0];
+  // zona segura del calibre elegido
+  let zonaSegura = `M${X(tmin)},${Y(imin)}`;
+  for (let t = tmin; t <= tmax * 1.0001; t *= 1.12) zonaSegura += ` L${f1(X(t))},${f1(Y(Math.min(imax, capacidad(actual.area, t))))}`;
+  s += `<path d="${zonaSegura} L${X(tmax)},${Y(Math.min(imax, capacidad(actual.area, tmax)))} L${X(tmax)},${Y(imin)} Z" style="fill:var(--success)" opacity=".13"/>`;
+  // curvas y nombres a la derecha (separados para que no se encimen)
+  const finales = [];
+  for (const c of calibres) {
+    let d = "";
+    for (let t = tmin; t <= tmax * 1.0001; t *= 1.1) d += `${d ? "L" : "M"}${f1(X(t))},${f1(Y(Math.min(imax, capacidad(c.area, t))))}`;
+    s += `<path d="${d}" fill="none" style="stroke:${c.actual ? "var(--accent)" : "var(--text-faint)"}" stroke-width="${c.actual ? 3 : 1.3}"/>`;
+    finales.push({ y: Y(capacidad(c.area, tmax)), c });
+  }
+  finales.sort((a, b) => a.y - b.y);
+  for (let i = 1; i < finales.length; i++) if (finales[i].y - finales[i - 1].y < 13) finales[i].y = finales[i - 1].y + 13;
+  for (const f of finales) s += texto(X(tmax) + 5, f.y + 4, f.c.nombre, { tam: 11.5, color: f.c.actual ? "var(--accent)" : "var(--text-muted)", peso: f.c.actual ? 700 : 400 });
+  // punto de la falla y su etiqueta
+  if (falla && falla.ka > 0 && tiempoS > 0) {
+    const soporta = capacidad(actual.area, tiempoS);
+    const ok = soporta >= falla.ka;
+    const px = X(Math.min(Math.max(tiempoS, tmin), tmax)), py = Y(Math.min(Math.max(falla.ka, imin), imax));
+    const bx = m.l + pw - 6, by = m.t + 6;
+    s += linea(px, py, bx - 120, by + 44, "var(--text-muted)", 1, "3 3");
+    s += `<circle class="oc-aparece" cx="${f1(px)}" cy="${f1(py)}" r="6.5" style="fill:${ok ? "var(--success)" : "var(--danger)"};stroke:var(--bg)" stroke-width="2.5"/>`;
+    s += recuadro(bx, by, [
+      { t: `Falla: ${numEje(falla.ka)} kA en ${numEje(tiempoS)} s`, peso: 700 },
+      { t: `${ok ? "Soporta" : "No soporta"}: el ${actual.nombre} aguanta ${soporta.toFixed(1)} kA`, color: ok ? "var(--success)" : "var(--danger)", tam: 12 },
+    ], { ancla: "end" });
+  }
+  return envolver(W, H, `Curvas de soportabilidad de cortocircuito; ${actual.nombre} resaltado${falla ? `; falla de ${falla.ka} kA en ${tiempoS} s` : ""}`, s);
+}
+
+// ---------------------------------------------------------------- cortocircuito: termómetro de la falla
+
+/**
+ * Temperatura del conductor durante la falla: de operación a la que alcanza con la corriente indicada, frente a la máxima
+ * admisible (la misma ecuación adiabática despejada). Sin corriente de falla muestra solo operación y máximo.
+ */
+export function termometroFallaSvg({ tOperacion, tMaxima, tAlcanza = null }) {
+  const W = 230, H = ALTO_GRAFICO, x = 48, y0 = 34, y1 = 312, ancho = 30;
+  const tope = Math.ceil((Math.max(tMaxima, tAlcanza ?? 0) * 1.12) / 50) * 50;
+  const Y = (t) => y1 - (Math.min(Math.max(t, 0), tope) / tope) * (y1 - y0);
+  const excede = tAlcanza != null && tAlcanza > tMaxima;
+  let s = `<defs><linearGradient id="cc-termo-g" x1="0" y1="1" x2="0" y2="0"><stop offset="0" style="stop-color:var(--warning)"/><stop offset="1" style="stop-color:var(--danger)"/></linearGradient></defs>`;
+  s += `<rect x="${x}" y="${y0}" width="${ancho}" height="${y1 - y0}" rx="${ancho / 2}" style="fill:var(--bg);stroke:var(--border-strong)"/>`;
+  const nivel = tAlcanza ?? tOperacion;
+  s += `<rect class="oc-aparece" x="${x + 6}" y="${f1(Y(nivel))}" width="${ancho - 12}" height="${f1(y1 - Y(nivel) + 6)}" rx="${(ancho - 12) / 2}" style="fill:url(#cc-termo-g)"/>`;
+  s += `<circle cx="${x + ancho / 2}" cy="${y1 + 14}" r="20" style="fill:var(--warning);stroke:var(--bg)" stroke-width="2"/>`;
+  for (let t = 0; t <= tope; t += tope / 5) s += linea(x - 6, Y(t), x, Y(t), "var(--text-muted)") + texto(x - 9, Y(t) + 4.5, numEje(t), { ancla: "end", tam: 11.5 });
+  const marca = (t, t1, t2, color, guiones = "") => linea(x + ancho + 2, Y(t), x + ancho + 20, Y(t), color, 2.2, guiones) + texto(x + ancho + 26, Y(t) + 1, t1, { color, peso: 700, tam: 14 }) + texto(x + ancho + 26, Y(t) + 16, t2, { tam: 11.5 });
+  s += marca(tMaxima, `${numEje(tMaxima)} °C`, "máximo admisible", "var(--danger)", "5 3");
+  if (tAlcanza != null) s += marca(tAlcanza, `${tAlcanza.toFixed(1)} °C`, "alcanza en la falla", excede ? "var(--danger)" : "var(--warning)");
+  s += marca(tOperacion, `${numEje(tOperacion)} °C`, "operación", "var(--text-muted)");
+  s += texto(W / 2, H - 4, tAlcanza == null ? "Indica la corriente de falla para ver la temperatura" : excede ? `Excede el máximo en ${(tAlcanza - tMaxima).toFixed(1)} °C` : `Margen: ${(tMaxima - tAlcanza).toFixed(1)} °C`, { ancla: "middle", tam: 12.5, peso: 700, color: tAlcanza == null ? "var(--text-muted)" : excede ? "var(--danger)" : "var(--success)" });
+  return envolver(W, H, `Temperatura del conductor en la falla: operación ${tOperacion} °C${tAlcanza != null ? `, alcanza ${tAlcanza.toFixed(1)} °C` : ""}, máximo ${tMaxima} °C`, s);
+}
+
+// ---------------------------------------------------------------- ampacidad aérea: balance térmico
+
+/**
+ * Balance térmico de IEEE 738: lo que calienta (Joule I²R y sol) frente a lo que enfría (convección y radiación), en W/m.
+ * En la ampacidad las dos barras miden lo mismo.
+ */
+export function balanceTermicoSvg({ qj, qs, qc, qr, ampacidad, tc }) {
+  const W = 460, H = ALTO_GRAFICO, x0 = 34, x1 = W - 26, alto = 62;
+  const total = Math.max(qj + qs, qc + qr);
+  const E = (v) => (v / total) * (x1 - x0);
+  const fila = (y, titulo, partes) => {
+    let x = x0, r = texto(x0, y - 10, titulo, { color: "var(--text)", peso: 700, tam: 13 });
+    r += fondo(x0, y, x1 - x0, alto, 5);
+    for (const [v, color, nombre] of partes) {
+      const w = E(v);
+      r += `<rect class="oc-aparece" x="${f1(x)}" y="${y}" width="${f1(w)}" height="${alto}" style="fill:${color}" opacity=".9"/>`;
+      if (w > 56) r += texto(x + w / 2, y + 26, nombre, { ancla: "middle", color: "#fff", peso: 700, tam: 12.5 }) + texto(x + w / 2, y + 44, `${v.toFixed(1)} W/m`, { ancla: "middle", color: "#fff", tam: 12 });
+      else r += texto(x + w / 2, y + alto + 16, `${nombre} ${v.toFixed(1)}`, { ancla: "middle", tam: 11 });
+      x += w;
+    }
+    return r;
+  };
+  let s = fila(60, "Calor que ENTRA", [[qj, "var(--danger)", "Joule I²R"], [qs, "var(--warning)", "Sol"]]);
+  s += fila(196, "Calor que SALE", [[qc, "var(--accent)", "Convección"], [qr, "var(--accent-strong)", "Radiación"]]);
+  s += linea(x0 + E(qj + qs), 40, x0 + E(qj + qs), 280, "var(--text)", 1.3, "4 3");
+  s += texto(W / 2, 318, `Equilibrio a ${numEje(tc)} °C → ${Math.round(ampacidad)} A`, { ancla: "middle", color: "var(--text)", peso: 700, tam: 14 });
+  s += texto(W / 2, 344, "Más sol o menos viento achican la barra de Joule, y con ella la ampacidad", { ancla: "middle", tam: 11.5 });
+  return envolver(W, H, `Balance térmico: Joule ${qj.toFixed(1)} W/m y sol ${qs.toFixed(1)} W/m frente a convección ${qc.toFixed(1)} W/m y radiación ${qr.toFixed(1)} W/m`, s);
+}
+
+// ---------------------------------------------------------------- curvas genéricas (ampacidad frente a una variable)
+
+/**
+ * Curvas de una magnitud (Y) frente a otra (X), con un punto marcado y etiquetas en recuadro para no tapar las líneas.
+ * `series` = [{ nombre, puntos: [[x,y]], resaltada }]; `punto` = { x, y, texto }; `extra` = { x, y, texto } (punto rojo).
+ */
+export function curvasSvg({ series, ejeX, ejeY, punto = null, extra = null, marcaY = null }) {
+  const W = 460, H = ALTO_GRAFICO, m = { l: 58, r: 70, t: 18, b: 58 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
+  const xs = series.flatMap((s) => s.puntos.map((p) => p[0])), ys = series.flatMap((s) => s.puntos.map((p) => p[1])).filter(Number.isFinite).concat(marcaY ? [marcaY.y] : []);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  const yPaso = pasoRedondo(Math.max(...ys) - Math.min(...ys) || 1, 4);
+  const y0 = Math.floor(Math.min(...ys) / yPaso) * yPaso, y1 = Math.ceil(Math.max(...ys) / yPaso) * yPaso;
+  const xPaso = pasoRedondo(x1 - x0, 5);
+  const X = (v) => m.l + ((v - x0) / (x1 - x0)) * pw, Y = (v) => m.t + ph - ((v - y0) / (y1 - y0)) * ph;
+  let s = fondo(m.l, m.t, pw, ph, 0);
+  for (let v = y0; v <= y1 + 1e-9; v += yPaso) s += linea(m.l, Y(v), m.l + pw, Y(v), "var(--border)") + texto(m.l - 7, Y(v) + 4.5, numEje(v), { ancla: "end", tam: 12 });
+  for (let v = Math.ceil(x0 / xPaso) * xPaso; v <= x1 + 1e-9; v += xPaso) s += linea(X(v), m.t + ph, X(v), m.t + ph + 5, "var(--text-muted)") + texto(X(v), m.t + ph + 20, numEje(v), { ancla: "middle", tam: 12 });
+  s += texto(m.l + pw / 2, H - 12, ejeX, { ancla: "middle", tam: 12.5 });
+  s += `<text x="14" y="${m.t + ph / 2}" font-size="12.5" text-anchor="middle" transform="rotate(-90 14 ${m.t + ph / 2})" style="fill:var(--text-muted)">${esc(ejeY)}</text>`;
+  if (marcaY) s += linea(m.l, Y(marcaY.y), m.l + pw, Y(marcaY.y), "var(--danger)", 1.3, "5 4") + texto(m.l + 6, Y(marcaY.y) - 6, marcaY.texto, { color: "var(--danger)", tam: 11.5, peso: 600 });
+  const finales = [];
+  for (const serie of series) {
+    const pts = serie.puntos.filter((p) => Number.isFinite(p[1]));
+    if (!pts.length) continue;
+    const d = pts.map((p, i) => `${i ? "L" : "M"}${f1(X(p[0]))},${f1(Y(p[1]))}`).join("");
+    s += `<path d="${d}" fill="none" style="stroke:${serie.resaltada ? "var(--accent)" : serie.color || "var(--text-faint)"}" stroke-width="${serie.resaltada ? 3 : 1.6}"/>`;
+    if (serie.nombre) finales.push({ y: Y(pts.at(-1)[1]), serie });
+  }
+  finales.sort((a, b) => a.y - b.y);
+  for (let i = 1; i < finales.length; i++) if (finales[i].y - finales[i - 1].y < 14) finales[i].y = finales[i - 1].y + 14;
+  for (const f of finales) s += texto(m.l + pw + 6, f.y + 4, f.serie.nombre, { tam: 11.5, color: f.serie.resaltada ? "var(--accent)" : "var(--text-muted)", peso: f.serie.resaltada ? 700 : 400 });
+  // etiquetas en recuadro, por encima de la curva (las curvas bajan hacia la derecha: arriba a la derecha queda libre)
+  const etiqueta = (p, color, fila) => {
+    const px = X(p.x), py = Y(p.y);
+    const bx = Math.min(px + 14, m.l + pw - 170), by = Math.max(m.t + 4, py - 58 - fila * 44);
+    return linea(px, py, bx + 8, by + 32, "var(--text-muted)", 1, "3 3") + `<circle class="oc-aparece" cx="${f1(px)}" cy="${f1(py)}" r="${fila ? 5 : 6.5}" style="fill:${color};stroke:var(--bg)" stroke-width="2.5"/>` + recuadro(bx, by, p.texto.map((t, i) => ({ t, peso: i ? 400 : 700, color: i ? "var(--text-muted)" : color === "var(--accent)" ? "var(--text)" : color, tam: i ? 11.5 : 12.5 })));
+  };
+  if (extra) s += etiqueta(extra, "var(--danger)", 0);
+  if (punto) s += etiqueta(punto, "var(--accent)", extra ? 1 : 0);
+  return envolver(W, H, `${ejeY} frente a ${ejeX}`, s);
+}
+
+// ---------------------------------------------------------------- ampacidad aérea: corte del conductor
+
+/**
+ * Corte esquemático del conductor: núcleo (acero o aleación) y capas de aluminio según la construcción de la referencia
+ * («26/7» → 26 de aluminio y 7 de núcleo; «7» → 7 de un solo material). Hilos de igual diámetro (esquemático).
+ */
+export function corteConductorSvg({ nombre, construccion, diametroMm, tipo, ampacidad }) {
+  const W = 460, H = ALTO_GRAFICO, cx = 150, cy = 185;
+  const mt = String(construccion || "").match(/(\d+)\s*\/\s*(\d+)/), mu = String(construccion || "").match(/^\s*(\d+)\s*$/);
+  const exterior = mt ? +mt[1] : mu ? +mu[1] : 0, nucleo = mt ? +mt[2] : 0;
+  // capas: 1 (centro), 6, 12, 18… hasta ubicar todos los hilos
+  const total = exterior + nucleo;
+  const capas = [];
+  let restantes = total, k = 0;
+  while (restantes > 0 && k < 8) {
+    const cap = k === 0 ? 1 : 6 * k;
+    capas.push(Math.min(cap, restantes));
+    restantes -= cap;
+    k++;
+  }
+  const r = 128 / (2 * capas.length - 1);
+  const colorNucleo = /ACAR/i.test(tipo) ? "#b9c3cc" : "#7d858e";
+  let s = `<circle cx="${cx}" cy="${cy}" r="${f1(r * (2 * capas.length - 1) + 4)}" style="fill:var(--bg);stroke:var(--border-strong)"/>`;
+  let n = 0;
+  capas.forEach((cant, i) => {
+    for (let j = 0; j < cant; j++) {
+      const a = (j / cant) * 2 * Math.PI + i * 0.18;
+      const x = cx + 2 * r * i * Math.cos(a), y = cy + 2 * r * i * Math.sin(a);
+      const esNucleo = n < nucleo;
+      s += `<circle class="oc-aparece" cx="${f1(x)}" cy="${f1(y)}" r="${f1(r - 0.9)}" style="fill:${esNucleo ? colorNucleo : "#dde2e7"};stroke:#1a1a1a" stroke-width="1"/>`;
+      n++;
+    }
+  });
+  const flecha = (x1, y1, x2, y2, color) => { const a = Math.atan2(y2 - y1, x2 - x1); return `<line x1="${f1(x1)}" y1="${f1(y1)}" x2="${f1(x2)}" y2="${f1(y2)}" style="stroke:${color}" stroke-width="3"/><path d="M${f1(x2)},${f1(y2)} L${f1(x2 - 10 * Math.cos(a - 0.45))},${f1(y2 - 10 * Math.sin(a - 0.45))} L${f1(x2 - 10 * Math.cos(a + 0.45))},${f1(y2 - 10 * Math.sin(a + 0.45))} Z" style="fill:${color}"/>`; };
+  s += flecha(cx - 40, 18, cx - 22, 48, "var(--warning)") + texto(cx - 46, 22, "Sol", { ancla: "end", color: "var(--warning)", peso: 700 });
+  s += flecha(cx + 108, cy - 70, cx + 142, cy - 104, "var(--accent)") + texto(cx + 146, cy - 106, "Convección", { color: "var(--accent)", peso: 700 });
+  s += flecha(cx + 108, cy + 70, cx + 142, cy + 104, "var(--accent-strong)") + texto(cx + 146, cy + 116, "Radiación", { color: "var(--accent-strong)", peso: 700 });
+  const tx = 300;
+  s += texto(tx, 150, nombre, { color: "var(--text)", peso: 700, tam: 14 });
+  if (total) s += texto(tx, 172, nucleo ? `Aluminio: ${exterior} hilos` : `${total} hilos`, { tam: 12.5 }) + (nucleo ? texto(tx, 190, `Núcleo: ${nucleo} hilos`, { tam: 12.5 }) : "");
+  s += texto(tx, nucleo ? 208 : 190, `Diámetro: ${numEje(diametroMm)} mm`, { tam: 12.5 });
+  if (ampacidad) s += texto(tx, nucleo ? 236 : 218, `Ampacidad: ${Math.round(ampacidad)} A`, { color: "var(--accent)", peso: 700, tam: 15 });
+  s += texto(cx, H - 8, "Dibujo esquemático (hilos de igual diámetro)", { ancla: "middle", tam: 11 });
+  return envolver(W, H, `Corte del conductor ${nombre}`, s);
+}
+
+// ---------------------------------------------------------------- ampacidad subterránea: corte con isotermas
+
+/**
+ * Corte de la zanja: superficie, profundidad, cables de cada circuito y la temperatura del terreno por superposición de
+ * fuentes lineales con sus imágenes (Kennelly, el método de IEC 60287 para el calentamiento mutuo; terreno homogéneo, sin
+ * el ducto: es una aproximación ilustrativa). `ductos` = [{ x, y }] (m, y = profundidad); `wPorCircuito` = W/m.
+ */
+export function corteZanjaSvg({ ductos, wPorCircuito, rho, tTerreno, tConductor, monopolar, dCableM, sepFasesM }) {
+  const W = 460, H = ALTO_GRAFICO, sup = 24;
+  const cxs = ductos.map((d) => d.x), cys = ductos.map((d) => d.y);
+  const xc = (Math.min(...cxs) + Math.max(...cxs)) / 2;
+  const semiancho = Math.max(0.85, (Math.max(...cxs) - Math.min(...cxs)) / 2 + 0.6);
+  const prof = Math.max(...cys) + 0.6;
+  const escala = Math.min(W / (2 * semiancho), (H - sup - 26) / prof);
+  const X = (x) => W / 2 + (x - xc) * escala, Y = (y) => sup + y * escala;
+  const rMin = Math.max(dCableM, 0.03);
+  const theta = (x, y) => tTerreno + ductos.reduce((a, d) => a + ((wPorCircuito * rho) / (2 * Math.PI)) * Math.log(Math.hypot(x - d.x, y + d.y) / Math.max(Math.hypot(x - d.x, y - d.y), rMin)), 0);
+  const tmax = Math.max(theta(ductos[0].x + rMin, ductos[0].y), tTerreno + 10);
+  const paradas = [[0, [45, 36, 28]], [0.12, [92, 58, 33]], [0.3, [168, 86, 35]], [0.5, [222, 120, 40]], [0.75, [240, 170, 60]], [1, [250, 235, 160]]];
+  const color = (t) => {
+    const u = Math.min(1, Math.max(0, (t - tTerreno) / (tmax - tTerreno)));
+    for (let i = 1; i < paradas.length; i++) if (u <= paradas[i][0]) { const [u0, c0] = paradas[i - 1], [u1, c1] = paradas[i], k = (u - u0) / (u1 - u0); return `rgb(${c0.map((v, j) => Math.round(v + k * (c1[j] - v))).join(",")})`; }
+    return "rgb(250,235,160)";
+  };
+  let s = "";
+  const paso = 6;
+  for (let px = 0; px < W; px += paso) for (let py = sup; py < H; py += paso) s += `<rect x="${px}" y="${py}" width="${paso + 0.5}" height="${paso + 0.5}" fill="${color(theta((px + paso / 2 - W / 2) / escala + xc, (py + paso / 2 - sup) / escala))}" shape-rendering="crispEdges"/>`;
+  // isotermas (cada 10 °C desde el terreno), buscadas en rayos desde el centro de los circuitos
+  const yc = (Math.min(...cys) + Math.max(...cys)) / 2;
+  const niveles = [];
+  for (let t = Math.ceil((tTerreno + 5) / 10) * 10; t < tmax - 3 && niveles.length < 4; t += 10) niveles.push(t);
+  for (const t of niveles) {
+    let dd = "", primero = true;
+    for (let a = 0; a <= 2 * Math.PI + 0.01; a += 0.05) {
+      let rr = 0.02;
+      while (rr < 3 && theta(xc + Math.cos(a) * rr, yc + Math.sin(a) * rr) > t) rr += 0.005;
+      const yy = yc + Math.sin(a) * rr;
+      if (yy < 0) continue;
+      dd += `${primero ? "M" : "L"}${f1(X(xc + Math.cos(a) * rr))},${f1(Y(yy))}`;
+      primero = false;
+    }
+    s += `<path d="${dd}" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="1.1" stroke-dasharray="4 3"/>`;
+    let rr = 0.02;
+    while (rr < 3 && theta(xc + rr, yc) > t) rr += 0.005;
+    s += `<text x="${f1(X(xc + rr) + 4)}" y="${f1(Y(yc) - 3)}" font-size="11" font-weight="700" fill="#fff">${t} °C</text>`;
+  }
+  // cables: trébol por circuito (monopolar) o uno (tripolar); dibujados un poco más grandes para que se vean
+  const rc = Math.max((dCableM / 2) * escala, 5);
+  for (const d of ductos) {
+    const pos = monopolar
+      ? [[-sepFasesM / 2, sepFasesM * 0.29], [sepFasesM / 2, sepFasesM * 0.29], [0, -sepFasesM * 0.58]].map(([a, b]) => [d.x + a * Math.max(1, (2 * rc) / (sepFasesM * escala)), d.y + b * Math.max(1, (2 * rc) / (sepFasesM * escala))])
+      : [[d.x, d.y]];
+    for (const [a, b] of pos) s += `<circle class="oc-aparece" cx="${f1(X(a))}" cy="${f1(Y(b))}" r="${f1(rc)}" fill="#b87333" stroke="#111" stroke-width="1.4"/>`;
+  }
+  s += `<rect x="0" y="0" width="${W}" height="${sup}" style="fill:var(--bg-elevated)"/>` + `<line x1="0" y1="${sup}" x2="${W}" y2="${sup}" stroke="#6b8f5a" stroke-width="3"/>` + texto(8, 16, `Superficie · ${numEje(tTerreno)} °C`, { tam: 11.5 });
+  const d0 = ductos.reduce((a, d) => (d.y < a.y ? d : a), ductos[0]);
+  s += `<line x1="${W - 28}" y1="${sup}" x2="${W - 28}" y2="${f1(Y(d0.y))}" stroke="#fff" stroke-dasharray="3 2"/>` + `<text x="${W - 34}" y="${f1(sup + (Y(d0.y) - sup) / 2)}" font-size="11.5" font-weight="700" fill="#fff" text-anchor="end">${numEje(d0.y)} m</text>`;
+  s += `<text x="8" y="${H - 8}" font-size="11" fill="#fff">Conductor a ${numEje(tConductor)} °C · temperatura del terreno aproximada (Kennelly)</text>`;
+  return envolver(W, H, `Corte de la instalación: ${ductos.length} circuito(s) a ${numEje(d0.y)} m, isotermas en el terreno`, s);
 }
