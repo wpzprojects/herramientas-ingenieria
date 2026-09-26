@@ -1263,7 +1263,7 @@ await seccion("consumo de tokens (leído de la respuesta, sin llamadas adicional
   document.body.append(caja);
   U.pintarTotal(caja, mensajes);
   const etiqueta = caja.querySelector("label.ia-uso-total");
-  ok(etiqueta && /^Total: 4\.6 k tokens/.test(etiqueta.textContent.trim()) && /Entrada: 4\.0 k tokens/.test(etiqueta.dataset.info) && !!etiqueta.querySelector(".info-btn"), "total en la barra de «Conversación» con un botón «i» que da el detalle");
+  ok(etiqueta && /^Total: 4\.6 k tokens/.test(etiqueta.textContent.trim()) && /Enviado a la IA: 4\.0 k tokens/.test(etiqueta.dataset.info) && /Respondido por la IA: 600 tokens/.test(etiqueta.dataset.info) && !!etiqueta.querySelector(".info-btn"), "total en la barra de «Conversación» con un botón «i» que da el detalle");
   U.pintarTotal(caja, [{ rol: "user", texto: "a" }]);
   ok(caja.innerHTML === "", "sin consumo registrado no se muestra nada");
   caja.remove();

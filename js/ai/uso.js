@@ -49,7 +49,7 @@ export function textoTokens(t) {
 export const usoConversacion = (mensajes = []) => mensajes.reduce((s, m) => sumarUso(s, m.uso || null), null);
 
 const detalle = (u) =>
-  `Entrada: ${textoTokens(u.entrada)} (instrucciones, historial y resultados de los cálculos) · Salida: ${textoTokens(u.salida)} · ${u.llamadas} ${u.llamadas === 1 ? "llamada" : "llamadas"} a la IA`;
+  `Enviado a la IA: ${textoTokens(u.entrada)} (instrucciones, herramientas, historial y resultados de los cálculos) · Respondido por la IA: ${textoTokens(u.salida)} (texto y cálculos pedidos) · ${u.llamadas} ${u.llamadas === 1 ? "llamada" : "llamadas"} a la IA`;
 
 /** Texto pequeño bajo una respuesta: «≈ 3.2 k tokens». null si no hay dato (conversaciones anteriores a esta función). */
 export function nodoUso(u) {

@@ -3,6 +3,7 @@
 // La PRIMERA entrada debe coincidir con CACHE_VERSION de sw.js (lo comprueba tools/verify_perfil.html).
 // El historial anterior a 3.16.0 se reconstruyó a partir de git el 2026-09-24 (antes solo había un contador v1…v296).
 export const NOVEDADES = [
+  { version: "3.36.3", fecha: "2026-09-26", cambios: ["Detalle de tokens más claro: «Enviado a la IA» (instrucciones, herramientas, historial y resultados) y «Respondido por la IA»."] },
   { version: "3.36.2", fecha: "2026-09-26", cambios: ["Biblioteca técnica: en el celular, «Fuente» y «Contenido» ocupan todo el ancho, como la fila de botones.", "El detalle del total de tokens queda solo con lo enviado, lo recibido y las llamadas."] },
   { version: "3.36.1", fecha: "2026-09-26", cambios: ["Asistente técnico y Corrector: el botón «i» del total de tokens ya muestra el detalle (se abre hacia abajo, junto al total)."] },
   { version: "3.36.0", fecha: "2026-09-26", cambios: ["Asistente técnico y Corrector de redacción: cada respuesta muestra en gris los tokens que usó y la barra de «Conversación» el total, con el detalle en el botón «i». Sirve para comparar cuánto consume una consulta frente a otra; no genera consumo adicional.", "Biblioteca técnica y Corriente NTC: los nombres de las imágenes van sin negrilla y más pequeños."] },
