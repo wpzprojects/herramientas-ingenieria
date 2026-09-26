@@ -157,8 +157,6 @@ export async function render(container) {
 
       <div id="tramos-container"></div>
 
-      <div class="vi-fila-agregar"></div>
-
       <div class="card tarjeta-borde form-section vi-economia" style="margin-top: var(--space-4);">
         <div class="form-section-title">${icon("coin")} Evaluación económica (opcional)</div>
         <div class="grid-2">
@@ -191,9 +189,11 @@ export async function render(container) {
         <div class="vi-costos"></div>
       </div>
 
-      <div class="btn-row">
-        <button type="submit" class="btn btn-primary">Calcular</button>
-        <button type="button" class="btn vi-btn-guardar">${icon("deviceFloppy")} Guardar</button>
+      <div class="btn-row btn-row--agregar">
+        <span class="vi-acciones-calc">
+          <button type="submit" class="btn btn-primary">Calcular</button>
+          <button type="button" class="btn vi-btn-guardar">${icon("deviceFloppy")} Guardar</button>
+        </span>
       </div>
       <div class="card tarjeta-borde vi-guardar" hidden>
         <div class="field">
@@ -732,13 +732,18 @@ export async function render(container) {
     for (const e of escenarios) for (const t of e.tramos) costosCont.append(t.filaCosto);
   }
 
-  // «Agregar alternativa» va justo debajo de la última alternativa, a la izquierda, antes de la evaluación económica
+  // «Agregar alternativa» va en la fila de Calcular, a la derecha (como en las demás calculadoras); si no cabe en la
+  // línea, sube a una fila propia ENCIMA de Calcular y Guardar (`wrap-reverse`). La nueva queda después de la última
+  // alternativa y se lleva a la vista.
   const botonAgregar = document.createElement("button");
   botonAgregar.type = "button";
   botonAgregar.className = "btn btn-agregar-tramo";
   botonAgregar.innerHTML = `${icon("plus")} Agregar alternativa`;
-  botonAgregar.addEventListener("click", () => agregarEscenario());
-  q(".vi-fila-agregar").append(botonAgregar);
+  botonAgregar.addEventListener("click", () => {
+    agregarEscenario();
+    escenarios.at(-1).card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  });
+  q(".btn-row--agregar").append(botonAgregar);
 
   function actualizarEscenarios() {
     escenarios.forEach((e, i) => {

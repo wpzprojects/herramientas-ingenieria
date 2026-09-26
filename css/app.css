@@ -1030,8 +1030,8 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .vi-guardar-msg { margin: var(--space-2) 0 0; color: var(--text-muted); }
 .vi-guardar-msg.ok { color: var(--success); }
 .vi-guardar-msg.error { color: var(--danger); }
-/* «Agregar alternativa»: debajo de la última alternativa, a la izquierda */
-.vi-fila-agregar { display: flex; justify-content: flex-start; margin-top: var(--space-4); }
+/* Calcular y Guardar van juntos: con «Agregar alternativa» la fila tiene solo dos elementos y, si no caben, «Agregar» sube */
+.vi-acciones-calc { display: flex; gap: var(--space-3); flex-wrap: wrap; }
 .vi-agregar-tramo { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; font-size: 0.88rem; text-decoration: none; font-weight: 600; }
 .vi-agregar-tramo .icon { width: 16px; height: 16px; }
 .vi-detalle-tramos { margin-top: var(--space-4); }
