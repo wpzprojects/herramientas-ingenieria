@@ -30,6 +30,7 @@ import { activarPlegables, plegarTarjeta } from "../util/tarjetas-plegables.js";
 import { guardarEstado, leerEstado } from "../util/persistencia-calculo.js";
 import { aplicarDefectos, leerDefectos } from "../util/valores-defecto.js";
 import { crearXlsx, columna, MIME_XLSX } from "../util/xlsx.js";
+import { activarMiles, leerMiles, reformatear, PATRON_MILES } from "../util/campo-miles.js";
 import { guardar as guardarValoracion, eliminar as eliminarValoracion, sincronizar, listarLocales, leerDatos, MAX_NOMBRE } from "../util/valoraciones-guardadas.js";
 
 const RUTA = "/calculos/valoracion-integral";
@@ -128,7 +129,7 @@ const INFO_N_SUBT = "En subterránea son circuitos (ternas) en paralelo, cada un
 // Números con coma de miles para el dinero (el resto de la app usa punto decimal, en-US).
 const num = (v, min = 0, max = 0) => (Number.isFinite(v) ? v.toLocaleString("en-US", { minimumFractionDigits: min, maximumFractionDigits: max }) : "—");
 const fmtPesos = (v) => (Number.isFinite(v) ? `$ ${num(v)}` : "—");
-const valor = (input) => (input.value.trim() === "" ? null : parseFloat(input.value));
+const valor = (input) => leerMiles(input.value); // acepta comas de miles (campos de dinero)
 
 export async function render(container) {
   const desnudos = await loadData("conductores-desnudos");
@@ -244,7 +245,7 @@ export async function render(container) {
         <div class="grid-2">
           <div class="field">
             <label for="f-precio" data-info="Lo que cuesta la energía que se pierde en la línea (compra o costo reconocido), valor del año 1. Si se deja vacío no se comparan costos; también hace falta el costo del conductor de cada tramo.">Precio de la energía perdida ($/kWh)</label>
-            <input type="number" id="f-precio" min="0" step="any">
+            <input type="text" inputmode="decimal" id="f-precio" pattern="${PATRON_MILES}" autocomplete="off">
           </div>
           <div class="field">
             <label for="f-escalada" data-info="Porcentaje que sube cada año el precio de la energía. Referencia orientativa: 2-5 % anual.">Aumento anual del precio (%)</label>
@@ -301,6 +302,8 @@ export async function render(container) {
   const chkTensionAlt = q("#chk-tension-alt");
   const tarjetaEconomia = q(".vi-economia");
   const costosCont = q(".vi-costos");
+  activarMiles(q("#f-precio"));
+  reformatear(q("#f-precio")); // por si Perfil > Calculadoras puso un precio por defecto
   plegarTarjeta(tarjetaEconomia, true); // opcional: nace plegada para pasar rápido por ella
   const campoPorModo = {
     potencia: { wrap: q("#wrap-potencia"), input: fPotencia },
@@ -448,15 +451,16 @@ export async function render(container) {
         <div class="grid-2">
           <div class="field">
             <label for="f-costo-cond-${id}" data-info="Precio de un solo conductor por km; se multiplica por las 3 fases, los conductores por fase y la longitud del tramo. Si falta en algún tramo, la alternativa no entra en la comparación de costos.">Costo del conductor ($/km)</label>
-            <input type="number" id="f-costo-cond-${id}" min="0" step="any">
+            <input type="text" inputmode="decimal" id="f-costo-cond-${id}" pattern="${PATRON_MILES}" autocomplete="off">
           </div>
           <div class="field">
             <label for="f-costo-inst-${id}" data-info="Opcional: postes, herrajes, obra civil, mano de obra… por km del tramo (sin el suministro del conductor). Vacío = 0 (solo se considera el conductor).">Costo de instalación ($/km)</label>
-            <input type="number" id="f-costo-inst-${id}" min="0" step="any">
+            <input type="text" inputmode="decimal" id="f-costo-inst-${id}" pattern="${PATRON_MILES}" autocomplete="off">
           </div>
         </div>
       </div>`;
     const [bloque, avanzado, filaCosto] = cont.children;
+    filaCosto.querySelectorAll("input").forEach(activarMiles);
     [bloque, avanzado, filaCosto].forEach((el) => activarInfos(el));
     const buscar = (s) => bloque.querySelector(s) ?? avanzado.querySelector(s) ?? filaCosto.querySelector(s);
     const f = Object.fromEntries(
@@ -648,6 +652,8 @@ export async function render(container) {
         f.calibre.dispatchEvent(new Event("change"));
         if (d.referencia) f.referencia.value = d.referencia;
         for (const k of CAMPOS_BRUTO) f[k].value = d[k];
+        reformatear(f.costoCond);
+        reformatear(f.costoInst);
         poblarPct();
         f.pct.value = d.pct;
         syncDependientes();
@@ -874,6 +880,7 @@ export async function render(container) {
       e.tramos.forEach((t) => t.filaCosto.remove());
     }
     for (const k of COMUNES) if (k in g && campo(k)) campo(k).value = g[k];
+    reformatear(campo("precio"));
     aplicarModo();
     chkTensionAlt.checked = !!g.tensionPorAlternativa;
     q("details.vi-avanzado").open = !!g.avanzado;
@@ -934,11 +941,11 @@ export async function render(container) {
     avisoGuardado("");
     campoNombre.value = guardada?.nombre ?? "";
     accionesGuardar.innerHTML = guardada
-      ? `<button type="button" class="btn btn-primary" data-guardar="actualizar">Actualizar «${escapeHtml(guardada.nombre)}»</button>
+      ? `<button type="button" class="btn btn-primary" data-guardar="actualizar">Actualizar</button>
          <button type="button" class="btn" data-guardar="nueva">Guardar como nueva</button>
-         <button type="button" class="btn btn-ghost" data-guardar="cancelar">Cancelar</button>`
+         <button type="button" class="btn" data-guardar="cancelar">Cancelar</button>`
       : `<button type="button" class="btn btn-primary" data-guardar="nueva">Guardar</button>
-         <button type="button" class="btn btn-ghost" data-guardar="cancelar">Cancelar</button>`;
+         <button type="button" class="btn" data-guardar="cancelar">Cancelar</button>`;
     campoNombre.focus();
   }
 
@@ -1005,7 +1012,7 @@ export async function render(container) {
             (r) => `
         <li class="vi-historial-fila${guardada?.id === r.id ? " actual" : ""}">
           <div class="vi-historial-texto">
-            <strong>${escapeHtml(r.nombre)}</strong>${guardada?.id === r.id ? ' <span class="badge">Abierta</span>' : ""}
+            <span class="vi-historial-nombre"><strong>${escapeHtml(r.nombre)}</strong>${guardada?.id === r.id ? '<span class="badge">Abierta</span>' : ""}</span>
             <span class="text-muted text-sm">${escapeHtml([fecha(r.actualizado), r.resumen].filter(Boolean).join(" · "))}${r.pendiente ? " · solo en este dispositivo" : ""}</span>
           </div>
           <div class="vi-historial-botones">

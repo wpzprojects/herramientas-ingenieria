@@ -599,6 +599,24 @@ await seccion("vista: un dato obligatorio faltante dentro de «Parámetros avanz
   $("#f-ta").value = "25";
 });
 
+await seccion("campos de dinero con separador de miles", async () => {
+  const M = await import("../js/util/campo-miles.js");
+  ok(M.formatearMiles("1400000000") === "1,400,000,000" && M.formatearMiles("1,400,000") === "1,400,000", "1400000000 → 1,400,000,000");
+  ok(M.formatearMiles("1234.5") === "1,234.5" && M.formatearMiles("0.25") === "0.25" && M.formatearMiles(".5") === "0.5", "conserva el punto decimal");
+  ok(M.formatearMiles("12a3$4") === "1,234" && M.formatearMiles("1.2.3") === "1.23" && M.formatearMiles("") === "" && M.formatearMiles("007") === "7", "descarta lo que no es número, un solo punto, sin ceros a la izquierda");
+  ok(M.leerMiles("1,400,000,000") === 1400000000 && M.leerMiles("1,234.5") === 1234.5 && M.leerMiles("") === null, "se lee como número (vacío = null)");
+  const id = $(".tramo-block [id^=f-tension-]").id.split("-").pop();
+  const campo = $(T("costo-cond", id));
+  ok(campo.type === "text" && campo.inputMode === "decimal", "el costo es un campo de texto con teclado numérico (un campo numérico no muestra separadores)");
+  campo.value = "1400000000";
+  campo.dispatchEvent(new Event("input", { bubbles: true }));
+  ok(campo.value === "1,400,000,000" && campo.validity.valid, `al escribir se ven los miles («${campo.value}»)`);
+  poner("#f-precio", "1350.5", "input");
+  ok($("#f-precio").value === "1,350.5", "también el precio de la energía");
+  campo.value = "";
+  poner("#f-precio", "", "input");
+});
+
 await seccion("valoraciones guardadas: dispositivo y cuenta (motor)", async () => {
   const G = await import("../js/util/valoraciones-guardadas.js");
   const { crearBackendMock } = await import("../js/auth/backend-mock.js");
@@ -705,7 +723,8 @@ await seccion("valoraciones guardadas: pantalla (guardar, historial, abrir y eli
     // actualizar la misma
     poner("#f-fp", "0.95", "input");
     btnGuardar.click();
-    ok(caja.querySelector('[data-guardar="actualizar"]')?.textContent.includes("Solar Mesa Mamonal") && caja.querySelector('[data-guardar="nueva"]'), "con una abierta ofrece «Actualizar «nombre»» y «Guardar como nueva»");
+    ok(caja.querySelector('[data-guardar="actualizar"]')?.textContent.trim() === "Actualizar" && caja.querySelector('[data-guardar="nueva"]'), "con una abierta ofrece «Actualizar» y «Guardar como nueva»");
+    ok(!caja.querySelector('[data-guardar="cancelar"]').classList.contains("btn-ghost"), "«Cancelar» lleva borde, como «Guardar como nueva»");
     caja.querySelector('[data-guardar="actualizar"]').click();
     await espera(50);
     ok(G.listarLocales().length === 1 && G.leerDatos(G.listarLocales()[0]).fp === "0.95", "Actualizar reemplaza la misma, con los datos nuevos");
@@ -725,6 +744,8 @@ await seccion("valoraciones guardadas: pantalla (guardar, historial, abrir y eli
     const filas = () => [...panel.querySelectorAll(".vi-historial-fila")];
     ok(!panel.hidden && filas().length === 2, "el historial muestra las dos guardadas");
     ok(filas()[0].textContent.includes("Variante FP 0.85") && filas()[0].classList.contains("actual"), "la más reciente primero, marcada como abierta");
+    const insigniaAbierta = filas()[0].querySelector(".vi-historial-nombre .badge");
+    ok(insigniaAbierta && insigniaAbierta.getBoundingClientRect().width < 120 && Math.abs(insigniaAbierta.getBoundingClientRect().top - filas()[0].querySelector("strong").getBoundingClientRect().top) < 12, "«Abierta» va pequeña y al frente del nombre");
     ok(/este dispositivo/.test(panel.querySelector(".vi-historial-estado").textContent), "dice que están solo en este dispositivo (sin servicio de cuenta)");
 
     // abrir la primera
