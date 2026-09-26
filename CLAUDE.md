@@ -868,6 +868,11 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   «Conversación» muestra «Total: …» con «i» (`pintarTotal`, `#uso-total`). Las APIs NO informan el saldo del plan (solo
   límites por minuto): no se muestra un «% consumido»; tampoco pesos (los precios cambian). Conversaciones anteriores sin
   `uso` no cuentan. Pruebas: «consumo de tokens» en `verify_ia.html`.
+  Optimización del consumo: analizada y NO implementada (el usuario no quiere arriesgar el buen funcionamiento actual).
+  Diagnóstico (~80 % del consumo es el manual de herramientas repetido en cada llamada), opciones, requisitos y
+  procedimiento con 8 preguntas de referencia en `docs/optimizacion-tokens-ia.md`: leerlo ANTES de tocar las
+  descripciones de `tools.js` o las instrucciones de los agentes con ese fin. Detalle de «i»: «Enviado a la IA» /
+  «Respondido por la IA» (3.36.3).
 - **Decisión del usuario (2026-09-26)**: NO agregar más funciones de IA hasta que él lo pida. Se le propusieron y
   descartó: analizar con IA desde cada calculadora, consulta de la Biblioteca/Resoluciones como herramienta, control de
   cambios en el Corrector, agentes compartidos, adjuntos, plantilla Word, conversaciones en la cuenta, más herramientas,
