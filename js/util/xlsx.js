@@ -12,7 +12,8 @@ export const MIME_XLSX = "application/vnd.openxmlformats-officedocument.spreadsh
 // Formatos de número: los incorporados de Excel 3 (#,##0) y 4 (#,##0.00) y uno propio para un decimal.
 const FORMATO_DEC = { 0: 3, 1: 164, 2: 4, 3: 165, 4: 166 };
 
-// fuente: 0 normal, 1 negrita, 2 título, 3 gris pequeña · relleno: 2 cabecera, 3 sección, 4 total · borde: 1 fino
+// fuente: 0 normal, 1 negrita, 2 título, 3 gris pequeña, 4-6 verde/ámbar/rojo · relleno: 2 cabecera, 3 sección, 4 total,
+// 5-7 verde/amarillo/rojo claros (los de los estilos «Bueno», «Neutral» y «Malo» de Excel) · borde: 1 fino
 const ESTILOS = {
   normal: { fuente: 0, relleno: 0, borde: 0 },
   titulo: { fuente: 2, relleno: 0, borde: 0 },
@@ -22,6 +23,10 @@ const ESTILOS = {
   etiqueta: { fuente: 1, relleno: 0, borde: 1, ajustar: true },
   celda: { fuente: 0, relleno: 0, borde: 1, ajustar: true },
   total: { fuente: 1, relleno: 4, borde: 1, ajustar: true },
+  // los estilos «Bueno», «Neutral» y «Malo» de Excel: la clasificación se ve por color, sin filas de más
+  bueno: { fuente: 4, relleno: 5, borde: 1, ajustar: true },
+  neutral: { fuente: 5, relleno: 6, borde: 1, ajustar: true },
+  malo: { fuente: 6, relleno: 7, borde: 1, ajustar: true },
 };
 
 // Un estilo de celda (xf) por cada combinación estilo × formato de número que se use.
@@ -93,9 +98,12 @@ function estilosXml(lista) {
     `<font><b/><sz val="11"/><name val="Calibri"/><family val="2"/></font>`,
     `<font><b/><sz val="14"/><name val="Calibri"/><family val="2"/></font>`,
     `<font><sz val="9"/><color rgb="FF555555"/><name val="Calibri"/><family val="2"/></font>`,
+    `<font><sz val="11"/><color rgb="FF006100"/><name val="Calibri"/><family val="2"/></font>`,
+    `<font><sz val="11"/><color rgb="FF9C5700"/><name val="Calibri"/><family val="2"/></font>`,
+    `<font><sz val="11"/><color rgb="FF9C0006"/><name val="Calibri"/><family val="2"/></font>`,
   ];
   const relleno = (rgb) => `<fill><patternFill patternType="solid"><fgColor rgb="${rgb}"/><bgColor indexed="64"/></patternFill></fill>`;
-  const rellenos = [`<fill><patternFill patternType="none"/></fill>`, `<fill><patternFill patternType="gray125"/></fill>`, relleno("FFD9E8E8"), relleno("FFEEF2F2"), relleno("FFF3F3F3")];
+  const rellenos = [`<fill><patternFill patternType="none"/></fill>`, `<fill><patternFill patternType="gray125"/></fill>`, relleno("FFD9E8E8"), relleno("FFEEF2F2"), relleno("FFF3F3F3"), relleno("FFC6EFCE"), relleno("FFFFEB9C"), relleno("FFFFC7CE")];
   const fino = `<left style="thin"><color rgb="FFB0B7BD"/></left><right style="thin"><color rgb="FFB0B7BD"/></right><top style="thin"><color rgb="FFB0B7BD"/></top><bottom style="thin"><color rgb="FFB0B7BD"/></bottom>`;
   const bordes = [`<border><left/><right/><top/><bottom/><diagonal/></border>`, `<border>${fino}<diagonal/></border>`];
   const xfs = lista

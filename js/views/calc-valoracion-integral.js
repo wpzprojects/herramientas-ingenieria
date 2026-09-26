@@ -35,89 +35,6 @@ import { guardar as guardarValoracion, eliminar as eliminarValoracion, sincroniz
 
 const RUTA = "/calculos/valoracion-integral";
 
-const FORMULAS_TEX = [
-  {
-    titulo: "Corriente de operación",
-    ecuaciones: [String.raw`I = \dfrac{P \cdot 1000}{\sqrt{3}\,V\,\cos\varphi} \quad [\mathrm{A}]`, String.raw`P = S \cdot \cos\varphi \quad [\mathrm{MW}]`],
-  },
-  {
-    titulo: "Ampacidad (calculadoras de Ampacidad aérea y subterránea)",
-    ecuaciones: [
-      String.raw`I_{adm,1} = \sqrt{\dfrac{Q_c + Q_r - Q_s}{R(T_c)}} \quad \text{(aérea, IEEE Std 738)}`,
-      String.raw`I_{adm,1} = \sqrt{\dfrac{\Delta\theta - W_d\left[0.5\,T_1 + n\,(T_2 + T_3 + T_4)\right]}{R\,T_1 + n\,R\,(1+\lambda_1)\,T_2 + n\,R\,(1+\lambda_1)(T_3 + T_4)}} \quad \text{(subterránea, IEC 60287)}`,
-      String.raw`I_{adm} = \min_{j}\; N_j \cdot I_{adm,1,j} \qquad \%\,uso = \dfrac{I}{I_{adm}} \cdot 100`,
-    ],
-  },
-  {
-    titulo: "Pérdidas (calculadora de Pérdidas)",
-    ecuaciones: [
-      String.raw`F_p = 0.3\,F_c + 0.7\,F_c^{2} \qquad R_{ef} = \dfrac{R_{75}}{N}`,
-      String.raw`\%P = \sum_{j} \dfrac{\sqrt{3}\,I\,R_{ef,j}\,L_j\,F_p \cdot 100}{V \cdot 1000 \cdot \cos\varphi}`,
-    ],
-  },
-  {
-    titulo: "Regulación (calculadora de Regulación)",
-    ecuaciones: [
-      String.raw`X_l = 0.0754\,\ln\!\left(\dfrac{\sqrt[3]{D_{ab}\,D_{ac}\,D_{bc}}}{RMG_{eq}/1000}\right) \qquad Z = R_{ef}\cos\varphi + X_l\sin\varphi`,
-      String.raw`\%\Delta V = \sum_{j} \dfrac{\sqrt{3}\,I\,Z_j\,L_j \cdot 100}{V \cdot 1000}`,
-    ],
-  },
-  {
-    titulo: "Cortocircuito (calculadora de Cortocircuito)",
-    ecuaciones: [String.raw`I_{cc} = \min_{j}\; N_j \cdot \dfrac{A_j\,k_1}{1000}\sqrt{\dfrac{\log_{10}\!\left(\dfrac{T_2 + \lambda}{T_1 + \lambda}\right)}{t}} \quad [\mathrm{kA}]`],
-  },
-  {
-    titulo: "Costo total actualizado (calculadora de Conductor económico)",
-    ecuaciones: [
-      String.raw`C_0 = \sum_{j} L_j\,\left(3\,N_j\,c_{cond,j} + c_{inst,j}\right) \qquad VP_{perd} = \sum_{t=1}^{n} \dfrac{E_t \cdot p_t}{(1+r)^{t}}`,
-      String.raw`C_{total} = C_0 + VP_{perd}`,
-    ],
-  },
-];
-
-const FORMULAS_ETIQUETAS = [
-  { tex: "P,\\,S", texto: "Potencia activa [MW] y aparente [MVA] de la conexión" },
-  { tex: "V", texto: "Tensión de línea de la alternativa [kV]" },
-  { tex: "I", texto: "Corriente de operación [A] (la misma en todos los tramos)" },
-  { tex: "j", texto: "Tramo de la alternativa" },
-  { tex: "N", texto: "Conductores por fase (en subterránea: circuitos en paralelo)" },
-  { tex: "I_{adm,1},\\,I_{adm}", texto: "Ampacidad de un conductor y del conjunto de la fase [A]" },
-  { tex: "F_c,\\,F_p", texto: "Factor de carga y factor de pérdidas" },
-  { tex: "R_{75},\\,R_{ef}", texto: "Resistencia AC de un conductor a 75 °C y efectiva de la fase [Ω/km]" },
-  { tex: "L_j", texto: "Longitud del tramo [km]" },
-  { tex: "X_l,\\,Z", texto: "Reactancia inductiva e impedancia efectiva [Ω/km]" },
-  { tex: String.raw`D_{ab},\,D_{ac},\,D_{bc}`, texto: "Distancias entre fases [m] (en subterránea, la separación entre fases del trébol)" },
-  { tex: "RMG_{eq}", texto: "Radio medio geométrico del conductor o del haz [mm]" },
-  { tex: "A", texto: "Área de un conductor [mm²] (en aérea, la de aluminio)" },
-  { tex: "T_1,\\,T_2,\\,t", texto: "En cortocircuito: temperatura de operación y admisible en falla [°C] y tiempo de despeje [s]" },
-  { tex: String.raw`k_1,\,\lambda`, texto: "Constantes del material (cobre 341 y 234; aluminio 224 y 228)" },
-  { tex: "c_{cond},\\,c_{inst}", texto: "Costo de un conductor y de la instalación por km [$/km]" },
-  { tex: "E_t,\\,p_t,\\,r", texto: "Energía perdida y precio de la energía del año t, y tasa de descuento" },
-];
-
-const FORMULAS_NOTA = `Cada alternativa usa las mismas fórmulas de las calculadoras de Pérdidas, Regulación, Ampacidad aérea, Ampacidad subterránea, Cortocircuito y Conductor económico, con los datos comunes de la conexión (potencia, factor de potencia y factor de carga) y los de cada tramo.
-
-Una alternativa es un circuito a una sola tensión con uno o más tramos en serie, por los que pasa la misma corriente: las pérdidas, la caída de tensión y los costos son la suma de los tramos. La ampacidad y el cortocircuito se evalúan con el tramo de menor capacidad, que es el más exigido. La corriente de falla es una sola por alternativa y se aplica a todos los tramos (conservador: en realidad baja a lo largo de la línea).
-
-Criterios: la corriente de operación no debe superar la ampacidad; las pérdidas hasta ${LIMITE_PERDIDAS} % y la regulación hasta ${LIMITE_REGULACION} % son las referencias de diseño de «aceptable» (óptimo hasta ${OPTIMO_PERDIDAS} % y ${OPTIMO_REGULACION} %); el cortocircuito se evalúa solo si se indica la corriente de falla. Se recomienda, entre las alternativas que cumplen todo, la de menor costo total actualizado.
-
-Varios conductores por fase en red aérea forman un haz: la resistencia es R/N, el radio medio geométrico es el del haz y la ampacidad y la capacidad de cortocircuito son N veces las de un conductor.
-
-Varios conductores por fase en red subterránea son N circuitos (ternas) en paralelo, cada uno en su ducto del mismo banco: la ampacidad de un circuito se calcula con el calentamiento mutuo de todos los circuitos del banco y se multiplica por N, y la impedancia es la de un circuito dividida entre N (sin el acople entre ternas). Los cables son monopolares en trébol, y la resistencia AC a 75 °C y el radio medio geométrico salen del catálogo XLPE.
-
-La temperatura de operación del cortocircuito es la máxima del conductor en servicio (la de los parámetros avanzados: 75 °C en aérea y 90 °C en subterránea por defecto). Los criterios técnicos se evalúan con la demanda indicada (año 1); el crecimiento de la demanda solo entra en los costos.`;
-
-const FORMULAS_TEXTO = `I = P·1000 / (√3·V·cos φ)   [A]
-Iadm = mín. de los tramos de N · Iadm,1 (IEEE Std 738 en aérea, IEC 60287 en subterránea)   %uso = I / Iadm · 100
-Fp = 0.3·Fc + 0.7·Fc²   Ref = R75 / N
-%P = Σ tramos √3·I·Ref·L·Fp·100 / (V·1000·cos φ)
-Xl = 0.0754·ln(∛(Dab·Dac·Dbc) / (RMGeq/1000))   Z = Ref·cos φ + Xl·sen φ
-%ΔV = Σ tramos √3·I·Z·L·100 / (V·1000)
-Icc = mín. de los tramos de N · A·k1·√(log10((T2+λ)/(T1+λ)) / t) / 1000   [kA]
-C0 = Σ tramos L·(3·N·c_cond + c_inst)   VPperd = Σ Et·pt / (1+r)^t   Ctotal = C0 + VPperd
-
-${FORMULAS_NOTA}`;
-
 const ETIQUETAS_REPORTE = ["CÁLCULO DE VALORACIÓN INTEGRAL", "PARÁMETROS DE ENTRADA:", "RESULTADOS:"];
 
 const MODOS = { potencia: "Potencia activa", aparente: "Potencia aparente" };
@@ -896,10 +813,24 @@ export async function render(container) {
   const lineaTrabajando = q(".vi-trabajando");
   function mostrarTrabajando() {
     lineaTrabajando.hidden = !guardada;
-    lineaTrabajando.innerHTML = guardada ? `Trabajando en: <strong>${escapeHtml(guardada.nombre)}</strong>` : "";
+    lineaTrabajando.innerHTML = guardada
+      ? `Trabajando en: <strong>${escapeHtml(guardada.nombre)}</strong><button type="button" class="btn-enlace vi-nueva">${icon("plus")} Nueva</button>`
+      : "";
   }
+  lineaTrabajando.addEventListener("click", (e) => {
+    if (!e.target.closest(".vi-nueva")) return;
+    if (!window.confirm("¿Empezar una valoración nueva? Se limpia el formulario; lo que no hayas guardado se pierde.")) return;
+    restaurar(fotoInicial);
+    guardada = null;
+    mostrarTrabajando();
+    form.querySelectorAll(".card.form-section").forEach((c) => plegarTarjeta(c, c === tarjetaEconomia));
+    q("#resultado-wrap").innerHTML = "";
+    cajaGuardar.hidden = true;
+    avisoGuardado("");
+  });
 
   // ---------- restaurar lo que había si se volvió de otra sección (no sobrevive a un recargue) ----------
+  const fotoInicial = capturar(); // el formulario en blanco, para «Nueva»
   const guardado = leerEstado(RUTA);
   if (fotoValida(guardado)) {
     try {
@@ -1272,7 +1203,7 @@ export async function render(container) {
   function textoCelda(c, unidad) {
     if (c.v === null || c.v === undefined) return "—";
     if (c.texto) return String(c.v);
-    const n2 = num(c.v, c.dec, c.dec);
+    const n2 = `${c.signoNum && c.v > 0 ? "+" : ""}${num(c.v, c.dec, c.dec)}`;
     if (c.pesos) return `${c.signo ? "+" : ""}$ ${n2}`;
     return unidad ? `${n2} ${unidad}` : n2;
   }
@@ -1280,7 +1211,7 @@ export async function render(container) {
 
   function matrizHtml(modelo) {
     const cab = modelo.columnas
-      .map((t, i) => `<th class="num${i === modelo.recomendado ? " col-mejor" : ""}">${t}${i === modelo.recomendado ? ` ${insignia("Recomendada", "badge-success")}` : ""}</th>`)
+      .map((t, i) => `<th class="num${i === modelo.recomendado ? " col-mejor" : ""}">${t}${i === modelo.recomendado ? ` <span class="vi-cab-rec">${insignia("Recomendada", "badge-success")}</span>` : ""}</th>`)
       .join("");
     const ncol = modelo.columnas.length + 1;
     const celdaHtml = (c, f) => {
@@ -1289,7 +1220,7 @@ export async function render(container) {
       const valorHtml = oculto ? "" : conSaltos(textoCelda(c, f.unidad));
       const badge = c.estado ? insignia(c.estado.texto, c.estado.clase) : "";
       const texto = [valorHtml, badge].filter(Boolean).join(" ");
-      const clase = f.etiqueta === "Conductor" ? "num vi-conductor-celda" : "num";
+      const clase = `num${f.etiqueta === "Conductor" ? " vi-conductor-celda" : ""}${c.tono ? ` vi-tono-${c.tono}` : ""}`;
       return `<td class="${clase}">${texto}${c.sub ? `<div class="vi-sub">${escapeHtml(c.sub)}</div>` : ""}</td>`;
     };
     const cuerpo = modelo.secciones
@@ -1370,11 +1301,8 @@ export async function render(container) {
 
   const REFERENCIAS = `Referencias de diseño: pérdidas hasta ${OPTIMO_PERDIDAS} % óptimo · hasta ${LIMITE_PERDIDAS} % aceptable; regulación hasta ${OPTIMO_REGULACION} % óptimo · hasta ${LIMITE_REGULACION} % aceptable. La corriente de operación no debe superar la ampacidad.`;
 
-  /** Documento de impresión (PDF): Carta, vertical hasta 3 alternativas y horizontal con más; siempre en claro. */
-  function documentoPdf(modelo, conc, entrada, tramos) {
-    const doc = document.createElement("div");
-    doc.id = "doc-impresion";
-    doc.className = `doc-impresion vi-doc${modelo.columnas.length > 3 ? " vi-doc-apaisado" : ""}`;
+  /** Tabla de un modelo (comparación o análisis) para el documento PDF: criterio, unidad y una columna por alternativa. */
+  function tablaDoc(modelo) {
     const cab = modelo.columnas.map((t, i) => `<th class="num">${t}${i === modelo.recomendado ? "<br><small>Recomendada</small>" : ""}</th>`).join("");
     const ncol = modelo.columnas.length + 2;
     const cuerpo = modelo.secciones
@@ -1389,7 +1317,7 @@ export async function render(container) {
                   const oculto = f.etiqueta === "Resultado" || (c.estado && (c.v === null || c.estado.texto === "Menor costo"));
                   const valorHtml = oculto ? "" : conSaltos(c.pesos ? textoCelda(c, "").replace("$ ", "") : textoCelda(c, ""));
                   const estado = c.estado ? `<span class="vi-doc-estado${c.estado.clase === "badge-danger" ? " malo" : c.estado.clase === "badge-warning" ? " alerta" : ""}">${escapeHtml(c.estado.texto)}</span>` : "";
-                  return `<td class="num">${[valorHtml, estado].filter(Boolean).join(" ")}${c.sub ? `<div class="vi-doc-sub">${escapeHtml(c.sub)}</div>` : ""}</td>`;
+                  return `<td class="num${c.tono ? ` vi-doc-${c.tono}` : ""}">${[valorHtml, estado].filter(Boolean).join(" ")}${c.sub ? `<div class="vi-doc-sub">${escapeHtml(c.sub)}</div>` : ""}</td>`;
                 })
                 .join("");
               return `<tr${f.total ? ' class="vi-doc-total"' : ""}><td>${escapeHtml(f.etiqueta)}</td><td class="vi-doc-unidad">${escapeHtml(f.unidad)}</td>${celdas}</tr>`;
@@ -1397,6 +1325,14 @@ export async function render(container) {
             .join("")
       )
       .join("");
+    return `<div class="table-wrap"><table class="vi-doc-matriz"><thead><tr><th>Criterio</th><th>Unidad</th>${cab}</tr></thead><tbody>${cuerpo}</tbody></table></div>`;
+  }
+
+  /** Documento de impresión (PDF): Carta, vertical hasta 3 alternativas y horizontal con más; siempre en claro. */
+  function documentoPdf(modelo, modeloA, conc, entrada, tramos) {
+    const doc = document.createElement("div");
+    doc.id = "doc-impresion";
+    doc.className = `doc-impresion vi-doc${modelo.columnas.length > 3 ? " vi-doc-apaisado" : ""}`;
     const celda = (v, dec) => (v === null ? "—" : num(v, dec, dec));
     const detalle = modelo.hayVarios
       ? `<h3>Detalle por tramo</h3><div class="table-wrap"><table class="vi-doc-tramos"><thead><tr><th>Alternativa</th><th class="num">Tramo</th><th>Conductor</th><th class="num">Longitud (km)</th><th class="num">Ampacidad total (A)</th><th class="num">Uso (%)</th><th class="num">Pérdidas (%)</th><th class="num">Caída (%)</th><th class="num">Cortocircuito (kA)</th></tr></thead><tbody>` +
@@ -1412,15 +1348,17 @@ export async function render(container) {
       `<header class="doc-cab"><div class="doc-app">Herramientas de Ingeniería</div><h1>Valoración integral de conductores</h1><p class="doc-meta">${escapeHtml(fechaLarga())}</p></header>` +
       `<div class="vi-doc-conclusion${conc.ok ? "" : " malo"}"><strong>${escapeHtml(conc.titulo)}</strong> ${escapeHtml(conc.detalle)}</div>` +
       `<h3>Datos de la conexión</h3><table class="vi-doc-datos"><tbody>${entrada.map(([k, v]) => `<tr><td>${escapeHtml(k)}</td><td>${escapeHtml(v)}</td></tr>`).join("")}</tbody></table>` +
-      `<h3>Comparación de alternativas</h3><div class="table-wrap"><table class="vi-doc-matriz"><thead><tr><th>Criterio</th><th>Unidad</th>${cab}</tr></thead><tbody>${cuerpo}</tbody></table></div>` +
+      `<h3>Comparación de alternativas</h3>${tablaDoc(modelo)}` +
       detalle +
+      `<h3>Análisis: margen y capacidad máxima</h3>${tablaDoc(modeloA)}` +
+      `<h3>Supuestos del cálculo</h3><ul class="vi-doc-supuestos">${SUPUESTOS.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ul>` +
       `<p class="vi-doc-nota">${escapeHtml(REFERENCIAS)} El detalle de cada alternativa (datos de entrada y valores intermedios) está en la pestaña «Reporte» de la calculadora.</p>`;
     return doc;
   }
 
-  function exportarPdf(modelo, conc, entrada, tramos) {
+  function exportarPdf(modelo, modeloA, conc, entrada, tramos) {
     document.getElementById("doc-impresion")?.remove();
-    document.body.append(documentoPdf(modelo, conc, entrada, tramos));
+    document.body.append(documentoPdf(modelo, modeloA, conc, entrada, tramos));
     document.body.classList.add("imprimiendo-reporte");
     document.documentElement.classList.add("imprimiendo-reporte");
     window.addEventListener(
@@ -1436,25 +1374,16 @@ export async function render(container) {
   }
 
   /**
-   * Libro de Excel: hoja «Comparación» (la tabla, con números de verdad y la unidad en su columna), hoja «Tramos» (una
-   * fila por tramo) y hoja «Reporte» (el texto completo).
+   * Filas de una hoja de Excel a partir de un modelo (comparación o análisis). La clasificación ya no ocupa filas
+   * aparte (pedido del usuario: la tabla limpia): la celda se colorea con los estilos de Excel «Bueno» (verde),
+   * «Neutral» (amarillo) y «Malo» (rojo), explicados en una convención al final. El valor de cada tramo va en la hoja
+   * «Tramos».
    */
-  function libroExcel(modelo, conc, entrada, tramos, reporte) {
+  function filasExcel(modelo, combinar, desde) {
     const n2 = modelo.columnas.length;
     const ultima = columna(n2 + 1);
     const vacias = (estilo) => Array.from({ length: n2 + 2 }, () => ({ v: "", estilo }));
-    const filas = [
-      [{ v: "Valoración integral de conductores", estilo: "titulo" }],
-      [{ v: `Herramientas de Ingeniería · ${fechaLarga()}`, estilo: "nota" }],
-      [],
-      [{ v: `${conc.titulo} ${conc.detalle}`.trim(), estilo: "etiqueta" }, ...Array.from({ length: n2 + 1 }, () => ({ v: "", estilo: "etiqueta" }))],
-      [],
-      [{ v: "Datos de la conexión", estilo: "seccion" }, { v: "", estilo: "seccion" }],
-      ...entrada.map(([k, v]) => [{ v: k, estilo: "etiqueta" }, { v, estilo: "celda" }]),
-      [],
-      [{ v: "Criterio", estilo: "cabecera" }, { v: "Unidad", estilo: "cabecera" }, ...modelo.columnas.map((t, i) => ({ v: i === modelo.recomendado ? `${t} (recomendada)` : t, estilo: "cabecera" }))],
-    ];
-    const combinar = [`A1:${ultima}1`, `A4:${ultima}4`];
+    const filas = [[{ v: "Criterio", estilo: "cabecera" }, { v: "Unidad", estilo: "cabecera" }, ...modelo.columnas.map((t, i) => ({ v: i === modelo.recomendado ? `${t} (recomendada)` : t, estilo: "cabecera" }))]];
     for (const s of modelo.secciones) {
       if (s.titulo) {
         const fila = vacias("seccion");
@@ -1465,32 +1394,57 @@ export async function render(container) {
         const fila = vacias("celda");
         fila[0] = { v: s.nota, estilo: "celda" };
         filas.push(fila);
-        combinar.push(`A${filas.length}:${ultima}${filas.length}`);
+        combinar.push(`A${desde + filas.length}:${ultima}${desde + filas.length}`);
       }
       for (const f of s.filas) {
-        const estilo = f.total ? "total" : "celda";
+        const base = f.total ? "total" : "celda";
         const esVeredicto = f.etiqueta === "Resultado";
         filas.push([
           { v: f.etiqueta, estilo: f.total ? "total" : "etiqueta" },
-          { v: f.unidad, estilo },
+          { v: f.unidad, estilo: base },
           ...f.celdas.map((c) => {
+            const estilo = tonoDe(c) ?? base;
             if (esVeredicto) return { v: c.sub ? `${c.v} (${c.sub.replace(/^Falla: /, "")})` : c.v, estilo };
             if (c.v === null || c.v === undefined) return { v: c.estado?.texto ?? "—", estilo };
+            if (c.estado?.texto === "Menor costo") return { v: "Menor costo", estilo };
             return c.texto ? { v: c.v, estilo } : { v: c.v, dec: c.dec, estilo };
           }),
         ]);
-        // la clasificación (Óptimo / Cumple / Soporta…) va en su propia fila: la celda del número queda numérica
-        if (f.etiquetaEstado && f.celdas.some((c) => c.estado)) {
-          filas.push([{ v: f.etiquetaEstado, estilo: "etiqueta" }, { v: "", estilo }, ...f.celdas.map((c) => ({ v: c.estado?.texto ?? "—", estilo }))]);
-        }
-        // lo que en pantalla va debajo del número (p. ej. «T1 663 A · T2 435 A») también se conserva
-        if (!esVeredicto && f.celdas.some((c) => c.sub)) {
-          filas.push([{ v: `${f.etiqueta}: detalle`, estilo: "etiqueta" }, { v: "", estilo }, ...f.celdas.map((c) => ({ v: c.sub ?? "", estilo }))]);
-        }
       }
     }
-    filas.push([], [{ v: REFERENCIAS, estilo: "nota" }]);
+    return filas;
+  }
+
+  const CONVENCION = [
+    [{ v: "Convención:", estilo: "etiqueta" }, { v: "Óptimo / cumple", estilo: "bueno" }, { v: "Aceptable", estilo: "neutral" }, { v: "Elevado / no cumple", estilo: "malo" }],
+  ];
+
+  /**
+   * Libro de Excel: «Comparación» (la tabla, con números de verdad y la unidad en su columna), «Análisis» (márgenes y
+   * capacidad máxima), «Tramos» (una fila por tramo) y «Reporte» (el texto completo).
+   */
+  function libroExcel(modelo, modeloA, conc, entrada, tramos, reporte) {
+    const n2 = modelo.columnas.length;
+    const ultima = columna(n2 + 1);
+    const encabezado = [
+      [{ v: "Valoración integral de conductores", estilo: "titulo" }],
+      [{ v: `Herramientas de Ingeniería · ${fechaLarga()}`, estilo: "nota" }],
+      [],
+      [{ v: `${conc.titulo} ${conc.detalle}`.trim(), estilo: "etiqueta" }, ...Array.from({ length: n2 + 1 }, () => ({ v: "", estilo: "etiqueta" }))],
+      [],
+      [{ v: "Datos de la conexión", estilo: "seccion" }, { v: "", estilo: "seccion" }],
+      ...entrada.map(([k, v]) => [{ v: k, estilo: "etiqueta" }, { v, estilo: "celda" }]),
+      [],
+    ];
+    const combinar = [`A1:${ultima}1`, `A4:${ultima}4`];
+    const filas = [...encabezado, ...filasExcel(modelo, combinar, encabezado.length)];
+    filas.push([], ...CONVENCION, [{ v: `${REFERENCIAS} El valor de cada tramo está en la hoja «Tramos» y el margen y la capacidad máxima, en la hoja «Análisis».`, estilo: "nota" }]);
     combinar.push(`A${filas.length}:${ultima}${filas.length}`);
+
+    const combinarA = [`A1:${ultima}1`];
+    const filasA = [[{ v: "Análisis: margen frente a cada límite y capacidad máxima", estilo: "titulo" }], [], ...filasExcel(modeloA, combinarA, 2)];
+    filasA.push([], [{ v: "Convención:", estilo: "etiqueta" }, { v: "Cumple / con margen", estilo: "bueno" }, { v: "Incumple / sin margen", estilo: "malo" }], [], [{ v: "Supuestos del cálculo", estilo: "seccion" }], ...SUPUESTOS.map((s) => [{ v: `• ${s}`, estilo: "nota" }]));
+    for (let i = filasA.length - SUPUESTOS.length + 1; i <= filasA.length; i++) combinarA.push(`A${i}:${ultima}${i}`);
 
     const numero = (v, dec) => (v === null ? { v: "—", estilo: "celda" } : { v, dec, estilo: "celda" });
     const hojaTramos = [
@@ -1501,7 +1455,7 @@ export async function render(container) {
         { v: f.conductor, estilo: "celda" },
         numero(f.longitudKm, 2),
         numero(f.ampacidadA, 0),
-        numero(f.usoPct, 1),
+        f.usoPct === null ? { v: "No calculable", estilo: "malo" } : { v: f.usoPct, dec: 1, estilo: f.ampacidadCumple ? "bueno" : "malo" },
         numero(f.perdidasPct, 2),
         numero(f.caidaPct, 2),
         numero(f.capacidadKa, 2),
@@ -1510,6 +1464,7 @@ export async function render(container) {
     ];
     return crearXlsx([
       { nombre: "Comparación", anchos: [38, 9, ...modelo.columnas.map(() => 34)], combinar, filas },
+      { nombre: "Análisis", anchos: [38, 9, ...modelo.columnas.map(() => 30)], combinar: combinarA, filas: filasA },
       { nombre: "Tramos", anchos: [14, 8, 44, 13, 15, 15, 12, 14, 18, 20], filas: hojaTramos },
       { nombre: "Reporte", anchos: [120], filas: reporte.split("\n").map((l) => [l]) },
     ]);
@@ -1676,9 +1631,99 @@ export async function render(container) {
     ].join("\n");
   }
 
+  // ---------- análisis: márgenes frente a los límites y capacidad máxima ----------
+  const TEXTO_CRITERIO = { ampacidad: "Ampacidad", perdidas: "Pérdidas", regulacion: "Regulación", cortocircuito: "Cortocircuito" };
+
+  /**
+   * Márgenes de cada alternativa frente a cada límite y su capacidad máxima (potencia y longitud) antes de incumplir.
+   * Sin fórmulas nuevas: la corriente crece en proporción a la potencia (misma tensión y FP), la caída de tensión y el %
+   * de pérdidas crecen en proporción a la potencia y a la longitud, y la ampacidad fija la corriente máxima; así que los
+   * máximos salen de escalar lo ya calculado. `rel` = margen relativo (1 = sin uso, 0 = justo en el límite, < 0 = incumple).
+   */
+  function analisisAlternativa(x, comun) {
+    const P = comun.potenciaActivaMw;
+    const L = x.longitudKm;
+    const amp = x.ampacidad.error ? null : { margen: x.ampacidad.totalA - x.corrienteA, rel: 1 - x.corrienteA / x.ampacidad.totalA };
+    const perd = { margen: LIMITE_PERDIDAS - x.perdidas.pct, rel: 1 - x.perdidas.pct / LIMITE_PERDIDAS };
+    const reg = { margen: LIMITE_REGULACION - x.regulacion.pct, rel: 1 - x.regulacion.pct / LIMITE_REGULACION };
+    const cc = x.cortocircuito.corrienteFallaKa === null ? null : { margen: x.cortocircuito.totalKa - x.cortocircuito.corrienteFallaKa, rel: 1 - x.cortocircuito.corrienteFallaKa / x.cortocircuito.totalKa };
+    const criterios = [["ampacidad", amp], ["perdidas", perd], ["regulacion", reg], ["cortocircuito", cc]].filter(([, v]) => v && Number.isFinite(v.rel));
+    const limita = x.ampacidad.error ? "ampacidad" : criterios.reduce((m, c) => (c[1].rel < m[1].rel ? c : m), criterios[0])[0];
+    const escala = (base, limite, pct) => (pct > 0 ? (base * limite) / pct : Infinity);
+    const potencias = { ampacidad: amp ? (P * x.ampacidad.totalA) / x.corrienteA : null, regulacion: escala(P, LIMITE_REGULACION, x.regulacion.pct), perdidas: escala(P, LIMITE_PERDIDAS, x.perdidas.pct) };
+    const pMax = x.ampacidad.error ? null : Object.entries(potencias).reduce((m, c) => (c[1] < m[1] ? c : m));
+    const longitudes = { regulacion: escala(L, LIMITE_REGULACION, x.regulacion.pct), perdidas: escala(L, LIMITE_PERDIDAS, x.perdidas.pct) };
+    const lMax = Object.entries(longitudes).reduce((m, c) => (c[1] < m[1] ? c : m));
+    return { amp, perd, reg, cc, limita, potencias, pMax, lMax, P, L };
+  }
+
+  /** Tabla del análisis con el mismo modelo de la tabla comparativa (así se dibuja igual en pantalla, PDF y Excel). */
+  function modeloAnalisis(r, comun, estados) {
+    const A = r.escenarios.map((x) => analisisAlternativa(x, comun));
+    const fila = (etiqueta, unidad, celda, extra = {}) => ({ etiqueta, unidad, celdas: A.map((a, i) => celda(a, r.escenarios[i], estados[i])), ...extra });
+    const tono = (ok) => (ok ? "bueno" : "malo");
+    const finito = (v) => Number.isFinite(v);
+    const conTramo = (s, j) => (varios(s) ? `con T${j + 1}, el de menor capacidad` : null);
+    return {
+      columnas: r.escenarios.map((x, i) => `Alternativa ${i + 1}`),
+      recomendado: r.recomendado,
+      secciones: [
+        {
+          titulo: "Margen frente a cada límite",
+          filas: [
+            fila("Ampacidad", "A", (a, x, s) =>
+              !a.amp
+                ? { v: "No calculable", texto: true, tono: "malo" }
+                : { v: a.amp.margen, dec: 0, signoNum: true, tono: tono(a.amp.rel >= 0), sub: [a.amp.rel >= 0 ? `${num(a.amp.rel * 100, 0, 0)} % de reserva` : `sobrecarga de ${num(-a.amp.rel * 100, 0, 0)} %`, conTramo(s, x.ampacidad.tramo)].filter(Boolean).join(" · ") }
+            ),
+            fila("Pérdidas", "%", (a) => ({ v: a.perd.margen, dec: 2, signoNum: true, tono: tono(a.perd.rel >= 0), sub: `límite ${LIMITE_PERDIDAS} %` })),
+            fila("Regulación", "%", (a) => ({ v: a.reg.margen, dec: 2, signoNum: true, tono: tono(a.reg.rel >= 0), sub: `límite ${LIMITE_REGULACION} %` })),
+            fila("Cortocircuito", "kA", (a, x, s) =>
+              !a.cc ? { v: "Sin corriente de falla", texto: true } : { v: a.cc.margen, dec: 2, signoNum: true, tono: tono(a.cc.rel >= 0), sub: conTramo(s, x.cortocircuito.tramo) }
+            ),
+            fila("Criterio que limita", "", (a) => ({ v: TEXTO_CRITERIO[a.limita], texto: true, sub: "el de menor margen" }), { total: true }),
+          ],
+        },
+        {
+          titulo: "Capacidad máxima (con esta alternativa)",
+          filas: [
+            fila("Potencia máxima por ampacidad", "MW", (a) => (a.potencias.ampacidad === null ? { v: "No calculable", texto: true } : { v: a.potencias.ampacidad, dec: 1 })),
+            fila(`Potencia máxima por regulación (${LIMITE_REGULACION} %)`, "MW", (a) => (finito(a.potencias.regulacion) ? { v: a.potencias.regulacion, dec: 1 } : { v: "—", texto: true })),
+            fila(`Potencia máxima por pérdidas (${LIMITE_PERDIDAS} %)`, "MW", (a) => (finito(a.potencias.perdidas) ? { v: a.potencias.perdidas, dec: 1 } : { v: "—", texto: true })),
+            fila("Potencia máxima", "MW", (a) => (!a.pMax ? { v: "No calculable", texto: true, tono: "malo" } : { v: a.pMax[1], dec: 1, tono: tono(a.pMax[1] >= a.P), sub: `la limita ${TEXTO_CRITERIO[a.pMax[0]].toLowerCase()} · hoy ${num(a.P, 1, 1)} MW` }), { total: true }),
+            fila("Longitud máxima con esta potencia", "km", (a) => (finito(a.lMax[1]) ? { v: a.lMax[1], dec: 1, tono: tono(a.lMax[1] >= a.L), sub: `la limita ${TEXTO_CRITERIO[a.lMax[0]].toLowerCase()} · hoy ${num(a.L, 2, 2)} km` } : { v: "—", texto: true }), { total: true }),
+          ],
+        },
+      ],
+    };
+  }
+
+  const SUPUESTOS = [
+    "Cada alternativa es un circuito a una sola tensión con uno o más tramos en serie, por los que pasa la misma corriente: las pérdidas, la caída de tensión y los costos se suman.",
+    "La ampacidad y el cortocircuito se evalúan con el tramo de menor capacidad, que es el más exigido.",
+    "La corriente de falla es una sola por alternativa y se aplica a todos los tramos (conservador: en realidad baja a lo largo de la línea).",
+    "Varios conductores por fase: en aérea forman un haz (R/N y N veces la ampacidad); en subterránea son ternas en paralelo en el mismo banco (con su calentamiento mutuo), en trébol.",
+    "Los criterios técnicos se evalúan con la demanda del año 1; el crecimiento de la demanda solo entra en los costos. La capacidad máxima escala lo calculado: la corriente, la caída y el % de pérdidas crecen en proporción a la potencia, y la caída y las pérdidas, también a la longitud.",
+  ];
+
+  function analisisHtml(modeloA) {
+    return `
+      <div class="result-panel">
+        <p class="text-muted text-sm" style="margin: 0 0 var(--space-3);">Cuánto le queda a cada alternativa antes de incumplir y hasta dónde podría crecer (más potencia o más longitud) sin salirse de las referencias de diseño.</p>
+        ${matrizHtml(modeloA)}
+        <div class="result-subhead">Supuestos del cálculo</div>
+        <ul class="vi-supuestos">${SUPUESTOS.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ul>
+        <p class="text-muted text-sm" style="margin: var(--space-3) 0 0;">Las fórmulas están en cada calculadora: <a href="#/calculos/perdidas">Pérdidas</a> · <a href="#/calculos/regulacion">Regulación</a> · <a href="#/calculos/ampacidad-aerea">Ampacidad aérea</a> · <a href="#/calculos/ampacidad-subterranea">Ampacidad subterránea</a> · <a href="#/calculos/cortocircuito">Cortocircuito</a> · <a href="#/calculos/conductor-economico">Conductor económico</a>.</p>
+      </div>`;
+  }
+
+  /** Tono (verde / amarillo / rojo) de una celda para el Excel: el propio de la celda o el de su clasificación. */
+  const tonoDe = (c) => c.tono ?? (c.estado ? { "badge-success": "bueno", "": "neutral", "badge-warning": "malo", "badge-danger": "malo" }[c.estado.clase] ?? null : null);
+
   function renderResultado(r, comun, estados, dato) {
     const wrap = q("#resultado-wrap");
     const modelo = modeloMatriz(r, comun, estados);
+    const modeloA = modeloAnalisis(r, comun, estados);
     const tramos = filasTramos(r, estados);
     const conc = conclusion(r);
     const reporte = reporteTexto(r, comun, estados, dato);
@@ -1693,12 +1738,15 @@ export async function render(container) {
         <p class="text-muted text-sm" style="margin: var(--space-3) 0 0;">${escapeHtml(REFERENCIAS)}</p>
         ${avisosHtml(r, comun, estados)}
       </div>`;
-    wrap.innerHTML = tarjetaResultadosHtml({
-      resultado,
-      reporte: reporteHtml(reporte, ETIQUETAS_REPORTE),
-      formulasPlano: FORMULAS_TEXTO,
-    });
-    activarPestanas(wrap, { grupos: FORMULAS_TEX, etiquetas: FORMULAS_ETIQUETAS, nota: FORMULAS_NOTA });
+    wrap.innerHTML = tarjetaResultadosHtml({ resultado, reporte: reporteHtml(reporte, ETIQUETAS_REPORTE), formulasPlano: "" });
+    // La tercera pestaña no son fórmulas (ya están en cada calculadora) sino el «Análisis»: margen y capacidad máxima
+    const botonTercera = wrap.querySelector('.tab-btn[data-tab="formulas"]');
+    const panelTercera = wrap.querySelector('.tab-panel[data-panel="formulas"]');
+    botonTercera.textContent = "Análisis";
+    botonTercera.dataset.tab = "analisis";
+    panelTercera.dataset.panel = "analisis";
+    panelTercera.innerHTML = analisisHtml(modeloA);
+    activarPestanas(wrap, { grupos: [], etiquetas: [], nota: "" });
 
     // «Exportar» abre un menú con dos formatos; se cierra al elegir uno o al pulsar fuera
     const menu = wrap.querySelector(".vi-exportar");
@@ -1707,8 +1755,8 @@ export async function render(container) {
       const boton = e.target.closest("[data-exportar]");
       if (!boton) return;
       menu.open = false;
-      if (boton.dataset.exportar === "pdf") exportarPdf(modelo, conc, entrada, tramos);
-      else descargar(`valoracion-integral-${fechaArchivo()}.xlsx`, libroExcel(modelo, conc, entrada, tramos, reporte), MIME_XLSX);
+      if (boton.dataset.exportar === "pdf") exportarPdf(modelo, modeloA, conc, entrada, tramos);
+      else descargar(`valoracion-integral-${fechaArchivo()}.xlsx`, libroExcel(modelo, modeloA, conc, entrada, tramos, reporte), MIME_XLSX);
     });
     const cerrarFuera = (e) => {
       if (!menu.isConnected) return document.removeEventListener("click", cerrarFuera);

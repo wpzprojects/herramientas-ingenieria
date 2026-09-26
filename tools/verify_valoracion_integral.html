@@ -242,6 +242,7 @@ const stage = document.getElementById("stage");
 const $ = (s) => stage.querySelector(s);
 const $$ = (s) => [...stage.querySelectorAll(s)];
 const vista = await import("../js/views/calc-valoracion-integral.js");
+const num1 = (v) => v.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const poner = (sel, v, ev = "change") => {
   const el = $(sel);
   el.value = v;
@@ -343,19 +344,19 @@ await seccion("vista: cálculo con dos escenarios (el ejemplo del usuario)", asy
   poner(T("n", b), "2", "input");
   $("#form-calc").requestSubmit();
   await espera(30);
-  const tabla = $("#resultado-wrap .vi-matriz table");
+  const tabla = $("#resultado-wrap [data-panel=resultado] .vi-matriz table");
   ok(tabla, "aparece la matriz de resultados");
-  ok($$("#resultado-wrap .vi-matriz thead th").length === 3, "una columna por escenario (+ la de etiquetas)");
-  const etiquetas = $$("#resultado-wrap .vi-matriz td.etiqueta-fila").map((t) => t.textContent);
+  ok($$("#resultado-wrap [data-panel=resultado] .vi-matriz thead th").length === 3, "una columna por escenario (+ la de etiquetas)");
+  const etiquetas = $$("#resultado-wrap [data-panel=resultado] .vi-matriz td.etiqueta-fila").map((t) => t.textContent);
   for (const e of ["Corriente de operación", "Ampacidad por conductor", "Ampacidad total", "Uso de la ampacidad", "Pérdidas", "Caída de tensión", "Capacidad de cortocircuito", "Corriente de falla", "Resultado"]) ok(etiquetas.includes(e), `fila «${e}»`);
   ok(!etiquetas.includes("Costo total actualizado"), "sin precio de la energía no hay filas de costos");
   ok(etiquetas.every((e) => !/\((A|kA|kV|%|kW|MWh|\$)\)/.test(e)), "las etiquetas no llevan la unidad entre paréntesis (se confundía «(A)» con la fase A)");
-  const fila = (nombre) => $$("#resultado-wrap .vi-matriz tr").find((tr) => tr.querySelector(":scope > td.etiqueta-fila")?.textContent === nombre);
+  const fila = (nombre) => $$("#resultado-wrap [data-panel=resultado] .vi-matriz tr").find((tr) => tr.querySelector(":scope > td.etiqueta-fila")?.textContent === nombre);
   ok(/^\d[\d,.]* A$/.test(fila("Corriente de operación").children[1].textContent.trim()), `la unidad va junto al número («${fila("Corriente de operación").children[1].textContent.trim()}»)`);
   ok(fila("Ampacidad total").children[2].textContent.includes("2 conductores por fase"), "la ampacidad total dice cuántos conductores por fase suma");
-  const secciones = $$("#resultado-wrap .vi-matriz tr.vi-seccion th").map((th) => th.textContent);
+  const secciones = $$("#resultado-wrap [data-panel=resultado] .vi-matriz tr.vi-seccion th").map((th) => th.textContent);
   ok(secciones.join(",") === "Ampacidad,Pérdidas,Regulación,Cortocircuito,Veredicto", `secciones como encabezados (th en su propio tbody): ${secciones.join(", ")}`);
-  ok($$("#resultado-wrap .vi-matriz tr.vi-seccion th").every((th) => th.colSpan === 3 && th.closest("tbody").classList.contains("vi-grupo")), "cada sección ocupa todo el ancho y agrupa sus filas");
+  ok($$("#resultado-wrap [data-panel=resultado] .vi-matriz tr.vi-seccion th").every((th) => th.colSpan === 3 && th.closest("tbody").classList.contains("vi-grupo")), "cada sección ocupa todo el ancho y agrupa sus filas");
   const falla = fila("Corriente de falla");
   ok(falla.textContent.includes("Sin dato"), "el escenario sin corriente de falla dice «Sin dato»");
   ok($("#resultado-wrap .vi-cabecera > .callout"), "hay una conclusión arriba de la tabla");
@@ -380,7 +381,7 @@ await seccion("vista: con costos", async () => {
   poner(T("costo-cond", ids[0]), "8000000", "input");
   $("#form-calc").requestSubmit();
   await espera(30);
-  const etiquetas = $$("#resultado-wrap .vi-matriz td.etiqueta-fila").map((t) => t.textContent);
+  const etiquetas = $$("#resultado-wrap [data-panel=resultado] .vi-matriz td.etiqueta-fila").map((t) => t.textContent);
   ok(etiquetas.includes("Costo total actualizado"), "con precio y al menos un costo aparecen las filas de costos");
   ok($$("#resultado-wrap .callout-warning").some((c) => c.textContent.includes("no entra en la comparación de costos: Alternativa 2")), "avisa qué escenario queda fuera de la comparación de costos");
   poner(T("costo-cond", ids[1]), "14000000", "input");
@@ -455,21 +456,29 @@ await seccion("vista: exportar a Excel y a PDF", async () => {
   const hoja = a["xl/worksheets/sheet1.xml"] ?? "";
   const doc = new DOMParser().parseFromString(hoja, "application/xml");
   ok(!doc.querySelector("parsererror"), "la hoja «Comparación» es XML válido");
-  ok(a["xl/workbook.xml"].includes('name="Comparación"') && a["xl/workbook.xml"].includes('name="Tramos"') && a["xl/workbook.xml"].includes('name="Reporte"'), "tres hojas: Comparación, Tramos y Reporte");
+  ok(["Comparación", "Análisis", "Tramos", "Reporte"].every((n) => a["xl/workbook.xml"].includes(`name="${n}"`)), "cuatro hojas: Comparación, Análisis, Tramos y Reporte");
   const textos = [...doc.querySelectorAll("t")].map((t) => t.textContent);
   const iCostos = textos.findIndex((x) => x.startsWith("Costos a"));
   const iPrecio = textos.findIndex((x) => x.startsWith("Precio de la energía perdida"));
   ok(iCostos > 0 && iPrecio === iCostos + 1, "los supuestos económicos van en la sección de costos, justo bajo su título");
   ok(textos.indexOf("Datos de la conexión") < iCostos && !textos.slice(textos.indexOf("Datos de la conexión"), textos.indexOf("Criterio")).some((x) => /Precio|Tasa/.test(x)), "…y no en los datos de la conexión");
-  const tramosXml = a["xl/worksheets/sheet2.xml"] ?? "";
+  const tramosXml = a["xl/worksheets/sheet3.xml"] ?? "";
   ok(tramosXml.includes("Alternativa 2") && tramosXml.includes("Capacidad de cortocircuito (kA)"), "la hoja «Tramos» trae una fila por tramo");
-  for (const t of ["Criterio", "Unidad", "Alternativa 1", "Ampacidad", "Corriente de operación", "Ampacidad por conductor", "Pérdidas: clasificación", "Costo total actualizado", "Resultado", "Datos de la conexión"]) ok(textos.some((x) => x.startsWith(t)), `la hoja trae «${t}»`);
+  for (const t of ["Criterio", "Unidad", "Alternativa 1", "Ampacidad", "Corriente de operación", "Ampacidad por conductor", "Costo total actualizado", "Resultado", "Datos de la conexión", "Convención:"]) ok(textos.some((x) => x.startsWith(t)), `la hoja trae «${t}»`);
+  ok(!textos.some((x) => /: clasificación|: cumplimiento|: detalle$/.test(x)), "sin filas extra de clasificación ni de detalle (la tabla queda limpia)");
+  const estilos = new DOMParser().parseFromString(a["xl/styles.xml"], "application/xml");
+  const rellenoDe = (celda) => { const xf = estilos.querySelectorAll("cellXfs > xf")[Number(celda.getAttribute("s"))]; return estilos.querySelectorAll("fills > fill")[Number(xf.getAttribute("fillId"))]?.querySelector("fgColor")?.getAttribute("rgb"); };
+  const filaUso = [...doc.querySelectorAll("row")].find((r) => r.querySelector("t")?.textContent === "Uso de la ampacidad");
+  const colores = filaUso ? [...filaUso.querySelectorAll("c")].slice(2).map(rellenoDe) : [];
+  ok(colores.length === 2 && colores.every((c) => c === "FFC6EFCE" || c === "FFFFC7CE"), `la clasificación se ve por color de relleno (verde o rojo): ${colores.join(", ")}`);
+  const analisisXml = a["xl/worksheets/sheet2.xml"] ?? "";
+  ok(analisisXml.includes("Margen frente a cada límite") && analisisXml.includes("Potencia máxima") && analisisXml.includes("Supuestos del cálculo"), "la hoja «Análisis» trae los márgenes, la capacidad máxima y los supuestos");
   // la corriente de operación va como número (no como texto con la unidad)
   const filaCorriente = [...doc.querySelectorAll("row")].find((r) => r.querySelector("t")?.textContent === "Corriente de operación");
   const valores = filaCorriente ? [...filaCorriente.querySelectorAll("c > v")].map((v) => Number(v.textContent)) : [];
   cerca(valores[0] ?? NaN, corriente(30, 34.5, 0.9), 1e-9, "la corriente del escenario 1 va como número en su celda");
   ok(filaCorriente && [...filaCorriente.querySelectorAll("t")].some((t) => t.textContent === "A"), "…y la unidad «A» en la columna Unidad");
-  const reporte = a["xl/worksheets/sheet3.xml"] ?? "";
+  const reporte = a["xl/worksheets/sheet4.xml"] ?? "";
   ok(reporte.includes("CÁLCULO DE VALORACIÓN INTEGRAL") && reporte.includes("PARÁMETROS DE ENTRADA:"), "la hoja «Reporte» trae el reporte completo");
 
   // PDF: se intercepta la impresión
@@ -485,12 +494,40 @@ await seccion("vista: exportar a Excel y a PDF", async () => {
   ok(!/vi-doc-apaisado/.test(impreso.clase), "con 2 escenarios la hoja va vertical");
   const pdf = new DOMParser().parseFromString(impreso.html, "text/html");
   ok(pdf.querySelector("h1")?.textContent === "Valoración integral de conductores" && pdf.querySelector(".vi-doc-conclusion"), "título y conclusión");
-  ok(pdf.querySelectorAll(".vi-doc-matriz thead th").length === 4, "tabla: criterio, unidad y una columna por escenario");
+  ok(pdf.querySelector(".vi-doc-matriz").querySelectorAll("thead th").length === 4, "tabla: criterio, unidad y una columna por alternativa");
+  ok(pdf.querySelectorAll(".vi-doc-matriz").length === 2 && pdf.body.textContent.includes("Análisis: margen y capacidad máxima") && pdf.querySelector(".vi-doc-supuestos li"), "el PDF trae también el análisis y los supuestos");
   ok([...pdf.querySelectorAll(".vi-doc-seccion td")].map((t) => t.textContent).includes("Pérdidas"), "con las secciones");
   ok(pdf.querySelectorAll(".vi-doc-datos tr").length === 4 && !/Precio|Tasa/.test(pdf.querySelector(".vi-doc-datos").textContent), "datos de la conexión: dato de partida, FP, Fc y tensión (sin los supuestos económicos)");
   ok(/Precio de la energía perdida/.test(pdf.querySelector(".vi-doc-nota-fila")?.textContent ?? "") && pdf.querySelector(".vi-doc-nota-fila").previousElementSibling.textContent.startsWith("Costos a"), "los supuestos económicos van en la sección de costos del PDF");
   window.dispatchEvent(new Event("afterprint"));
   ok(!document.getElementById("doc-impresion") && !document.body.classList.contains("imprimiendo-reporte"), "al terminar de imprimir se quita el documento");
+});
+
+await seccion("vista: pestaña Análisis (margen y capacidad máxima)", async () => {
+  const tab = $('#resultado-wrap .tab-btn[data-tab="analisis"]');
+  ok(tab && tab.textContent === "Análisis" && !$('#resultado-wrap .tab-btn[data-tab="formulas"]'), "la tercera pestaña es «Análisis» (ya no «Fórmulas»)");
+  tab.click();
+  const panel = $('#resultado-wrap .tab-panel[data-panel="analisis"]');
+  ok(!panel.hidden, "se abre al pulsarla");
+  const fila = (nombre) => [...panel.querySelectorAll("tr")].find((tr) => tr.querySelector(":scope > td.etiqueta-fila")?.textContent === nombre);
+  const secciones = [...panel.querySelectorAll("tr.vi-seccion th")].map((x) => x.textContent);
+  ok(secciones[0] === "Margen frente a cada límite" && secciones[1].startsWith("Capacidad máxima"), `secciones: ${secciones.join(" | ")}`);
+  // lo que da la pantalla, contra la escala exacta de lo calculado
+  const x = V.evaluarEscenario(COMUN, escAereo(ALLIANCE, 34.5, 1, { corrienteFallaKa: 5 }));
+  const pAmp = (30 * x.ampacidad.totalA) / x.corrienteA;
+  const pReg = (30 * 10) / x.regulacion.pct;
+  const pPerd = (30 * 3) / x.perdidas.pct;
+  const celdaNum = (tr, col) => Number(tr.children[col].childNodes[0].textContent.replace(/[^\d.+-]/g, ""));
+  cerca(celdaNum(fila("Potencia máxima por ampacidad"), 1), Number(pAmp.toFixed(1)), 1e-9, "potencia máxima por ampacidad = P × Iadm / I");
+  cerca(celdaNum(fila("Potencia máxima por regulación (10 %)"), 1), Number(pReg.toFixed(1)), 1e-9, "potencia máxima por regulación = P × 10 / %caída");
+  cerca(celdaNum(fila("Potencia máxima por pérdidas (3 %)"), 1), Number(pPerd.toFixed(1)), 1e-9, "potencia máxima por pérdidas = P × 3 / %pérdidas");
+  const pMax = Math.min(pAmp, pReg, pPerd);
+  ok(fila("Potencia máxima").children[1].textContent.startsWith(num1(pMax)) && /la limita ampacidad/.test(fila("Potencia máxima").children[1].textContent), "potencia máxima = la menor, y dice qué la limita");
+  cerca(celdaNum(fila("Ampacidad"), 1), Math.round(x.ampacidad.totalA - x.corrienteA), 1e-9, "margen de ampacidad = Iadm − I (negativo si hay sobrecarga)");
+  ok(fila("Ampacidad").children[1].classList.contains(x.ampacidad.cumple ? "vi-tono-bueno" : "vi-tono-malo"), "el margen va en verde si cumple y en rojo si no");
+  ok(fila("Criterio que limita").children[1].textContent.startsWith("Ampacidad"), "dice qué criterio limita la alternativa");
+  ok(panel.querySelectorAll(".vi-supuestos li").length === 5 && panel.querySelector('a[href="#/calculos/perdidas"]'), "supuestos del cálculo y enlaces a las fórmulas de cada calculadora");
+  $('#resultado-wrap .tab-btn[data-tab="resultado"]').click();
 });
 
 await seccion("vista: escenario subterráneo y error de catálogo", async () => {
@@ -555,7 +592,7 @@ await seccion("vista: tramos dentro de un escenario", async () => {
   ok(detalleCosto === "Subterránea · Cobre 500 kcmil · 34.5 kV · 1 circuito por fase · 2.50 km", `el bloque de costos del tramo 2 se actualiza con su conductor, tensión y longitud («${detalleCosto}»)`);
   $("#form-calc").requestSubmit();
   await espera(30);
-  const fila = (nombre) => $$("#resultado-wrap .vi-matriz tr").find((tr) => tr.querySelector(":scope > td.etiqueta-fila")?.textContent === nombre);
+  const fila = (nombre) => $$("#resultado-wrap [data-panel=resultado] .vi-matriz tr").find((tr) => tr.querySelector(":scope > td.etiqueta-fila")?.textContent === nombre);
   const conductor = fila("Conductor").children[col];
   ok(conductor.innerHTML.includes("<br>") && conductor.textContent.includes("T1 · Aérea") && conductor.textContent.includes("T2 · Subterránea"), "la celda del conductor lista los tramos, uno por línea");
   const longitud = fila("Longitud").children[col].textContent;
@@ -755,7 +792,19 @@ await seccion("valoraciones guardadas: pantalla (guardar, historial, abrir y eli
     ok($("#f-fp").value === "0.95" && $(".vi-trabajando").textContent.includes("Solar Mesa Mamonal"), "Abrir restaura sus datos");
     ok(panel.hidden, "el historial se cierra al abrir una");
     ok([...$$("#form-calc .card.form-section")].every((c) => c.classList.contains("plegada")), "todas las tarjetas quedan plegadas");
-    ok($("#resultado-wrap .vi-matriz"), "y se calcula sola: el resultado queda a la vista");
+    ok($("#resultado-wrap [data-panel=resultado] .vi-matriz"), "y se calcula sola: el resultado queda a la vista");
+    const rec = $("#resultado-wrap [data-panel=resultado] .vi-matriz thead .vi-cab-rec");
+    const css = await (await fetch("../css/app.css")).text();
+    ok(!rec || /@media \(max-width: 720px\) \{ \.vi-matriz thead \.vi-cab-rec \{ display: block;/.test(css), "«Recomendada» del encabezado baja a una segunda línea en pantallas angostas");
+
+    // «Nueva»: formulario en blanco, sin valoración abierta
+    const nueva = $(".vi-trabajando .vi-nueva");
+    ok(nueva && nueva.textContent.includes("Nueva"), "junto a «Trabajando en» está el botón «Nueva»");
+    poner("#f-fp", "0.8", "input");
+    nueva.click();
+    await espera(30);
+    ok($(".vi-trabajando").hidden && $("#f-fp").value === "0.9" && $$(".vi-escenario").length === 1 && $("#resultado-wrap").innerHTML === "", "«Nueva» limpia el formulario, quita «Trabajando en» y el resultado");
+    ok(G.listarLocales().length === 2, "…sin tocar las guardadas");
 
     // eliminar
     btnHist.click();
@@ -795,6 +844,7 @@ await seccion("registro: menú, permisos, ruta, ayuda y service worker", async (
   const css = await (await fetch("../css/app.css")).text();
   ok(!/#[0-9a-fA-F]{3,8}\b/.test(css.split("\n").filter((l) => l.includes(".vi-") && !l.includes("vi-doc")).join("\n")), "el CSS de la pantalla no lleva colores escritos a mano (solo el documento PDF, que siempre es claro)");
   ok(shell.includes("js/util/xlsx.js"), "el service worker precachea el generador de Excel");
+  ok(item.desc === "Evalúa alternativas con ampacidad, pérdidas, regulación, cortocircuito y costos.", "la tarjeta de Cálculos lleva la descripción corta");
   ok(!css.includes("vi-seccion + tr td"), "la primera fila de cada sección conserva su línea de tabla (no se le quita el borde)");
 });
 

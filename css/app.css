@@ -980,7 +980,9 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .vi-avanzado { margin-top: var(--space-2); padding-top: var(--space-3); border-top: 1px solid var(--border); }
 .vi-avanzado > summary { cursor: pointer; color: var(--accent); font-weight: 600; font-size: 0.92rem; }
 .vi-avanzado[open] > summary { margin-bottom: var(--space-3); }
-.vi-avanzado-grupo { margin: var(--space-3) 0 var(--space-2); font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+/* Subtítulos dentro de «Parámetros avanzados»: tipo oración, color del texto y una barrita del color del tema a la
+   izquierda (se leen como subtítulo, no como algo que se pueda pulsar como el desplegable, que es del color del tema) */
+.vi-avanzado-grupo { margin: var(--space-4) 0 var(--space-2); padding-left: var(--space-2); border-left: 3px solid var(--accent); font-size: 0.9rem; font-weight: 600; color: var(--text); line-height: 1.3; }
 .vi-avanzado > summary + .vi-avanzado-grupo { margin-top: 0; }
 /* Tramos de un escenario: con uno solo la tarjeta se ve igual que siempre; con varios, cada tramo lleva su encabezado */
 .vi-tramo-cab {
@@ -1033,6 +1035,15 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .vi-matriz td { white-space: normal; vertical-align: top; }
 .vi-matriz td.vi-conductor-celda { min-width: 9rem; }
 .vi-matriz .vi-sub { font-size: 0.8rem; color: var(--text-muted); }
+.vi-matriz td.vi-tono-bueno { color: var(--success); }
+.vi-matriz td.vi-tono-malo { color: var(--danger); }
+.vi-matriz td.vi-tono-bueno .vi-sub, .vi-matriz td.vi-tono-malo .vi-sub { color: var(--text-muted); }
+/* «Recomendada» en el encabezado: en pantallas angostas baja a una segunda línea para no ensanchar la columna */
+@media (max-width: 720px) { .vi-matriz thead .vi-cab-rec { display: block; margin-top: 4px; } }
+.vi-supuestos { margin: 0; padding-left: var(--space-5); font-size: 0.88rem; line-height: 1.5; color: var(--text-muted); }
+.vi-supuestos li + li { margin-top: var(--space-1); }
+.vi-trabajando .vi-nueva { display: inline-flex; align-items: center; gap: 2px; margin-left: var(--space-3); font-size: 0.85rem; font-weight: 600; text-decoration: none; vertical-align: baseline; }
+.vi-trabajando .vi-nueva .icon { width: 14px; height: 14px; }
 /* Título de cada grupo (Ampacidad, Pérdidas…): una franja de encabezado con línea de color arriba, no una fila de datos vacía */
 .vi-matriz tr.vi-seccion th {
   text-align: left; padding: var(--space-4) var(--space-3) var(--space-2);
@@ -1086,3 +1097,6 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .doc-impresion .vi-doc-estado.alerta { color: #945800; }
 .doc-impresion .vi-doc-sub { font-size: 7.5pt; color: #555; font-weight: 400; }
 .doc-impresion .vi-doc-nota { margin-top: 4mm; font-size: 8pt; color: #555; }
+.doc-impresion .vi-doc-matriz td.vi-doc-bueno { color: #1d6b3c; }
+.doc-impresion .vi-doc-matriz td.vi-doc-malo { color: #b3261e; }
+.doc-impresion .vi-doc-supuestos { margin: 0; padding-left: 5mm; font-size: 8.5pt; color: #333; }
