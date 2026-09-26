@@ -323,7 +323,9 @@ await seccion("vista: un tramo, cálculo y resultados", async () => {
   const graficosRes = $$(".graf-resumen .graf-par .graf-item svg"), curva = graficosRes[0];
   ok(graficosRes.length === 1 && $(".graf-resumen").children[0].classList.contains("graf-metricas") && !$("#resultado-wrap [data-tab=graficos]"), "resultado: primero las cifras y luego la curva de carga (sin la barra vertical); sin pestaña «Gráficos»");
   ok(getComputedStyle($(".graf-resumen")).alignItems === "start", "las cifras quedan arriba, alineadas con el gráfico");
-  ok(/Potencia activa \(MW\)/.test(texto(curva)) && /Hoy: \d/.test(texto(curva)) && /MW ·/.test(texto(curva)), `el eje de la curva va en la unidad del dato de partida (${texto(curva).match(/Hoy:[^%]*%/)?.[0]})`);
+  ok(/Potencia activa \(MW\)/.test(texto(curva)) && /[\d.]+ MW · [\d.]+ %/.test(texto(curva)) && !/Hoy|con [\d.]+ MW/.test(texto(curva)), `el eje de la curva va en la unidad del dato de partida, el punto dice «${texto(curva).match(/[\d.]+ MW · [\d.]+ %/)?.[0]}» (sin «Hoy» ni la marca del 3 %)`);
+  ok(curva.querySelectorAll('line[stroke-dasharray="4 4"]').length === 2, "el punto lleva líneas guía punteadas a los dos ejes");
+  ok($$("#resultado-wrap .tabs .tab-btn").map((b) => b.textContent).join(",") === "Resultado,Reportes,Fórmulas", "pestañas: Resultado, Reportes y Fórmulas");
 
   const filas = $$(".tabla-resultado tbody tr");
   ok(texto($(".result-subhead")).includes("Comparación con otros calibres") && filas.length >= 3, `un solo tramo: comparación de calibres (${filas.length} filas)`);

@@ -439,6 +439,16 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   `.doc-calculo h3` con 10 mm arriba y figuras al 100 % del ancho (la figura lleva `.vista-tema`, cuyo `width: 300px` de
   Apariencia hay que anular). Word: el h3 del documento con `antes: 480` y las imágenes siempre al 85 % del ancho útil
   (antes solo se achicaban), PNG a escala 3.
+  **3.41.1 (2026-09-26, pedidos del usuario)**: orden de pestañas en TODAS las calculadoras = **Resultado · Reportes ·
+  Fórmulas** (`tarjetaResultadosHtml`; Valoración integral mueve su «Análisis» antes de «Reportes» y queda Resultado ·
+  Análisis · Reportes). Pérdidas (`curvaCargaSvg`): SIN la marca del 3 % (línea y «3 % con X MW»: el usuario la dejó a
+  interpretación de la recta), el punto lleva líneas guía punteadas `var(--text)` a los dos ejes y la etiqueta es solo
+  «19.9 MW · 1.53 %» (sin «Hoy»). Regulación (`perfilTensionSvg`): el eje X llega a ~1.2 × L y la línea sigue punteada
+  y suave (opacidad .55) con la pendiente del ÚLTIMO tramo hasta el borde: proyección si la longitud aumentara.
+  Cortocircuito (`soportabilidadSvg`): el eje de corriente va en pasos 1-2-5 (`abajo125`/`arriba125`) y no en décadas
+  completas: las curvas se separan más (p. ej. 2–200 kA en vez de 1–1000). Ampacidad aérea: los 4 gráficos en
+  matriz 2 × 2 en la columna derecha (`resumenConGraficosHtml({…, cuadricula: true})`, clase `.graf-cuadricula`; una
+  columna en ≤720px), en este orden: temperatura vs corriente | ampacidad vs Ta / balance de calor | corte del conductor.
 - **Valores por defecto (2026-09-26, pedido del usuario: calcular de una)**: `porDefecto(sel, valor)` en cada vista
   (dispara «change» para la cascada): AAAC 246.9 + primera referencia en Pérdidas y Regulación (cada tramo aéreo nuevo),
   Cortocircuito y Ampacidad aérea; Ocupación: PVC Tipo TDP de 4". Lo guardado en la sesión sigue ganando.

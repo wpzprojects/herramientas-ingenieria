@@ -29,9 +29,9 @@ export function tarjetaResultadosHtml({ resultado, reporte, formulasPlano, grafi
       <div class="card tarjeta-borde">
         <div class="tabs">
           <button type="button" class="tab-btn active" data-tab="resultado">Resultado</button>
+          <button type="button" class="tab-btn" data-tab="reporte">Reportes</button>
           <button type="button" class="tab-btn" data-tab="formulas">Fórmulas</button>
           ${graficos ? `<button type="button" class="tab-btn" data-tab="graficos">Gráficos</button>` : ""}
-          <button type="button" class="tab-btn" data-tab="reporte">Reportes</button>
         </div>
         <div class="tab-panel" data-panel="resultado">${resultado}</div>
         <div class="tab-panel" data-panel="formulas" hidden>
@@ -48,12 +48,14 @@ export function tarjetaResultadosHtml({ resultado, reporte, formulasPlano, grafi
  * lado a lado y del mismo alto. `graficos` = [{ svg, ancho }]: `ancho` es el ancho del viewBox de cada SVG (todos miden
  * ALTO_GRAFICO de alto), así las columnas van en esa proporción y los gráficos quedan parejos.
  */
-export function resumenConGraficosHtml({ cifras, nota = "", graficos }) {
-  const columnas = graficos.map((g) => `${g.ancho}fr`).join(" ");
+export function resumenConGraficosHtml({ cifras, nota = "", graficos, cuadricula = false }) {
+  // `cuadricula`: los gráficos en una matriz de 2 × 2 en la columna de la derecha (Ampacidad aérea, pedido del usuario)
+  const columnas = cuadricula ? "1fr 1fr" : graficos.map((g) => `${g.ancho}fr`).join(" ");
+  const maximo = cuadricula ? Math.round((graficos[0].ancho + graficos[1].ancho) * 1.3) : Math.round(graficos.reduce((a, g) => a + g.ancho, 0) * 1.3);
   return `
             <div class="graf-resumen">
               <div class="graf-metricas">${cifras}${nota}</div>
-              <div class="graf-par" style="grid-template-columns: ${columnas}; max-width: ${Math.round(graficos.reduce((a, g) => a + g.ancho, 0) * 1.3)}px">${graficos.map((g) => `<div class="graf-item">${g.svg}</div>`).join("")}</div>
+              <div class="graf-par${cuadricula ? " graf-cuadricula" : ""}" style="grid-template-columns: ${columnas}; max-width: ${maximo}px">${graficos.map((g) => `<div class="graf-item">${g.svg}</div>`).join("")}</div>
             </div>`;
 }
 

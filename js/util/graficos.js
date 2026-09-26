@@ -211,18 +211,11 @@ export function curvaCargaSvg({ pct, carga, unidad, nombreEje, optimo, aceptable
   // borde del color del fondo debajo de la recta: resalta sobre las zonas de color fuerte
   s += `<path class="oc-trazo" d="${d}" fill="none" style="stroke:var(--bg);--largo:${f1(largo)}" stroke-width="7" stroke-dasharray="${f1(largo)}"/>`;
   s += `<path class="oc-trazo" d="${d}" fill="none" style="stroke:var(--accent);--largo:${f1(largo)}" stroke-width="3" stroke-dasharray="${f1(largo)}"/>`;
-  const xLim = (aceptable * carga) / pct;
-  if (xLim <= xmax) {
-    const derecha = X(xLim) > m.l + pw * 0.62;
-    s += linea(X(xLim), Y(0), X(xLim), Y(aceptable), "var(--text)", 1.4, "5 4");
-    s += texto(X(xLim) + (derecha ? -6 : 6), Y(aceptable) + 30, `${aceptable} % con ${numEje(xLim)} ${unidad}`, { color: "var(--text)", ancla: derecha ? "end" : "start", peso: 700, tam: 12 });
-  } else {
-    // el 3 % queda fuera del eje: la nota va DEBAJO del nombre «Elevado», sin taparlo
-    s += texto(zx, Y(ymax) + 32, `${aceptable} % con ${numEje(xLim)} ${unidad}`, { color: "var(--text)", ancla: "end", peso: 700, tam: 12 });
-  }
+  // líneas guía del punto a los dos ejes (pedido del usuario: la recta ya deja leer hasta dónde se llega a cada nivel)
+  s += linea(m.l, Y(pct), X(carga), Y(pct), "var(--text)", 1.3, "4 4") + linea(X(carga), Y(pct), X(carga), Y(0), "var(--text)", 1.3, "4 4");
   s += `<circle class="oc-aparece" cx="${f1(X(carga))}" cy="${f1(Y(pct))}" r="6.5" style="fill:var(--accent);stroke:var(--bg)" stroke-width="2.5"/>`;
-  s += texto(X(carga) - 10, Y(pct) - 12, `Hoy: ${numEje(carga)} ${unidad} · ${pct.toFixed(2)} %`, { color: "var(--text)", ancla: "end", peso: 700, tam: 12.5 });
-  return envolver(W, H, `Pérdidas frente a la carga: hoy ${numEje(carga)} ${unidad} con ${pct.toFixed(2)} %; ${aceptable} % con ${numEje(xLim)} ${unidad}`, s);
+  s += texto(X(carga) - 10, Y(pct) - 12, `${numEje(carga)} ${unidad} · ${pct.toFixed(2)} %`, { color: "var(--text)", ancla: "end", peso: 700, tam: 12.5 });
+  return envolver(W, H, `Pérdidas frente a la carga: ${numEje(carga)} ${unidad} con ${pct.toFixed(2)} %`, s);
 }
 
 // ---------------------------------------------------------------- perfil de tensión
@@ -237,7 +230,8 @@ export function perfilTensionSvg({ tramos, optimo, aceptable }) {
   const caida = tramos.reduce((s, t) => s + t.caidaPct, 0);
   const bajada = Math.max(aceptable * 1.2, caida * 1.15);
   const yPaso = pasoRedondo(bajada, 4), ymin = 100 - Math.ceil(bajada / yPaso) * yPaso;
-  const xPaso = pasoRedondo(L, 4), xmax = Math.ceil(L / xPaso) * xPaso;
+  // el eje llega un poco más allá de la línea: deja ver la proyección si la longitud aumentara
+  const xPaso = pasoRedondo(L * 1.2, 4), xmax = Math.ceil((L * 1.2) / xPaso) * xPaso;
   const X = (v) => m.l + (v / xmax) * pw, Y = (v) => m.t + ((100 - Math.max(v, ymin)) / (100 - ymin)) * ph;
   const zona = (a, b, color) => `<rect x="${m.l}" y="${f1(Y(a))}" width="${pw}" height="${f1(Y(b) - Y(a))}" style="fill:${solido(color)}"/>`;
   let s = fondo(m.l, m.t, pw, ph, 0) + zona(100, 100 - optimo, "var(--success)") + zona(100 - optimo, 100 - aceptable, "var(--warning)") + zona(100 - aceptable, ymin, "var(--danger)");
@@ -259,6 +253,13 @@ export function perfilTensionSvg({ tramos, optimo, aceptable }) {
     x = x2;
     v = v2;
   });
+  // proyección: la misma pendiente del último tramo, punteada y suave, hasta el borde del gráfico (pedido del usuario)
+  const ultimo = tramos[tramos.length - 1];
+  const pendiente = ultimo.longitudKm > 0 ? ultimo.caidaPct / ultimo.longitudKm : 0;
+  if (pendiente > 0 && xmax > L) {
+    const xFin = Math.min(xmax, L + (v - ymin) / pendiente);
+    s += linea(X(L), Y(v), X(xFin), Y(v - pendiente * (xFin - L)), "var(--text)", 1.6, "5 5").replace("/>", ' opacity=".55"/>');
+  }
   s += `<circle cx="${X(0)}" cy="${Y(100)}" r="4.5" style="fill:var(--text)"/>` + puntos;
   s += texto(X(L) - 8, Y(v) + 24, `Al final: ${v.toFixed(2)} % (caída ${caida.toFixed(2)} %)`, { ancla: "end", color: "var(--text)", peso: 700, tam: 12.5 });
   return envolver(W, H, `Perfil de tensión: ${v.toFixed(2)} % al final de ${numEje(L)} km`, s);
@@ -276,13 +277,16 @@ export function soportabilidadSvg({ calibres, capacidad, falla, tiempoS }) {
   const W = 460, H = ALTO_GRAFICO, m = { l: 54, r: 58, t: 16, b: 56 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
   const tmin = 0.05, tmax = 5;
   const vals = calibres.flatMap((c) => [capacidad(c.area, tmin), capacidad(c.area, tmax)]).concat(falla ? [falla.ka] : []);
-  const imin = Math.pow(10, Math.floor(Math.log10(Math.min(...vals) * 0.8)));
-  const imax = Math.pow(10, Math.ceil(Math.log10(Math.max(...vals) * 1.25)));
+  // rango en pasos 1-2-5 y no en décadas completas (pedido del usuario: las curvas se ven más separadas)
+  const abajo125 = (v) => { const d = Math.pow(10, Math.floor(Math.log10(v))); return [5, 2, 1].map((k) => k * d).find((x) => x <= v); };
+  const arriba125 = (v) => { const d = Math.pow(10, Math.floor(Math.log10(v))); return [1, 2, 5, 10].map((k) => k * d).find((x) => x >= v); };
+  const imin = abajo125(Math.min(...vals) * 0.8);
+  const imax = arriba125(Math.max(...vals) * 1.25);
   const X = (t) => m.l + ((Math.log10(t) - Math.log10(tmin)) / (Math.log10(tmax) - Math.log10(tmin))) * pw;
   const Y = (i) => m.t + ph - ((Math.log10(i) - Math.log10(imin)) / (Math.log10(imax) - Math.log10(imin))) * ph;
   let s = fondo(m.l, m.t, pw, ph, 0);
   for (const t of [0.05, 0.1, 0.2, 0.5, 1, 2, 5]) s += linea(X(t), m.t, X(t), m.t + ph, "var(--border)") + texto(X(t), m.t + ph + 18, numEje(t), { ancla: "middle", tam: 12 });
-  for (let d = imin; d <= imax * 1.001; d *= 10) for (const k of [1, 2, 5]) { const i = d * k; if (i <= imax * 1.001) s += linea(m.l, Y(i), m.l + pw, Y(i), "var(--border)") + texto(m.l - 7, Y(i) + 4.5, numEje(i), { ancla: "end", tam: 12 }); }
+  for (let d = Math.pow(10, Math.floor(Math.log10(imin))); d <= imax * 1.001; d *= 10) for (const k of [1, 2, 5]) { const i = d * k; if (i >= imin * 0.999 && i <= imax * 1.001) s += linea(m.l, Y(i), m.l + pw, Y(i), "var(--border)") + texto(m.l - 7, Y(i) + 4.5, numEje(i), { ancla: "end", tam: 12 }); }
   s += texto(m.l + pw / 2, H - 10, "Tiempo de despeje (s)", { ancla: "middle", tam: 12.5 });
   s += `<text x="14" y="${m.t + ph / 2}" font-size="12.5" text-anchor="middle" transform="rotate(-90 14 ${m.t + ph / 2})" style="fill:var(--text-muted)">Corriente de cortocircuito (kA)</text>`;
   const actual = calibres.find((c) => c.actual) || calibres[0];

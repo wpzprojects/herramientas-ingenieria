@@ -947,7 +947,8 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
    viewBox). Pantalla media y celular: las cifras arriba y los gráficos debajo. Pestaña «Gráficos»: cada uno en su recuadro. */
 .graf-resumen { display: grid; grid-template-columns: fit-content(340px) minmax(0, 1fr); column-gap: 40px; row-gap: var(--space-5); align-items: start; } /* la columna de cifras mide lo que su contenido (sin espacio sobrante) */
 .graf-resumen .graf-metricas { padding-top: 18px; } /* arranca a la altura del área del gráfico, no por encima */
-.graf-fila { margin-top: var(--space-5); max-width: 1196px; } /* segunda fila de gráficos (Ampacidad aérea) */
+.graf-par.graf-cuadricula { row-gap: 28px; } /* matriz 2 × 2 (Ampacidad aérea) */
+@media (max-width: 720px) { .graf-par.graf-cuadricula { grid-template-columns: minmax(0, 1fr) !important; } }
 .graf-par { display: grid; column-gap: 18px; align-items: start; }
 .graf-par .graf-item svg { display: block; width: 100%; height: auto; overflow: visible; }
 .graf-metricas .grid-2 { column-gap: var(--space-4); }
