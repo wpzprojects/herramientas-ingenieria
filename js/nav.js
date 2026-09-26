@@ -41,9 +41,8 @@ export const sectionMenus = {
   ],
   normatividad: [
     { title: "Distancias de seguridad", desc: "Tablas RETIE 3.10.x de distancias mínimas de seguridad.", icon: "ruler", hash: "#/normatividad/distancias-seguridad", libre: true },
-    { title: "Zona de servidumbre", desc: "Ancho de zona de servidumbre para líneas (RETIE 3.19.1.a).", icon: "map", hash: "#/normatividad/zona-servidumbre" },
-    { title: "Enterramiento de ductos", desc: "Profundidad de enterramiento RETIE / NTC 2050.", icon: "layers", hash: "#/normatividad/enterramiento-ductos" },
     { title: "Corriente de conductores NTC", desc: "Tablas 310-77 a 310-80 de la NTC 2050.", icon: "fileText", hash: "#/normatividad/corriente-ntc" },
+    { title: "Biblioteca técnica", desc: "Apartes de normas, tablas y figuras de consulta rápida, organizados por fuente.", icon: "books", hash: "#/normatividad/biblioteca" },
     { title: "Resoluciones del sector", desc: "Normativa CREG relevante, con resumen y alcance.", icon: "archive", hash: "#/normatividad/resoluciones" },
   ],
   varios: [

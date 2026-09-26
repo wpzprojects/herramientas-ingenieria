@@ -185,7 +185,7 @@ export function crearBackendFirebase(firebaseConfig) {
     // Catalogo + su copia en el historial + su entrada en el indice, en un solo lote (o queda todo, o nada). El historial
     // guarda las ultimas MAX_HISTORIAL versiones; si la version publicada aun no estaba en el (publicada antes de que
     // existiera el historial), se copia primero para poder volver a ella.
-    async publicarCatalogo(nombre, { datos, huellaFabrica, cambio = "" }) {
+    async publicarCatalogo(nombre, { datos, huellaFabrica, cambio = "", sinHistorial = false }) {
       try {
         const { fs, db } = await cargar();
         const yo = await correoActual();
@@ -195,6 +195,14 @@ export function crearBackendFirebase(firebaseConfig) {
         const actual = (await fs.getDoc(refIndice)).data()?.catalogos?.[nombre] || null;
         const lote = fs.writeBatch(db);
         let historial = Array.isArray(actual?.historial) ? actual.historial : [];
+        if (sinHistorial) {
+          // Sin versiones antiguas (Biblioteca técnica): se borran las que hubiera y no se guarda ninguna.
+          for (const h of historial) lote.delete(fs.doc(db, "catalogos_historial", `${nombre}__${h.version}`));
+          lote.set(fs.doc(db, "catalogos", nombre), { datos, version });
+          lote.set(refIndice, { catalogos: { [nombre]: { version, huellaFabrica, actualizadoPor: yo, fecha: fs.serverTimestamp(), cambio, historial: [] } }, fecha: fs.serverTimestamp() }, { merge: true });
+          await lote.commit();
+          return version;
+        }
         if (actual && !historial.some((h) => h.version === actual.version)) {
           const previo = await fs.getDoc(fs.doc(db, "catalogos", nombre));
           if (previo.exists()) {
@@ -243,6 +251,25 @@ export function crearBackendFirebase(firebaseConfig) {
       try {
         const { fs, db } = await cargar();
         await fs.deleteDoc(fs.doc(db, "usuarios", await correoActual(), "valoraciones", id));
+      } catch (err) {
+        throw err instanceof ErrorAcceso ? err : traducir(err);
+      }
+    },
+
+    // Imagen de la Biblioteca tecnica (documento propio, < 1 MB); la lista de registros se publica aparte como catalogo.
+    async subirImagenBiblioteca(id, { datos, tipo }) {
+      try {
+        const { fs, db } = await cargar();
+        await fs.setDoc(fs.doc(db, "biblioteca_imagenes", id), { datos, tipo, creado: Date.now() });
+      } catch (err) {
+        throw err instanceof ErrorAcceso ? err : traducir(err);
+      }
+    },
+
+    async eliminarImagenBiblioteca(id) {
+      try {
+        const { fs, db } = await cargar();
+        await fs.deleteDoc(fs.doc(db, "biblioteca_imagenes", id));
       } catch (err) {
         throw err instanceof ErrorAcceso ? err : traducir(err);
       }

@@ -5,7 +5,9 @@
 import { icon } from "../icons.js";
 import { escapeHtml, olvidarDato } from "./format.js";
 import { revelar } from "./revelar.js";
-import { CATALOGOS_EDITABLES, cargarFabrica, huella, textoCompacto, lectorActivo, lectorDesdeMock, sincronizarCatalogos } from "./catalogos-remotos.js";
+import { CATALOGOS_EDITABLES as TODOS_EDITABLES, cargarFabrica, huella, textoCompacto, lectorActivo, lectorDesdeMock, sincronizarCatalogos } from "./catalogos-remotos.js";
+
+const CATALOGOS_EDITABLES = TODOS_EDITABLES.filter((c) => c.enPerfil !== false); // la Biblioteca técnica se administra en su pantalla
 
 const fecha = (iso) => (iso ? new Date(iso).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" }) : "");
 

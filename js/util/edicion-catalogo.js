@@ -11,7 +11,7 @@ import { icon } from "../icons.js";
 import { escapeHtml, olvidarDato, conIdSiFalta } from "./format.js";
 import { estadoAcceso } from "../auth/acceso.js";
 import { obtenerBackend } from "../auth/backend.js";
-import { lectorActivo, infoCopia, cargarFabrica, huella, textoCompacto, sincronizarCatalogos } from "./catalogos-remotos.js";
+import { lectorActivo, infoCopia, cargarFabrica, huella, textoCompacto, sincronizarCatalogos, CATALOGOS_EDITABLES } from "./catalogos-remotos.js";
 
 export const esAdministrador = () => estadoAcceso().nivel === "admin";
 
@@ -111,7 +111,8 @@ export async function guardarCatalogo(nombre, filas, cambio) {
     throw new Error("El catálogo cambió en el servidor mientras editabas. Vuelve a abrir la pantalla (ya quedó al día) y repite el cambio.");
   }
   const huellaFabrica = meta ? meta.huellaFabrica : await huella((await cargarFabrica(nombre)).datos);
-  await backend.publicarCatalogo(nombre, { datos: textoCompacto(filas), huellaFabrica, cambio });
+  const sinHistorial = !!CATALOGOS_EDITABLES.find((c) => c.nombre === nombre)?.sinHistorial;
+  await backend.publicarCatalogo(nombre, { datos: textoCompacto(filas), huellaFabrica, cambio, sinHistorial });
   const { actualizados } = await sincronizarCatalogos();
   actualizados.forEach(olvidarDato);
   olvidarDato(nombre);

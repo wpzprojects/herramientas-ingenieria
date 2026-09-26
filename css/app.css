@@ -756,6 +756,24 @@ td.wrap, th.wrap { white-space: normal; }
 }
 .nota-pie strong { color: var(--text); }
 .image-frame img { max-width: 100%; height: auto; border-radius: var(--radius-sm); cursor: zoom-in; display: block; margin: 0 auto; }
+/* Biblioteca técnica: el texto va en un recuadro como el de las imágenes (se lee como parte del documento), arriba de ellas */
+.bib-toolbar .bib-campo-fuente { flex: 1 1 200px; max-width: 320px; }
+.bib-toolbar .bib-campo-contenido { flex: 3 1 320px; }
+.bib-texto { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-elevated); padding: var(--space-4); font-size: 0.92rem; line-height: 1.6; }
+.bib-texto > :first-child { margin-top: 0; }
+.bib-texto > :last-child { margin-bottom: 0; }
+.bib-texto p { margin: 0 0 var(--space-3); }
+.bib-texto ul, .bib-texto ol { margin: 0 0 var(--space-3); padding-left: var(--space-5); }
+.bib-figura { margin: var(--space-4) 0 0; }
+.bib-figura figcaption { margin: 0 0 var(--space-2); }
+.bib-f-imagenes { list-style: none; margin: 0 0 var(--space-3); padding: 0; }
+.bib-f-imagen { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
+.bib-f-mini { flex: 0 0 96px; height: 64px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-sunken); overflow: hidden; }
+.bib-f-mini img { max-width: 100%; max-height: 100%; display: block; }
+.bib-f-pie { flex: 1 1 auto; margin-bottom: 0; min-width: 0; }
+.bib-f-botones { display: flex; gap: 2px; flex: 0 0 auto; }
+.bib-f-subir { cursor: pointer; }
+@media (max-width: 560px) { .bib-f-imagen { flex-wrap: wrap; } .bib-f-pie { flex-basis: calc(100% - 96px - var(--space-3)); } .bib-f-botones { margin-left: auto; } }
 
 /* Tabla partida: misma imagen dos veces (encabezado fijo recortado + cuerpo con scroll), ver normativa-imagen.js. */
 .tabla-partida {

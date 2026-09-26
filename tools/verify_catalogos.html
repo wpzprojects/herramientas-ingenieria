@@ -180,7 +180,8 @@ await seccion("pestaña Catálogos del administrador", async () => {
   pintarCatalogosAdmin(box, mock, { confirmar: () => (preguntas++, true) });
   for (let i = 0; i < 60 && !box.querySelector("[data-publicar]"); i++) await espera(100);
   const filas = [...box.querySelectorAll("[data-filas] tr")];
-  ok(filas.length === R.CATALOGOS_EDITABLES.length && filas.every((tr) => /No publicado/.test(tr.textContent)) && /Codificación de entregables/.test(texto(box)), `lista los ${R.CATALOGOS_EDITABLES.length} catálogos (con la codificación), todos «No publicado» al principio`);
+  const enPerfil = R.CATALOGOS_EDITABLES.filter((c) => c.enPerfil !== false);
+  ok(filas.length === enPerfil.length && filas.every((tr) => /No publicado/.test(tr.textContent)) && /Codificación de entregables/.test(texto(box)) && !/Biblioteca técnica/.test(texto(box)), `lista los ${enPerfil.length} catálogos (con la codificación y sin la Biblioteca técnica, que se administra en su pantalla), todos «No publicado» al principio`);
   ok(!!box.querySelector(".form-section-title .icon") && /Catálogos en el servidor/.test(texto(box.querySelector(".form-section-title"))), "barra de título con icono");
   box.querySelector('[data-publicar="resoluciones"]').click();
   for (let i = 0; i < 60 && !/Se publicó/.test(texto(box.querySelector("[data-msg]"))); i++) await espera(100);
@@ -200,7 +201,7 @@ await seccion("Perfil > Aplicación y Datos", async () => {
   const { pintarAplicacion } = await import("../js/util/perfil-aplicacion.js");
   stage.innerHTML = `<div id="box"></div>`;
   let limpiarApp = pintarAplicacion(stage.querySelector("#box"));
-  ok(/Del servidor|1 de 6 del servidor/.test(texto(stage.querySelector("[data-catalogos]"))), `Aplicación dice de dónde vienen los catálogos: ${texto(stage.querySelector("[data-catalogos]"))}`);
+  ok(/Del servidor|1 de \d+ del servidor/.test(texto(stage.querySelector("[data-catalogos]"))), `Aplicación dice de dónde vienen los catálogos: ${texto(stage.querySelector("[data-catalogos]"))}`);
   limpiarApp();
   R.borrarCopias();
   limpiarApp = pintarAplicacion(stage.querySelector("#box"));

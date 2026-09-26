@@ -43,6 +43,11 @@ const routeTable = [
   ["/normatividad", () => import("./views/normatividad.js")],
   ["/normatividad/resoluciones", () => import("./views/resoluciones.js")],
   ["/normatividad/resoluciones/:id", () => import("./views/detalle-resolucion.js")],
+  ["/normatividad/biblioteca", () => import("./views/biblioteca.js")],
+  ["/normatividad/biblioteca/:id", () => import("./views/biblioteca.js")],
+  // Zona de servidumbre y Enterramiento de ductos pasaron a la Biblioteca técnica (2026-09-26): los enlaces viejos abren su registro
+  ["/normatividad/zona-servidumbre", () => Promise.resolve({ render: () => location.replace("#/normatividad/biblioteca/1") })],
+  ["/normatividad/enterramiento-ductos", () => Promise.resolve({ render: () => location.replace("#/normatividad/biblioteca/2") })],
   // debe ir despues de las rutas literales de arriba (mas especificas) para
   // que no se las "coma" este catch-all generico de visor de imagenes:
   ["/normatividad/:tema", () => import("./views/normativa-imagen.js")],

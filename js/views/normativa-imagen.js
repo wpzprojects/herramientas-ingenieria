@@ -1,6 +1,6 @@
 // Visor generico de imagenes normativas, parametrizado por :tema en la URL.
-// Cubre las 4 rutas "#/normatividad/:tema" (distancias-seguridad,
-// zona-servidumbre, enterramiento-ductos, corriente-ntc) definidas en
+// Cubre las rutas "#/normatividad/:tema" (distancias-seguridad y corriente-ntc; zona-servidumbre y
+// enterramiento-ductos pasaron a la Biblioteca técnica el 2026-09-26) definidas en
 // js/router.js y js/nav.js (sectionMenus.normatividad).
 // Un tema puede llevar una `nota`: texto normativo que se muestra como nota al pie, debajo del visor (ver .nota-pie en app.css).
 
@@ -23,28 +23,6 @@ const TEMAS = {
       { label: "Tabla 3.10.5.b — Distancias mínimas para trabajos en o cerca de partes energizadas en corriente alterna", img: "assets/normativa/tabla-3-10-5-b.jpg" },
       { label: "Tabla 3.10.5.c — Distancias mínimas para trabajos en o cerca de partes energizadas en corriente continua", img: "assets/normativa/tabla-3-10-5-c.jpg" },
       { label: "Tabla 3.22.1.c — Distancias de seguridad en el aire en subestaciones exteriores (Tabla 23.2 en RETIE 2013)", img: "assets/normativa/tabla-3-22-1-c.jpg" },
-    ],
-  },
-  "zona-servidumbre": {
-    titulo: "Zona de servidumbre",
-    selector: false,
-    opciones: [
-      { label: "Tabla 3.19.1.a", img: "assets/normativa/tabla-3-19-1-a.jpg" },
-      { label: "Figura 3.19.1.a", img: "assets/normativa/figura-3-19-1-a.jpg" },
-    ],
-  },
-  "enterramiento-ductos": {
-    titulo: "Enterramiento de ductos",
-    selector: true,
-    // El numeral 3.20.6.3.g del RETIE 2026 era una imagen de texto que solo remite a estas dos tablas: ahora es la nota al pie.
-    nota: {
-      titulo: "RETIE 2026, numeral 3.20.6.3.g:",
-      texto:
-        "La profundidad de enterramiento de ductos para redes de distribución exteriores, internas de un edificio, urbanización cerrada, planta industrial o propiedad privada, deben estar acorde a lo establecido en la Tabla 300.5 de la NTC 2050 segunda actualización para tensiones hasta 1 000 V y la Tabla 300.50 para tensiones mayores a 1 000 V nominales. Excepción: cuando existan conflictos con otras instalaciones subterráneas existentes en áreas peatonales para menos de 150 V a tierra, pueden ser enterradas a una profundidad no menor a 0,45 m.",
-    },
-    opciones: [
-      { label: "NTC 2050, Tabla 300.5 — Enterramiento de conductores de 0 a 1000 V", img: "assets/normativa/tabla-300-5.jpg" },
-      { label: "NTC 2050, Tabla 300.50 — Enterramiento de conductores de 1000 V en adelante", img: "assets/normativa/tabla-300-50.jpg" },
     ],
   },
   "corriente-ntc": {

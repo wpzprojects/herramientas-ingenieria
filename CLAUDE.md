@@ -1158,6 +1158,27 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   angosta el desplegable cerrado corta los títulos largos: se probó repetir el título completo debajo del campo y el usuario lo
   RECHAZÓ (2026-09-19); no volver a ponerlo (el desplegable abierto sí muestra el título completo).
   Al agregar/quitar imágenes de `assets/normativa/` recordar el `APP_SHELL`. Pruebas: `tools/verify_normatividad.html`.
+- **Biblioteca técnica (2026-09-26, 3.35.0; nombre y decisiones del usuario)**: `#/normatividad/biblioteca[/<id>]`
+  (`js/views/biblioteca.js`, `js/util/biblioteca.js`, icono Tabler `books`, tarjeta antes de Resoluciones, SOLO usuarios).
+  «Fuente» | «Contenido» arriba; debajo el TEXTO (recuadro `.bib-texto`, `markdownAHtml`: negrilla, viñetas, párrafos) y
+  luego las IMÁGENES (una o varias, cada una con su pie encima y ampliable: `data-lightbox`). Registro = `{id, fuente,
+  titulo, texto, imagenes:[{src|id, pie}]}`. La lista es el catálogo del servidor «biblioteca» (fábrica:
+  `data/biblioteca.json` con imágenes de `assets/`: `src`), con `sinHistorial: true` (el usuario NO quiere versiones
+  antiguas: se borran las que hubiera y la imagen que se quita o cuyo registro se elimina se BORRA del servidor) y
+  `enPerfil: false` (no aparece en Perfil → Catálogos, porque «Publicar de nuevo» reemplazaría lo agregado por los 2
+  registros de fábrica). Cada imagen subida es un documento `biblioteca_imagenes/{id}` = `{datos: data URL, tipo,
+  creado}` (Firebase Storage ya no es gratis): `comprimirImagen` la reduce a ≤ 1600 px y < 900 KB (WebP si el navegador
+  lo escribe, si no JPEG; baja calidad y luego tamaño). Las vistas se guardan en la Cache API («biblioteca-imagenes»)
+  para verlas sin conexión; cada operación de caché tiene un tiempo máximo (`conLimite`, 1.5 s: en Edge sin pantalla no
+  responde). La carga usa `<img>`, no `createImageBitmap` (tampoco termina en Edge sin pantalla); en las pruebas la
+  imagen se arma con `toDataURL` (no `toBlob`). Administrador: «Agregar registro» / «Editar» / «Eliminar» en la barra;
+  formulario con fuente (datalist), título (sin repetir en la misma fuente), texto e imágenes (vista previa, peso, pie,
+  subir/bajar/quitar); se exige texto o al menos una imagen. Guardar: sube las imágenes nuevas, publica la lista
+  (`guardarCatalogo`, con la protección de conflictos) y borra las quitadas; si falla, borra las recién subidas. Zona de
+  servidumbre y Enterramiento de ductos pasaron a ser los registros 1 y 2 (sus rutas viejas redirigen; el texto del
+  numeral 3.20.6.3.g ahora va ARRIBA de las tablas); Distancias de seguridad y Corriente NTC siguen en
+  `normativa-imagen.js`. Reglas: `biblioteca_imagenes` lectura pública (como los catálogos), creación/borrado solo admin,
+  data URL de imagen < 1 MB: HAY QUE PUBLICARLAS. Pruebas: `tools/verify_biblioteca.html` (42).
 - **Tabla partida: encabezado fijo + cuerpo con scroll (2026-09-24, idea del usuario mirando «Corriente de conductores NTC
   2050»)**: esa imagen es una tabla ancha con muchas filas; al hacer scroll para comparar una fila de abajo, el encabezado
   (calibre/metal/área/resistencia…) ya no se ve. Como es una sola imagen plana (no HTML), no hay forma de "congelar" filas

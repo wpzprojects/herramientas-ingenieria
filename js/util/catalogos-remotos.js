@@ -19,6 +19,9 @@ export const CATALOGOS_EDITABLES = [
   { nombre: "tuberias", titulo: "Tuberías" },
   { nombre: "resoluciones", titulo: "Resoluciones" },
   { nombre: "codificacion", titulo: "Codificación de entregables" },
+  // Biblioteca técnica (2026-09-26): sin historial de versiones (pedido del usuario: son imágenes de normas que se pueden
+  // volver a cargar) y fuera de Perfil > Catálogos (allí «Publicar de nuevo» reemplazaría lo agregado por lo de fábrica).
+  { nombre: "biblioteca", titulo: "Biblioteca técnica", sinHistorial: true, enPerfil: false },
 ];
 export const NOMBRES_EDITABLES = CATALOGOS_EDITABLES.map((c) => c.nombre);
 export const PREFIJO_COPIA = "catalogo.servidor.";
@@ -140,10 +143,10 @@ async function config() {
   }
 }
 
-async function leerDocumentoRest(id) {
+async function leerDocumentoRest(id, coleccion = "catalogos") {
   const cfg = await config();
   if (!cfg) return null;
-  const url = `https://firestore.googleapis.com/v1/projects/${cfg.projectId}/databases/(default)/documents/catalogos/${encodeURIComponent(id)}?key=${cfg.apiKey}`;
+  const url = `https://firestore.googleapis.com/v1/projects/${cfg.projectId}/databases/(default)/documents/${coleccion}/${encodeURIComponent(id)}?key=${cfg.apiKey}`;
   const res = await fetch(url, { cache: "no-store" });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`El servidor respondió ${res.status}.`);
@@ -159,6 +162,11 @@ export const lectorRest = {
     const doc = await leerDocumentoRest(nombre);
     return doc ? parsearCatalogoRest(doc) : null;
   },
+  /** Imagen de la Biblioteca técnica: su data URL, o null si no existe. */
+  async imagen(id) {
+    const doc = await leerDocumentoRest(id, "biblioteca_imagenes");
+    return doc ? valorRest(doc?.fields?.datos) ?? null : null;
+  },
 };
 
 /** Lector que lee lo publicado en el backend simulado (solo pruebas). */
@@ -166,6 +174,7 @@ export function lectorDesdeMock(mock) {
   return {
     indice: async () => (Object.keys(mock.servidor.indice).length ? structuredClone(mock.servidor.indice) : null),
     catalogo: async (n) => (mock.servidor.documentos[n] ? { ...mock.servidor.documentos[n] } : null),
+    imagen: async (id) => mock.servidor.imagenes?.[id]?.datos ?? null,
   };
 }
 

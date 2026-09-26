@@ -11,6 +11,9 @@ rules_version = '2';
 //   catalogos/_indice                 { catalogos: { nombre: { version, huellaFabrica, actualizadoPor, fecha, cambio,
 //                                                               historial: [{ version, fecha, actualizadoPor, cambio }] } }, fecha }
 //   catalogos_historial/{nombre}__{version} { nombre, datos, version }                 (ultimas 10 versiones, solo admin)
+//   biblioteca_imagenes/{id}          { datos, tipo, creado }                            (imagenes de la Biblioteca tecnica:
+//                                                                                      data URL comprimida, < 1 MB; la lista de
+//                                                                                      registros es el catalogo «biblioteca»)
 //   usuarios/{correo}/valoraciones/{id} { nombre, resumen, datos, creado, actualizado } (valoraciones integrales guardadas;
 //                                                                                      solo las ve y cambia su dueño)
 //
@@ -93,7 +96,7 @@ service cloud.firestore {
 
     // Catalogos editables: lectura publica, escritura solo del admin y solo con la forma esperada.
     function catalogoConocido(id) {
-      return id in ['conductores-desnudos', 'conductores-semiaislados', 'conductores-xlpe', 'tuberias', 'resoluciones', 'codificacion'];
+      return id in ['conductores-desnudos', 'conductores-semiaislados', 'conductores-xlpe', 'tuberias', 'resoluciones', 'codificacion', 'biblioteca'];
     }
 
     match /catalogos/{id} {
@@ -102,13 +105,29 @@ service cloud.firestore {
         (id == '_indice'
           && request.resource.data.keys().hasOnly(['catalogos', 'fecha'])
           && request.resource.data.catalogos is map
-          && request.resource.data.catalogos.keys().hasOnly(['conductores-desnudos', 'conductores-semiaislados', 'conductores-xlpe', 'tuberias', 'resoluciones', 'codificacion']))
+          && request.resource.data.catalogos.keys().hasOnly(['conductores-desnudos', 'conductores-semiaislados', 'conductores-xlpe', 'tuberias', 'resoluciones', 'codificacion', 'biblioteca']))
         || (catalogoConocido(id)
           && request.resource.data.keys().hasOnly(['datos', 'version'])
           && request.resource.data.datos is string
           && request.resource.data.datos.size() < 1000000
           && request.resource.data.version is int)
       );
+    }
+
+    // Imagenes de la Biblioteca tecnica (2026-09-26): lectura publica como los catalogos (la app las lee con la API REST);
+    // solo el administrador las crea o borra, como imagen en data URL y de menos de 1 MB. No se editan: una imagen nueva
+    // es un documento nuevo, y la que se quita de un registro se borra (la Biblioteca no guarda versiones antiguas).
+    match /biblioteca_imagenes/{id} {
+      allow read: if true;
+      allow delete: if esAdmin();
+      allow create: if esAdmin()
+        && id.matches('^[A-Za-z0-9_-]{8,64}$')
+        && request.resource.data.keys().hasOnly(['datos', 'tipo', 'creado'])
+        && request.resource.data.datos is string
+        && request.resource.data.datos.matches('^data:image/(jpeg|png|webp);base64,.*')
+        && request.resource.data.datos.size() < 1000000
+        && request.resource.data.tipo in ['image/jpeg', 'image/png', 'image/webp']
+        && request.resource.data.creado is int;
     }
 
     // Historial de versiones de cada catalogo (ultimas 10; la lista con fecha, autor y cambio vive en _indice). Solo

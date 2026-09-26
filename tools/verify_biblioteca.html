@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>verify_biblioteca</title>
+<!--
+  Pruebas de la Biblioteca técnica (js/views/biblioteca.js, js/util/biblioteca.js): visor, acceso, migración de Zona de
+  servidumbre y Enterramiento de ductos, compresión de imágenes y edición del administrador (sin versiones antiguas).
+  Usa el backend simulado y un lector simulado: NUNCA toca el Firestore real.
+
+  Uso (desde la raiz del proyecto):
+    python -m http.server 8000
+    abrir http://localhost:8000/tools/verify_biblioteca.html   -> lista PASS/FAIL
+  o en modo consola:
+    msedge --headless --dump-dom --virtual-time-budget=40000 http://localhost:8000/tools/verify_biblioteca.html
+-->
+<style>body{font-family:ui-monospace,Consolas,monospace;font-size:13px;padding:12px}#stage{position:absolute;left:-9999px;width:1000px}</style>
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+<pre id="out"></pre>
+<div id="stage"></div>
+<script type="module">
+window.__BASE_PATH__ = "../";
+const out = document.getElementById("out");
+let fallos = 0;
+let total = 0;
+function ok(cond, msg) {
+  total++;
+  if (!cond) fallos++;
+  out.textContent += `${cond ? "PASS" : "FAIL"} ${msg}\n`;
+}
+async function seccion(nombre, fn) {
+  out.textContent += `\n== ${nombre}\n`;
+  try {
+    await fn();
+  } catch (err) {
+    fallos++;
+    total++;
+    out.textContent += `FAIL excepcion en "${nombre}": ${err && err.stack ? err.stack : err}\n`;
+  }
+}
+const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+const esperarQue = async (cond, ms = 6000) => {
+  for (let t = 0; t < ms && !cond(); t += 50) await espera(50);
+  return cond();
+};
+const stage = document.getElementById("stage");
+const $ = (s) => stage.querySelector(s);
+const $$ = (s) => [...stage.querySelectorAll(s)];
+const texto = (e) => (e ? e.textContent.replace(/\s+/g, " ").trim() : "");
+
+const R = await import("../js/util/catalogos-remotos.js");
+const F = await import("../js/util/format.js");
+const Bib = await import("../js/util/biblioteca.js");
+const B = await import("../js/auth/backend.js");
+const ACC = await import("../js/auth/acceso.js");
+const { crearBackendMock } = await import("../js/auth/backend-mock.js");
+const { permitida } = await import("../js/auth/permisos.js");
+const vista = await import("../js/views/biblioteca.js");
+const ADMIN = { email: "jefe@empresa.com", nombre: "Jefe" };
+const YO = { email: "ana@empresa.com", nombre: "Ana" };
+const usuarios = [{ email: ADMIN.email, rol: "admin" }, { email: YO.email, rol: "usuario" }];
+async function comoCuenta(mock, cuenta) {
+  mock._entrarComo(cuenta);
+  B.usarBackend(mock);
+  ACC.reiniciarAccesoParaPruebas();
+  await ACC.revalidar();
+}
+const limpiar = () => { R.borrarCopias(); R.NOMBRES_EDITABLES.forEach(F.olvidarDato); };
+const siempre = () => true;
+
+/** Una imagen PNG de prueba (un lienzo con texto) como archivo. */
+async function archivoPrueba(ancho, alto, nombre = "tabla.png") {
+  const c = document.createElement("canvas");
+  c.width = ancho;
+  c.height = alto;
+  const g = c.getContext("2d");
+  g.fillStyle = "#fff";
+  g.fillRect(0, 0, ancho, alto);
+  g.fillStyle = "#000";
+  g.font = "40px sans-serif";
+  for (let y = 60; y < alto; y += 80) g.fillText("Tabla 300.5 — 600 mm 450 mm 150 mm", 20, y);
+  // (toBlob no termina en Edge sin pantalla: se convierte la data URL a bytes a mano)
+  const bin = atob(c.toDataURL("image/png").split(",")[1]);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new File([bytes], nombre, { type: "image/png" });
+}
+
+await seccion("datos de fábrica: Zona de servidumbre y Enterramiento de ductos", async () => {
+  const filas = await (await fetch("../data/biblioteca.json")).json();
+  ok(filas.length === 2 && filas.every((f) => f.id && f.fuente && f.titulo && Array.isArray(f.imagenes)), "dos registros con id, fuente, título e imágenes");
+  const [zona, ent] = filas;
+  ok(/Zona de servidumbre/.test(zona.titulo) && zona.imagenes.length === 2 && !zona.texto, "Zona de servidumbre: la tabla y la figura, sin texto");
+  ok(/Enterramiento de ductos/.test(ent.titulo) && ent.imagenes.length === 2 && /0,45 m/.test(ent.texto) && /Tabla 300\.5/.test(ent.imagenes[0].pie) && /Tabla 300\.50/.test(ent.imagenes[1].pie), "Enterramiento: el texto del numeral y las Tablas 300.5 y 300.50, cada una con su pie");
+  const faltan = [];
+  for (const f of filas) for (const i of f.imagenes) if (!(await fetch(`../${i.src}`, { method: "HEAD" })).ok) faltan.push(i.src);
+  ok(faltan.length === 0, `sus imágenes existen${faltan.length ? ": faltan " + faltan.join(", ") : ""}`);
+  const sw = await (await fetch("../sw.js")).text();
+  ok(["data/biblioteca.json", "js/views/biblioteca.js", "js/util/biblioteca.js", ...filas.flatMap((f) => f.imagenes.map((i) => i.src))].every((a) => sw.includes(`"${a}"`)), "todo está en el APP_SHELL (funciona sin conexión)");
+  ok(R.NOMBRES_EDITABLES.includes("biblioteca") && R.CATALOGOS_EDITABLES.find((c) => c.nombre === "biblioteca").sinHistorial === true, "es un catálogo del servidor, sin historial de versiones");
+});
+
+await seccion("acceso, menú y enlaces viejos", async () => {
+  ok(!permitida("/normatividad/biblioteca", "visitante") && !permitida("/normatividad/biblioteca/2", "visitante") && permitida("/normatividad/biblioteca", "usuario"), "solo usuarios con acceso (los visitantes no)");
+  const nav = await import("../js/nav.js");
+  const it = nav.sectionMenus.normatividad.find((i) => i.hash === "#/normatividad/biblioteca");
+  ok(it && it.title === "Biblioteca técnica" && !it.libre && it.icon === "books", "tarjeta «Biblioteca técnica» en Normatividad, con el icono de libros");
+  const router = await (await fetch("../js/router.js")).text();
+  ok(/zona-servidumbre".*biblioteca\/1/.test(router) && /enterramiento-ductos".*biblioteca\/2/.test(router), "los enlaces viejos de Zona de servidumbre y Enterramiento abren su registro en la biblioteca");
+  const { icon } = await import("../js/icons.js");
+  ok(icon("books").includes("M13.803 4.56"), "el icono es el de Tabler «books»");
+});
+
+await seccion("visor: fuente, contenido, texto arriba e imágenes debajo", async () => {
+  limpiar();
+  const mock = crearBackendMock({ usuarios, sesion: YO });
+  R.usarLector(R.lectorDesdeMock(mock));
+  window.__USAR_CATALOGOS_SERVIDOR__ = true;
+  await comoCuenta(mock, YO);
+  stage.innerHTML = "";
+  await vista.render(stage, { id: "2" }, { confirmar: siempre });
+  ok(texto($(".page-title")) === "Biblioteca técnica" && !!$("#bib-fuente") && !!$("#bib-contenido"), "título y las dos listas: Fuente y Contenido");
+  ok($("#bib-fuente").value === "RETIE 2026" && /Enterramiento/.test($("#bib-contenido").selectedOptions[0].textContent), "con un id en la ruta abre ese registro");
+  const cuadro = $(".bib-texto");
+  await esperarQue(() => $$(".bib-figura img").length === 2);
+  const figuras = $$(".bib-figura");
+  ok(cuadro && figuras.length === 2 && cuadro.getBoundingClientRect().bottom <= figuras[0].getBoundingClientRect().top, "el texto va ARRIBA, en su recuadro, y las imágenes debajo");
+  ok(/Excepción:/.test(texto(cuadro)) && !!cuadro.querySelector("strong"), "el texto admite negrilla («Excepción:»)");
+  ok(texto(figuras[0].querySelector("figcaption")).startsWith("NTC 2050, Tabla 300.5") && figuras[0].querySelector("img").getAttribute("src").endsWith("assets/normativa/tabla-300-5.jpg") && figuras[0].querySelector("img").hasAttribute("data-lightbox"), "cada imagen con su pie encima y ampliable al tocarla");
+  ok(!$('[data-accion="agregar"]'), "un usuario normal no ve Agregar, Editar ni Eliminar");
+  const sel = $("#bib-contenido");
+  sel.value = "1";
+  sel.dispatchEvent(new Event("change", { bubbles: true }));
+  await esperarQue(() => $$(".bib-figura img").length === 2);
+  ok(!$(".bib-texto") && /tabla-3-19-1-a/.test($$(".bib-figura img")[0].getAttribute("src")) && location.hash === "#/normatividad/biblioteca/1", "al cambiar el contenido se ve la Zona de servidumbre (sin texto) y la dirección apunta a ese registro");
+});
+
+await seccion("compresión de imágenes al subirlas", async () => {
+  const grande = await archivoPrueba(3200, 2400);
+  const r = await Bib.comprimirImagen(grande);
+  ok(Math.max(r.ancho, r.alto) === 1600 && r.alto === 1200, `se reduce a 1600 px de lado mayor, sin deformarla (${r.ancho} × ${r.alto})`);
+  ok(/^data:image\/(webp|jpeg);base64,/.test(r.datos) && Bib.bytesDe(r.datos) < Bib.LIMITE_BYTES, `queda en WebP o JPEG y pesa menos del límite (${Math.round(Bib.bytesDe(r.datos) / 1024)} KB)`);
+  const chica = await Bib.comprimirImagen(await archivoPrueba(400, 300));
+  ok(chica.ancho === 400 && chica.alto === 300, "una imagen pequeña no se agranda");
+  const apretada = await Bib.comprimirImagen(await archivoPrueba(1600, 1200), { limite: 40_000 });
+  ok(Bib.bytesDe(apretada.datos) < 40_000, `si no cabe, baja la calidad y el tamaño hasta que quepa (${Math.round(Bib.bytesDe(apretada.datos) / 1024)} KB)`);
+  let error = null;
+  try {
+    await Bib.comprimirImagen(new File(["hola"], "nota.txt", { type: "text/plain" }));
+  } catch (e) {
+    error = e;
+  }
+  ok(error && /no es una imagen/.test(error.message), "un archivo que no es imagen se rechaza con un mensaje claro");
+  ok(/^img-[a-z0-9]{16}$/.test(Bib.nuevoIdImagen()) && Bib.nuevoIdImagen() !== Bib.nuevoIdImagen(), "cada imagen nueva tiene su propio id");
+});
+
+await seccion("administrador: agregar, editar y eliminar (sin versiones antiguas)", async () => {
+  limpiar();
+  const mock = crearBackendMock({ usuarios, sesion: ADMIN });
+  R.usarLector(R.lectorDesdeMock(mock));
+  window.__USAR_CATALOGOS_SERVIDOR__ = true;
+  await comoCuenta(mock, ADMIN);
+  let preguntas = [];
+  const confirmar = (t) => (preguntas.push(t), true);
+  stage.innerHTML = "";
+  await vista.render(stage, {}, { confirmar });
+  ok(!!$('[data-accion="agregar"]') && !!$('[data-accion="editar"]') && !!$('[data-accion="eliminar"]') && $(".toolbar").contains($('[data-accion="agregar"]')), "el administrador ve Agregar registro, Editar y Eliminar en la barra de las listas");
+
+  // agregar: validación
+  $('[data-accion="agregar"]').click();
+  ok($(".bib-toolbar").hidden && $("#bib-visor").hidden && !!$(".bib-form"), "Agregar abre el formulario en lugar del visor");
+  $(".bib-form").requestSubmit();
+  await espera(30);
+  ok(!$('[data-error="fuente"]').hidden && !$('[data-error="titulo"]').hidden && !$('[data-error="contenido"]').hidden && !mock.servidor.indice.biblioteca, "fuente y título obligatorios, y al menos un texto o una imagen: nada se publica");
+  $("#bib-f-fuente").value = "RETIE 2026";
+  $("#bib-f-titulo").value = "Zona de servidumbre — numeral 3.19.1";
+  $("#bib-f-texto").value = "x";
+  $(".bib-form").requestSubmit();
+  await espera(30);
+  ok(/Ya hay un registro/.test(texto($('[data-error="titulo"]'))), "no se repite un título dentro de la misma fuente");
+
+  // agregar con texto e imagen
+  $("#bib-f-fuente").value = "CREG";
+  $("#bib-f-titulo").value = "Resolución de prueba — tabla 1";
+  $("#bib-f-texto").value = "**Importante:** texto con <script>window.__xss=1<\/script> código";
+  const dt = new DataTransfer();
+  dt.items.add(await archivoPrueba(2000, 1000, "tabla-1.png"));
+  const entrada = $('.bib-form input[type="file"]');
+  entrada.files = dt.files;
+  entrada.dispatchEvent(new Event("change"));
+  await esperarQue(() => $$(".bib-f-imagen").length === 1 && !!$(".bib-f-mini img"));
+  ok($$(".bib-f-imagen").length === 1 && $("#bib-f-pie-0").value === "tabla-1" && /nueva, \d+ KB/.test(texto($(".bib-f-imagen label"))), "al elegir una imagen se ve su vista previa, su peso y un pie (el nombre del archivo)");
+  $("#bib-f-pie-0").value = "Tabla 1 — prueba";
+  $("#bib-f-pie-0").dispatchEvent(new Event("input", { bubbles: true }));
+  preguntas = [];
+  $(".bib-form").requestSubmit();
+  await esperarQue(() => !$(".bib-form"));
+  const pub = JSON.parse(mock.servidor.documentos.biblioteca.datos);
+  const nuevo = pub.find((f) => f.titulo === "Resolución de prueba — tabla 1");
+  const idsImg = Object.keys(mock.servidor.imagenes);
+  ok(preguntas.length === 1 && pub.length === 3 && nuevo && nuevo.imagenes.length === 1 && nuevo.imagenes[0].id === idsImg[0] && nuevo.imagenes[0].pie === "Tabla 1 — prueba", "Guardar pide confirmación, sube la imagen a su propio documento y publica la lista con el registro nuevo (los 2 de fábrica se conservan)");
+  ok(/^data:image\/(webp|jpeg);base64,/.test(mock.servidor.imagenes[idsImg[0]].datos), "la imagen del servidor es la reducida (data URL)");
+  ok(mock.servidor.indice.biblioteca.historial.length === 0 && !Object.keys(mock.servidor.historial).some((k) => k.startsWith("biblioteca__")), "no se guardan versiones antiguas");
+  await esperarQue(() => !!$(".bib-figura img"));
+  ok($("#bib-fuente").value === "CREG" && /Resolución de prueba/.test($("#bib-contenido").selectedOptions[0].textContent) && /Se agregó/.test(texto($("#bib-msg"))), "vuelve al visor con el registro nuevo elegido (fuente nueva incluida) y un aviso");
+  ok(!!$(".bib-texto strong") && !$(".bib-texto script") && /<script>/.test(texto($(".bib-texto"))) && !window.__xss, "el texto se muestra con su negrilla y lo que parece código se ve como texto");
+  ok($(".bib-figura img").getAttribute("src").startsWith("data:image/") && texto($(".bib-figura figcaption")) === "Tabla 1 — prueba", "la imagen se ve con su pie");
+
+  // editar: quitar la imagen → se borra del servidor
+  $('[data-accion="editar"]').click();
+  await esperarQue(() => $$(".bib-f-imagen").length === 1);
+  ok($("#bib-f-titulo").value === "Resolución de prueba — tabla 1" && $("#bib-f-fuente").value === "CREG", "Editar abre el formulario con los datos del registro");
+  $('[data-quitar="0"]').click();
+  $("#bib-f-texto").value = "Solo texto ahora.";
+  $(".bib-form").requestSubmit();
+  await esperarQue(() => !$(".bib-form"));
+  const pub2 = JSON.parse(mock.servidor.documentos.biblioteca.datos);
+  ok(pub2.find((f) => f.id === nuevo.id).imagenes.length === 0 && Object.keys(mock.servidor.imagenes).length === 0, "al quitar la imagen y guardar, la imagen se borra del servidor (sin copias)");
+
+  // cancelar no publica
+  const version = mock.servidor.indice.biblioteca.version;
+  $('[data-accion="editar"]').click();
+  $("#bib-f-texto").value = "cambio que no se guarda";
+  $(".bib-form [data-cancelar]").click();
+  ok(!$(".bib-form") && !$(".bib-toolbar").hidden && mock.servidor.indice.biblioteca.version === version, "Cancelar vuelve al visor sin publicar nada");
+
+  // eliminar
+  preguntas = [];
+  $('[data-accion="eliminar"]').click();
+  await esperarQue(() => JSON.parse(mock.servidor.documentos.biblioteca.datos).length === 2);
+  ok(preguntas.length === 1 && /no se guarda una copia/.test(preguntas[0]) && JSON.parse(mock.servidor.documentos.biblioteca.datos).length === 2 && /Se eliminó/.test(texto($("#bib-msg"))), "Eliminar avisa que no queda copia, publica sin el registro y lo dice");
+  ok(![...$("#bib-fuente").options].some((o) => o.value === "CREG"), "una fuente sin registros desaparece de la lista");
+  stage.innerHTML = "";
+});
+
+await seccion("reglas de Firestore", async () => {
+  const reglas = await (await fetch("../firebase/firestore.rules")).text();
+  ok(/match \/biblioteca_imagenes\/\{id\}/.test(reglas) && /allow create: if esAdmin\(\)[\s\S]*data:image\/\(jpeg\|png\|webp\)/.test(reglas) && /size\(\) < 1000000/.test(reglas), "imágenes: solo el administrador las crea, como data URL de imagen y de menos de 1 MB");
+  ok(reglas.includes("'biblioteca'"), "la lista de registros es un catálogo conocido");
+  const mock = crearBackendMock({ usuarios, sesion: YO });
+  let error = null;
+  try {
+    await mock.subirImagenBiblioteca("img-abcdefgh1234", { datos: "data:image/png;base64,AAAA", tipo: "image/png" });
+  } catch (e) {
+    error = e;
+  }
+  ok(error && error.tipo === "permiso", "un usuario normal no puede subir imágenes (el simulado replica las reglas)");
+});
+
+limpiar();
+R.usarLector(null);
+window.__USAR_CATALOGOS_SERVIDOR__ = undefined;
+out.textContent += `\nRESULT: ${fallos ? "FAIL" : "OK"} (${total - fallos}/${total})\n`;
+</script>
+</body>
+</html>

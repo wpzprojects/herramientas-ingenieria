@@ -6,7 +6,7 @@
 import { ErrorAcceso, ROLES, normalizarCorreo, correoValido } from "./backend.js";
 
 const MAX_HISTORIAL = 10;
-const CATALOGOS_CONOCIDOS = ["conductores-desnudos", "conductores-semiaislados", "conductores-xlpe", "tuberias", "resoluciones", "codificacion"];
+const CATALOGOS_CONOCIDOS = ["conductores-desnudos", "conductores-semiaislados", "conductores-xlpe", "tuberias", "resoluciones", "codificacion", "biblioteca"];
 
 /**
  * @param {object} [o]
@@ -21,7 +21,7 @@ export function crearBackendMock({ usuarios = [], sesion = null, cuentaAlIniciar
   const personales = new Map();
   let compartida = claveCompartida;
   let actual = sesion;
-  const servidor = { indice: {}, documentos: {}, historial: {} }; // catalogos publicados
+  const servidor = { indice: {}, documentos: {}, historial: {}, imagenes: {} }; // catalogos publicados e imagenes de la Biblioteca
   const valoraciones = new Map(); // correo -> Map(id -> valoracion)
   const oyentes = new Set();
   const espera = () => new Promise((r) => setTimeout(r, 0));
@@ -122,7 +122,7 @@ export function crearBackendMock({ usuarios = [], sesion = null, cuentaAlIniciar
 
     // Catalogos: el mock guarda lo publicado en `servidor` (el mismo objeto que lee el lector simulado de las pruebas,
     // ver lectorDesdeMock en js/util/catalogos-remotos.js). Replica las reglas: solo admin, nombre conocido, tamaño.
-    async publicarCatalogo(nombre, { datos, huellaFabrica, cambio = "" }) {
+    async publicarCatalogo(nombre, { datos, huellaFabrica, cambio = "", sinHistorial = false }) {
       await espera();
       requerirAdmin();
       if (!CATALOGOS_CONOCIDOS.includes(nombre)) throw new ErrorAcceso("Catálogo desconocido.", "permiso");
@@ -131,6 +131,13 @@ export function crearBackendMock({ usuarios = [], sesion = null, cuentaAlIniciar
       const version = Math.max(Date.now(), (actual?.version || 0) + 1);
       const fecha = new Date().toISOString();
       let historial = actual?.historial || [];
+      if (sinHistorial) {
+        // sin versiones antiguas: se borran las que hubiera y no se guarda ninguna
+        for (const h of historial) delete servidor.historial[`${nombre}__${h.version}`];
+        servidor.documentos[nombre] = { datos, version };
+        servidor.indice[nombre] = { version, huellaFabrica, actualizadoPor: correo(), fecha, cambio, historial: [] };
+        return version;
+      }
       if (actual && !historial.some((h) => h.version === actual.version) && servidor.documentos[nombre]) {
         servidor.historial[`${nombre}__${actual.version}`] = { nombre, datos: servidor.documentos[nombre].datos, version: actual.version };
         historial = [{ version: actual.version, fecha: actual.fecha, actualizadoPor: actual.actualizadoPor, cambio: actual.cambio || "Publicación anterior" }, ...historial];
@@ -146,6 +153,20 @@ export function crearBackendMock({ usuarios = [], sesion = null, cuentaAlIniciar
       await espera();
       requerirAdmin();
       return servidor.historial[`${nombre}__${version}`]?.datos ?? null;
+    },
+    // Imagenes de la Biblioteca tecnica: replica las reglas (solo admin, id, data URL de imagen y tamaño).
+    async subirImagenBiblioteca(id, { datos, tipo }) {
+      await espera();
+      requerirAdmin();
+      if (!/^[A-Za-z0-9_-]{8,64}$/.test(id)) throw new ErrorAcceso("Identificador de imagen no válido.", "permiso");
+      if (typeof datos !== "string" || !/^data:image\/(jpeg|png|webp);base64,/.test(datos) || datos.length >= 1000000) throw new ErrorAcceso("La imagen no es válida o es demasiado grande.", "permiso");
+      if (servidor.imagenes[id]) throw new ErrorAcceso("La imagen ya existe.", "permiso");
+      servidor.imagenes[id] = { datos, tipo, creado: Date.now() };
+    },
+    async eliminarImagenBiblioteca(id) {
+      await espera();
+      requerirAdmin();
+      delete servidor.imagenes[id];
     },
     servidor,
 

@@ -4,7 +4,7 @@
 // para lo que no estuviera precacheado.
 
 // Versión de la app (x.y.z; ver js/util/novedades.js): cada publicación la sube, y con ella se renueva la cache.
-const CACHE_VERSION = "3.34.0";
+const CACHE_VERSION = "3.35.0";
 const CACHE_NAME = `herramientas-ingenieria-${CACHE_VERSION}`;
 
 const SCOPE = self.registration.scope;
@@ -114,6 +114,8 @@ const APP_SHELL = [
   "js/views/conversion-unidades.js",
   "js/views/conversion-coordenadas.js",
   "js/views/codificacion.js",
+  "js/views/biblioteca.js",
+  "js/util/biblioteca.js",
   "icons/icon-192.png",
   "icons/icon-512.png",
   "icons/icon-maskable-512.png",
@@ -124,6 +126,7 @@ const APP_SHELL = [
   "data/sistemas-epsg.json",
   "data/construccion-cable-subterraneo.json",
   "data/codificacion.json",
+  "data/biblioteca.json",
   "data/resoluciones.json",
   "data/factores-conversion.json",
   "data/unidades.json",

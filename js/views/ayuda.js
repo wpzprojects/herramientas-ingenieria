@@ -41,12 +41,10 @@ const AYUDA_DESCRIPCIONES = {
     "Ficha técnica de tuberías PVC y metálicas (EMT, IMC, RIGID) con diámetro nominal e interno. Es la fuente de datos de la calculadora de Ocupación de ductos.",
   "#/normatividad/distancias-seguridad":
     "Tablas RETIE 3.10.x con las distancias mínimas de seguridad según el nivel de tensión y el tipo de instalación. Sirve para verificar despejes ante estructuras, vías, cruces y otros elementos cercanos a una línea.",
-  "#/normatividad/zona-servidumbre":
-    "Ancho de la zona de servidumbre exigido para una línea según su nivel de tensión (RETIE 3.19.1.a). Útil para trámites de diseño y para estimar el área que debe quedar libre bajo la línea.",
-  "#/normatividad/enterramiento-ductos":
-    "Profundidades mínimas de enterramiento de ductos según RETIE y NTC 2050, según el tipo de vía o superficie. Referencia rápida para el diseño de redes subterráneas.",
   "#/normatividad/corriente-ntc":
     "Tablas 310-77 a 310-80 de la NTC 2050 con la corriente admisible de conductores según su calibre, aislamiento y condiciones de instalación. Complementa a Ampacidad cuando se necesita el valor tabulado de la norma en vez del cálculo detallado.",
+  "#/normatividad/biblioteca":
+    "Referencias de consulta rápida organizadas por fuente (RETIE, NTC 2050, CREG, criterios internos…): apartes de normas en texto, tablas y figuras, con la imagen ampliable al tocarla. Incluye, entre otras, la zona de servidumbre y la profundidad de enterramiento de ductos. El administrador agrega y actualiza los registros para todos.",
   "#/normatividad/resoluciones":
     "Normativa CREG relevante para el sector eléctrico, con resumen y alcance de cada resolución. Ayuda a ubicar rápido qué resolución aplica a un tema sin tener que leerla completa.",
   "#/ia/analisis":

@@ -209,7 +209,7 @@ await seccion("menús: módulos bloqueados sin hipervínculo", async () => {
   };
   await con({ usuarios: semilla(), sesion: null });
   await acc.revalidar();
-  const esperado = { calculos: [3, 5], catalogos: [1, 3], normatividad: [1, 4], varios: [0, 3], ia: [0, 3] };
+  const esperado = { calculos: [3, 5], catalogos: [1, 3], normatividad: [1, 3], varios: [0, 3], ia: [0, 3] };
   for (const [g, mod] of Object.entries(vistas)) {
     await dibujar(mod);
     const enlaces = $$("a.menu-tile").length;
@@ -225,7 +225,7 @@ await seccion("menús: módulos bloqueados sin hipervínculo", async () => {
   await dibujar(ayuda);
   const enlacesAyuda = $$("ul.ayuda-lista a").map((a) => a.textContent);
   const bloqueadosAyuda = $$("ul.ayuda-lista .enlace-bloqueado");
-  ok(enlacesAyuda.length === 5 && bloqueadosAyuda.length === 18, `Ayuda: 5 enlaces libres y ${bloqueadosAyuda.length} títulos sin hipervínculo (23 módulos en total)`);
+  ok(enlacesAyuda.length === 5 && bloqueadosAyuda.length === 17, `Ayuda: 5 enlaces libres y ${bloqueadosAyuda.length} títulos sin hipervínculo (22 módulos en total)`);
   ok(bloqueadosAyuda.every((s) => getComputedStyle(s).color !== getComputedStyle($$("ul.ayuda-lista a")[0]).color && !!s.querySelector(".candado-mini svg")), "los títulos sin enlace se ven en gris y con un candado pequeño (los enlaces siguen azules)");
   ok(!$$("a").some((a) => /configuraci[oó]n avanzada/i.test(a.textContent)), "Ayuda ya no tiene la tarjeta de Configuración avanzada");
   // usuario: todo con enlaces
@@ -236,7 +236,7 @@ await seccion("menús: módulos bloqueados sin hipervínculo", async () => {
     ok($$("div.menu-tile--bloqueado").length === 0 && $$("a.menu-tile").length === nav.sectionMenus[g].length, `${g}: con usuario autorizado todas las tarjetas son enlaces`);
   }
   await dibujar(ayuda);
-  ok($$("ul.ayuda-lista a").length === 23 && $$(".enlace-bloqueado").length === 0, "Ayuda con usuario autorizado: los 23 módulos son enlaces");
+  ok($$("ul.ayuda-lista a").length === 22 && $$(".enlace-bloqueado").length === 0, "Ayuda con usuario autorizado: los 22 módulos son enlaces");
 });
 
 await seccion("router: pantallas bloqueadas", async () => {
