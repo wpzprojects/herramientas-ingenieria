@@ -817,6 +817,10 @@ export async function render(container) {
   // Tensión general o una por alternativa
   function aplicarTensionAlt() {
     fTension.disabled = porAlternativa();
+    // con «Por alternativa», la falla y el tiempo de despeje generales se ocultan: cada alternativa pide los suyos
+    const ccGeneral = q(".vi-cc-general");
+    ccGeneral.hidden = porAlternativa();
+    ccGeneral.querySelectorAll("input").forEach((i) => (i.disabled = porAlternativa()));
     escenarios.forEach((e) => e.mostrarTension(porAlternativa()));
     validarTensiones();
   }

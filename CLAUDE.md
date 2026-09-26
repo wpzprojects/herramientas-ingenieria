@@ -355,7 +355,7 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   **3.32.0 (2026-09-26, pedido del usuario)**: con la tensión GENERAL, la corriente de falla y el tiempo de despeje van
   una sola vez en «Parámetros avanzados» de «Datos de la conexión» (`#f-falla`, `#f-tiempo`, en `COMUNES`; Perfil →
   Calculadoras aplica el tiempo a `#f-tiempo`); con «Por alternativa» marcada, cada alternativa muestra su grupo
-  `.vi-cc-alt` (`f-falla-N`, `f-tiempo-N`, deshabilitados si están ocultos) que arranca con los generales, igual que la
+  `.vi-cc-alt` (`f-falla-N`, `f-tiempo-N`, deshabilitados si están ocultos) que arranca con los generales (y los generales, `.vi-cc-general`, se ocultan y deshabilitan; 3.32.1), igual que la
   tensión. `estado()` de la alternativa lee los generales o los propios según la casilla. Una valoración guardada antes
   (sin `falla` en la foto) toma para los generales los de la alternativa 1. La «i» del costo de instalación: «Costos por
   km de suministro e instalación de postes, aisladores, herrajes, crucetería, estructura metálica, obra civil, etc. (sin

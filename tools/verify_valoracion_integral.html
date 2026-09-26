@@ -348,9 +348,10 @@ await seccion("vista: tensión general o por alternativa", async () => {
   ok(general.disabled && !filaAlt.hidden && $(".vi-tension-alt input").value === "13.2", "con «Por alternativa» la general se bloquea y cada alternativa pide la suya (arranca con la general)");
   ok($(".vi-escenario .grid-2").classList.contains("vi-tension-alt") && $(".vi-escenario .grid-2 input").id.startsWith("f-tension-"), "la tensión es lo primero de la alternativa");
   ok(!ccAlt.hidden && ccAlt.querySelector("[id^=f-falla-]").value === "7" && ccAlt.querySelector("[id^=f-tiempo-]").value === "0.5" && !ccAlt.querySelector("[id^=f-falla-]").disabled, "con «Por alternativa», la falla y el tiempo bajan a cada alternativa (arrancan con los generales)");
+  ok($(".vi-cc-general").hidden && $("#f-falla").disabled && $("#f-tiempo").disabled && !$("#f-tfalla").disabled, "…y los generales se ocultan (la temperatura admisible en falla sigue siendo general)");
   chk.checked = false;
   chk.dispatchEvent(new Event("change"));
-  ok(ccAlt.hidden && ccAlt.querySelector("[id^=f-tiempo-]").disabled, "al desmarcarla vuelven a ser los generales");
+  ok(ccAlt.hidden && ccAlt.querySelector("[id^=f-tiempo-]").disabled && !$(".vi-cc-general").hidden && !$("#f-falla").disabled, "al desmarcarla vuelven a ser los generales");
   poner("#f-falla", "", "input");
   poner("#f-tiempo", "0.3", "input");
   chk.checked = true;

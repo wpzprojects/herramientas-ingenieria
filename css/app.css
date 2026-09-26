@@ -303,6 +303,7 @@ button { font-family: inherit; }
    el espacio de más va entre secciones, con una línea suave */
 .pf-form .grid-2 { row-gap: 0; }
 .pf-form .pf-grupo:not(:first-child) { margin-top: var(--space-6); }
+.pf-form .pf-grupo:first-child { margin-top: var(--space-6); } /* el doble de espacio bajo el texto de introducción (pedido del usuario) */
 /* Edición de catálogos (administrador, js/util/edicion-catalogo.js) */
 .ed-acciones { margin: 0 0 var(--space-4); }
 /* «Agregar registro» al final de la línea de filtros; si no cabe, es el primero en bajar de línea */
