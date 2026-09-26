@@ -940,7 +940,7 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .ia-chip:disabled:hover { border-color: var(--border-strong); color: var(--text-muted); }
 .ia-chip[aria-pressed="true"]:disabled:hover { border-color: var(--accent); color: var(--accent-strong); }
 /* Ocupacion de ductos: resultado en TRES columnas (corte transversal a escala | dona | cifras); en pantalla angosta pasan a una columna */
-.oc-resumen { display: grid; grid-template-columns: fit-content(320px) minmax(0, 300px) minmax(0, 300px); justify-content: space-between; column-gap: 40px; align-items: start; } /* cifras, corte y dona repartidos de forma pareja (2026-09-26) */
+.oc-resumen { display: grid; grid-template-columns: fit-content(340px) minmax(0, 340px) minmax(0, 340px); justify-content: start; column-gap: 56px; align-items: start; } /* cifras, corte y dona juntos desde la IZQUIERDA con aire entre ellos (pedido del usuario: no repartidos a todo el ancho) */
 .oc-grafico svg { display: block; width: 100%; height: auto; overflow: visible; }
 /* Resultado con gráficos (Pérdidas, Regulación, Ocupación, Cortocircuito y Ampacidades; 2026-09-26): PRIMERO las cifras (dos
    columnas angostas, con la nota debajo) y DESPUÉS los gráficos lado a lado, del mismo alto (columnas en la proporción de sus

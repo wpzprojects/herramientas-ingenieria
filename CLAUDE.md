@@ -452,6 +452,8 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   3.41.2: `corteZanjaSvg` usa el MISMO recuadro que `curvasSvg` (márgenes l 58, r 70, t 18, b 58; franja de superficie
   dentro) y la nota «Conductor a … (Kennelly)» va debajo como nombre de eje. Cifras de Ampacidad subterránea en
   `.graf-cifras-apiladas`: una debajo de otra; en ≤1180px (cuando las cifras quedan encima de los gráficos), lado a lado.
+  3.41.3: `.oc-resumen` = `fit-content(340px) minmax(0,340px) minmax(0,340px)`, `justify-content: start`, gap 56 px. El
+  usuario NO quiere columnas repartidas a todo el ancho: SIEMPRE justificadas a la izquierda con aire entre ellas.
 - **Valores por defecto (2026-09-26, pedido del usuario: calcular de una)**: `porDefecto(sel, valor)` en cada vista
   (dispara «change» para la cascada): AAAC 246.9 + primera referencia en Pérdidas y Regulación (cada tramo aéreo nuevo),
   Cortocircuito y Ampacidad aérea; Ocupación: PVC Tipo TDP de 4". Lo guardado en la sesión sigue ganando.

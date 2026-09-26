@@ -189,7 +189,7 @@ await seccion("vista: un tipo de conductor, cálculo y resultados", async () => 
   const ancha = window.innerWidth > 900; // con la ventana angosta (celular) las tres pasan a una sola columna
   ok(ancha ? rM.right <= rC.left + 1 && rC.right <= rD.left + 1 && Math.abs(rD.top - rC.top) < 200 : rM.bottom <= rC.top + 1 && rC.bottom <= rD.top + 1, ancha ? "quedan una junto a otra (las cifras a la izquierda, luego el corte y la dona)" : "en ventana angosta se apilan en una columna (cifras, corte, dona)");
   const cssApp = await (await fetch("../css/app.css")).text();
-  ok(/\.oc-resumen\s*\{[^}]*grid-template-columns:\s*fit-content\(320px\) minmax\(0, 300px\) minmax\(0, 300px\)/.test(cssApp) && /@media \(max-width: 900px\)\s*\{\s*\.oc-resumen\s*\{\s*grid-template-columns: 1fr/.test(cssApp), "el CSS define tres columnas y una sola por debajo de 900 px");
+  ok(/\.oc-resumen\s*\{[^}]*grid-template-columns:\s*fit-content\(340px\) minmax\(0, 340px\) minmax\(0, 340px\)/.test(cssApp) && /@media \(max-width: 900px\)\s*\{\s*\.oc-resumen\s*\{\s*grid-template-columns: 1fr/.test(cssApp), "el CSS define tres columnas y una sola por debajo de 900 px");
   ok(texto($(".oc-dona svg text")).length > 0 && /25\.8 %|%/.test($(".oc-dona").textContent) && $(".oc-dona").textContent.includes("40 %"), "la dona muestra la ocupación y el límite (40 %)");
   { // los conductores dibujados no se encimaban ni salen del ducto (para 3 × Ø30 y para dos tipos)
     const { asentarConductores } = await import("../js/util/graficos.js");
