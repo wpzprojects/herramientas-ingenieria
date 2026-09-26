@@ -17,7 +17,7 @@ import {
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas, resumenConGraficosHtml, pestanaGraficosHtml } from "../util/resultados-ui.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
-import { barraReferenciaSvg, curvaCargaSvg } from "../util/graficos.js";
+import { curvaCargaSvg } from "../util/graficos.js";
 import { revelar } from "../util/revelar.js";
 import { guardarEstado, leerEstado } from "../util/persistencia-calculo.js";
 import { aplicarDefectos } from "../util/valores-defecto.js";
@@ -604,7 +604,6 @@ export async function render(container) {
     const graficos = conGraficos
       ? [
           { svg: curvaCargaSvg({ pct: r.perdidasPct, carga: dato.datoPartida, unidad: eje[1], nombreEje: eje[0], optimo: UMBRAL_OPTIMO_PCT, aceptable: UMBRAL_ACEPTABLE_PCT }), ancho: 460 },
-          { svg: barraReferenciaSvg({ valor: r.perdidasPct, optimo: UMBRAL_OPTIMO_PCT, aceptable: UMBRAL_ACEPTABLE_PCT, etiqueta: "Pérdidas" }), ancho: 150 },
         ]
       : [];
     const cifras = `
@@ -647,7 +646,7 @@ export async function render(container) {
       resultado,
       reporte: reporteHtml(reporteTexto(r, base, estados, dato), ETIQUETAS_REPORTE),
       formulasPlano: FORMULAS_TEXTO,
-      graficos: conGraficos ? pestanaGraficosHtml([{ titulo: "Pérdidas frente a la carga y referencias de diseño", graficos }]) : "",
+      graficos: conGraficos ? pestanaGraficosHtml([{ titulo: "Pérdidas frente a la carga", graficos }]) : "",
     });
     activarPestanas(wrap, { grupos: FORMULAS_TEX, etiquetas: FORMULAS_ETIQUETAS, nota: FORMULAS_NOTA });
 

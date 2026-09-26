@@ -320,9 +320,9 @@ await seccion("vista: un tramo, cálculo y resultados", async () => {
   ok(!/norma/i.test(texto($("#resultado-wrap"))), "en los resultados no aparece la palabra «norma» ni «normativo» en ninguna parte");
   ok(texto($("#resultado-wrap")).includes("Referencias de diseño: hasta 1% óptimo · hasta 3% aceptable.") && !texto($("#resultado-wrap")).includes("(no son un límite"), "las referencias se muestran como «Referencias de diseño: hasta 1% óptimo · hasta 3% aceptable.» (sin paréntesis)");
   // gráficos (2026-09-26): barra de referencia vertical + % de pérdidas frente a la carga, antes de las cifras
-  const [curva, barra] = $$(".graf-resumen .graf-par .graf-item svg");
-  ok(barra && curva && $(".graf-resumen").children[0].classList.contains("graf-metricas") && !!$("#resultado-wrap [data-tab=graficos]"), "resultado: primero las cifras, luego la curva de carga y la barra; y pestaña «Gráficos»");
-  ok(/Pérdidas:/.test(barra.getAttribute("aria-label")) && /óptimo hasta 1 %/.test(barra.getAttribute("aria-label")), "la barra lleva las referencias de 1 % y 3 %");
+  const graficosRes = $$(".graf-resumen .graf-par .graf-item svg"), curva = graficosRes[0];
+  ok(graficosRes.length === 1 && $(".graf-resumen").children[0].classList.contains("graf-metricas") && !!$("#resultado-wrap [data-tab=graficos]"), "resultado: primero las cifras y luego la curva de carga (sin la barra vertical); y pestaña «Gráficos»");
+  ok(getComputedStyle($(".graf-resumen")).alignItems === "start", "las cifras quedan arriba, alineadas con el gráfico");
   ok(/Potencia activa \(MW\)/.test(texto(curva)) && /Hoy: \d/.test(texto(curva)) && /MW ·/.test(texto(curva)), `el eje de la curva va en la unidad del dato de partida (${texto(curva).match(/Hoy:[^%]*%/)?.[0]})`);
 
   const filas = $$(".tabla-resultado tbody tr");

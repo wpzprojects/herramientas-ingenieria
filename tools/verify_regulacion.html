@@ -216,8 +216,8 @@ await seccion("vista: un tramo, cálculo y resultados", async () => {
   ok(texto($("#resultado-wrap")).includes("Referencias de diseño: hasta 5% óptimo · hasta 10% aceptable.") && !texto($("#resultado-wrap")).includes("(no son un límite"), "las referencias se muestran como «Referencias de diseño: hasta 5% óptimo · hasta 10% aceptable.» (sin paréntesis)");
   ok(!/norma/i.test(texto($("#resultado-wrap"))), "en los resultados no aparece la palabra «norma» ni «normativo» en ninguna parte");
   // gráficos (2026-09-26): barra de referencia vertical + perfil de tensión, antes de las cifras
-  const [perfil, barra] = $$(".graf-resumen .graf-par .graf-item svg");
-  ok(barra && perfil && /Caída de tensión:/.test(barra.getAttribute("aria-label")), "resultado: barra de referencia y perfil de tensión antes de las cifras");
+  const graficosRes = $$(".graf-resumen .graf-par .graf-item svg"), perfil = graficosRes[0];
+  ok(graficosRes.length === 1 && $(".graf-resumen").children[0].classList.contains("graf-metricas") && !!$("#resultado-wrap [data-tab=graficos]"), "resultado: primero las cifras y luego el perfil de tensión (sin la barra vertical); y pestaña «Gráficos»");
   ok(/Distancia desde el inicio de la línea \(km\)/.test(texto(perfil)) && /Al final: [\d.]+ %/.test(texto(perfil)), `el perfil va contra los km y dice la tensión al final (${texto(perfil).match(/Al final:[^)]*\)/)?.[0]})`);
 
   const filas = $$(".tabla-resultado tbody tr");

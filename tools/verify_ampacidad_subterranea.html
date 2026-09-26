@@ -294,7 +294,7 @@ await seccion("vista: corriente circulante y tensión inducida en la pantalla", 
   let m = metricas();
   ok(m.length === 2 && m[0].etiqueta === "Ampacidad admisible" && m[1].etiqueta === "Tensión inducida en la pantalla (circuito abierto)" && m[1].unidad === "V/km", "unipuntual: junto a la ampacidad sale la «Tensión inducida en la pantalla (circuito abierto)» en V/km");
   cerca(m[1].valor, e0.tension, 0.006, `tensión inducida: ${e0.tension.toFixed(2)} V/km`);
-  ok(!!$(".result-panel > .grid-2"), "las dos métricas van en dos columnas");
+  ok(!!$(".result-panel .graf-metricas > .grid-2"), "las dos métricas van en dos columnas (antes de los gráficos)");
 
   // cross-bonding: tambien tension inducida
   elegir("#f-tierra", "Cross-bonding");

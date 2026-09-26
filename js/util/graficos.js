@@ -130,7 +130,7 @@ function pasoRedondo(max, n = 4) {
 /** Número corto y legible para los ejes: 9.9 · 18 · 27.5 · 1,200. */
 export function numEje(v) {
   const a = Math.abs(v);
-  const dec = a === 0 ? 0 : a < 10 ? (Number.isInteger(Math.round(v * 10) / 10) ? 0 : 1) : a < 100 ? (Number.isInteger(v) ? 0 : 1) : 0;
+  const dec = a === 0 ? 0 : a < 1 ? 2 : a < 10 ? (Number.isInteger(Math.round(v * 10) / 10) ? 0 : 1) : a < 100 ? (Number.isInteger(v) ? 0 : 1) : 0;
   return v.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: dec });
 }
 const esc = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -150,6 +150,8 @@ function recuadro(x, y, lineas, { ancla = "start", tam = 12.5 } = {}) {
     lineas.map((l, i) => texto(x0 + 8, y + 6 + (i + 1) * (tam + 5) - 4, l.t, { tam: l.tam || tam, color: l.color || "var(--text)", peso: l.peso || 400 })).join("")
   );
 }
+/** Color SÓLIDO de una zona (sin transparencia): el color del estado mezclado con el fondo (pedido del usuario). */
+const solido = (color, pct = 26) => `color-mix(in srgb, ${color} ${pct}%, var(--bg))`;
 const envolver = (W, H, etiqueta, s) => `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(etiqueta)}">${s}</svg>`;
 /** Los gráficos que van en pareja miden lo mismo de alto (380) para quedar parejos lado a lado. */
 export const ALTO_GRAFICO = 380;
@@ -193,7 +195,7 @@ export function curvaCargaSvg({ pct, carga, unidad, nombreEje, optimo, aceptable
   const yTope = Math.max(aceptable * 4 / 3, (pct * xmax) / carga);
   const yPaso = pasoRedondo(yTope, 4), ymax = Math.ceil(yTope / yPaso) * yPaso;
   const X = (v) => m.l + (v / xmax) * pw, Y = (v) => m.t + ph - (Math.min(v, ymax) / ymax) * ph;
-  const zona = (a, b, color) => `<rect x="${m.l}" y="${f1(Y(b))}" width="${pw}" height="${f1(Y(a) - Y(b))}" style="fill:${color}" opacity=".16"/>`;
+  const zona = (a, b, color) => `<rect x="${m.l}" y="${f1(Y(b))}" width="${pw}" height="${f1(Y(a) - Y(b))}" style="fill:${solido(color)}"/>`;
   let s = fondo(m.l, m.t, pw, ph, 0) + zona(0, optimo, "var(--success)") + zona(optimo, aceptable, "var(--warning)") + zona(aceptable, ymax, "var(--danger)");
   for (let v = 0; v <= ymax + 1e-9; v += yPaso) s += linea(m.l, Y(v), m.l + pw, Y(v), "var(--border)") + texto(m.l - 7, Y(v) + 4.5, `${numEje(v)} %`, { ancla: "end", tam: 12 });
   for (let v = 0; v <= xmax + 1e-9; v += xPaso) s += linea(X(v), m.t + ph, X(v), m.t + ph + 5, "var(--text-muted)") + texto(X(v), m.t + ph + 20, numEje(v), { ancla: "middle", tam: 12 });
@@ -233,7 +235,7 @@ export function perfilTensionSvg({ tramos, optimo, aceptable }) {
   const yPaso = pasoRedondo(bajada, 4), ymin = 100 - Math.ceil(bajada / yPaso) * yPaso;
   const xPaso = pasoRedondo(L, 4), xmax = Math.ceil(L / xPaso) * xPaso;
   const X = (v) => m.l + (v / xmax) * pw, Y = (v) => m.t + ((100 - Math.max(v, ymin)) / (100 - ymin)) * ph;
-  const zona = (a, b, color) => `<rect x="${m.l}" y="${f1(Y(a))}" width="${pw}" height="${f1(Y(b) - Y(a))}" style="fill:${color}" opacity=".16"/>`;
+  const zona = (a, b, color) => `<rect x="${m.l}" y="${f1(Y(a))}" width="${pw}" height="${f1(Y(b) - Y(a))}" style="fill:${solido(color)}"/>`;
   let s = fondo(m.l, m.t, pw, ph, 0) + zona(100, 100 - optimo, "var(--success)") + zona(100 - optimo, 100 - aceptable, "var(--warning)") + zona(100 - aceptable, ymin, "var(--danger)");
   for (let v = 100; v >= ymin - 1e-9; v -= yPaso) s += linea(m.l, Y(v), m.l + pw, Y(v), "var(--border)") + texto(m.l - 7, Y(v) + 4.5, `${numEje(v)} %`, { ancla: "end", tam: 12 });
   for (let v = 0; v <= xmax + 1e-9; v += xPaso) s += linea(X(v), m.t + ph, X(v), m.t + ph + 5, "var(--text-muted)") + texto(X(v), m.t + ph + 20, numEje(v), { ancla: "middle", tam: 12 });
@@ -327,10 +329,12 @@ export function termometroFallaSvg({ tOperacion, tMaxima, tAlcanza = null }) {
   s += `<rect class="oc-aparece" x="${x + 6}" y="${f1(Y(nivel))}" width="${ancho - 12}" height="${f1(y1 - Y(nivel) + 6)}" rx="${(ancho - 12) / 2}" style="fill:url(#cc-termo-g)"/>`;
   s += `<circle cx="${x + ancho / 2}" cy="${y1 + 14}" r="20" style="fill:var(--warning);stroke:var(--bg)" stroke-width="2"/>`;
   for (let t = 0; t <= tope; t += tope / 5) s += linea(x - 6, Y(t), x, Y(t), "var(--text-muted)") + texto(x - 9, Y(t) + 4.5, numEje(t), { ancla: "end", tam: 11.5 });
-  const marca = (t, t1, t2, color, guiones = "") => linea(x + ancho + 2, Y(t), x + ancho + 20, Y(t), color, 2.2, guiones) + texto(x + ancho + 26, Y(t) + 1, t1, { color, peso: 700, tam: 14 }) + texto(x + ancho + 26, Y(t) + 16, t2, { tam: 11.5 });
-  s += marca(tMaxima, `${numEje(tMaxima)} °C`, "máximo admisible", "var(--danger)", "5 3");
-  if (tAlcanza != null) s += marca(tAlcanza, `${tAlcanza.toFixed(1)} °C`, "alcanza en la falla", excede ? "var(--danger)" : "var(--warning)");
-  s += marca(tOperacion, `${numEje(tOperacion)} °C`, "operación", "var(--text-muted)");
+  // las tres marcas, con al menos 34 px entre sus textos (la línea queda en su temperatura y el texto se corre si hace falta)
+  const marcas = [[tMaxima, `${numEje(tMaxima)} °C`, "máximo admisible", "var(--danger)", "5 3"], ...(tAlcanza != null ? [[tAlcanza, `${tAlcanza.toFixed(1)} °C`, "alcanza en la falla", excede ? "var(--danger)" : "var(--warning)", ""]] : []), [tOperacion, `${numEje(tOperacion)} °C`, "operación", "var(--text-muted)", ""]]
+    .map((mk) => ({ mk, y: Y(mk[0]) }))
+    .sort((a, b) => a.y - b.y);
+  for (let i = 1; i < marcas.length; i++) if (marcas[i].y - marcas[i - 1].y < 34) marcas[i].y = marcas[i - 1].y + 34;
+  for (const { mk: [t, t1, t2, color, guiones], y } of marcas) s += linea(x + ancho + 2, Y(t), x + ancho + 20, Y(t), color, 2.2, guiones) + linea(x + ancho + 20, Y(t), x + ancho + 24, y, color, 1) + texto(x + ancho + 26, y + 1, t1, { color, peso: 700, tam: 14 }) + texto(x + ancho + 26, y + 16, t2, { tam: 11.5 });
   s += texto(W / 2, H - 4, tAlcanza == null ? "Indica la corriente de falla para ver la temperatura" : excede ? `Excede el máximo en ${(tAlcanza - tMaxima).toFixed(1)} °C` : `Margen: ${(tMaxima - tAlcanza).toFixed(1)} °C`, { ancla: "middle", tam: 12.5, peso: 700, color: tAlcanza == null ? "var(--text-muted)" : excede ? "var(--danger)" : "var(--success)" });
   return envolver(W, H, `Temperatura del conductor en la falla: operación ${tOperacion} °C${tAlcanza != null ? `, alcanza ${tAlcanza.toFixed(1)} °C` : ""}, máximo ${tMaxima} °C`, s);
 }
@@ -399,8 +403,10 @@ export function curvasSvg({ series, ejeX, ejeY, punto = null, extra = null, marc
   // etiquetas en recuadro, por encima de la curva (las curvas bajan hacia la derecha: arriba a la derecha queda libre)
   const etiqueta = (p, color, fila) => {
     const px = X(p.x), py = Y(p.y);
-    const bx = Math.min(px + 14, m.l + pw - 170), by = Math.max(m.t + 4, py - 58 - fila * 44);
-    return linea(px, py, bx + 8, by + 32, "var(--text-muted)", 1, "3 3") + `<circle class="oc-aparece" cx="${f1(px)}" cy="${f1(py)}" r="${fila ? 5 : 6.5}" style="fill:${color};stroke:var(--bg)" stroke-width="2.5"/>` + recuadro(bx, by, p.texto.map((t, i) => ({ t, peso: i ? 400 : 700, color: i ? "var(--text-muted)" : color === "var(--accent)" ? "var(--text)" : color, tam: i ? 11.5 : 12.5 })));
+    // con `lado: "izquierda"` (curvas que SUBEN hacia la derecha) el recuadro va arriba a la izquierda del punto
+    const izq = p.lado === "izquierda";
+    const bx = izq ? Math.max(px - 14, m.l + 175) : Math.min(px + 14, m.l + pw - 170), by = Math.max(m.t + 4, py - 58 - fila * 44);
+    return linea(px, py, izq ? bx - 8 : bx + 8, by + 32, "var(--text-muted)", 1, "3 3") + `<circle class="oc-aparece" cx="${f1(px)}" cy="${f1(py)}" r="${fila ? 5 : 6.5}" style="fill:${color};stroke:var(--bg)" stroke-width="2.5"/>` + recuadro(bx, by, p.texto.map((t, i) => ({ t, peso: i ? 400 : 700, color: i ? "var(--text-muted)" : color === "var(--accent)" ? "var(--text)" : color, tam: i ? 11.5 : 12.5 })), { ancla: izq ? "end" : "start" });
   };
   if (extra) s += etiqueta(extra, "var(--danger)", 0);
   if (punto) s += etiqueta(punto, "var(--accent)", extra ? 1 : 0);
@@ -477,7 +483,7 @@ export function corteZanjaSvg({ ductos, wPorCircuito, rho, tTerreno, tConductor,
     for (let i = 1; i < paradas.length; i++) if (u <= paradas[i][0]) { const [u0, c0] = paradas[i - 1], [u1, c1] = paradas[i], k = (u - u0) / (u1 - u0); return `rgb(${c0.map((v, j) => Math.round(v + k * (c1[j] - v))).join(",")})`; }
     return "rgb(250,235,160)";
   };
-  let s = "";
+  let s = `<defs><clipPath id="zanja-recorte"><rect x="0" y="0" width="${W}" height="${H}"/></clipPath></defs><g clip-path="url(#zanja-recorte)">`;
   const paso = 6;
   for (let px = 0; px < W; px += paso) for (let py = sup; py < H; py += paso) s += `<rect x="${px}" y="${py}" width="${paso + 0.5}" height="${paso + 0.5}" fill="${color(theta((px + paso / 2 - W / 2) / escala + xc, (py + paso / 2 - sup) / escala))}" shape-rendering="crispEdges"/>`;
   // isotermas (cada 10 °C desde el terreno), buscadas en rayos desde el centro de los circuitos
@@ -510,6 +516,6 @@ export function corteZanjaSvg({ ductos, wPorCircuito, rho, tTerreno, tConductor,
   s += `<rect x="0" y="0" width="${W}" height="${sup}" style="fill:var(--bg-elevated)"/>` + `<line x1="0" y1="${sup}" x2="${W}" y2="${sup}" stroke="#6b8f5a" stroke-width="3"/>` + texto(8, 16, `Superficie · ${numEje(tTerreno)} °C`, { tam: 11.5 });
   const d0 = ductos.reduce((a, d) => (d.y < a.y ? d : a), ductos[0]);
   s += `<line x1="${W - 28}" y1="${sup}" x2="${W - 28}" y2="${f1(Y(d0.y))}" stroke="#fff" stroke-dasharray="3 2"/>` + `<text x="${W - 34}" y="${f1(sup + (Y(d0.y) - sup) / 2)}" font-size="11.5" font-weight="700" fill="#fff" text-anchor="end">${numEje(d0.y)} m</text>`;
-  s += `<text x="8" y="${H - 8}" font-size="11" fill="#fff">Conductor a ${numEje(tConductor)} °C · temperatura del terreno aproximada (Kennelly)</text>`;
+  s += `<text x="8" y="${H - 8}" font-size="11" fill="#fff">Conductor a ${numEje(tConductor)} °C · temperatura del terreno aproximada (Kennelly)</text></g>`;
   return envolver(W, H, `Corte de la instalación: ${ductos.length} circuito(s) a ${numEje(d0.y)} m, isotermas en el terreno`, s);
 }

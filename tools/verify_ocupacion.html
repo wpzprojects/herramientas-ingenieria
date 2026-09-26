@@ -181,12 +181,13 @@ await seccion("vista: un tipo de conductor, cálculo y resultados", async () => 
   ok(texto(metrica("Porcentaje de ocupación")).includes("límite 40.00%") || texto(metrica("Porcentaje de ocupación")).includes("límite 40"), "la etiqueta indica el límite aplicable");
   ok(!!$(".oc-resumen .oc-dona svg") && !$(".result-panel [style*='conic-gradient']"), "la dona de ocupación es ahora un gráfico SVG (dona con degradado y marca del límite)");
   const cols = $$(".oc-resumen > *");
-  ok(cols.length === 3 && cols[0].classList.contains("oc-corte") && cols[1].classList.contains("oc-dona") && cols[2].classList.contains("oc-metricas"), "tres columnas en este orden: corte transversal | dona | cifras");
-  const rC = cols[0].getBoundingClientRect(), rD = cols[1].getBoundingClientRect(), rM = cols[2].getBoundingClientRect();
+  ok(cols.length === 3 && cols[0].classList.contains("oc-metricas") && cols[1].classList.contains("oc-corte") && cols[2].classList.contains("oc-dona"), "tres columnas en este orden: cifras | corte transversal | dona");
+  ok(!!$("#resultado-wrap [data-tab=graficos]") && $$('#resultado-wrap [data-panel=graficos] svg').length === 2, "pestaña «Gráficos» con el corte y la dona");
+  const rM = cols[0].getBoundingClientRect(), rC = cols[1].getBoundingClientRect(), rD = cols[2].getBoundingClientRect();
   const ancha = window.innerWidth > 900; // con la ventana angosta (celular) las tres pasan a una sola columna
-  ok(ancha ? rC.right <= rD.left + 1 && rD.right <= rM.left + 1 && Math.abs(rD.top - rC.top) < 200 : rC.bottom <= rD.top + 1 && rD.bottom <= rM.top + 1, ancha ? "quedan una junto a otra (el corte a la izquierda, luego la dona y las cifras)" : "en ventana angosta se apilan en una columna (corte, dona, cifras)");
+  ok(ancha ? rM.right <= rC.left + 1 && rC.right <= rD.left + 1 && Math.abs(rD.top - rC.top) < 200 : rM.bottom <= rC.top + 1 && rC.bottom <= rD.top + 1, ancha ? "quedan una junto a otra (las cifras a la izquierda, luego el corte y la dona)" : "en ventana angosta se apilan en una columna (cifras, corte, dona)");
   const cssApp = await (await fetch("../css/app.css")).text();
-  ok(/\.oc-resumen\s*\{[^}]*grid-template-columns:\s*230px 230px auto/.test(cssApp) && /@media \(max-width: 900px\)\s*\{\s*\.oc-resumen\s*\{\s*grid-template-columns: 1fr/.test(cssApp), "el CSS define tres columnas y una sola por debajo de 900 px");
+  ok(/\.oc-resumen\s*\{[^}]*grid-template-columns:\s*minmax\(220px, 320px\) 230px 230px/.test(cssApp) && /@media \(max-width: 900px\)\s*\{\s*\.oc-resumen\s*\{\s*grid-template-columns: 1fr/.test(cssApp), "el CSS define tres columnas y una sola por debajo de 900 px");
   ok(texto($(".oc-dona svg text")).length > 0 && /25\.8 %|%/.test($(".oc-dona").textContent) && $(".oc-dona").textContent.includes("40 %"), "la dona muestra la ocupación y el límite (40 %)");
   { // los conductores dibujados no se encimaban ni salen del ducto (para 3 × Ø30 y para dos tipos)
     const { asentarConductores } = await import("../js/util/graficos.js");
@@ -200,9 +201,9 @@ await seccion("vista: un tipo de conductor, cálculo y resultados", async () => 
       ok(dentro && minHolgura > -0.05, `corte: ${cs.length} conductores dentro del ducto y sin encimarse (holgura mínima ${minHolgura.toFixed(3)} mm)`);
     }
   }
-  const sC = cols[0].querySelector("svg").getBoundingClientRect(), sD = cols[1].querySelector("svg").getBoundingClientRect();
+  const sC = cols[1].querySelector("svg").getBoundingClientRect(), sD = cols[2].querySelector("svg").getBoundingClientRect();
   ok(Math.abs(sD.width - sC.width) < 1 && Math.abs(sD.height - sC.height) < 1, `la dona y el corte miden lo mismo (${sD.width.toFixed(0)} × ${sD.height.toFixed(0)} px)`);
-  if (ancha) ok(rD.left - rC.right < 100 && rM.left - rD.right < 100, `las tres columnas quedan juntas, a la izquierda (${(rD.left - rC.right).toFixed(0)} y ${(rM.left - rD.right).toFixed(0)} px de separación)`);
+  if (ancha) ok(rC.left - rM.right < 100 && rD.left - rC.right < 100, `las tres columnas quedan juntas, a la izquierda (${(rC.left - rM.right).toFixed(0)} y ${(rD.left - rC.right).toFixed(0)} px de separación)`);
   { // un conductor mas grueso que el ducto se dibuja «lleno» (con el diametro del ducto), no desaparece ni se sale
     const { asentarConductores, corteDuctoSvg } = await import("../js/util/graficos.js");
     const gordo = asentarConductores(102.3, [{ cantidad: 1, diametroMm: 200 }]);

@@ -7,7 +7,8 @@ import { fmt, loadData, distinct, escapeHtml } from "../util/format.js";
 import { icon } from "../icons.js";
 import { calcularAmpacidadAerea } from "../calc/ampacidad-aerea.js";
 import { calcularRadiacionSolar, diaDelAnio, peorDiaDelAnio, fechaDeDia } from "../calc/posicion-solar.js";
-import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
+import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas, resumenConGraficosHtml, pestanaGraficosHtml } from "../util/resultados-ui.js";
+import { balanceTermicoSvg, curvasSvg, corteConductorSvg, numEje } from "../util/graficos.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
 import { mostrar } from "../util/revelar.js";
@@ -664,17 +665,62 @@ export async function render(container) {
     ].join("\n");
   }
 
+  function graficosAerea(data, p, ctx) {
+    const amp = (cambios) => {
+      const a = calcularAmpacidadAerea({ ...p, ...cambios }).ampacidad;
+      return Number.isFinite(a) && a > 0 ? a : NaN;
+    };
+    const i = data.intermedios;
+    const balance = balanceTermicoSvg({ qj: data.ampacidad ** 2 * i.r, qs: i.qs, qc: i.qc, qr: i.qr, ampacidad: data.ampacidad, tc: p.tcC });
+    // ampacidad frente a la temperatura ambiente, con el viento indicado, la mitad y el doble
+    const vientos = [...new Set([p.vwMs / 2, p.vwMs, p.vwMs * 2].map((v) => Math.round(v * 100) / 100))].filter((v) => v > 0);
+    const taMax = Math.min(50, p.tcC - 2);
+    const series = vientos.map((v) => {
+      const puntos = [];
+      for (let t = 0; t <= taMax; t += 1) puntos.push([t, amp({ taC: t, vwMs: v })]);
+      return { nombre: `${numEje(v)} m/s`, puntos, resaltada: Math.abs(v - p.vwMs) < 1e-9 };
+    });
+    const ambiente = curvasSvg({
+      series,
+      ejeX: "Temperatura ambiente (°C)",
+      ejeY: "Ampacidad (A)",
+      punto: { x: p.taC, y: data.ampacidad, texto: [`${Math.round(data.ampacidad)} A a ${numEje(p.taC)} °C`, `viento ${numEje(p.vwMs)} m/s`] },
+    });
+    // temperatura del conductor frente a la corriente (PLS-CADD): la misma ecuación con cada temperatura del conductor
+    const puntosT = [];
+    for (let t = p.taC + 2; t <= p.tcC + 50; t += 2) {
+      const a = amp({ tcC: t });
+      if (Number.isFinite(a)) puntosT.push([a, t]);
+    }
+    const temperatura = curvasSvg({
+      series: [{ nombre: "", puntos: puntosT, resaltada: true }],
+      ejeX: "Corriente (A)",
+      ejeY: "Temperatura del conductor (°C)",
+      marcaY: { y: p.tcC, texto: `máximo ${numEje(p.tcC)} °C` },
+      punto: { x: data.ampacidad, y: p.tcC, texto: [`${Math.round(data.ampacidad)} A`, `ampacidad a ${numEje(p.tcC)} °C`], lado: "izquierda" },
+    });
+    const construccion = (String(ctx.referencia).match(/\(([^)]+)\)\s*$/) || [])[1] || "";
+    const corte = corteConductorSvg({ nombre: `${ctx.tipo} ${ctx.calibre} · ${String(ctx.referencia).replace(/\s*\([^)]*\)\s*$/, "")}`, construccion, diametroMm: p.diametroMm, tipo: ctx.tipo, ampacidad: data.ampacidad });
+    return { balance: { svg: balance, ancho: 460 }, ambiente: { svg: ambiente, ancho: 460 }, temperatura: { svg: temperatura, ancho: 460 }, corte: { svg: corte, ancho: 460 } };
+  }
+
   function renderResultado(data, p, ctx) {
     const wrap = container.querySelector("#resultado-wrap");
     const hayCorriente = data.ampacidad > 0 && Number.isFinite(data.ampacidad); // sin corriente si la ganancia solar supera la disipacion
 
-    const resultado = hayCorriente
-      ? `
-          <div class="result-panel">
+    // Gráficos (2026-09-26, elegidos por el usuario): en Resultado el balance térmico (A1) y la ampacidad frente a la
+    // temperatura ambiente (A2); en la pestaña «Gráficos» además el corte del conductor (A3) y la temperatura del conductor
+    // frente a la corriente (como PLS-CADD). Todo re-ejecutando el mismo motor, sin fórmulas nuevas.
+    const g = hayCorriente ? graficosAerea(data, p, ctx) : null;
+    const cifras = `
             <div class="result-metric">
               <div class="value">${fmt(data.ampacidad)}<span class="unit">A</span></div>
               <div class="label">Ampacidad admisible</div>
-            </div>
+            </div>`;
+    const resultado = hayCorriente
+      ? `
+          <div class="result-panel">
+            ${resumenConGraficosHtml({ cifras, graficos: [g.balance, g.ambiente] })}
           </div>`
       : `
           <div class="callout callout-warning">Con estos datos el balance térmico no admite corriente: la ganancia solar supera lo que el conductor disipa, o la temperatura máxima del conductor es menor que la ambiente.</div>`;
@@ -683,6 +729,14 @@ export async function render(container) {
       resultado,
       reporte: reporteHtml(reporteTexto(data, p, ctx, hayCorriente), ETIQUETAS_REPORTE),
       formulasPlano: FORMULAS_TEXTO,
+      graficos: g
+        ? pestanaGraficosHtml([
+            { titulo: "Balance térmico del conductor (IEEE 738)", graficos: [g.balance] },
+            { titulo: "Ampacidad frente a la temperatura ambiente", graficos: [g.ambiente] },
+            { titulo: "Temperatura del conductor frente a la corriente", graficos: [g.temperatura], nota: "Donde la curva cruza la temperatura máxima está la ampacidad." },
+            { titulo: "Corte del conductor", graficos: [g.corte] },
+          ])
+        : "",
     });
     activarPestanas(wrap, { grupos: FORMULAS_TEX, etiquetas: FORMULAS_ETIQUETAS, nota: FORMULAS_NOTA });
 

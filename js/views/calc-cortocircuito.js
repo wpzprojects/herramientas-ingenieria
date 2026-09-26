@@ -8,7 +8,8 @@ import { fmt, loadData, distinct, escapeHtml } from "../util/format.js";
 import { icon } from "../icons.js";
 import { calcularCortocircuito } from "../calc/cortocircuito.js";
 import { compararCalibres } from "../calc/cortocircuito-calibre.js";
-import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
+import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas, resumenConGraficosHtml, pestanaGraficosHtml } from "../util/resultados-ui.js";
+import { soportabilidadSvg, termometroFallaSvg } from "../util/graficos.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
 import { guardarEstado, leerEstado } from "../util/persistencia-calculo.js";
@@ -356,6 +357,7 @@ export async function render(container) {
     const objetivoKa = fObjetivo.value.trim() === "" ? null : parseFloat(fObjetivo.value);
     const ctx = { red, tipoMaterial: selMaterial.value, calibre: selCalibre.value, referencia: red === "Aereo" ? selReferencia.value : "", materialElectrico: material, objetivoKa };
     ctx.comparacion = objetivoKa === null ? null : compararCalibres(candidatosCalibre(red), { material, tempOperacionC: p.tempOperacionC, tempFallaC: p.tempFallaC, tiempoS: p.tiempoS }, objetivoKa, ctx.calibre);
+    ctx.candidatos = candidatosCalibre(red);
     renderResultado(data, p, ctx);
   });
 
@@ -443,6 +445,28 @@ export async function render(container) {
             </table></div>`;
   }
 
+  /** Curva de soportabilidad (el calibre elegido y hasta dos vecinos por lado) y termómetro de la falla. [] si no aplica. */
+  function graficosCortocircuito(data, p, ctx) {
+    if (!(Number.isFinite(data.capacidadCcKa) && data.capacidadCcKa > 0 && p.tiempoS > 0 && p.areaMm2 > 0)) return [];
+    const capacidad = (area, t) => calcularCortocircuito({ ...p, areaMm2: area, tiempoS: t }).capacidadCcKa;
+    const lista = (ctx.candidatos || []).slice().sort((a, b) => a.area - b.area);
+    let i = lista.findIndex((c) => c.calibre === ctx.calibre);
+    if (i < 0) {
+      lista.push({ calibre: ctx.calibre || "Elegido", area: p.areaMm2 });
+      lista.sort((a, b) => a.area - b.area);
+      i = lista.findIndex((c) => c.area === p.areaMm2);
+    }
+    const calibres = lista.slice(Math.max(0, i - 2), i + 3).map((c) => ({ nombre: c.calibre, area: c.calibre === lista[i].calibre ? p.areaMm2 : c.area, actual: c.calibre === lista[i].calibre }));
+    const falla = ctx.objetivoKa > 0 ? { ka: ctx.objetivoKa } : null;
+    // temperatura que alcanza con la falla: la ecuación adiabática despejada en T2
+    const { tempRes0: lam, k1 } = data.intermedios;
+    const tAlcanza = falla ? (p.tempOperacionC + lam) * Math.pow(10, ((falla.ka * 1000) / (p.areaMm2 * k1)) ** 2 * p.tiempoS) - lam : null;
+    return [
+      { svg: soportabilidadSvg({ calibres, capacidad, falla, tiempoS: p.tiempoS }), ancho: 460 },
+      { svg: termometroFallaSvg({ tOperacion: p.tempOperacionC, tMaxima: p.tempFallaC, tAlcanza: Number.isFinite(tAlcanza) ? tAlcanza : null }), ancho: 230 },
+    ];
+  }
+
   function renderResultado(data, p, ctx) {
     const wrap = container.querySelector("#resultado-wrap");
 
@@ -450,8 +474,10 @@ export async function render(container) {
     const cumple = conObjetivo && data.capacidadCcKa >= ctx.objetivoKa;
     const areaOk = conObjetivo && Number.isFinite(ctx.comparacion.areaMinimaMm2) && ctx.comparacion.areaMinimaMm2 > 0;
     const veredicto = conObjetivo && Number.isFinite(data.capacidadCcKa) ? ` <span class="badge ${cumple ? "badge-success" : "badge-danger"}">${cumple ? "Cumple" : "No cumple"}</span>` : "";
-    const resultado = `
-          <div class="result-panel">
+    // Gráficos (2026-09-26, elegidos por el usuario: C1 + C2): curvas de soportabilidad corriente–tiempo del calibre elegido y
+    // sus vecinos, y la temperatura que alcanza el conductor con la falla indicada (la misma ecuación adiabática del motor).
+    const graficos = graficosCortocircuito(data, p, ctx);
+    const cifras = `
             <div class="${conObjetivo ? "grid-2" : ""}">
               <div class="result-metric">
                 <div class="value">${fmt(data.capacidadCcKa)}<span class="unit">kA</span>${veredicto}</div>
@@ -465,7 +491,10 @@ export async function render(container) {
               </div>`
                   : ""
               }
-            </div>
+            </div>`;
+    const resultado = `
+          <div class="result-panel">
+            ${graficos.length ? resumenConGraficosHtml({ cifras, graficos }) : cifras}
             ${conObjetivo ? comparacionHtml(ctx) : ""}
           </div>`;
 
@@ -473,6 +502,7 @@ export async function render(container) {
       resultado,
       reporte: reporteHtml(reporteTexto(data, p, ctx), ETIQUETAS_REPORTE),
       formulasPlano: FORMULAS_TEXTO,
+      graficos: graficos.length ? pestanaGraficosHtml([{ titulo: "Soportabilidad de cortocircuito y temperatura en la falla", graficos }]) : "",
     });
     activarPestanas(wrap, { grupos: FORMULAS_TEX, etiquetas: FORMULAS_ETIQUETAS, nota: FORMULAS_NOTA });
 

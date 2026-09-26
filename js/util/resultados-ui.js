@@ -52,7 +52,7 @@ export function resumenConGraficosHtml({ cifras, nota = "", graficos }) {
   return `
             <div class="graf-resumen">
               <div class="graf-metricas">${cifras}${nota}</div>
-              <div class="graf-par" style="grid-template-columns: ${columnas}">${graficos.map((g) => `<div class="graf-item">${g.svg}</div>`).join("")}</div>
+              <div class="graf-par" style="grid-template-columns: ${columnas}; max-width: ${Math.round(graficos.reduce((a, g) => a + g.ancho, 0) * 1.3)}px">${graficos.map((g) => `<div class="graf-item">${g.svg}</div>`).join("")}</div>
             </div>`;
 }
 

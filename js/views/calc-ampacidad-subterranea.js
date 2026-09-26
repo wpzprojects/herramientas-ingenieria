@@ -9,7 +9,8 @@ import { icon } from "../icons.js";
 import { calcularAmpacidadSubterranea } from "../calc/ampacidad-subterranea.js";
 import { calcularPantalla } from "../calc/ampacidad-subterranea-pantalla.js";
 import { dimensionarGcc } from "../calc/conductor-continuidad.js";
-import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
+import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas, resumenConGraficosHtml, pestanaGraficosHtml } from "../util/resultados-ui.js";
+import { corteZanjaSvg, curvasSvg, numEje } from "../util/graficos.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
 import { mostrar } from "../util/revelar.js";
@@ -665,6 +666,46 @@ export async function render(container) {
     ].join("\n");
   }
 
+  function graficosSubterranea(data, p) {
+    try {
+      const i = data.intermedios;
+      const monopolar = p.tipoCable !== "Tripolar";
+      const n = monopolar ? 3 : 1;
+      const w = n * (data.ampacidad ** 2 * i.varR * (1 + i.lambda1) + i.varWd); // W/m de cada circuito
+      const corte = corteZanjaSvg({
+        ductos: i.ductos.map((d) => ({ x: d.posX, y: d.profundidad })),
+        wPorCircuito: w,
+        rho: p.rhoSueloKmW,
+        tTerreno: p.tempTerrenoC,
+        tConductor: p.tempMaxC,
+        monopolar,
+        dCableM: p.cable.de_m,
+        sepFasesM: p.separacionFasesM,
+      });
+      const amp = (rho) => {
+        try {
+          return calcularAmpacidadSubterranea({ ...p, rhoSueloKmW: rho }).ampacidad;
+        } catch {
+          return NaN;
+        }
+      };
+      const puntos = [];
+      for (let r = 0.5; r <= 3.0001; r += 0.1) puntos.push([Math.round(r * 10) / 10, amp(r)]);
+      const seco = Math.min(2 * p.rhoSueloKmW, 3);
+      const aSeco = amp(seco);
+      const suelo = curvasSvg({
+        series: [{ nombre: "", puntos, resaltada: true }],
+        ejeX: "Resistividad térmica del suelo (K·m/W)",
+        ejeY: "Ampacidad (A)",
+        punto: { x: p.rhoSueloKmW, y: data.ampacidad, texto: [`${Math.round(data.ampacidad)} A`, `con ${numEje(p.rhoSueloKmW)} K·m/W`] },
+        extra: seco > p.rhoSueloKmW + 0.3 && Number.isFinite(aSeco) ? { x: seco, y: aSeco, texto: [`${Math.round(aSeco)} A con ${numEje(seco)} K·m/W`, `suelo más seco: −${Math.round((1 - aSeco / data.ampacidad) * 100)} %`] } : null,
+      });
+      return { corte: { svg: corte, ancho: 460 }, suelo: { svg: suelo, ancho: 460 } };
+    } catch {
+      return null; // un gráfico que falla no debe dejar la pantalla sin resultado
+    }
+  }
+
   function renderResultado(data, p, ctx) {
     const wrap = container.querySelector("#resultado-wrap");
 
@@ -681,15 +722,20 @@ export async function render(container) {
                 <div class="value">${fmt(pant.tensionVKm)}<span class="unit">V/km</span></div>
                 <div class="label">Tensión inducida en la pantalla (circuito abierto)</div>
               </div>`;
-    const resultado = `
-          <div class="result-panel">
+    // Gráficos (2026-09-26, elegidos por el usuario: S1 + S3): corte de la instalación con la temperatura del terreno
+    // (Kennelly) y la ampacidad frente a la resistividad térmica del suelo (re-ejecutando el motor).
+    const g = graficosSubterranea(data, p);
+    const cifras = `
             <div class="${pant === null ? "" : "grid-2"}">
               <div class="result-metric">
                 <div class="value">${fmt(data.ampacidad)}<span class="unit">A</span></div>
                 <div class="label">Ampacidad admisible</div>
               </div>
               ${metricaPantalla}
-            </div>
+            </div>`;
+    const resultado = `
+          <div class="result-panel">
+            ${g ? resumenConGraficosHtml({ cifras, graficos: [g.corte, g.suelo] }) : cifras}
             ${
               data.gcc
                 ? `<div class="result-subhead">Conductor de continuidad de tierra (GCC)</div>
@@ -711,6 +757,12 @@ export async function render(container) {
       resultado,
       reporte: reporteHtml(reporteTexto(data, p, ctx), ETIQUETAS_REPORTE),
       formulasPlano: FORMULAS_TEXTO,
+      graficos: g
+        ? pestanaGraficosHtml([
+            { titulo: "Corte de la instalación y temperatura del terreno", graficos: [g.corte], nota: "Temperatura del terreno aproximada por el método de imágenes de Kennelly (terreno homogéneo)." },
+            { titulo: "Ampacidad frente a la resistividad del suelo", graficos: [g.suelo] },
+          ])
+        : "",
     });
     activarPestanas(wrap, { grupos: FORMULAS_TEX, etiquetas: FORMULAS_ETIQUETAS, nota: FORMULAS_NOTA });
 
