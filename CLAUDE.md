@@ -467,6 +467,14 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   1.45rem); los pares de gráficos se apilan y el angosto (`.graf-angosto`, ancho < 300 en `resumenConGraficosHtml`: el
   termómetro) va al 50 % para que tenga el alto del otro. ≤560px: pestañas compactas (caben las tres en una línea). OJO:
   una regla `@media` para `.tab-btn` debe ir DESPUÉS de la regla base (si no, la base la pisa).
+  **3.42.1**: `svgAPng` quita la animación de `.oc-trazo`/`.oc-aparece` antes de leer los estilos (se copiaban con
+  opacidad 0 y el Word salía sin puntos, conductores, barras ni termómetro) y `.doc-impresion` las anula (al imprimir
+  arrancaban de nuevo). `curvasSvg`: líneas guía intermedias punteadas (`2 4`) a mitad de cada división, con su valor en
+  letra tenue solo si es entero; la etiqueta `extra` (roja) va 92 px sobre su punto (antes 58). Regulación: sin «Al
+  final:». Cifras en dos columnas: 40 px entre columnas en pantalla ancha; Ocupación también en dos columnas en ≤720px.
+  Cortocircuito: título «Calibre» sobre los nombres de las curvas. Mockup de gráficos de Conductor económico (CE1 costo
+  total apilado, CE2 costo acumulado con cruce, CE3 tornado) y Valoración integral (VI1 uso de cada límite, VI2 capacidad
+  máxima, VI3 costo frente a pérdidas) publicado para que el usuario elija; irán al FINAL de «Resultado» (ancha y celular).
 - **Valores por defecto (2026-09-26, pedido del usuario: calcular de una)**: `porDefecto(sel, valor)` en cada vista
   (dispara «change» para la cascada): AAAC 246.9 + primera referencia en Pérdidas y Regulación (cada tramo aéreo nuevo),
   Cortocircuito y Ampacidad aérea; Ocupación: PVC Tipo TDP de 4". Lo guardado en la sesión sigue ganando.

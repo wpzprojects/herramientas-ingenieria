@@ -218,7 +218,7 @@ await seccion("vista: un tramo, cálculo y resultados", async () => {
   // gráficos (2026-09-26): barra de referencia vertical + perfil de tensión, antes de las cifras
   const graficosRes = $$(".graf-resumen .graf-par .graf-item svg"), perfil = graficosRes[0];
   ok(graficosRes.length === 1 && $(".graf-resumen").children[0].classList.contains("graf-metricas") && !$("#resultado-wrap [data-tab=graficos]"), "resultado: primero las cifras y luego el perfil de tensión (sin la barra vertical); sin pestaña «Gráficos»");
-  ok(/Distancia desde el inicio de la línea \(km\)/.test(texto(perfil)) && /Al final: [\d.]+ %/.test(texto(perfil)), `el perfil va contra los km y dice la tensión al final (${texto(perfil).match(/Al final:[^)]*\)/)?.[0]})`);
+  ok(/Distancia desde el inicio de la línea \(km\)/.test(texto(perfil)) && /[\d.]+ % \(caída [\d.]+ %\)/.test(texto(perfil)) && !/Al final/.test(texto(perfil)), `el perfil va contra los km y dice la tensión al final, sin «Al final:» (${texto(perfil).match(/[\d.]+ % \(caída[^)]*\)/)?.[0]})`);
 
   const filas = $$(".tabla-resultado tbody tr");
   ok(texto($(".result-subhead")).includes("Comparación con otros calibres") && filas.length >= 3, `un solo tramo: comparación de calibres (${filas.length} filas)`);

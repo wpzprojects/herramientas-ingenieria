@@ -105,6 +105,9 @@ export async function svgAPng(svgTexto, escala = 3) {
   caja.dataset.vista = "light";
   caja.style.cssText = "position:absolute;left:-10000px;top:0;width:900px;background:var(--bg)";
   caja.innerHTML = svgTexto;
+  // sin animaciones: lo que aparece animado (puntos, conductores, barras) se copiaría a medio aparecer (opacidad 0) y la
+  // imagen de Word saldría sin ello
+  caja.querySelectorAll(".oc-trazo, .oc-aparece").forEach((el) => (el.style.animation = "none"));
   document.body.append(caja);
   try {
     const svg = caja.querySelector("svg");

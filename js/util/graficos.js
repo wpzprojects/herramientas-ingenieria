@@ -261,7 +261,7 @@ export function perfilTensionSvg({ tramos, optimo, aceptable }) {
     s += linea(X(L), Y(v), X(xFin), Y(v - pendiente * (xFin - L)), "var(--text)", 1.6, "5 5").replace("/>", ' opacity=".55"/>');
   }
   s += `<circle cx="${X(0)}" cy="${Y(100)}" r="4.5" style="fill:var(--text)"/>` + puntos;
-  s += texto(X(L) - 8, Y(v) + 24, `Al final: ${v.toFixed(2)} % (caída ${caida.toFixed(2)} %)`, { ancla: "end", color: "var(--text)", peso: 700, tam: 12.5 });
+  s += texto(X(L) - 8, Y(v) + 24, `${v.toFixed(2)} % (caída ${caida.toFixed(2)} %)`, { ancla: "end", color: "var(--text)", peso: 700, tam: 12.5 });
   return envolver(W, H, `Perfil de tensión: ${v.toFixed(2)} % al final de ${numEje(L)} km`, s);
 }
 
@@ -305,6 +305,8 @@ export function soportabilidadSvg({ calibres, capacidad, falla, tiempoS }) {
   finales.sort((a, b) => a.y - b.y);
   for (let i = 1; i < finales.length; i++) if (finales[i].y - finales[i - 1].y < 13) finales[i].y = finales[i - 1].y + 13;
   for (const f of finales) s += texto(X(tmax) + 5, f.y + 4, f.c.nombre, { tam: 11.5, color: f.c.actual ? "var(--accent)" : "var(--text-muted)", peso: f.c.actual ? 700 : 400 });
+  // título de la columna de nombres (pedido del usuario: sin él no se sabía qué eran)
+  if (finales.length) s += texto(X(tmax) + 5, finales[0].y - 12, "Calibre", { tam: 11.5, color: "var(--text)", peso: 700 });
   // punto de la falla y su etiqueta
   if (falla && falla.ka > 0 && tiempoS > 0) {
     const soporta = capacidad(actual.area, tiempoS);
@@ -393,6 +395,12 @@ export function curvasSvg({ series, ejeX, ejeY, punto = null, extra = null, marc
   const xPaso = pasoRedondo(x1 - x0, 5);
   const X = (v) => m.l + ((v - x0) / (x1 - x0)) * pw, Y = (v) => m.t + ph - ((v - y0) / (y1 - y0)) * ph;
   let s = fondo(m.l, m.t, pw, ph, 0);
+  // líneas guía intermedias (pedido del usuario: entre dos divisiones había mucho espacio para leer un valor): punteadas y
+  // más suaves; con su valor, en letra pequeña y tenue, solo si es un número entero
+  for (let v = y0 + yPaso / 2; v < y1; v += yPaso) {
+    s += linea(m.l, Y(v), m.l + pw, Y(v), "var(--border)", 1, "2 4");
+    if (Number.isInteger(Math.round(v * 1e6) / 1e6)) s += texto(m.l - 7, Y(v) + 4, numEje(v), { ancla: "end", tam: 10, color: "var(--text-faint)" });
+  }
   for (let v = y0; v <= y1 + 1e-9; v += yPaso) s += linea(m.l, Y(v), m.l + pw, Y(v), "var(--border)") + texto(m.l - 7, Y(v) + 4.5, numEje(v), { ancla: "end", tam: 12 });
   for (let v = Math.ceil(x0 / xPaso) * xPaso; v <= x1 + 1e-9; v += xPaso) s += linea(X(v), m.t + ph, X(v), m.t + ph + 5, "var(--text-muted)") + texto(X(v), m.t + ph + 20, numEje(v), { ancla: "middle", tam: 12 });
   s += texto(m.l + pw / 2, H - 12, ejeX, { ancla: "middle", tam: 12.5 });
@@ -410,14 +418,14 @@ export function curvasSvg({ series, ejeX, ejeY, punto = null, extra = null, marc
   for (let i = 1; i < finales.length; i++) if (finales[i].y - finales[i - 1].y < 14) finales[i].y = finales[i - 1].y + 14;
   for (const f of finales) s += texto(m.l + pw + 6, f.y + 4, f.serie.nombre, { tam: 11.5, color: f.serie.resaltada ? "var(--accent)" : "var(--text-muted)", peso: f.serie.resaltada ? 700 : 400 });
   // etiquetas en recuadro, por encima de la curva (las curvas bajan hacia la derecha: arriba a la derecha queda libre)
-  const etiqueta = (p, color, fila) => {
+  const etiqueta = (p, color, fila, alto = 58) => {
     const px = X(p.x), py = Y(p.y);
     // con `lado: "izquierda"` (curvas que SUBEN hacia la derecha) el recuadro va arriba a la izquierda del punto
     const izq = p.lado === "izquierda";
-    const bx = izq ? Math.max(px - 14, m.l + 175) : Math.min(px + 14, m.l + pw - 170), by = Math.max(m.t + 4, py - 58 - fila * 44);
+    const bx = izq ? Math.max(px - 14, m.l + 175) : Math.min(px + 14, m.l + pw - 170), by = Math.max(m.t + 4, py - alto - fila * 44);
     return linea(px, py, izq ? bx - 8 : bx + 8, by + 32, "var(--text-muted)", 1, "3 3") + `<circle class="oc-aparece" cx="${f1(px)}" cy="${f1(py)}" r="${fila ? 5 : 6.5}" style="fill:${color};stroke:var(--bg)" stroke-width="2.5"/>` + recuadro(bx, by, p.texto.map((t, i) => ({ t, peso: i ? 400 : 700, color: i ? "var(--text-muted)" : color === "var(--accent)" ? "var(--text)" : color, tam: i ? 11.5 : 12.5 })), { ancla: izq ? "end" : "start" });
   };
-  if (extra) s += etiqueta(extra, "var(--danger)", 0);
+  if (extra) s += etiqueta(extra, "var(--danger)", 0, 92);
   if (punto) s += etiqueta(punto, "var(--accent)", extra ? 1 : 0);
   return envolver(W, H, `${ejeY} frente a ${ejeX}`, s);
 }
