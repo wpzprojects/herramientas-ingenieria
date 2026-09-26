@@ -10,14 +10,10 @@ import { icon } from "../icons.js";
 import { markdownAHtml } from "../ai/markdown.js";
 import { activarInfos } from "../util/info-campo.js";
 import { revelar } from "../util/revelar.js";
+import { ZOOM_INICIAL, zoomHtml, activarZoom } from "../util/zoom-imagen.js";
 import { obtenerBackend } from "../auth/backend.js";
 import { esAdministrador, agregarRegistro, reemplazarRegistro, quitarRegistro, guardarCatalogo } from "../util/edicion-catalogo.js";
 import { CATALOGO, fuentesDe, urlDeImagen, comprimirImagen, nuevoIdImagen, guardarEnDispositivo, limpiarDispositivo, bytesDe } from "../util/biblioteca.js";
-
-// Zoom de cada imagen (2026-09-26, pedido del usuario): arranca al 80 % del ancho del recuadro y crece o se achica
-// dentro de él (el recuadro se desplaza si la imagen no cabe). Tocar la imagen sigue abriéndola completa.
-export const ZOOMS = [40, 60, 80, 100, 125, 150, 200, 250, 300];
-export const ZOOM_INICIAL = 80;
 
 const AYUDA_TEXTO = "Opcional. Aparte de la norma, criterio o nota. Admite **negrilla** entre dos asteriscos dobles, viñetas empezando la línea con «- » y párrafos separados por una línea en blanco.";
 
@@ -93,16 +89,12 @@ export async function render(container, params = {}, { confirmar = (t) => confir
       imagenes
         .map(
           (img, i) => `
-        <figure class="bib-figura" data-i="${i}" data-zoom="${ZOOM_INICIAL}">
-          <div class="bib-fig-cab">
+        <figure class="bib-figura" data-i="${i}">
+          <div class="zoom-cab">
             <figcaption class="section-title">${escapeHtml(img.pie || "")}</figcaption>
-            <div class="bib-zoom" role="group" aria-label="Zoom de la imagen ${i + 1}">
-              <button type="button" class="btn btn-sm btn-ghost btn-icono" data-zoom-paso="-1" aria-label="Alejar">${icon("minus")}</button>
-              <span class="bib-zoom-valor" aria-live="polite">${ZOOM_INICIAL} %</span>
-              <button type="button" class="btn btn-sm btn-ghost btn-icono" data-zoom-paso="1" aria-label="Acercar">${icon("plus")}</button>
-            </div>
+            ${zoomHtml(`la imagen ${i + 1}`)}
           </div>
-          <div class="image-frame bib-marco"><p class="text-muted text-sm bib-cargando">Cargando imagen…</p></div>
+          <div class="image-frame marco-zoom"><p class="text-muted text-sm bib-cargando">Cargando imagen…</p></div>
         </figure>`
         )
         .join("");
@@ -117,19 +109,10 @@ export async function render(container, params = {}, { confirmar = (t) => confir
     });
   }
 
-  // Zoom: «−» y «+» sobre cada imagen cambian su ancho entre los pasos de ZOOMS
-  visor.addEventListener("click", (e) => {
-    const b = e.target.closest("[data-zoom-paso]");
-    if (!b) return;
-    const fig = b.closest(".bib-figura");
-    const i = Math.max(0, Math.min(ZOOMS.length - 1, ZOOMS.indexOf(Number(fig.dataset.zoom)) + Number(b.dataset.zoomPaso)));
-    const z = ZOOMS[i];
-    fig.dataset.zoom = String(z);
-    fig.querySelector(".bib-zoom-valor").textContent = `${z} %`;
-    const imagen = fig.querySelector(".bib-marco img");
+  // Zoom de cada imagen (80 % al abrir; js/util/zoom-imagen.js)
+  activarZoom(visor, (grupo, z) => {
+    const imagen = grupo.closest(".bib-figura").querySelector(".marco-zoom img");
     if (imagen) imagen.style.width = `${z}%`;
-    fig.querySelector('[data-zoom-paso="-1"]').disabled = i === 0;
-    fig.querySelector('[data-zoom-paso="1"]').disabled = i === ZOOMS.length - 1;
   });
 
   function seleccionar(id) {

@@ -765,13 +765,16 @@ td.wrap, th.wrap { white-space: normal; }
 .bib-texto p { margin: 0 0 var(--space-3); }
 .bib-texto ul, .bib-texto ol { margin: 0 0 var(--space-3); padding-left: var(--space-5); }
 .bib-figura { margin: var(--space-4) 0 0; }
-.bib-fig-cab { display: flex; align-items: center; gap: var(--space-3); margin: 0 0 var(--space-2); }
-.bib-fig-cab figcaption { margin: 0; flex: 1 1 auto; min-width: 0; }
-.bib-zoom { display: flex; align-items: center; gap: 2px; flex: 0 0 auto; margin-left: auto; }
-.bib-zoom-valor { min-width: 3.2em; text-align: center; font-size: 0.8rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-/* Recuadro de la imagen: su alto sigue al de la imagen (sin barra vertical); la imagen va centrada mientras quepa */
-.bib-marco { overflow-x: auto; overflow-y: hidden; } /* crece con la altura de la imagen; solo se desplaza a lo ancho cuando el zoom la hace más ancha que él */
-.bib-marco img { max-width: none; margin: 0 auto; }
+/* Zoom de imágenes (js/util/zoom-imagen.js): «−» / % / «+» a la derecha del título de la imagen, o solos en su línea */
+.zoom-cab { display: flex; align-items: center; gap: var(--space-3); margin: 0 0 var(--space-2); }
+.zoom-cab > .section-title, .zoom-cab > figcaption { margin: 0; flex: 1 1 auto; min-width: 0; }
+.zoom-barra { display: flex; justify-content: flex-end; margin: var(--space-2) 0; }
+.zoom-imagen { display: flex; align-items: center; gap: 2px; flex: 0 0 auto; margin-left: auto; }
+.zoom-imagen-valor { min-width: 3.2em; text-align: center; font-size: 0.8rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+/* Recuadro de la imagen: su alto sigue al de la imagen (sin barra vertical); solo se desplaza a lo ancho cuando el zoom
+   la hace más ancha que él; la imagen va centrada mientras quepa */
+.marco-zoom { overflow-x: auto; overflow-y: hidden; }
+.marco-zoom img { max-width: none; margin: 0 auto; }
 .bib-f-imagenes { list-style: none; margin: 0 0 var(--space-3); padding: 0; }
 .bib-f-imagen { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
 .bib-f-mini { flex: 0 0 96px; height: 64px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-sunken); overflow: hidden; }
@@ -788,8 +791,8 @@ td.wrap, th.wrap { white-space: normal; }
 }
 .tabla-partida__encabezado { overflow: hidden; }
 .tabla-partida__encabezado img,
-.tabla-partida__cuerpo img { display: block; width: 100%; height: auto; }
-.tabla-partida__cuerpo { overflow-y: auto; display: block; } /* sin margen/borde: sigue directo del encabezado, como si fuera una sola imagen */
+.tabla-partida__cuerpo img { display: block; width: 100%; max-width: none; height: auto; margin: 0 auto; } /* el ancho lo fija el zoom */
+.tabla-partida__cuerpo { overflow: auto; display: block; } /* a lo ancho solo con zoom mayor a 100 %; el encabezado lo sigue */ /* sin margen/borde: sigue directo del encabezado, como si fuera una sola imagen */
 
 .lightbox {
   position: fixed; inset: 0; background: rgba(6, 10, 16, 0.86);

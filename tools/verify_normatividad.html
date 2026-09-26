@@ -50,6 +50,7 @@ const { render } = await import("../js/views/normativa-imagen.js");
 const nav = await import("../js/nav.js");
 const existe = async (ruta) => (await fetch(`../${ruta}`, { method: "HEAD" })).ok;
 const cargarTema = async (tema) => { stage.innerHTML = ""; await render(stage, { tema }); };
+const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 const esperarCarga = async (img, intentos = 100) => { for (let i = 0; i < intentos && !img.complete; i++) await new Promise((r) => setTimeout(r, 20)); };
 
 await seccion("Distancias de seguridad: títulos «Tabla — descripción»", async () => {
@@ -100,7 +101,7 @@ await seccion("el selector de tabla / figura muestra los títulos completos", as
     const selE = estrecho.querySelector("#sel-tabla");
     selE.value = String(selE.options.length - 1);
     selE.dispatchEvent(new Event("change", { bubbles: true }));
-    ok(!estrecho.querySelector("#titulo-completo") && !estrecho.querySelector(".titulo-completo") && selE.nextElementSibling === null && selE.parentElement.nextElementSibling.id === "frame-imagen", `${tema}: en pantalla angosta tampoco hay título repetido; tras el campo va directo la imagen`);
+    ok(!estrecho.querySelector("#titulo-completo") && !estrecho.querySelector(".titulo-completo") && selE.nextElementSibling === null && selE.parentElement.nextElementSibling.classList.contains("zoom-barra") && selE.parentElement.nextElementSibling.nextElementSibling.id === "frame-imagen", `${tema}: en pantalla angosta tampoco hay título repetido; tras el campo van el zoom y la imagen`);
   }
   ok(!(await (await fetch("../css/app.css")).text()).includes("titulo-completo") && !(await (await fetch("../js/views/normativa-imagen.js")).text()).includes("titulo-completo"), "el código y el CSS de esa función ya no existen");
   stage.innerHTML = "";
@@ -114,6 +115,48 @@ await seccion("todos los visores ocupan el ancho disponible", async () => {
   const w = $("#imagenes-wrap").getBoundingClientRect();
   ok(Math.abs(f.width - w.width) < 1 && Math.abs(f.left - w.left) < 1, `Corriente de conductores NTC 2050: el visor ocupa todo el ancho (${Math.round(f.width)} de ${Math.round(w.width)} px), igual que los otros`);
   ok(!$("#imagenes-wrap > .grid-2") && texto($(".section-title")) === "Capacidad de corriente de conductores" && !!$(".tabla-partida"), "sigue con su título y su tabla partida, sin la rejilla de 2 columnas");
+});
+
+await seccion("zoom de las imágenes (80 % al abrir, «−» y «+»)", async () => {
+  const anchoUtil = (m) => m.clientWidth - parseFloat(getComputedStyle(m).paddingLeft) - parseFloat(getComputedStyle(m).paddingRight);
+  // Distancias de seguridad: una imagen con selector
+  await cargarTema("distancias-seguridad");
+  const frame = $("#frame-imagen");
+  const img = () => $("#frame-imagen img");
+  await esperarCarga(img());
+  const barra = $(".zoom-barra");
+  ok(barra && barra.nextElementSibling === frame && $(".zoom-imagen-valor", barra).textContent === "80 %" && Math.abs(barra.querySelector('[data-zoom-paso="1"]').getBoundingClientRect().right - frame.getBoundingClientRect().right) < 2, "Distancias: «−» 80 % «+» arriba de la imagen, a la derecha");
+  ok(img().style.width === "80%" && Math.abs(img().getBoundingClientRect().width - anchoUtil(frame) * 0.8) < 2, `la imagen arranca al 80 % del recuadro (${Math.round(img().getBoundingClientRect().width)} de ${Math.round(anchoUtil(frame))} px)`);
+  const mas = barra.querySelector('[data-zoom-paso="1"]');
+  mas.click(); mas.click();
+  ok(img().style.width === "125%" && frame.scrollWidth > frame.clientWidth + 5 && frame.scrollHeight <= frame.clientHeight + 1, "«+» la agranda: el recuadro se desplaza a lo ancho, sin barra vertical");
+  const sel = $("#sel-tabla");
+  sel.value = "3";
+  sel.dispatchEvent(new Event("change", { bubbles: true }));
+  ok(img().style.width === "125%" && $(".zoom-imagen-valor", barra).textContent === "125 %", "al elegir otra tabla se conserva el zoom");
+
+  // Corriente NTC: tabla partida (encabezado fijo + cuerpo)
+  await cargarTema("corriente-ntc");
+  const partida = $(".tabla-partida");
+  const encImg = $(".tabla-partida__encabezado img");
+  const cuerpoImg = $(".tabla-partida__cuerpo img");
+  await esperarCarga(encImg);
+  await espera(60);
+  const cab = $(".zoom-cab");
+  ok(cab && cab.querySelector(".section-title") && cab.querySelector(".zoom-imagen-valor").textContent === "80 %" && cab.nextElementSibling.contains(partida), "Corriente NTC: el zoom va a la derecha del título, arriba de la tabla");
+  ok(encImg.style.width === "80%" && cuerpoImg.style.width === "80%", "encabezado y cuerpo arrancan al 80 %");
+  const cuerpo = $(".tabla-partida__cuerpo");
+  const recorte = () => $(".tabla-partida__encabezado").getBoundingClientRect().height / encImg.getBoundingClientRect().height;
+  ok(Math.abs(recorte() - 0.3) < 0.02, `el encabezado sigue recortado en su fila de títulos (${recorte().toFixed(3)} del alto)`);
+  const masN = cab.querySelector('[data-zoom-paso="1"]');
+  for (let k = 0; k < 4; k++) masN.click(); // 80 → 100 → 125 → 150 → 200
+  await espera(30);
+  ok(encImg.style.width === "200%" && cuerpoImg.style.width === "200%" && Math.abs(recorte() - 0.3) < 0.02, `con zoom crecen las dos partes juntas y el recorte se vuelve a medir (${recorte().toFixed(3)})`);
+  cuerpo.scrollLeft = 300;
+  cuerpo.dispatchEvent(new Event("scroll"));
+  const encWrap = $(".tabla-partida__encabezado");
+  ok(cuerpo.scrollLeft > 0 && encWrap.scrollLeft === cuerpo.scrollLeft && Math.abs(encImg.getBoundingClientRect().left - cuerpoImg.getBoundingClientRect().left) < 1.5, `al desplazar el cuerpo a lo ancho, el encabezado lo sigue y las columnas siguen alineadas (${cuerpo.scrollLeft} px)`);
+  stage.innerHTML = "";
 });
 
 await seccion("Resoluciones: ficha de detalle", async () => {

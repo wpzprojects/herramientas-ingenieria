@@ -5,6 +5,8 @@
 // Un tema puede llevar una `nota`: texto normativo que se muestra como nota al pie, debajo del visor (ver .nota-pie en app.css).
 
 // Los titulos de «Distancias de seguridad» (numeral + descripcion) son los de la app original de Power Apps (Selector_Tablas).
+import { ZOOM_INICIAL, zoomHtml, activarZoom, zoomDe } from "../util/zoom-imagen.js";
+
 // Prefijo de ruta (igual que js/util/format.js, katex.js, proj4.js): en la app real (servida desde la raiz) queda vacio; solo
 // lo necesitan los arneses de pruebas de tools/, que fijan window.__BASE_PATH__ = "../" para que las imagenes SI se descarguen
 // de verdad (algunas pruebas de la tabla partida miden el alto real de la imagen cargada, no solo el atributo src).
@@ -51,9 +53,9 @@ function montarTablaPartida(host, op) {
   const { fraccion, filaFraccion = 0, altoCuerpo = 420 } = op.partida;
   host.innerHTML = `
     <div class="tabla-partida" data-lightbox="${rutaImg(op.img)}">
-      <div class="tabla-partida__encabezado"><img src="${rutaImg(op.img)}" alt="${op.label} (encabezado)"></div>
+      <div class="tabla-partida__encabezado"><img src="${rutaImg(op.img)}" alt="${op.label} (encabezado)" style="width:${ZOOM_INICIAL}%"></div>
       <div class="tabla-partida__cuerpo" style="max-height:${altoCuerpo}px">
-        <div class="tabla-partida__cuerpo-inner"><img src="${rutaImg(op.img)}" alt="${op.label}"></div>
+        <div class="tabla-partida__cuerpo-inner"><img src="${rutaImg(op.img)}" alt="${op.label}" style="width:${ZOOM_INICIAL}%"></div>
       </div>
     </div>
   `;
@@ -92,6 +94,16 @@ function montarTablaPartida(host, op) {
 
   if (encImg.complete) ajustar();
   else encImg.addEventListener("load", ajustar, { once: true });
+
+  // Zoom (2026-09-26): las dos copias cambian de ancho juntas y se vuelve a medir el recorte; con zoom mayor a 100 % el
+  // cuerpo se desplaza a lo ancho y el encabezado lo sigue, para que las columnas sigan alineadas.
+  const cuerpoImg = cuerpoInner.querySelector("img");
+  host._zoom = (z) => {
+    encImg.style.width = cuerpoImg.style.width = `${z}%`;
+    ajustar();
+    encWrap.scrollLeft = cuerpo.scrollLeft;
+  };
+  cuerpo.addEventListener("scroll", () => (encWrap.scrollLeft = cuerpo.scrollLeft));
 
   let temporizador;
   const alRedimensionar = () => {
@@ -137,8 +149,10 @@ export async function render(container, params) {
           ${tema.opciones.map((op, i) => `<option value="${i}">${op.label}</option>`).join("")}
         </select>
       </div>
-      <div class="image-frame" id="frame-imagen"></div>
+      <div class="zoom-barra">${zoomHtml()}</div>
+      <div class="image-frame marco-zoom" id="frame-imagen"></div>
     `;
+    const grupoZoom = wrap.querySelector(".zoom-imagen");
 
     const sel = wrap.querySelector("#sel-tabla");
     const frame = wrap.querySelector("#frame-imagen");
@@ -153,12 +167,17 @@ export async function render(container, params) {
         limpiezaActual = montarTablaPartida(frame, op);
       } else {
         frame.classList.add("image-frame");
-        frame.innerHTML = `<img src="${rutaImg(op.img)}" data-lightbox="${rutaImg(op.img)}" alt="${op.label}">`;
+        frame.innerHTML = `<img src="${rutaImg(op.img)}" data-lightbox="${rutaImg(op.img)}" alt="${op.label}" style="width:${zoomDe(grupoZoom)}%">`; // conserva el zoom elegido
       }
     }
 
     sel.addEventListener("change", () => pintarImagen(Number(sel.value)));
     pintarImagen(0);
+    activarZoom(wrap, (grupo, z) => {
+      const imagen = frame.querySelector(":scope > img");
+      if (imagen) imagen.style.width = `${z}%`;
+      else frame._zoom?.(z);
+    });
 
     // Nota al pie: debajo del visor, siempre visible (no depende de la tabla elegida).
     if (tema.nota) {
@@ -172,12 +191,12 @@ export async function render(container, params) {
         ${tema.opciones
           .map(
             (op, i) => `
-          <div>
-            <h3 class="section-title">${op.label}</h3>
+          <div class="visor-con-zoom" data-op="${i}">
+            <div class="zoom-cab"><h3 class="section-title">${op.label}</h3>${zoomHtml(op.label)}</div>
             ${
               op.partida
                 ? `<div data-partida="${i}"></div>`
-                : `<div class="image-frame"><img src="${rutaImg(op.img)}" data-lightbox="${rutaImg(op.img)}" alt="${op.label}"></div>`
+                : `<div class="image-frame marco-zoom"><img src="${rutaImg(op.img)}" data-lightbox="${rutaImg(op.img)}" alt="${op.label}" style="width:${ZOOM_INICIAL}%"></div>`
             }
           </div>`
           )
@@ -189,6 +208,12 @@ export async function render(container, params) {
     wrap.querySelectorAll("[data-partida]").forEach((host) => {
       const op = tema.opciones[Number(host.dataset.partida)];
       limpiezas.push(montarTablaPartida(host, op));
+    });
+    activarZoom(wrap, (grupo, z) => {
+      const visor = grupo.closest(".visor-con-zoom");
+      const partida = visor.querySelector("[data-partida]");
+      if (partida) partida._zoom?.(z);
+      else visor.querySelector(".marco-zoom img").style.width = `${z}%`;
     });
 
     // Nota al pie: debajo del visor, siempre visible (no depende de la tabla elegida).

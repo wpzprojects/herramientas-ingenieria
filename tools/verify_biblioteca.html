@@ -134,23 +134,23 @@ await seccion("visor: fuente, contenido, texto arriba e imágenes debajo", async
 
   // zoom de cada imagen
   const fig = figuras[0];
-  const img = () => fig.querySelector(".bib-marco img");
-  const marco = fig.querySelector(".bib-marco");
-  const cab = fig.querySelector(".bib-fig-cab");
+  const img = () => fig.querySelector(".marco-zoom img");
+  const marco = fig.querySelector(".marco-zoom");
+  const cab = fig.querySelector(".zoom-cab");
   const menos = fig.querySelector('[data-zoom-paso="-1"]');
   const mas = fig.querySelector('[data-zoom-paso="1"]');
   const anchoUtil = () => marco.clientWidth - parseFloat(getComputedStyle(marco).paddingLeft) - parseFloat(getComputedStyle(marco).paddingRight);
-  ok(img().style.width === "80%" && texto(fig.querySelector(".bib-zoom-valor")) === "80 %" && Math.abs(img().getBoundingClientRect().width - anchoUtil() * 0.8) < 2, `la imagen arranca al 80 % del recuadro (${Math.round(img().getBoundingClientRect().width)} de ${Math.round(anchoUtil())} px)`);
+  ok(img().style.width === "80%" && texto(fig.querySelector(".zoom-imagen-valor")) === "80 %" && Math.abs(img().getBoundingClientRect().width - anchoUtil() * 0.8) < 2, `la imagen arranca al 80 % del recuadro (${Math.round(img().getBoundingClientRect().width)} de ${Math.round(anchoUtil())} px)`);
   ok(cab.contains(fig.querySelector("figcaption")) && cab.contains(mas) && mas.getBoundingClientRect().left > fig.querySelector("figcaption").getBoundingClientRect().left && Math.abs(mas.getBoundingClientRect().right - marco.getBoundingClientRect().right) < 2, "los botones «−» y «+» van arriba de la imagen, a la derecha de su nombre");
   mas.click(); mas.click(); mas.click();
-  ok(img().style.width === "150%" && texto(fig.querySelector(".bib-zoom-valor")) === "150 %" && marco.scrollWidth > marco.clientWidth + 10, "«+» la agranda dentro de su recuadro (a 150 % el recuadro se desplaza)");
+  ok(img().style.width === "150%" && texto(fig.querySelector(".zoom-imagen-valor")) === "150 %" && marco.scrollWidth > marco.clientWidth + 10, "«+» la agranda dentro de su recuadro (a 150 % el recuadro se desplaza)");
   for (let k = 0; k < 10; k++) mas.click();
   ok(img().style.width === "300%" && mas.disabled, "llega hasta 300 % y «+» se deshabilita");
   await esperarQue(() => img().complete);
   ok(Math.abs(marco.getBoundingClientRect().height - img().getBoundingClientRect().height - parseFloat(getComputedStyle(marco).paddingTop) - parseFloat(getComputedStyle(marco).paddingBottom) - (marco.offsetHeight - marco.clientHeight)) < 3 && marco.scrollHeight <= marco.clientHeight + 1, "el recuadro crece con la altura de la imagen: sin barra vertical, ni siquiera a 300 %");
   for (let k = 0; k < 12; k++) menos.click();
   ok(img().style.width === "40%" && menos.disabled && !mas.disabled, "«−» baja hasta 40 % y se deshabilita");
-  ok(figuras[1].querySelector(".bib-marco img").style.width === "80%", "cada imagen tiene su propio zoom");
+  ok(figuras[1].querySelector(".marco-zoom img").style.width === "80%", "cada imagen tiene su propio zoom");
   const sel = $("#bib-contenido");
   sel.value = "1";
   sel.dispatchEvent(new Event("change", { bubbles: true }));

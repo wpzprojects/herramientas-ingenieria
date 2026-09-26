@@ -3,6 +3,7 @@
 // La PRIMERA entrada debe coincidir con CACHE_VERSION de sw.js (lo comprueba tools/verify_perfil.html).
 // El historial anterior a 3.16.0 se reconstruyó a partir de git el 2026-09-24 (antes solo había un contador v1…v296).
 export const NOVEDADES = [
+  { version: "3.35.3", fecha: "2026-09-26", cambios: ["Distancias de seguridad y Corriente de conductores NTC: las imágenes arrancan al 80 % y tienen botones «−» y «+» de zoom (de 40 % a 300 %), como en la Biblioteca técnica. En Corriente NTC el encabezado fijo y la tabla crecen juntos y se desplazan a lo ancho a la par."] },
   { version: "3.35.2", fecha: "2026-09-26", cambios: ["Biblioteca técnica: el recuadro de cada imagen crece con su altura (ya no aparece una barra vertical); solo se desplaza a lo ancho cuando el zoom la hace más ancha que el recuadro."] },
   { version: "3.35.1", fecha: "2026-09-26", cambios: ["Biblioteca técnica: las imágenes se ven al 80 % y cada una tiene botones «−» y «+» para acercarla o alejarla dentro de su recuadro (de 40 % a 300 %); el botón de agregar dice solo «Agregar»."] },
   { version: "3.35.0", fecha: "2026-09-26", cambios: ["Nueva «Biblioteca técnica» en Normatividad: apartes de normas, tablas y figuras de consulta rápida, organizados por fuente, con el texto arriba y las imágenes (ampliables) debajo. El administrador agrega, edita y elimina registros con texto, una o varias imágenes, y se publican para todos.", "Zona de servidumbre y Enterramiento de ductos pasan a la Biblioteca técnica (el texto del numeral de enterramiento ahora va arriba de las tablas)."] },

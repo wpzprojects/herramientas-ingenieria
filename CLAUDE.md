@@ -1181,7 +1181,13 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   data URL de imagen < 1 MB: HAY QUE PUBLICARLAS. Pruebas: `tools/verify_biblioteca.html`.
   3.35.1 (pedido del usuario): el botón es solo «Agregar»; cada imagen arranca al 80 % del ancho de su recuadro
   (`ZOOM_INICIAL`) y lleva «−» / «%» / «+» a la derecha de su pie (`.bib-fig-cab`, `.bib-zoom`), con pasos `ZOOMS` de 40 a
-  300 %; el recuadro (`.bib-marco`) crece con la altura de la imagen (SIN alto máximo: el usuario no quiere barra vertical; 3.35.2) y solo se desplaza a lo ancho. Tocarla sigue abriéndola completa.
+  300 %; el recuadro (`.bib-marco`) crece con la altura de la imagen (SIN alto máximo: el usuario no quiere barra vertical; 3.35.2) y solo se desplaza a lo ancho.
+  **Zoom común (3.35.3)**: `js/util/zoom-imagen.js` (`ZOOMS`, `ZOOM_INICIAL` = 80, `zoomHtml`, `activarZoom`, `zoomDe`;
+  clases `.zoom-imagen`, `.zoom-cab` = título + zoom en una fila, `.zoom-barra` = zoom solo a la derecha, `.marco-zoom` =
+  recuadro que crece con la imagen y solo se desplaza a lo ancho). Lo usan la Biblioteca, Distancias de seguridad
+  (`.zoom-barra` entre el selector y la imagen; el zoom se conserva al cambiar de tabla) y Corriente NTC: en la tabla
+  partida las dos copias cambian de ancho juntas (`host._zoom(z)` vuelve a medir el recorte con `ajustar()`), el cuerpo
+  tiene `overflow: auto` y el encabezado copia su `scrollLeft` para que las columnas sigan alineadas. Tocarla sigue abriéndola completa.
 - **Tabla partida: encabezado fijo + cuerpo con scroll (2026-09-24, idea del usuario mirando «Corriente de conductores NTC
   2050»)**: esa imagen es una tabla ancha con muchas filas; al hacer scroll para comparar una fila de abajo, el encabezado
   (calibre/metal/área/resistencia…) ya no se ve. Como es una sola imagen plana (no HTML), no hay forma de "congelar" filas
