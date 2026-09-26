@@ -1039,7 +1039,23 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .vi-matriz td.vi-tono-malo { color: var(--danger); }
 .vi-matriz td.vi-tono-bueno .vi-sub, .vi-matriz td.vi-tono-malo .vi-sub { color: var(--text-muted); }
 /* «Recomendada» en el encabezado: en pantallas angostas baja a una segunda línea para no ensanchar la columna */
-@media (max-width: 720px) { .vi-matriz thead .vi-cab-rec { display: block; margin-top: 4px; } }
+@media (max-width: 720px) {
+  .vi-matriz thead .vi-cab-rec { display: block; margin-top: 4px; }
+  /* Tabla compacta en el celular: letra y márgenes menores para ver la columna de criterios y dos alternativas a la vez */
+  .vi-matriz table { font-size: 0.74rem; }
+  .vi-matriz :is(th, td) { padding: 6px 7px; }
+  .vi-matriz thead th { font-size: 0.66rem; letter-spacing: 0.02em; }
+  .vi-matriz td.etiqueta-fila { width: 30%; font-size: 0.72rem; }
+  .vi-matriz td.vi-conductor-celda { min-width: 0; }
+  .vi-matriz .vi-sub { font-size: 0.66rem; }
+  .vi-matriz .badge { font-size: 0.62rem; padding: 1px 5px; }
+  .vi-matriz tr.vi-seccion th { padding: 10px 7px 5px; font-size: 0.66rem; }
+  .vi-matriz td.etiqueta-fila { width: 28%; }
+  /* menos relleno alrededor de la tabla para que quepan la columna de criterios y dos alternativas */
+  .card.tarjeta-borde.vi-resultado { padding: var(--space-2); }
+  .result-panel.vi-panel { padding: var(--space-2); }
+}
+.vi-sin-guardar { color: var(--warning); font-weight: 600; }
 .vi-supuestos { margin: 0; padding-left: var(--space-5); font-size: 0.88rem; line-height: 1.5; color: var(--text-muted); }
 .vi-supuestos li + li { margin-top: var(--space-1); }
 .vi-trabajando .vi-nueva { display: inline-flex; align-items: center; gap: 2px; margin-left: var(--space-3); font-size: 0.85rem; font-weight: 600; text-decoration: none; vertical-align: baseline; }

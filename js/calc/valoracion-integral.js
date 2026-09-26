@@ -263,22 +263,37 @@ export function evaluarEscenario(comun, esc) {
 
 /**
  * Evalúa todos los escenarios y los compara.
- * `mejorCosto` = índice del de menor costo total entre los que tienen costos (null si ninguno los tiene);
- * `recomendado` = el de menor costo total entre los que CUMPLEN todos los criterios (null si no hay costos o ninguno cumple).
+ * `mejorCosto` = índice del de menor costo total entre los que tienen costos (null si ninguno los tiene).
+ * `recomendado` (solo con 2 o más escenarios) = entre los que CUMPLEN todos los criterios, el de menor costo total; si
+ * ninguno de los que cumplen tiene costos, el de menores pérdidas (`criterioRecomendado` dice cuál se usó). null si
+ * ninguno cumple.
  * `diferenciaVsMejor` de cada escenario con costos = su costo total menos el de `mejorCosto`.
  */
 export function compararEscenarios(comun, escenarios) {
   const res = escenarios.map((e) => evaluarEscenario(comun, e));
   const conCosto = res.map((r, i) => (r.economia ? i : -1)).filter((i) => i >= 0);
-  const menor = (lista) => (lista.length ? lista.reduce((m, i) => (res[i].economia.costoTotal < res[m].economia.costoTotal ? i : m), lista[0]) : null);
-  const mejorCosto = menor(conCosto);
-  const recomendado = menor(conCosto.filter((i) => res[i].cumpleTodo));
+  const menorPor = (lista, valor) => (lista.length ? lista.reduce((m, i) => (valor(res[i]) < valor(res[m]) ? i : m), lista[0]) : null);
+  const mejorCosto = menorPor(conCosto, (r) => r.economia.costoTotal);
+  const cumplen = res.map((r, i) => (r.cumpleTodo ? i : -1)).filter((i) => i >= 0);
+  let recomendado = null;
+  let criterioRecomendado = null;
+  if (res.length > 1 && cumplen.length) {
+    const cumplenConCosto = cumplen.filter((i) => res[i].economia);
+    if (cumplenConCosto.length) {
+      recomendado = menorPor(cumplenConCosto, (r) => r.economia.costoTotal);
+      criterioRecomendado = "costo";
+    } else {
+      recomendado = menorPor(cumplen, (r) => r.perdidas.pct);
+      criterioRecomendado = "perdidas";
+    }
+  }
   for (const r of res) if (r.economia) r.economia.diferenciaVsMejor = r.economia.costoTotal - res[mejorCosto].economia.costoTotal;
   return {
     escenarios: res,
-    cumplen: res.map((r, i) => (r.cumpleTodo ? i : -1)).filter((i) => i >= 0),
+    cumplen,
     mejorCosto,
     recomendado,
+    criterioRecomendado,
     costosCompletos: conCosto.length === res.length,
   };
 }

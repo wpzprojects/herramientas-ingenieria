@@ -811,18 +811,38 @@ export async function render(container) {
   // ---------- valoración guardada con la que se está trabajando ----------
   let guardada = null; // { id, nombre }
   const lineaTrabajando = q(".vi-trabajando");
+  // Huella del formulario para saber si hay cambios sin guardar (sin contar qué desplegables están abiertos)
+  let huellaGuardada = null;
+  const huella = () => JSON.stringify(capturar(), (k, v) => (k === "avanzado" || k === "economiaAbierta" ? undefined : v));
+  const hayCambiosSinGuardar = () => !!guardada && huellaGuardada !== null && huella() !== huellaGuardada;
+  function marcarGuardado() {
+    huellaGuardada = guardada ? huella() : null;
+    mostrarTrabajando();
+  }
   function mostrarTrabajando() {
     lineaTrabajando.hidden = !guardada;
     lineaTrabajando.innerHTML = guardada
-      ? `Trabajando en: <strong>${escapeHtml(guardada.nombre)}</strong><button type="button" class="btn-enlace vi-nueva">${icon("circlePlus")} Nuevo</button>`
+      ? `Trabajando en: <strong>${escapeHtml(guardada.nombre)}</strong><span class="vi-sin-guardar"${hayCambiosSinGuardar() ? "" : " hidden"}> · cambios sin guardar</span><button type="button" class="btn-enlace vi-nueva">${icon("circlePlus")} Nueva valoración</button>`
       : "";
   }
+  // Se revisa después de cada cambio en el formulario (escribir, elegir, agregar o quitar alternativas y tramos)
+  let revisionPendiente = false;
+  const revisarCambios = () => {
+    if (!guardada || revisionPendiente) return;
+    revisionPendiente = true;
+    setTimeout(() => {
+      revisionPendiente = false;
+      const marca = lineaTrabajando.querySelector(".vi-sin-guardar");
+      if (marca) marca.hidden = !hayCambiosSinGuardar();
+    }, 0);
+  };
+  for (const ev of ["input", "change", "click"]) form.addEventListener(ev, revisarCambios);
   lineaTrabajando.addEventListener("click", (e) => {
     if (!e.target.closest(".vi-nueva")) return;
-    if (!window.confirm("¿Empezar una valoración nueva? Se limpia el formulario; lo que no hayas guardado se pierde.")) return;
+    if (hayCambiosSinGuardar() && !window.confirm("Hay cambios sin guardar en esta valoración. ¿Empezar una nueva de todos modos?")) return;
     restaurar(fotoInicial);
     guardada = null;
-    mostrarTrabajando();
+    marcarGuardado();
     form.querySelectorAll(".card.form-section").forEach((c) => plegarTarjeta(c, c === tarjetaEconomia));
     q("#resultado-wrap").innerHTML = "";
     cajaGuardar.hidden = true;
@@ -836,6 +856,7 @@ export async function render(container) {
     try {
       restaurar(guardado);
       guardada = guardado.guardada ?? null;
+      huellaGuardada = guardado.huellaGuardada ?? null;
       mostrarTrabajando();
     } catch {
       /* una foto dañada no puede dejar la pantalla sin alternativas */
@@ -844,7 +865,7 @@ export async function render(container) {
   }
 
   function antesDeSalir() {
-    guardarEstado(RUTA, { ...capturar(), guardada });
+    guardarEstado(RUTA, { ...capturar(), guardada, huellaGuardada });
   }
 
   // ---------- guardar ----------
@@ -853,7 +874,10 @@ export async function render(container) {
   const accionesGuardar = q(".vi-guardar-acciones");
   const mensajeGuardar = q(".vi-guardar-msg");
 
+  let temporizadorAviso = null;
   function avisoGuardado(texto, tipo = "") {
+    clearTimeout(temporizadorAviso);
+    if (texto && tipo !== "error") temporizadorAviso = setTimeout(() => mensajeGuardar.isConnected && avisoGuardado(""), 6000);
     mensajeGuardar.hidden = !texto;
     mensajeGuardar.textContent = texto || "";
     mensajeGuardar.className = `vi-guardar-msg text-sm${tipo ? ` ${tipo}` : ""}`;
@@ -914,7 +938,7 @@ export async function render(container) {
       return;
     }
     guardada = { id: r.registro.id, nombre: r.registro.nombre };
-    mostrarTrabajando();
+    marcarGuardado();
     cajaGuardar.hidden = true;
     avisoGuardado(r.mensaje, r.remoto ? "ok" : "");
     if (!panelHistorial.hidden) pintarHistorial(listarLocales(), null);
@@ -993,7 +1017,7 @@ export async function render(container) {
         return;
       }
       guardada = { id: r.id, nombre: r.nombre };
-      mostrarTrabajando();
+      marcarGuardado();
       cerrarHistorial();
       cajaGuardar.hidden = true;
       avisoGuardado("");
@@ -1070,7 +1094,12 @@ export async function render(container) {
     return {
       ok: true,
       titulo: total === 1 ? "La alternativa cumple todos los criterios." : `Cumplen todos los criterios: ${r.cumplen.map((i) => `Alternativa ${i + 1}`).join(", ")}.`,
-      detalle: r.recomendado !== null ? `Recomendada: Alternativa ${r.recomendado + 1}, la de menor costo total entre las que cumplen.` : "",
+      detalle:
+        r.recomendado === null
+          ? ""
+          : r.criterioRecomendado === "costo"
+            ? `Recomendada: Alternativa ${r.recomendado + 1}, la de menor costo total entre las que cumplen.`
+            : `Recomendada: Alternativa ${r.recomendado + 1}, la de menores pérdidas entre las que cumplen (sin precios no se comparan costos).`,
     };
   }
 
@@ -1204,7 +1233,7 @@ export async function render(container) {
     if (c.v === null || c.v === undefined) return "—";
     if (c.texto) return String(c.v);
     const n2 = `${c.signoNum && c.v > 0 ? "+" : ""}${num(c.v, c.dec, c.dec)}`;
-    if (c.pesos) return `${c.signo ? "+" : ""}$ ${n2}`;
+    if (c.pesos) return `${c.signo ? "+" : ""}$ ${n2}`; // el «$» no se separa del número al partir la línea
     return unidad ? `${n2} ${unidad}` : n2;
   }
   const conSaltos = (s) => escapeHtml(s).replace(/\n/g, "<br>");
@@ -1315,7 +1344,7 @@ export async function render(container) {
               const celdas = f.celdas
                 .map((c) => {
                   const oculto = f.etiqueta === "Resultado" || (c.estado && (c.v === null || c.estado.texto === "Menor costo"));
-                  const valorHtml = oculto ? "" : conSaltos(c.pesos ? textoCelda(c, "").replace("$ ", "") : textoCelda(c, ""));
+                  const valorHtml = oculto ? "" : conSaltos(c.pesos ? textoCelda(c, "").replace("$ ", "") : textoCelda(c, ""));
                   const estado = c.estado ? `<span class="vi-doc-estado${c.estado.clase === "badge-danger" ? " malo" : c.estado.clase === "badge-warning" ? " alerta" : ""}">${escapeHtml(c.estado.texto)}</span>` : "";
                   return `<td class="num${c.tono ? ` vi-doc-${c.tono}` : ""}">${[valorHtml, estado].filter(Boolean).join(" ")}${c.sub ? `<div class="vi-doc-sub">${escapeHtml(c.sub)}</div>` : ""}</td>`;
                 })
@@ -1352,7 +1381,7 @@ export async function render(container) {
       detalle +
       `<h3>Análisis: margen y capacidad máxima</h3>${tablaDoc(modeloA)}` +
       `<h3>Supuestos del cálculo</h3><ul class="vi-doc-supuestos">${SUPUESTOS.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ul>` +
-      `<p class="vi-doc-nota">${escapeHtml(REFERENCIAS)} El detalle de cada alternativa (datos de entrada y valores intermedios) está en la pestaña «Reporte» de la calculadora.</p>`;
+      `<p class="vi-doc-nota">${escapeHtml(REFERENCIAS)} Los datos de entrada de cada alternativa están en la pestaña «Reporte» de la calculadora.</p>`;
     return doc;
   }
 
@@ -1477,108 +1506,43 @@ export async function render(container) {
       </details>`;
   }
 
-  // ---------- reporte de texto ----------
+  // ---------- reporte de texto (corto, para copiar y pegar) ----------
+  // Pedido del usuario (2026-09-26): la tabla, el análisis, el PDF y el Excel ya traen el detalle; el reporte de texto
+  // queda en lo esencial: los datos de entrada de cada alternativa y, por alternativa, el veredicto con los valores que
+  // deciden (sin valores intermedios como la reactancia o la resistencia efectiva).
   function reporteTexto(r, comun, estados, { modo, datoPartida }) {
     const todos = estados.flatMap((s) => s.tramos);
-    const hayAerea = todos.some((t) => t.red === "Aerea");
-    const haySubt = todos.some((t) => t.red !== "Aerea");
     const a = comun.aerea;
     const s2 = comun.subterranea;
     const ec = comun.economia;
-    const potenciaActiva = `Potencia activa: ${fmt(comun.potenciaActivaMw)} MW`;
+    const porFase = (t) => `${t.n} ${t.red === "Aerea" ? (t.n > 1 ? "conductores" : "conductor") : t.n > 1 ? "circuitos" : "circuito"} por fase`;
+    const lineaTramo = (t) => `${tramoTexto(t).replace(/ ×\d+$/, "")} · ${porFase(t)} · ${fmt(t.longitudKm)} km`;
+    const costoTramo = (t) => (!t.costos ? "sin costo" : `conductor ${fmtPesos(t.costos.costoConductorKm)}/km${t.costos.instalacionIndicada ? ` · instalación ${fmtPesos(t.costos.costoInstalacionKm)}/km` : ""}`);
 
-    const parametrosTramo = (t, sangria) => {
-      const p = (texto) => `${sangria}${texto}`;
-      return [
-        p(`Tipo de red: ${nombreRed(t.red)}`),
-        p(`Longitud: ${fmt(t.longitudKm)} km`),
-        p(`Material/Tipo de conductor: ${t.eleccion.material}`),
-        p(`Calibre: ${t.eleccion.calibre}`),
-        ...(t.red === "Aerea"
-          ? [
-              p(`Referencia: ${t.eleccion.referencia}`),
-              p(`Conductores por fase: ${t.n}`),
-              ...(t.n > 1 ? [p(`Separación entre subconductores del haz: ${fmt(t.separacionHazM)} m`)] : []),
-              p(`Distancias entre fases A-B / A-C / B-C: ${fmt(t.dabM)} / ${fmt(t.dacM)} / ${fmt(t.dbcM)} m`),
-            ]
-          : [
-              p(`Cable: monopolar, pantalla de ${t.eleccion.tipoPantalla.toLowerCase()}, aislamiento ${t.conductor.nivelAislamientoKv} kV al ${t.eleccion.nivelAislamientoPct} %`),
-              p(`Circuitos en paralelo por fase: ${t.n}`),
-              p(`Otros circuitos en el banco: ${t.otrosCircuitos}`),
-              p(`Puesta a tierra de las pantallas: ${t.puestaTierra}`),
-              p(`Separación entre fases (trébol): ${fmt(t.separacionFasesM, 3)} m`),
-              ...(t.n + t.otrosCircuitos > 1 ? [p(`Separación entre ductos: ${fmt(t.separacionDuctosM)} m`)] : []),
-            ]),
-        p(`Resistencia AC a 75°C (por conductor, catálogo): ${fmt(t.conductor.resistenciaOhmKm, 4)} Ω/km`),
-      ];
-    };
-    const parametros = estados.map((e, i) =>
-      [
-        ``,
-        `Alternativa ${i + 1}:`,
-        ...(comun.tensionPorAlternativa ? [`  Tensión de línea: ${fmt(e.tensionKv)} kV`] : []),
-        `  Corriente de falla: ${e.corrienteFallaKa === null ? "no indicada" : `${fmt(e.corrienteFallaKa)} kA`}`,
-        `  Tiempo de despeje de la falla: ${fmt(e.tiempoDespejeS)} s`,
-        ...(varios(e) ? e.tramos.flatMap((t, j) => [`  Tramo ${j + 1}:`, ...parametrosTramo(t, "    ")]) : parametrosTramo(e.tramos[0], "  ")),
-      ].join("\n")
-    );
-    // Costos de cada tramo: junto con los supuestos económicos, al final de los parámetros (no son datos técnicos)
-    const costos = estados.flatMap((e, i) =>
-      e.tramos.map((t, j) => {
-        const quien = varios(e) ? `Alternativa ${i + 1}, tramo ${j + 1}` : `Alternativa ${i + 1}`;
-        if (!t.costos) return `  ${quien}: sin costo del conductor`;
-        return `  ${quien}: conductor ${fmtPesos(t.costos.costoConductorKm)}/km · instalación ${t.costos.instalacionIndicada ? `${fmtPesos(t.costos.costoInstalacionKm)}/km` : "no indicada (solo se considera el conductor)"}`;
-      })
-    );
+    const parametros = estados.flatMap((e, i) => [
+      `Alternativa ${i + 1}: ${fmt(e.tensionKv)} kV · falla ${e.corrienteFallaKa === null ? "no indicada" : `${fmt(e.corrienteFallaKa)} kA`} en ${fmt(e.tiempoDespejeS)} s`,
+      ...e.tramos.map((t, j) => `  ${varios(e) ? `Tramo ${j + 1}: ` : ""}${lineaTramo(t)}${ec ? ` · ${costoTramo(t)}` : ""}`),
+    ]);
 
-    const resultadosTramo = (x, t, e, sangria) => {
-      const p = (texto) => `${sangria}${texto}`;
+    const resultados = r.escenarios.flatMap((x, i) => {
+      const e = estados[i];
+      const an = analisisAlternativa(x, comun);
+      const deTramo = (j) => (varios(e) ? ` (tramo ${j + 1})` : "");
       const cc = x.cortocircuito;
       return [
-        ...(x.ampacidad.error
-          ? [p(`Ampacidad: no calculable (${x.ampacidad.error})`)]
-          : [
-              p(`Ampacidad por conductor: ${fmt(x.ampacidad.porConductorA, 1)} A${t.red !== "Aerea" ? ` (${x.ampacidad.circuitosBanco} circuito${x.ampacidad.circuitosBanco > 1 ? "s" : ""} en el banco)` : ""}`),
-              p(`Ampacidad total${t.n > 1 ? ` (${t.n} ${t.red === "Aerea" ? "conductores" : "circuitos"} por fase)` : ""}: ${fmt(x.ampacidad.totalA, 1)} A`),
-              p(`Uso de la ampacidad: ${fmtPercent(x.ampacidad.usoPct, 1)} (${x.ampacidad.cumple ? "cumple" : "sobrecarga"})`),
-            ]),
-        p(`Resistencia efectiva (R/N): ${fmt(x.perdidas.resistenciaEfectivaOhmKm, 4)} Ω/km`),
-        p(`Pérdidas: ${fmtPercent(x.perdidas.pct)} · ${fmt(x.perdidas.kw, 1)} kW · ${num(x.perdidas.energiaMwhAnio, 1, 1)} MWh al año`),
-        p(`Reactancia inductiva: ${fmt(x.regulacion.reactanciaOhmKm, 4)} Ω/km`),
-        p(`Impedancia efectiva: ${fmt(x.regulacion.impedanciaOhmKm, 4)} Ω/km`),
-        p(`Caída de tensión: ${fmtPercent(x.regulacion.pct)}`),
-        p(`Capacidad de cortocircuito: ${fmt(cc.totalKa)} kA en ${fmt(e.tiempoDespejeS)} s${t.n > 1 ? ` (${t.n} × ${fmt(cc.porConductorKa)} kA)` : ""}, desde ${fmt(cc.tempOperacionC)} °C`),
-        ...(cc.corrienteFallaKa === null ? [] : [p(`Corriente de falla: ${fmt(cc.corrienteFallaKa)} kA (${cc.cumple ? "la soporta" : "no la soporta"}); área mínima por conductor: ${fmt(cc.areaMinimaMm2)} mm²`)]),
-        ...(x.economia ? [p(`Inversión inicial: ${fmtPesos(x.economia.inversion)}`), p(`Costo de las pérdidas (valor presente): ${fmtPesos(x.economia.costoPerdidasVp)}`)] : []),
+        ``,
+        `Alternativa ${i + 1}: ${x.cumpleTodo ? "cumple todos los criterios" : `no cumple (${x.incumple.join(", ")})`}`,
+        x.ampacidad.error
+          ? `  Ampacidad: no calculable${deTramo(x.ampacidad.tramo)}`
+          : `  Corriente ${fmt(x.corrienteA, 1)} A · ampacidad ${fmt(x.ampacidad.totalA, 0)} A${deTramo(x.ampacidad.tramo)} · uso ${fmtPercent(x.ampacidad.usoPct, 1)}`,
+        `  Pérdidas ${fmtPercent(x.perdidas.pct)} (${x.perdidas.clase.etiqueta}) · ${fmt(x.perdidas.kw, 1)} kW · ${num(x.perdidas.energiaMwhAnio, 1, 1)} MWh al año`,
+        `  Caída de tensión ${fmtPercent(x.regulacion.pct)} (${x.regulacion.clase.etiqueta})`,
+        `  Cortocircuito ${fmt(cc.totalKa)} kA en ${fmt(e.tiempoDespejeS)} s${deTramo(cc.tramo)}${cc.corrienteFallaKa === null ? "" : ` · ${cc.cumple ? "soporta" : "no soporta"} ${fmt(cc.corrienteFallaKa)} kA`}`,
+        ...(x.economia ? [`  Costo total actualizado ${fmtPesos(x.economia.costoTotal)} (inversión ${fmtPesos(x.economia.inversion)})`] : []),
+        ...(an.pMax ? [`  Potencia máxima ${num(an.pMax[1], 1, 1)} MW (la limita ${TEXTO_CRITERIO[an.pMax[0]].toLowerCase()})`] : []),
       ];
-    };
-    const resultados = r.escenarios.map((x, i) => {
-      const e = estados[i];
-      const titulo = varios(e) ? `Alternativa ${i + 1} — ${fmt(e.tensionKv)} kV · ${e.tramos.length} tramos · ${fmt(x.longitudKm)} km:` : `Alternativa ${i + 1} — ${tramoTexto(e.tramos[0])} a ${fmt(e.tensionKv)} kV, ${fmt(x.longitudKm)} km:`;
-      const totales = [
-        `  Pérdidas${varios(e) ? " totales" : ""}: ${fmtPercent(x.perdidas.pct)} (${x.perdidas.clase.etiqueta}) · ${fmt(x.perdidas.kw, 1)} kW · ${num(x.perdidas.energiaMwhAnio, 1, 1)} MWh al año`,
-        `  Caída de tensión${varios(e) ? " total" : ""}: ${fmtPercent(x.regulacion.pct)} (${x.regulacion.clase.etiqueta})`,
-        ...(varios(e)
-          ? [
-              x.ampacidad.error
-                ? `  Ampacidad: no calculable en el tramo ${x.ampacidad.tramo + 1}`
-                : `  Ampacidad: se evalúa con el tramo ${x.ampacidad.tramo + 1}, el de menor capacidad (${fmt(x.ampacidad.totalA, 1)} A): ${fmtPercent(x.ampacidad.usoPct, 1)} de uso (${x.ampacidad.cumple ? "cumple" : "sobrecarga"})`,
-              `  Cortocircuito: se evalúa con el tramo ${x.cortocircuito.tramo + 1}, el de menor capacidad (${fmt(x.cortocircuito.totalKa)} kA)${x.cortocircuito.corrienteFallaKa === null ? "" : `: ${x.cortocircuito.cumple ? "soporta" : "no soporta"} los ${fmt(x.cortocircuito.corrienteFallaKa)} kA`}`,
-            ]
-          : []),
-        ...(x.economia
-          ? [
-              ...(varios(e) ? [`  Inversión inicial total: ${fmtPesos(x.economia.inversion)}`, `  Costo de las pérdidas total (valor presente): ${fmtPesos(x.economia.costoPerdidasVp)}`] : []),
-              `  Costo total actualizado: ${fmtPesos(x.economia.costoTotal)}`,
-            ]
-          : []),
-        `  Veredicto: ${x.cumpleTodo ? "cumple todos los criterios" : `no cumple (${x.incumple.join(", ")})`}`,
-      ];
-      const detalle = varios(e)
-        ? x.tramos.flatMap((t, j) => [`  Tramo ${j + 1} — ${tramoTexto(e.tramos[j])}, ${fmt(e.tramos[j].longitudKm)} km:`, ...resultadosTramo(t, e.tramos[j], e, "    ")])
-        : resultadosTramo(x.tramos[0], e.tramos[0], e, "  ").filter((l) => !/^\s+(Pérdidas|Caída de tensión):/.test(l));
-      return [``, titulo, `  Corriente de operación: ${fmt(x.corrienteA)} A`, ...detalle, ...(varios(e) ? [`  Totales de la alternativa:`] : []), ...totales].join("\n");
     });
+
     const conc = conclusion(r);
     return [
       `CÁLCULO DE VALORACIÓN INTEGRAL`,
@@ -1586,42 +1550,17 @@ export async function render(container) {
       ``,
       `PARÁMETROS DE ENTRADA:`,
       LINEA_REPORTE,
-      `Dato de partida: ${MODOS[modo]} (${fmt(datoPartida)} ${modo === "potencia" ? "MW" : "MVA"})`,
-      `Factor de potencia: ${fmt(comun.factorPotencia)}`,
-      `Factor de carga (Fc): ${fmt(comun.factorCarga, 4)}`,
-      comun.tensionPorAlternativa ? `Tensión de línea: una por alternativa` : `Tensión de línea: ${fmt(estados[0].tensionKv)} kV`,
-      ...(hayAerea
-        ? [
-            `Líneas aéreas: temperatura ambiente ${fmt(a.taC)} °C, máxima del conductor ${fmt(a.tcC)} °C, viento ${fmt(a.vwMs)} m/s a ${fmt(a.anguloVientoDeg, 0)}°, elevación ${fmt(a.elevacionM, 0)} m`,
-            `  ε ${fmt(a.epsilon)}, α ${fmt(a.alfa)}, Qse ${fmt(a.qseWm2, 0)} W/m², θ ${fmt(a.thetaDeg, 0)}°`,
-          ]
-        : []),
-      ...(haySubt
-        ? [
-            `Cables subterráneos: temperatura máxima del conductor ${fmt(s2.tempMaxC)} °C, terreno ${fmt(s2.tempTerrenoC)} °C, resistividad del suelo ${fmt(s2.rhoSueloKmW)} K·m/W`,
-            `  ducto ${fmt(s2.uDuctoKmW)} K·m/W, profundidad ${fmt(s2.profundidadBancoM)} m, ${fmt(s2.frecuenciaHz, 0)} Hz`,
-          ]
-        : []),
-      `Temperatura máxima admisible en falla: ${fmt(comun.tempFallaC)} °C`,
+      `${MODOS[modo]}: ${fmt(datoPartida)} ${modo === "potencia" ? "MW" : "MVA"} · FP ${fmt(comun.factorPotencia)} · Fc ${fmt(comun.factorCarga, 4)}`,
+      ...(todos.some((t) => t.red === "Aerea") ? [`Líneas aéreas: ${fmt(a.taC)} °C ambiente, ${fmt(a.tcC)} °C máx. del conductor, viento ${fmt(a.vwMs)} m/s, ${fmt(a.elevacionM, 0)} m s. n. m.`] : []),
+      ...(todos.some((t) => t.red !== "Aerea") ? [`Cables subterráneos: ${fmt(s2.tempMaxC)} °C máx. del conductor, terreno ${fmt(s2.tempTerrenoC)} °C, suelo ${fmt(s2.rhoSueloKmW)} K·m/W, profundidad ${fmt(s2.profundidadBancoM)} m`] : []),
+      ...(ec ? [`Evaluación económica: energía ${fmtPesos(ec.precioKwh)}/kWh (+${fmtPercent(ec.escaladaEnergiaPct)} al año) · tasa ${fmtPercent(ec.tasaDescuentoPct)} · ${ec.anios} años`] : []),
       ...parametros,
-      ``,
-      ...(ec
-        ? [
-            `Evaluación económica:`,
-            `  Precio de la energía perdida (año 1): ${fmtPesos(ec.precioKwh)}/kWh`,
-            `  Aumento anual del precio: ${fmtPercent(ec.escaladaEnergiaPct)}`,
-            `  Tasa de descuento: ${fmtPercent(ec.tasaDescuentoPct)}`,
-            `  Años de análisis: ${ec.anios}`,
-            `  Crecimiento anual de la demanda: ${fmtPercent(ec.crecimientoDemandaPct)}`,
-            ...costos,
-          ]
-        : [`Evaluación económica: no incluida (sin precio de la energía)`]),
       ``,
       ``,
       `RESULTADOS:`,
       LINEA_REPORTE,
-      ...(modo === "potencia" ? [`Potencia aparente: ${fmt(r.escenarios[0].potenciaS)} MVA`] : [potenciaActiva]),
-      ...resultados,
+      `Corriente de operación: ${fmt(r.escenarios[0].corrienteA, 1)} A${estados.some((e) => e.tensionKv !== estados[0].tensionKv) ? " (alternativa 1; depende de la tensión)" : ""}`,
+      ...resultados.slice(1),
       ``,
       `Conclusión: ${conc.titulo}${conc.detalle ? ` ${conc.detalle}` : ""}`,
     ].join("\n");
@@ -1704,7 +1643,7 @@ export async function render(container) {
 
   function analisisHtml(modeloA) {
     return `
-      <div class="result-panel">
+      <div class="result-panel vi-panel">
         <p class="text-muted text-sm" style="margin: 0 0 var(--space-3);">Cuánto le queda a cada alternativa antes de incumplir y hasta dónde podría crecer (más potencia o más longitud) sin salirse de las referencias de diseño.</p>
         ${matrizHtml(modeloA)}
         <div class="result-subhead">Supuestos del cálculo</div>
@@ -1724,7 +1663,7 @@ export async function render(container) {
     const conc = conclusion(r);
     const reporte = reporteTexto(r, comun, estados, dato);
     const resultado = `
-      <div class="result-panel">
+      <div class="result-panel vi-panel">
         <div class="vi-cabecera">
           <div class="callout ${conc.ok ? "callout-success" : "callout-warning"}"><div><strong>${escapeHtml(conc.titulo)}</strong>${conc.detalle ? ` ${escapeHtml(conc.detalle)}` : ""}</div></div>
           ${exportarHtml()}
@@ -1736,6 +1675,7 @@ export async function render(container) {
       </div>`;
     wrap.innerHTML = tarjetaResultadosHtml({ resultado, reporte: reporteHtml(reporte, ETIQUETAS_REPORTE), formulasPlano: "" });
     // La tercera pestaña no son fórmulas (ya están en cada calculadora) sino el «Análisis»: margen y capacidad máxima
+    wrap.firstElementChild.classList.add("vi-resultado"); // para compactar sus márgenes en el celular
     const botonTercera = wrap.querySelector('.tab-btn[data-tab="formulas"]');
     const panelTercera = wrap.querySelector('.tab-panel[data-panel="formulas"]');
     botonTercera.textContent = "Análisis";

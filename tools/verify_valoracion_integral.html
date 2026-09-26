@@ -208,6 +208,13 @@ await seccion("motor: comparación, costos y recomendado", async () => {
   ok(parcial.escenarios[1].economia === null && !parcial.costosCompletos && parcial.mejorCosto === 0, "un escenario sin costo del conductor queda fuera de la comparación de costos");
   const uno = V.compararEscenarios(COMUN, [e1]);
   ok(uno.escenarios.length === 1 && uno.recomendado === null && uno.mejorCosto === null, "un solo escenario y sin precio: se evalúa igual, sin recomendado por costo");
+  // sin precios, entre las que cumplen se recomienda la de menores pérdidas
+  const h1 = escAereo(HAWK, 34.5, 1);
+  const h2 = escAereo(HAWK, 34.5, 2);
+  const sinPrecios = V.compararEscenarios(COMUN, [h1, h2]);
+  ok(sinPrecios.cumplen.length === 2 && sinPrecios.recomendado === 1 && sinPrecios.criterioRecomendado === "perdidas", "sin precios: se recomienda la de menores pérdidas entre las que cumplen");
+  const unaSola = V.compararEscenarios({ ...COMUN, economia: ECON }, [escAereo(HAWK, 34.5, 1, { costos: { costoConductorKm: 1, costoInstalacionKm: 0, instalacionIndicada: false } })]);
+  ok(unaSola.recomendado === null, "con una sola alternativa no hay «Recomendada» (no hay con qué compararla)");
 });
 
 await seccion("motor: escenario con varios tramos (aéreo + subterráneo a 34.5 kV)", async () => {
@@ -371,8 +378,9 @@ await seccion("vista: cálculo con dos escenarios (el ejemplo del usuario)", asy
   ok(rep[0] === "CÁLCULO DE VALORACIÓN INTEGRAL" && iP > 0 && iR > iP && rep[iP + 1] === "-".repeat(30) && rep[iR + 1] === "-".repeat(30), "reporte: título, parámetros y resultados con su línea de 30 guiones debajo");
   ok($$("#resultado-wrap .report-block strong").length === 3, "las tres etiquetas del reporte en negrita");
   const texto = rep.join("\n");
-  ok(texto.includes("Alternativa 2 — Aérea · ACSR 477") && texto.includes("×2") && texto.includes("Conclusión:"), "el reporte trae cada escenario y la conclusión");
-  ok(texto.includes("Evaluación económica: no incluida"), "el reporte dice que no hay evaluación económica");
+  ok(texto.includes("Alternativa 2: 13.20 kV") && texto.includes("Aérea · ACSR 477 · Hawk (26/7) · 2 conductores por fase · 5.00 km") && texto.includes("Conclusión:"), "el reporte (corto) trae los datos de cada alternativa y la conclusión");
+  ok(texto.includes("Alternativa 1: no cumple (ampacidad)") && texto.includes("Potencia máxima") && !texto.includes("Reactancia inductiva"), "…el veredicto con los valores que deciden, sin valores intermedios");
+  ok(!texto.includes("Evaluación económica:"), "sin precios, el reporte no trae evaluación económica");
 });
 
 await seccion("vista: con costos", async () => {
@@ -388,7 +396,7 @@ await seccion("vista: con costos", async () => {
   $("#form-calc").requestSubmit();
   await espera(30);
   const rep = $("#resultado-wrap .report-block").textContent;
-  ok(rep.includes("Precio de la energía perdida (año 1): $ 350/kWh") && rep.includes("Costo total actualizado:"), "el reporte trae los supuestos y los costos");
+  ok(rep.includes("Evaluación económica: energía $ 350/kWh") && rep.includes("Costo total actualizado $") && rep.includes("conductor $ 8,000,000/km"), "el reporte trae los supuestos, el costo de cada tramo y el costo total");
   const cumplen = $("#resultado-wrap .vi-cabecera > .callout").textContent;
   ok(/Recomendada: Alternativa \d/.test(cumplen) || /Ninguna alternativa cumple/.test(cumplen), `conclusión: «${cumplen.trim()}»`);
 });
@@ -540,8 +548,7 @@ await seccion("vista: escenario subterráneo y error de catálogo", async () => 
   $("#form-calc").requestSubmit();
   await espera(30);
   const rep = $("#resultado-wrap .report-block")?.textContent ?? "";
-  ok(rep.includes("Circuitos en paralelo por fase: 2") && rep.includes("Cables subterráneos:"), "el reporte trae los datos del cable y del terreno");
-  ok(rep.includes("(2 circuitos en el banco)"), "el reporte dice cuántos circuitos hay en el banco");
+  ok(rep.includes("Subterránea · Cobre 500 kcmil") && rep.includes("2 circuitos por fase") && rep.includes("Cables subterráneos:"), "el reporte trae el cable, los circuitos por fase y el terreno");
   // combinación que no existe: 46 kV al 133 %
   poner(T("tension", b), "44", "input");
   poner(T("pantalla", b), "Cinta");
@@ -605,8 +612,8 @@ await seccion("vista: tramos dentro de un escenario", async () => {
   ok(det && !det.open && det.querySelectorAll("tbody tr").length === $$(".vi-tramo").length, "«Detalle por tramo» plegado, con una fila por tramo de todos los escenarios");
   ok($$("#resultado-wrap .callout-warning").some((c) => c.textContent.includes("no tienen la misma longitud total")), "avisa que las alternativas no suman la misma longitud");
   const rep = $("#resultado-wrap .report-block").textContent;
-  ok(rep.includes(`Alternativa ${col} — 34.50 kV · 2 tramos · 5.50 km:`) && rep.includes("  Tramo 2 — Subterránea") && rep.includes("  Totales de la alternativa:") && rep.includes("Ampacidad: se evalúa con el tramo"), "el reporte detalla cada tramo y los totales del escenario");
-  ok(rep.includes("  Tramo 1:\n    Tipo de red: Aérea\n    Longitud: 3.00 km"), "los parámetros de entrada van por tramo");
+  ok(rep.includes(`Alternativa ${col}: 34.50 kV`) && rep.includes("  Tramo 2: Subterránea · Cobre 500 kcmil") && /ampacidad [\d,]+ A \(tramo \d\)/.test(rep), "el reporte trae cada tramo y dice con qué tramo se evaluó la ampacidad");
+  ok(rep.includes("  Tramo 1: Aérea · ACSR 477 · Hawk (26/7) · 1 conductor por fase · 3.00 km"), "los parámetros de entrada van por tramo, en una línea");
   card.querySelector(".btn-tramo-quitar").click(); // se deja la pantalla como estaba para las pruebas siguientes
   ok($$(".vi-escenario").length === col - 1, "se quita el escenario de prueba");
 });
@@ -754,6 +761,8 @@ await seccion("valoraciones guardadas: pantalla (guardar, historial, abrir y eli
     caja.querySelector('[data-guardar="nueva"]').click();
     await espera(50);
     ok(caja.hidden && /Guardada en este dispositivo/.test($(".vi-guardar-msg").textContent), "guarda y confirma dónde quedó");
+    const fuenteVista = await (await fetch("../js/views/calc-valoracion-integral.js")).text();
+    ok(/setTimeout\(\(\) => mensajeGuardar\.isConnected && avisoGuardado\(""\), 6000\)/.test(fuenteVista), "el aviso de guardado se quita solo a los 6 segundos (los errores se quedan)");
     ok(!$(".vi-trabajando").hidden && $(".vi-trabajando").textContent.includes("Solar Mesa Mamonal"), "bajo el título dice en cuál se está trabajando");
     const fpOriginal = $("#f-fp").value;
 
@@ -799,9 +808,23 @@ await seccion("valoraciones guardadas: pantalla (guardar, historial, abrir y eli
 
     // «Nueva»: formulario en blanco, sin valoración abierta
     const nueva = $(".vi-trabajando .vi-nueva");
-    ok(nueva && nueva.textContent.trim() === "Nuevo" && nueva.querySelector("svg"), "junto a «Trabajando en» está el botón «Nuevo», con el + en un círculo");
+    ok(nueva && nueva.textContent.trim() === "Nueva valoración" && nueva.querySelector("svg"), "junto a «Trabajando en» está «Nueva valoración», con el + en un círculo");
+    const sinGuardar = () => $(".vi-trabajando .vi-sin-guardar");
+    ok(sinGuardar() && sinGuardar().hidden, "recién abierta no hay «cambios sin guardar»");
     poner("#f-fp", "0.8", "input");
-    nueva.click();
+    await espera(20);
+    ok(!sinGuardar().hidden && sinGuardar().textContent.includes("cambios sin guardar"), "al cambiar un dato aparece «cambios sin guardar»");
+    poner("#f-fp", "0.95", "input");
+    await espera(20);
+    ok(sinGuardar().hidden, "al volver al valor guardado desaparece");
+    const dFila = $$(".vi-escenario details.vi-avanzado")[0];
+    dFila.open = !dFila.open;
+    dFila.dispatchEvent(new Event("toggle"));
+    $("#form-calc").dispatchEvent(new Event("click"));
+    await espera(20);
+    ok(sinGuardar().hidden, "abrir o cerrar «Parámetros avanzados» no cuenta como cambio");
+    poner("#f-fp", "0.8", "input");
+    $(".vi-trabajando .vi-nueva").click();
     await espera(30);
     ok($(".vi-trabajando").hidden && $("#f-fp").value === "0.9" && $$(".vi-escenario").length === 1 && $("#resultado-wrap").innerHTML === "", "«Nuevo» limpia el formulario, quita «Trabajando en» y el resultado");
     ok(G.listarLocales().length === 2, "…sin tocar las guardadas");
@@ -844,7 +867,7 @@ await seccion("registro: menú, permisos, ruta, ayuda y service worker", async (
   const css = await (await fetch("../css/app.css")).text();
   ok(!/#[0-9a-fA-F]{3,8}\b/.test(css.split("\n").filter((l) => l.includes(".vi-") && !l.includes("vi-doc")).join("\n")), "el CSS de la pantalla no lleva colores escritos a mano (solo el documento PDF, que siempre es claro)");
   ok(shell.includes("js/util/xlsx.js"), "el service worker precachea el generador de Excel");
-  ok(item.desc === "Evalúa alternativas con ampacidad, pérdidas, regulación, cortocircuito y costos.", "la tarjeta de Cálculos lleva la descripción corta");
+  ok(item.desc === "Evalúa escenarios de conductor con ampacidad, pérdidas, regulación, cortocircuito y costos.", "la tarjeta de Cálculos lleva su descripción");
   ok(!css.includes("vi-seccion + tr td"), "la primera fila de cada sección conserva su línea de tabla (no se le quita el borde)");
 });
 
