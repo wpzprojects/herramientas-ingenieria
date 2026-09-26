@@ -776,7 +776,7 @@ export async function render(container) {
     const resultado = hayCorriente
       ? `
           <div class="result-panel">
-            ${resumenConGraficosHtml({ cifras, graficos: [g.temperatura, g.ambiente, g.balance, g.corte], cuadricula: true })}
+            ${resumenConGraficosHtml({ cifras, graficos: [g.temperatura, g.ambiente, g.balance], cuadricula: true }) /* el corte del conductor va solo en los reportes (pedido del usuario) */}
           </div>`
       : `
           <div class="callout callout-warning">Con estos datos el balance térmico no admite corriente: la ganancia solar supera lo que el conductor disipa, o la temperatura máxima del conductor es menor que la ambiente.</div>`;
