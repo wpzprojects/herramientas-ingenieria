@@ -419,8 +419,27 @@ export async function render(container) {
     });
     poblarMaterial();
 
+    /** Conductor por defecto (red aérea, material, calibre y referencia); si alguno no existe en el catálogo, no cambia nada. */
+    function conductorPorDefecto(material, calibre, referencia) {
+      const hay = (sel, v) => [...sel.options].some((o) => o.value === v);
+      if (!hay(selRed, "Aerea")) return;
+      selRed.value = "Aerea";
+      poblarMaterial();
+      if (!hay(selMaterial, material)) return;
+      selMaterial.value = material;
+      poblarCalibre();
+      if (!hay(selCalibre, calibre)) return;
+      selCalibre.value = calibre;
+      poblarReferencia();
+      if (hay(selReferencia, referencia)) selReferencia.value = referencia;
+      else selReferencia.value = [...selReferencia.options].find((o) => o.value)?.value ?? "";
+      fila = resolverFila();
+      syncResistencia();
+    }
+
     return {
       card,
+      conductorPorDefecto,
       titulo: c(".tramo-titulo"),
       quitar: c(".btn-tramo-quitar"),
       /** Lo que el usuario dejo elegido en esta tarjeta. `ampacidadA` solo existe en aereos (corriente a 75 °C del catalogo). */
@@ -511,6 +530,10 @@ export async function render(container) {
     return o;
   }
   for (let i = 0; i < MIN_OPCIONES; i++) agregarOpcion();
+  // Conductores por defecto (pedido del usuario, 2026-09-26): opción 1 AAAC 246.9 Alliance y opción 2 AAAC 312.8 Butte;
+  // los precios siguen vacíos (los escribe el usuario). Lo guardado en la sesión se restaura después y gana.
+  opciones[0]?.conductorPorDefecto("AAAC", "246.9", "Alliance (7)");
+  opciones[1]?.conductorPorDefecto("AAAC", "312.8", "Butte (19)");
 
   // ---------- restaurar lo que habia si se volvio de otra seccion (no sobrevive a un recargue) ----------
   const guardado = leerEstado(RUTA);

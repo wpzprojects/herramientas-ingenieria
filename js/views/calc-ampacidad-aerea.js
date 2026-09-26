@@ -7,7 +7,7 @@ import { fmt, loadData, distinct, escapeHtml } from "../util/format.js";
 import { icon } from "../icons.js";
 import { calcularAmpacidadAerea } from "../calc/ampacidad-aerea.js";
 import { calcularRadiacionSolar, diaDelAnio, peorDiaDelAnio, fechaDeDia } from "../calc/posicion-solar.js";
-import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas, resumenConGraficosHtml } from "../util/resultados-ui.js";
+import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 import { balanceTermicoSvg, curvasSvg, corteConductorSvg, numEje } from "../util/graficos.js";
 import { activarReportes, numTex } from "../util/reportes.js";
 import { activarInfos } from "../util/info-campo.js";
@@ -776,7 +776,8 @@ export async function render(container) {
     const resultado = hayCorriente
       ? `
           <div class="result-panel">
-            ${resumenConGraficosHtml({ cifras, graficos: [g.temperatura, g.ambiente, g.balance], cuadricula: true }) /* el corte del conductor va solo en los reportes (pedido del usuario) */}
+            ${cifras}
+            <div class="graf-tres"><div class="graf-item">${g.temperatura.svg}</div><div class="graf-item">${g.ambiente.svg}</div><div class="graf-item">${g.balance.svg}</div></div>
           </div>`
       : `
           <div class="callout callout-warning">Con estos datos el balance térmico no admite corriente: la ganancia solar supera lo que el conductor disipa, o la temperatura máxima del conductor es menor que la ambiente.</div>`;

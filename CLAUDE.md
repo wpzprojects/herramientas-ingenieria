@@ -500,6 +500,10 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   calidad (~230 ppp); PDF vectorial. Memoria LaTeX: 14 mm entre secciones y 7 mm entre pasos (3.44.1).
   3.44.3: Ampacidad aérea muestra en el resultado solo 3 gráficos (temperatura vs corriente, ampacidad vs Ta y balance);
   el corte del conductor (`corteConductorSvg`) queda SOLO en los reportes PDF/Word (pedido del usuario).
+  3.44.4: la cuadrícula 2 × 2 con un hueco no le gustó: la cifra va ARRIBA (fila propia) y los 3 gráficos en UNA fila
+  (`.graf-tres`, 3 columnas iguales con 28 px entre ellas; una columna en ≤900px). Conductor económico: opción 1 = AAAC
+  246.9 Alliance (7) y opción 2 = AAAC 312.8 Butte (19) por defecto (`conductorPorDefecto`; precios vacíos; lo guardado en
+  la sesión gana). Celular: `.tabla-resultado th .badge` (p. ej. «Menor costo») a 0.6rem.
 - **Valores por defecto (2026-09-26, pedido del usuario: calcular de una)**: `porDefecto(sel, valor)` en cada vista
   (dispara «change» para la cascada): AAAC 246.9 + primera referencia en Pérdidas y Regulación (cada tramo aéreo nuevo),
   Cortocircuito y Ampacidad aérea; Ocupación: PVC Tipo TDP de 4". Lo guardado en la sesión sigue ganando.
