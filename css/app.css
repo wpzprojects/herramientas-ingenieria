@@ -759,6 +759,7 @@ td.wrap, th.wrap { white-space: normal; }
 /* Biblioteca técnica: el texto va en un recuadro como el de las imágenes (se lee como parte del documento), arriba de ellas */
 .bib-toolbar .bib-campo-fuente { flex: 1 1 200px; max-width: 320px; }
 .bib-toolbar .bib-campo-contenido { flex: 3 1 320px; }
+@media (max-width: 600px) { .bib-toolbar .bib-campo-fuente, .bib-toolbar .bib-campo-contenido { flex-basis: 100%; max-width: none; } } /* celular vertical: Fuente y Contenido a todo el ancho, como la fila de botones */
 .bib-texto { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-elevated); padding: var(--space-4); font-size: 0.92rem; line-height: 1.6; }
 .bib-texto > :first-child { margin-top: 0; }
 .bib-texto > :last-child { margin-bottom: 0; }

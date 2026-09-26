@@ -67,7 +67,7 @@ export function pintarTotal(contenedor, mensajes) {
     contenedor.innerHTML = "";
     return;
   }
-  const info = `${detalle(u)}. Sirve para comparar cuánto consume una consulta frente a otra; el saldo de tu plan solo se ve en la consola del proveedor.`;
+  const info = `${detalle(u)}.`;
   contenedor.innerHTML = "";
   contenedor.append(el("label", { class: "ia-uso-total", "data-info": info }, `Total: ${textoTokens(totalDe(u))}`));
   activarInfos(contenedor);
