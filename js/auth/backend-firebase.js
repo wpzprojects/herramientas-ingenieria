@@ -219,6 +219,35 @@ export function crearBackendFirebase(firebaseConfig) {
       }
     },
 
+    // Valoraciones integrales guardadas: usuarios/{correo}/valoraciones/{id}; solo las ve y cambia su dueño (reglas).
+    async listarValoraciones() {
+      try {
+        const { fs, db } = await cargar();
+        const q = await fs.getDocs(fs.collection(db, "usuarios", await correoActual(), "valoraciones"));
+        return q.docs.map((d) => ({ id: d.id, ...d.data() }));
+      } catch (err) {
+        throw err instanceof ErrorAcceso ? err : traducir(err);
+      }
+    },
+
+    async guardarValoracion({ id, nombre, resumen = "", datos, creado, actualizado }) {
+      try {
+        const { fs, db } = await cargar();
+        await fs.setDoc(fs.doc(db, "usuarios", await correoActual(), "valoraciones", id), { nombre, resumen, datos, creado, actualizado });
+      } catch (err) {
+        throw err instanceof ErrorAcceso ? err : traducir(err);
+      }
+    },
+
+    async eliminarValoracion(id) {
+      try {
+        const { fs, db } = await cargar();
+        await fs.deleteDoc(fs.doc(db, "usuarios", await correoActual(), "valoraciones", id));
+      } catch (err) {
+        throw err instanceof ErrorAcceso ? err : traducir(err);
+      }
+    },
+
     async leerVersionHistorial(nombre, version) {
       try {
         const { fs, db } = await cargar();

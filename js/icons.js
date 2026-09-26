@@ -114,6 +114,9 @@ const shapes = {
   // Tabler "clipboard-check" (SVG oficial): icono de Valoración integral. Trazo base de la app (1.6), como coin.
   clipboardCheck:
     '<g><path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2"/><path d="M9 5a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2"/><path d="M9 14l2 2l4 -4"/></g>',
+  // Tabler "device-floppy" (SVG oficial): guardar una valoración integral.
+  deviceFloppy:
+    '<g><path d="M6 4h10l4 4v10a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2"/><path d="M10 14a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M14 4l0 4l-6 0l0 -4"/></g>',
   coin:
     '<g><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M14.8 9a2 2 0 0 0 -1.8 -1h-2a2 2 0 1 0 0 4h2a2 2 0 1 1 0 4h-2a2 2 0 0 1 -1.8 -1"/><path d="M12 7v10"/></g>',
   // Tabler "cylinder" (SVG oficial): icono de la tarjeta Tuberia (Ocupacion de ductos).

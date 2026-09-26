@@ -999,6 +999,28 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .vi-costo-tramo + .vi-costo-tramo { margin-top: var(--space-3); }
 .vi-costo-titulo { margin-bottom: 0; }
 .vi-costo-detalle { font-size: 0.82rem; color: var(--text-muted); margin: 2px 0 var(--space-2); }
+/* Valoraciones guardadas: botón junto al título, panel de historial y caja para guardar */
+.vi-titulo { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; }
+.vi-titulo .page-title { margin-bottom: 0; }
+.vi-titulo { margin-bottom: var(--space-5); }
+.vi-btn-historial { color: var(--text-muted); font-weight: 500; }
+.vi-btn-historial[aria-expanded="true"] { color: var(--accent); }
+.vi-trabajando { margin: calc(-1 * var(--space-3)) 0 var(--space-4); font-size: 0.88rem; color: var(--text-muted); }
+.vi-historial { margin-bottom: var(--space-4); }
+.vi-historial .form-section-title { justify-content: flex-start; }
+.vi-historial-cerrar { margin-left: auto; }
+.vi-historial-estado { margin: var(--space-3) 0 var(--space-2); }
+.vi-historial-lista { list-style: none; margin: 0; padding: 0; }
+.vi-historial-fila { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) 0; border-top: 1px solid var(--border); }
+.vi-historial-fila.actual strong { color: var(--accent); }
+.vi-historial-texto { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.vi-historial-botones { display: flex; gap: var(--space-2); flex: 0 0 auto; }
+.vi-historial-vacio { padding: var(--space-3) 0; border-top: 1px solid var(--border); }
+.vi-guardar { margin-top: var(--space-3); }
+.vi-guardar-acciones { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.vi-guardar-msg { margin: var(--space-2) 0 0; color: var(--text-muted); }
+.vi-guardar-msg.ok { color: var(--success); }
+.vi-guardar-msg.error { color: var(--danger); }
 /* «Agregar alternativa»: debajo de la última alternativa, a la izquierda */
 .vi-fila-agregar { display: flex; justify-content: flex-start; margin-top: var(--space-4); }
 .vi-agregar-tramo { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; font-size: 0.88rem; text-decoration: none; font-weight: 600; }

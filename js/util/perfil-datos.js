@@ -91,6 +91,20 @@ export const CATEGORIAS = [
     },
   },
   {
+    id: "valoraciones",
+    nombre: "Valoraciones integrales guardadas en este dispositivo",
+    respaldo: true,
+    claves: ["valoraciones.guardadas"],
+    detalle: async () => {
+      try {
+        const n = (JSON.parse(leer("valoraciones.guardadas") || "null")?.items || []).length;
+        return n ? plural(n, "valoración", "valoraciones") : "Ninguna";
+      } catch {
+        return "Ninguna";
+      }
+    },
+  },
+  {
     id: "calculadoras",
     nombre: "Valores por defecto de las calculadoras",
     respaldo: true,

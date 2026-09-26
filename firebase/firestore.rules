@@ -11,6 +11,8 @@ rules_version = '2';
 //   catalogos/_indice                 { catalogos: { nombre: { version, huellaFabrica, actualizadoPor, fecha, cambio,
 //                                                               historial: [{ version, fecha, actualizadoPor, cambio }] } }, fecha }
 //   catalogos_historial/{nombre}__{version} { nombre, datos, version }                 (ultimas 10 versiones, solo admin)
+//   usuarios/{correo}/valoraciones/{id} { nombre, resumen, datos, creado, actualizado } (valoraciones integrales guardadas;
+//                                                                                      solo las ve y cambia su dueño)
 //
 // Catalogos (2026-09-24): los LEE cualquiera, sin sesion (los visitantes usan calculadoras que dependen de ellos; la app
 // los lee con la API REST, sin cargar el SDK) y solo los ESCRIBE un administrador. Ver js/util/catalogos-remotos.js.
@@ -62,6 +64,24 @@ service cloud.firestore {
       // Clave personal de Gemini: solo la lee/escribe su dueno (ni siquiera los admins).
       match /secretos/{doc} {
         allow read, write: if esUsuario() && id == correo();
+      }
+
+      // Valoraciones integrales guardadas (2026-09-25): solo su dueno las lee, crea, cambia y borra, y solo con la forma
+      // esperada (el formulario va como texto JSON, con tamaño limitado).
+      match /valoraciones/{vid} {
+        allow read, delete: if esUsuario() && id == correo();
+        allow create, update: if esUsuario() && id == correo()
+          && vid.matches('^[A-Za-z0-9_-]{8,64}$')
+          && request.resource.data.keys().hasOnly(['nombre', 'resumen', 'datos', 'creado', 'actualizado'])
+          && request.resource.data.nombre is string
+          && request.resource.data.nombre.size() > 0
+          && request.resource.data.nombre.size() <= 120
+          && request.resource.data.resumen is string
+          && request.resource.data.resumen.size() <= 200
+          && request.resource.data.datos is string
+          && request.resource.data.datos.size() < 500000
+          && request.resource.data.creado is number
+          && request.resource.data.actualizado is number;
       }
     }
 

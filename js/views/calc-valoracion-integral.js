@@ -30,6 +30,7 @@ import { activarPlegables, plegarTarjeta } from "../util/tarjetas-plegables.js";
 import { guardarEstado, leerEstado } from "../util/persistencia-calculo.js";
 import { aplicarDefectos, leerDefectos } from "../util/valores-defecto.js";
 import { crearXlsx, columna, MIME_XLSX } from "../util/xlsx.js";
+import { guardar as guardarValoracion, eliminar as eliminarValoracion, sincronizar, listarLocales, leerDatos, MAX_NOMBRE } from "../util/valoraciones-guardadas.js";
 
 const RUTA = "/calculos/valoracion-integral";
 
@@ -139,7 +140,18 @@ export async function render(container) {
 
   container.innerHTML = `
     <div class="breadcrumb"><a href="#/">Inicio</a> <span>/</span> <a href="#/calculos">Cálculos</a> <span>/</span> <span>Valoración integral</span></div>
-    <h1 class="page-title">Valoración integral</h1>
+    <div class="vi-titulo">
+      <h1 class="page-title">Valoración integral</h1>
+      <button type="button" class="btn btn-ghost btn-sm vi-btn-historial" aria-expanded="false" aria-controls="vi-historial">${icon("history")} Guardadas</button>
+    </div>
+    <p class="vi-trabajando" hidden></p>
+    <div class="card tarjeta-borde vi-historial" id="vi-historial" hidden>
+      <div class="form-section-title">${icon("history")} Valoraciones guardadas
+        <button type="button" class="btn btn-ghost btn-sm vi-historial-cerrar">${icon("close")} Cerrar</button>
+      </div>
+      <p class="vi-historial-estado text-muted text-sm"></p>
+      <ul class="vi-historial-lista"></ul>
+    </div>
 
     <form id="form-calc" novalidate>
       <div class="card tarjeta-borde form-section">
@@ -261,7 +273,16 @@ export async function render(container) {
 
       <div class="btn-row">
         <button type="submit" class="btn btn-primary">Calcular</button>
+        <button type="button" class="btn vi-btn-guardar">${icon("deviceFloppy")} Guardar</button>
       </div>
+      <div class="card tarjeta-borde vi-guardar" hidden>
+        <div class="field">
+          <label for="f-nombre-guardado">Nombre de la valoración</label>
+          <input type="text" id="f-nombre-guardado" maxlength="${MAX_NOMBRE}" placeholder="p. ej. Solar Mesa Mamonal — alternativas de conexión">
+        </div>
+        <div class="vi-guardar-acciones"></div>
+      </div>
+      <p class="vi-guardar-msg text-sm" hidden></p>
     </form>
 
     <div id="resultado-wrap"></div>
@@ -834,28 +855,224 @@ export async function render(container) {
 
   agregarEscenario();
 
-  // ---------- restaurar lo que había si se volvió de otra sección (no sobrevive a un recargue) ----------
-  const guardado = leerEstado(RUTA);
-  if (guardado?.escenarios?.[0]?.tramos) {
-    for (const k of COMUNES) if (k in guardado) campo(k).value = guardado[k];
-    aplicarModo();
-    chkTensionAlt.checked = !!guardado.tensionPorAlternativa;
-    q("details.vi-avanzado").open = !!guardado.avanzado;
-    for (let i = escenarios.length; i < guardado.escenarios.length; i++) agregarEscenario();
-    escenarios.forEach((e, i) => e.aplicarBruto(guardado.escenarios[i]));
-    aplicarTensionAlt();
-    if (guardado.economiaAbierta) plegarTarjeta(tarjetaEconomia, false);
-  }
-
-  function antesDeSalir() {
-    guardarEstado(RUTA, {
+  // ---------- foto del formulario: la usan la persistencia al navegar y las valoraciones guardadas ----------
+  function capturar() {
+    return {
       ...Object.fromEntries(COMUNES.map((k) => [k, campo(k).value])),
       tensionPorAlternativa: porAlternativa(),
       avanzado: q("details.vi-avanzado").open,
       economiaAbierta: !tarjetaEconomia.classList.contains("plegada"),
       escenarios: escenarios.map((e) => e.bruto()),
-    });
+    };
   }
+  const fotoValida = (g) => Array.isArray(g?.escenarios) && g.escenarios.length > 0 && g.escenarios.every((e) => Array.isArray(e?.tramos) && e.tramos.length > 0);
+
+  /** Deja el formulario como en la foto `g` (quita primero las alternativas que haya). */
+  function restaurar(g) {
+    for (const e of escenarios.splice(0)) {
+      e.card.remove();
+      e.tramos.forEach((t) => t.filaCosto.remove());
+    }
+    for (const k of COMUNES) if (k in g && campo(k)) campo(k).value = g[k];
+    aplicarModo();
+    chkTensionAlt.checked = !!g.tensionPorAlternativa;
+    q("details.vi-avanzado").open = !!g.avanzado;
+    for (let i = 0; i < Math.min(g.escenarios.length, MAX_ESCENARIOS); i++) agregarEscenario();
+    escenarios.forEach((e, i) => e.aplicarBruto(g.escenarios[i]));
+    aplicarTensionAlt();
+    actualizarEscenarios();
+    plegarTarjeta(tarjetaEconomia, !g.economiaAbierta);
+  }
+
+  // ---------- valoración guardada con la que se está trabajando ----------
+  let guardada = null; // { id, nombre }
+  const lineaTrabajando = q(".vi-trabajando");
+  function mostrarTrabajando() {
+    lineaTrabajando.hidden = !guardada;
+    lineaTrabajando.innerHTML = guardada ? `Trabajando en: <strong>${escapeHtml(guardada.nombre)}</strong>` : "";
+  }
+
+  // ---------- restaurar lo que había si se volvió de otra sección (no sobrevive a un recargue) ----------
+  const guardado = leerEstado(RUTA);
+  if (fotoValida(guardado)) {
+    try {
+      restaurar(guardado);
+      guardada = guardado.guardada ?? null;
+      mostrarTrabajando();
+    } catch {
+      /* una foto dañada no puede dejar la pantalla sin alternativas */
+      if (!escenarios.length) agregarEscenario();
+    }
+  }
+
+  function antesDeSalir() {
+    guardarEstado(RUTA, { ...capturar(), guardada });
+  }
+
+  // ---------- guardar ----------
+  const cajaGuardar = q(".vi-guardar");
+  const campoNombre = q("#f-nombre-guardado");
+  const accionesGuardar = q(".vi-guardar-acciones");
+  const mensajeGuardar = q(".vi-guardar-msg");
+
+  function avisoGuardado(texto, tipo = "") {
+    mensajeGuardar.hidden = !texto;
+    mensajeGuardar.textContent = texto || "";
+    mensajeGuardar.className = `vi-guardar-msg text-sm${tipo ? ` ${tipo}` : ""}`;
+  }
+
+  /** Resumen corto para la lista: «2 alternativas · 30 MW · 34.5 kV». */
+  function resumenActual() {
+    const nAlt = escenarios.length;
+    const dato = selModo.value === "potencia" ? `${fPotencia.value} MW` : `${fAparente.value} MVA`;
+    const kv = porAlternativa() ? [...new Set(escenarios.map((e) => e.tensionKv()))].map((v) => `${v} kV`).join(" / ") : `${fTension.value} kV`;
+    return `${nAlt} ${nAlt === 1 ? "alternativa" : "alternativas"} · ${dato} · ${kv}`;
+  }
+
+  function abrirCajaGuardar() {
+    cajaGuardar.hidden = false;
+    avisoGuardado("");
+    campoNombre.value = guardada?.nombre ?? "";
+    accionesGuardar.innerHTML = guardada
+      ? `<button type="button" class="btn btn-primary" data-guardar="actualizar">Actualizar «${escapeHtml(guardada.nombre)}»</button>
+         <button type="button" class="btn" data-guardar="nueva">Guardar como nueva</button>
+         <button type="button" class="btn btn-ghost" data-guardar="cancelar">Cancelar</button>`
+      : `<button type="button" class="btn btn-primary" data-guardar="nueva">Guardar</button>
+         <button type="button" class="btn btn-ghost" data-guardar="cancelar">Cancelar</button>`;
+    campoNombre.focus();
+  }
+
+  q(".vi-btn-guardar").addEventListener("click", () => (cajaGuardar.hidden ? abrirCajaGuardar() : (cajaGuardar.hidden = true)));
+  campoNombre.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault(); // no enviar el formulario (Calcular)
+      accionesGuardar.querySelector("[data-guardar]")?.click();
+    }
+  });
+  accionesGuardar.addEventListener("click", async (e) => {
+    const boton = e.target.closest("[data-guardar]");
+    if (!boton) return;
+    const accion = boton.dataset.guardar;
+    if (accion === "cancelar") {
+      cajaGuardar.hidden = true;
+      return;
+    }
+    const nombre = campoNombre.value.trim();
+    if (!nombre) {
+      avisoGuardado("Escribe un nombre para la valoración.", "error");
+      campoNombre.focus();
+      return;
+    }
+    accionesGuardar.querySelectorAll("button").forEach((b) => (b.disabled = true));
+    let r;
+    try {
+      r = await guardarValoracion({ id: accion === "actualizar" ? guardada?.id : null, nombre, datos: JSON.stringify(capturar()), resumen: resumenActual() });
+    } catch {
+      r = { ok: false, mensaje: "No se pudo guardar." };
+    }
+    accionesGuardar.querySelectorAll("button").forEach((b) => (b.disabled = false));
+    if (!r.ok) {
+      avisoGuardado(r.mensaje, "error");
+      return;
+    }
+    guardada = { id: r.registro.id, nombre: r.registro.nombre };
+    mostrarTrabajando();
+    cajaGuardar.hidden = true;
+    avisoGuardado(r.mensaje, r.remoto ? "ok" : "");
+    if (!panelHistorial.hidden) pintarHistorial(listarLocales(), null);
+  });
+
+  // ---------- historial de valoraciones guardadas ----------
+  const panelHistorial = q(".vi-historial");
+  const botonHistorial = q(".vi-btn-historial");
+  const listaHistorial = q(".vi-historial-lista");
+  const estadoHistorial = q(".vi-historial-estado");
+  const fecha = (ms) => {
+    try {
+      return new Date(ms).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" });
+    } catch {
+      return "";
+    }
+  };
+  let registrosHistorial = [];
+
+  function pintarHistorial(items, mensaje) {
+    registrosHistorial = items;
+    if (mensaje !== null) estadoHistorial.textContent = mensaje;
+    listaHistorial.innerHTML = items.length
+      ? items
+          .map(
+            (r) => `
+        <li class="vi-historial-fila${guardada?.id === r.id ? " actual" : ""}">
+          <div class="vi-historial-texto">
+            <strong>${escapeHtml(r.nombre)}</strong>${guardada?.id === r.id ? ' <span class="badge">Abierta</span>' : ""}
+            <span class="text-muted text-sm">${escapeHtml([fecha(r.actualizado), r.resumen].filter(Boolean).join(" · "))}${r.pendiente ? " · solo en este dispositivo" : ""}</span>
+          </div>
+          <div class="vi-historial-botones">
+            <button type="button" class="btn btn-sm" data-abrir="${escapeHtml(r.id)}">Abrir</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-eliminar="${escapeHtml(r.id)}" aria-label="Eliminar ${escapeHtml(r.nombre)}">${icon("trash")}</button>
+          </div>
+        </li>`
+          )
+          .join("")
+      : `<li class="vi-historial-vacio text-muted text-sm">Aún no hay valoraciones guardadas. Usa «Guardar», junto a «Calcular».</li>`;
+  }
+
+  async function abrirHistorial() {
+    panelHistorial.hidden = false;
+    botonHistorial.setAttribute("aria-expanded", "true");
+    pintarHistorial(listarLocales(), "Sincronizando con tu cuenta…"); // lo del dispositivo se ve al instante
+    let r;
+    try {
+      r = await sincronizar();
+    } catch {
+      r = { items: listarLocales(), mensaje: "No se pudo sincronizar con tu cuenta; se muestran las guardadas en este dispositivo." };
+    }
+    if (!panelHistorial.hidden && panelHistorial.isConnected) pintarHistorial(r.items, r.mensaje);
+  }
+  function cerrarHistorial() {
+    panelHistorial.hidden = true;
+    botonHistorial.setAttribute("aria-expanded", "false");
+  }
+  botonHistorial.addEventListener("click", () => (panelHistorial.hidden ? abrirHistorial() : cerrarHistorial()));
+  q(".vi-historial-cerrar").addEventListener("click", cerrarHistorial);
+
+  listaHistorial.addEventListener("click", async (e) => {
+    const abrir = e.target.closest("[data-abrir]");
+    const quitar = e.target.closest("[data-eliminar]");
+    if (abrir) {
+      const r = registrosHistorial.find((x) => x.id === abrir.dataset.abrir);
+      const foto = r ? leerDatos(r) : null;
+      if (!fotoValida(foto)) {
+        estadoHistorial.textContent = "No se pudo abrir: los datos de esa valoración están dañados.";
+        return;
+      }
+      try {
+        restaurar(foto);
+      } catch {
+        estadoHistorial.textContent = "No se pudo abrir esa valoración.";
+        if (!escenarios.length) agregarEscenario();
+        return;
+      }
+      guardada = { id: r.id, nombre: r.nombre };
+      mostrarTrabajando();
+      cerrarHistorial();
+      cajaGuardar.hidden = true;
+      avisoGuardado("");
+      // todas las tarjetas plegadas y el resultado a la vista
+      form.querySelectorAll(".card.form-section").forEach((c) => plegarTarjeta(c, true));
+      form.requestSubmit();
+    } else if (quitar) {
+      const r = registrosHistorial.find((x) => x.id === quitar.dataset.eliminar);
+      if (!r || !window.confirm(`¿Eliminar la valoración «${r.nombre}»? No se puede deshacer.`)) return;
+      await eliminarValoracion(r.id);
+      if (guardada?.id === r.id) {
+        guardada = null;
+        mostrarTrabajando();
+      }
+      pintarHistorial(listarLocales(), null);
+    }
+  });
 
   // ---------- cálculo ----------
   form.addEventListener("submit", (e) => {

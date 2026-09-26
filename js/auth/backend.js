@@ -20,6 +20,11 @@
 //   leerVersionHistorial(nombre, version) -> datos (texto) | null                         (solo admin)
 //                                         `datos` = el catalogo en texto JSON. Leer los catalogos NO pasa por aqui: es
 //                                         publico y se hace con la API REST (js/util/catalogos-remotos.js)
+//   listarValoraciones()               -> [{ id, nombre, resumen, datos, creado, actualizado }]  (solo las del propio usuario)
+//   guardarValoracion({ id, nombre, resumen, datos, creado, actualizado })  -> crea o reemplaza (solo el propio usuario)
+//   eliminarValoracion(id)             ->                                                 (solo el propio usuario)
+//                                         Valoraciones integrales guardadas (js/util/valoraciones-guardadas.js, que
+//                                         nunca deja que un error de aqui detenga la pantalla)
 //
 // La SEGURIDAD real la aplica el servidor (reglas de Firestore, ver firebase/firestore.rules):
 // este codigo del navegador es publico y no se puede confiar en el. Aqui solo se decide que

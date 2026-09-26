@@ -22,6 +22,7 @@ export function crearBackendMock({ usuarios = [], sesion = null, cuentaAlIniciar
   let compartida = claveCompartida;
   let actual = sesion;
   const servidor = { indice: {}, documentos: {}, historial: {} }; // catalogos publicados
+  const valoraciones = new Map(); // correo -> Map(id -> valoracion)
   const oyentes = new Set();
   const espera = () => new Promise((r) => setTimeout(r, 0));
 
@@ -147,6 +148,32 @@ export function crearBackendMock({ usuarios = [], sesion = null, cuentaAlIniciar
       return servidor.historial[`${nombre}__${version}`]?.datos ?? null;
     },
     servidor,
+
+    // Valoraciones guardadas: replica las reglas (solo el dueño; forma, nombre y tamaño validados).
+    async listarValoraciones() {
+      await espera();
+      requerirUsuario();
+      return [...(valoraciones.get(correo())?.values() ?? [])].map((v) => ({ ...v }));
+    },
+    async guardarValoracion({ id, nombre, resumen = "", datos, creado, actualizado }) {
+      await espera();
+      requerirUsuario();
+      const valida =
+        /^[A-Za-z0-9_-]{8,64}$/.test(id) &&
+        typeof nombre === "string" && nombre.length > 0 && nombre.length <= 120 &&
+        typeof resumen === "string" && resumen.length <= 200 &&
+        typeof datos === "string" && datos.length < 500000 &&
+        Number.isFinite(creado) && Number.isFinite(actualizado);
+      if (!valida) throw new ErrorAcceso("Tu cuenta no tiene permiso para esta operación.", "permiso");
+      if (!valoraciones.has(correo())) valoraciones.set(correo(), new Map());
+      valoraciones.get(correo()).set(id, { id, nombre, resumen, datos, creado, actualizado });
+    },
+    async eliminarValoracion(id) {
+      await espera();
+      requerirUsuario();
+      valoraciones.get(correo())?.delete(id);
+    },
+    valoraciones,
 
     // ---- solo para pruebas: cambiar de cuenta sin pasar por el login ----
     _entrarComo(usuario) {

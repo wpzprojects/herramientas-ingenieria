@@ -270,7 +270,7 @@ await seccion("vista: tensión general o por alternativa", async () => {
 
 await seccion("vista: tarjetas y alternativas", async () => {
   ok($(".page-title").textContent === "Valoración integral", "título");
-  const titulos = $$(".form-section-title").map((t) => t.textContent.replace(/\s+/g, " ").trim());
+  const titulos = $$("#form-calc .form-section-title").map((t) => t.textContent.replace(/\s+/g, " ").trim());
   ok(titulos[0].startsWith("Datos de la conexión") && titulos[1].startsWith("Alternativa 1") && titulos.at(-1).startsWith("Evaluación económica (opcional)"), `tarjetas: ${titulos.join(" | ")}`);
   ok($(".vi-economia").classList.contains("plegada"), "«Evaluación económica (opcional)» va al final y nace plegada");
   ok($(".vi-economia").nextElementSibling.classList.contains("btn-row") && !$(".vi-economia").nextElementSibling.querySelector(".btn-agregar-tramo"), "…justo antes del botón Calcular");
@@ -597,6 +597,161 @@ await seccion("vista: un dato obligatorio faltante dentro de «Parámetros avanz
   await espera(20);
   ok(det.open, "el desplegable se abre para mostrar el campo vacío");
   $("#f-ta").value = "25";
+});
+
+await seccion("valoraciones guardadas: dispositivo y cuenta (motor)", async () => {
+  const G = await import("../js/util/valoraciones-guardadas.js");
+  const { crearBackendMock } = await import("../js/auth/backend-mock.js");
+  const respaldo = localStorage.getItem(G.CLAVE_LOCAL);
+  localStorage.removeItem(G.CLAVE_LOCAL);
+  try {
+    // sin servicio de cuenta: todo queda en el dispositivo
+    G.usarBackendValoraciones(null);
+    const a = await G.guardar({ nombre: "  Solar Mesa  ", datos: { x: 1 }, resumen: "1 alternativa" });
+    ok(a.ok && !a.remoto && /este dispositivo/.test(a.mensaje), `sin servicio: se guarda en el dispositivo («${a.mensaje}»)`);
+    ok(a.registro.nombre === "Solar Mesa" && a.registro.pendiente && /^[A-Za-z0-9_-]{8,64}$/.test(a.registro.id), "nombre recortado, id válido y marcada como pendiente de subir");
+    ok(G.listarLocales().length === 1, "aparece en la lista del dispositivo");
+    const s0 = await G.sincronizar();
+    ok(!s0.remoto && s0.items.length === 1 && s0.mensaje, "sincronizar sin servicio no falla: devuelve lo del dispositivo y un aviso");
+    ok(!(await G.guardar({ nombre: "   ", datos: {} })).ok, "sin nombre no se guarda");
+    ok(!(await G.guardar({ nombre: "grande", datos: "x".repeat(G.MAX_DATOS + 1) })).ok, "una valoración demasiado grande no se guarda");
+
+    // con la cuenta (backend simulado que replica las reglas)
+    const mock = crearBackendMock({ usuarios: [{ email: "ana@celsia.com", rol: "usuario" }], sesion: { email: "ana@celsia.com" } });
+    G.usarBackendValoraciones(mock);
+    const s1 = await G.sincronizar();
+    ok(s1.remoto && mock.valoraciones.get("ana@celsia.com")?.has(a.registro.id), "al sincronizar, lo guardado sin conexión se sube a la cuenta");
+    ok(!G.listarLocales()[0].pendiente && G.listarLocales()[0].cuenta === "ana@celsia.com", "…y deja de estar pendiente, asociada a la cuenta");
+    const b = await G.guardar({ nombre: "Alternativas 13.2", datos: { y: 2 } });
+    ok(b.ok && b.remoto && mock.valoraciones.get("ana@celsia.com").size === 2, `guardar con cuenta: en el dispositivo y en la cuenta («${b.mensaje}»)`);
+    const b2 = await G.guardar({ id: b.registro.id, nombre: "Alternativas 13.2 (rev)", datos: { y: 3 } });
+    ok(b2.ok && G.listarLocales().length === 2 && mock.valoraciones.get("ana@celsia.com").get(b.registro.id).nombre === "Alternativas 13.2 (rev)", "actualizar reemplaza la misma (no crea otra), también en la cuenta");
+    ok(G.leerDatos(G.listarLocales().find((r) => r.id === b.registro.id)).y === 3, "los datos quedan actualizados");
+
+    // guardada desde otro equipo: aparece al sincronizar
+    mock.valoraciones.get("ana@celsia.com").set("otro-equipo-1234", { id: "otro-equipo-1234", nombre: "Desde el celular", resumen: "", datos: "{}", creado: 1, actualizado: Date.now() + 1000 });
+    const s2 = await G.sincronizar();
+    ok(s2.items.some((r) => r.nombre === "Desde el celular") && G.listarLocales().length === 3, "lo guardado desde otro equipo aparece al sincronizar");
+    ok(s2.items[0].nombre === "Desde el celular", "la lista va de la más reciente a la más antigua");
+
+    // sin conexión: queda pendiente; el borrado también; al volver la conexión se completan
+    mock._conexion(false);
+    const c = await G.guardar({ nombre: "Sin señal", datos: {} });
+    ok(c.ok && !c.remoto && c.registro.pendiente, `sin conexión: se guarda en el dispositivo como pendiente («${c.mensaje}»)`);
+    await G.eliminar(b.registro.id);
+    ok(!G.listarLocales().some((r) => r.id === b.registro.id) && mock.valoraciones.get("ana@celsia.com").has(b.registro.id), "eliminar sin conexión: sale del dispositivo y queda pendiente de borrar en la cuenta");
+    mock._conexion(true);
+    const s3 = await G.sincronizar();
+    const enCuenta = mock.valoraciones.get("ana@celsia.com");
+    ok(s3.remoto && enCuenta.has(c.registro.id) && !enCuenta.has(b.registro.id), "al volver la conexión: se sube la pendiente y se borra en la cuenta la eliminada");
+    ok(!s3.items.some((r) => r.id === b.registro.id), "…y la eliminada no reaparece");
+
+    // borrada desde otro equipo: desaparece de este
+    enCuenta.delete("otro-equipo-1234");
+    const s4 = await G.sincronizar();
+    ok(!s4.items.some((r) => r.id === "otro-equipo-1234"), "lo borrado desde otro equipo también desaparece de este");
+
+    // un servidor que falla en todo no detiene nada
+    const roto = { listarValoraciones: () => Promise.reject(new Error("x")), guardarValoracion: () => Promise.reject(new Error("x")), eliminarValoracion: () => Promise.reject(new Error("x")), observarSesion: (cb) => (queueMicrotask(() => cb({ email: "ana@celsia.com" })), () => {}) };
+    G.usarBackendValoraciones(roto);
+    const d = await G.guardar({ nombre: "Con servidor roto", datos: {} });
+    ok(d.ok && !d.remoto && /reintentará/.test(d.mensaje), "servidor con errores: igual se guarda en el dispositivo y avisa");
+    const s5 = await G.sincronizar();
+    ok(!s5.remoto && s5.items.length >= 1 && /No se pudo sincronizar/.test(s5.mensaje), "sincronizar con errores: devuelve lo del dispositivo con un aviso, sin romperse");
+    const e = await G.eliminar(d.registro.id);
+    ok(e.ok, "eliminar con el servidor roto tampoco falla");
+
+    // cuenta no autorizada (las reglas la rechazan): se queda en el dispositivo
+    G.usarBackendValoraciones(crearBackendMock({ usuarios: [], sesion: { email: "intruso@x.com" } }));
+    const f = await G.guardar({ nombre: "No autorizada", datos: {} });
+    ok(f.ok && !f.remoto, "cuenta sin permiso: queda solo en el dispositivo");
+
+    // almacenamiento dañado
+    localStorage.setItem(G.CLAVE_LOCAL, "{no es json");
+    ok(Array.isArray(G.listarLocales()) && G.listarLocales().length === 0, "almacenamiento dañado: lista vacía, sin romperse");
+    ok(G.leerDatos({ datos: "{roto" }) === null, "datos dañados de una guardada: null (la pantalla avisa)");
+  } finally {
+    G.usarBackendValoraciones(undefined);
+    if (respaldo === null) localStorage.removeItem(G.CLAVE_LOCAL);
+    else localStorage.setItem(G.CLAVE_LOCAL, respaldo);
+  }
+});
+
+await seccion("valoraciones guardadas: pantalla (guardar, historial, abrir y eliminar)", async () => {
+  const G = await import("../js/util/valoraciones-guardadas.js");
+  const respaldo = localStorage.getItem(G.CLAVE_LOCAL);
+  localStorage.removeItem(G.CLAVE_LOCAL);
+  G.usarBackendValoraciones(null); // determinista: solo el dispositivo
+  const confirmar = window.confirm;
+  window.confirm = () => true;
+  try {
+    const btnHist = $(".vi-btn-historial");
+    ok(btnHist && btnHist.closest(".vi-titulo") && btnHist.textContent.includes("Guardadas"), "botón «Guardadas» junto al título");
+    const btnGuardar = $(".vi-btn-guardar");
+    ok(btnGuardar && btnGuardar.closest(".btn-row") && btnGuardar.previousElementSibling?.type === "submit", "botón «Guardar» junto a «Calcular»");
+    btnGuardar.click();
+    const caja = $(".vi-guardar");
+    ok(!caja.hidden && $("#f-nombre-guardado").value === "", "al pulsar Guardar aparece el campo del nombre");
+    caja.querySelector('[data-guardar="nueva"]').click();
+    await espera(20);
+    ok($(".vi-guardar-msg").classList.contains("error"), "sin nombre avisa y no guarda");
+    $("#f-nombre-guardado").value = "Solar Mesa Mamonal — alternativas";
+    caja.querySelector('[data-guardar="nueva"]').click();
+    await espera(50);
+    ok(caja.hidden && /Guardada en este dispositivo/.test($(".vi-guardar-msg").textContent), "guarda y confirma dónde quedó");
+    ok(!$(".vi-trabajando").hidden && $(".vi-trabajando").textContent.includes("Solar Mesa Mamonal"), "bajo el título dice en cuál se está trabajando");
+    const fpOriginal = $("#f-fp").value;
+
+    // actualizar la misma
+    poner("#f-fp", "0.95", "input");
+    btnGuardar.click();
+    ok(caja.querySelector('[data-guardar="actualizar"]')?.textContent.includes("Solar Mesa Mamonal") && caja.querySelector('[data-guardar="nueva"]'), "con una abierta ofrece «Actualizar «nombre»» y «Guardar como nueva»");
+    caja.querySelector('[data-guardar="actualizar"]').click();
+    await espera(50);
+    ok(G.listarLocales().length === 1 && G.leerDatos(G.listarLocales()[0]).fp === "0.95", "Actualizar reemplaza la misma, con los datos nuevos");
+
+    // guardar como nueva
+    poner("#f-fp", "0.85", "input");
+    btnGuardar.click();
+    $("#f-nombre-guardado").value = "Variante FP 0.85";
+    caja.querySelector('[data-guardar="nueva"]').click();
+    await espera(50);
+    ok(G.listarLocales().length === 2 && $(".vi-trabajando").textContent.includes("Variante FP 0.85"), "«Guardar como nueva» crea otra y pasa a trabajar en ella");
+
+    // historial
+    btnHist.click();
+    await espera(50);
+    const panel = $(".vi-historial");
+    const filas = () => [...panel.querySelectorAll(".vi-historial-fila")];
+    ok(!panel.hidden && filas().length === 2, "el historial muestra las dos guardadas");
+    ok(filas()[0].textContent.includes("Variante FP 0.85") && filas()[0].classList.contains("actual"), "la más reciente primero, marcada como abierta");
+    ok(/este dispositivo/.test(panel.querySelector(".vi-historial-estado").textContent), "dice que están solo en este dispositivo (sin servicio de cuenta)");
+
+    // abrir la primera
+    const fila = filas().find((f) => f.textContent.includes("Solar Mesa Mamonal"));
+    fila.querySelector("[data-abrir]").click();
+    await espera(80);
+    ok($("#f-fp").value === "0.95" && $(".vi-trabajando").textContent.includes("Solar Mesa Mamonal"), "Abrir restaura sus datos");
+    ok(panel.hidden, "el historial se cierra al abrir una");
+    ok([...$$("#form-calc .card.form-section")].every((c) => c.classList.contains("plegada")), "todas las tarjetas quedan plegadas");
+    ok($("#resultado-wrap .vi-matriz"), "y se calcula sola: el resultado queda a la vista");
+
+    // eliminar
+    btnHist.click();
+    await espera(50);
+    filas().find((f) => f.textContent.includes("Variante FP 0.85")).querySelector("[data-eliminar]").click();
+    await espera(50);
+    ok(filas().length === 1 && G.listarLocales().length === 1, "Eliminar la quita de la lista");
+    $(".vi-historial-cerrar").click();
+    ok(panel.hidden, "«Cerrar» oculta el historial");
+    poner("#f-fp", fpOriginal, "input");
+    $$("#form-calc .card.form-section").forEach((c) => c.classList.remove("plegada"));
+  } finally {
+    window.confirm = confirmar;
+    G.usarBackendValoraciones(undefined);
+    if (respaldo === null) localStorage.removeItem(G.CLAVE_LOCAL);
+    else localStorage.setItem(G.CLAVE_LOCAL, respaldo);
+  }
 });
 
 await seccion("registro: menú, permisos, ruta, ayuda y service worker", async () => {
