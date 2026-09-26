@@ -7,7 +7,7 @@ import { fmt, loadData, distinct, escapeHtml } from "../util/format.js";
 import { icon } from "../icons.js";
 import { calcularAmpacidadAerea } from "../calc/ampacidad-aerea.js";
 import { calcularRadiacionSolar, diaDelAnio, peorDiaDelAnio, fechaDeDia } from "../calc/posicion-solar.js";
-import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas, resumenConGraficosHtml, pestanaGraficosHtml } from "../util/resultados-ui.js";
+import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas, resumenConGraficosHtml } from "../util/resultados-ui.js";
 import { balanceTermicoSvg, curvasSvg, corteConductorSvg, numEje } from "../util/graficos.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
@@ -736,6 +736,7 @@ export async function render(container) {
       ? `
           <div class="result-panel">
             ${resumenConGraficosHtml({ cifras, graficos: [g.balance, g.ambiente] })}
+            <div class="graf-par graf-fila" style="grid-template-columns: 460fr 460fr"><div class="graf-item">${g.temperatura.svg}</div><div class="graf-item">${g.corte.svg}</div></div>
           </div>`
       : `
           <div class="callout callout-warning">Con estos datos el balance térmico no admite corriente: la ganancia solar supera lo que el conductor disipa, o la temperatura máxima del conductor es menor que la ambiente.</div>`;
@@ -744,14 +745,6 @@ export async function render(container) {
       resultado,
       reporte: reporteHtml(reporteTexto(data, p, ctx, hayCorriente), ETIQUETAS_REPORTE),
       formulasPlano: FORMULAS_TEXTO,
-      graficos: g
-        ? pestanaGraficosHtml([
-            { titulo: "Balance térmico del conductor (IEEE 738)", graficos: [g.balance] },
-            { titulo: "Ampacidad frente a la temperatura ambiente", graficos: [g.ambiente] },
-            { titulo: "Temperatura del conductor frente a la corriente", graficos: [g.temperatura], nota: "Donde la curva cruza la temperatura máxima está la ampacidad." },
-            { titulo: "Corte del conductor", graficos: [g.corte] },
-          ])
-        : "",
     });
     activarPestanas(wrap, { grupos: FORMULAS_TEX, etiquetas: FORMULAS_ETIQUETAS, nota: FORMULAS_NOTA });
 

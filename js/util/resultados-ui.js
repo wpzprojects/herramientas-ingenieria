@@ -58,6 +58,7 @@ export function resumenConGraficosHtml({ cifras, nota = "", graficos }) {
 }
 
 /**
+ * (Sin uso desde 2026-09-26: el usuario quitó la pestaña «Gráficos»; todos los gráficos van en Resultado.)
  * Pestaña «Gráficos»: cada gráfico en su recuadro con título. `items` = [{ titulo, graficos: [{ svg, ancho }], nota? }]
  * (un recuadro puede llevar varios gráficos en pareja, p. ej. la curva con su barra de referencia).
  */

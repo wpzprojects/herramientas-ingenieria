@@ -9,7 +9,7 @@ import { icon } from "../icons.js";
 import { calcularAmpacidadSubterranea } from "../calc/ampacidad-subterranea.js";
 import { calcularPantalla } from "../calc/ampacidad-subterranea-pantalla.js";
 import { dimensionarGcc } from "../calc/conductor-continuidad.js";
-import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas, resumenConGraficosHtml, pestanaGraficosHtml } from "../util/resultados-ui.js";
+import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas, resumenConGraficosHtml } from "../util/resultados-ui.js";
 import { corteZanjaSvg, curvasSvg, numEje } from "../util/graficos.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
@@ -757,12 +757,6 @@ export async function render(container) {
       resultado,
       reporte: reporteHtml(reporteTexto(data, p, ctx), ETIQUETAS_REPORTE),
       formulasPlano: FORMULAS_TEXTO,
-      graficos: g
-        ? pestanaGraficosHtml([
-            { titulo: "Corte de la instalación y temperatura del terreno", graficos: [g.corte], nota: "Temperatura del terreno aproximada por el método de imágenes de Kennelly (terreno homogéneo)." },
-            { titulo: "Ampacidad frente a la resistividad del suelo", graficos: [g.suelo] },
-          ])
-        : "",
     });
     activarPestanas(wrap, { grupos: FORMULAS_TEX, etiquetas: FORMULAS_ETIQUETAS, nota: FORMULAS_NOTA });
 

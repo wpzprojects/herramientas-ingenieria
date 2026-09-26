@@ -160,7 +160,7 @@ function imagen(n, ctx) {
   ctx.imagenes.push({ id, nombre: `media/imagen${k}.png`, bytes });
   const anchoPx = Number(n.dataset.ancho) || 600, altoPx = Number(n.dataset.alto) || 400;
   const maxEmu = (ctx.ancho || ANCHO_TEXTO) * 635 * 0.85; // twips → EMU, con un margen
-  const escala = Math.min(1, maxEmu / (anchoPx * 9525));
+  const escala = maxEmu / (anchoPx * 9525); // siempre al ancho útil de la página
   const cx = Math.round(anchoPx * 9525 * escala), cy = Math.round(altoPx * 9525 * escala);
   return (
     `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="120" w:after="120"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0">` +
@@ -375,6 +375,8 @@ export function crearDocxDocumento(doc, { titulo, apaisado = false }) {
       cuerpo += parrafo(enLinea(n.childNodes), { caja: true, despues: 200 });
     } else if (n.tagName === "P" && n.classList.contains("ecuacion")) {
       cuerpo += parrafo(enLinea(n.childNodes, { math: true }), { antes: 40, despues: 80 });
+    } else if (n.tagName === "H3" && doc.classList.contains("doc-calculo")) {
+      cuerpo += parrafo(enLinea(n.childNodes), { estilo: "Heading1", antes: 480 }); // aire entre secciones del reporte de cálculo
     } else if (n.tagName === "P") {
       cuerpo += parrafo(enLinea(n.childNodes, { sz: 18, color: "555555" }), { antes: 120 });
     } else {

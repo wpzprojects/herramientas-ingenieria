@@ -150,8 +150,8 @@ function recuadro(x, y, lineas, { ancla = "start", tam = 12.5 } = {}) {
     lineas.map((l, i) => texto(x0 + 8, y + 6 + (i + 1) * (tam + 5) - 4, l.t, { tam: l.tam || tam, color: l.color || "var(--text)", peso: l.peso || 400 })).join("")
   );
 }
-/** Color SÓLIDO de una zona (sin transparencia): el color del estado mezclado con el fondo (pedido del usuario). */
-const solido = (color, pct = 26) => `color-mix(in srgb, ${color} ${pct}%, var(--bg))`;
+/** Color SÓLIDO de una zona: el color del estado al 80 % sobre el fondo (pedido del usuario: solo 20 % de «transparencia»). */
+const solido = (color, pct = 80) => `color-mix(in srgb, ${color} ${pct}%, var(--bg))`;
 const envolver = (W, H, etiqueta, s) => `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(etiqueta)}">${s}</svg>`;
 /** Los gráficos que van en pareja miden lo mismo de alto (380) para quedar parejos lado a lado. */
 export const ALTO_GRAFICO = 380;
@@ -203,19 +203,22 @@ export function curvaCargaSvg({ pct, carga, unidad, nombreEje, optimo, aceptable
   // nombres de las zonas a la DERECHA (a la izquierda chocan con la etiqueta del punto de hoy)
   const zx = m.l + pw - 6;
   // en el borde INFERIOR de cada franja: así no chocan con la etiqueta del límite, que va bajo la línea del 3 %
-  s += texto(zx, Y(aceptable) - 6, "Elevado", { color: "var(--danger)", tam: 11.5, ancla: "end" }) + texto(zx, Y(optimo) - 6, "Aceptable", { color: "var(--warning)", tam: 11.5, ancla: "end" }) + texto(zx, Y(0) - 6, "Óptimo", { color: "var(--success)", tam: 11.5, ancla: "end" });
+  s += texto(zx, Y(aceptable) - 6, "Elevado", { color: "var(--text)", peso: 600, tam: 11.5, ancla: "end" }) + texto(zx, Y(optimo) - 6, "Aceptable", { color: "var(--text)", peso: 600, tam: 11.5, ancla: "end" }) + texto(zx, Y(0) - 6, "Óptimo", { color: "var(--text)", peso: 600, tam: 11.5, ancla: "end" }); // con el color de la zona al 80 % el nombre va en el color del texto
   if (!(pct > 0 && carga > 0)) return envolver(W, H, "Pérdidas frente a la carga", s);
   const xFin = Math.min(xmax, (ymax * carga) / pct);
   const largo = Math.hypot(X(xFin) - X(0), Y(0) - Y((pct * xFin) / carga));
-  s += `<path class="oc-trazo" d="M${X(0)},${Y(0)} L${f1(X(xFin))},${f1(Y((pct * xFin) / carga))}" fill="none" style="stroke:var(--accent);--largo:${f1(largo)}" stroke-width="3" stroke-dasharray="${f1(largo)}"/>`;
+  const d = `M${X(0)},${Y(0)} L${f1(X(xFin))},${f1(Y((pct * xFin) / carga))}`;
+  // borde del color del fondo debajo de la recta: resalta sobre las zonas de color fuerte
+  s += `<path class="oc-trazo" d="${d}" fill="none" style="stroke:var(--bg);--largo:${f1(largo)}" stroke-width="7" stroke-dasharray="${f1(largo)}"/>`;
+  s += `<path class="oc-trazo" d="${d}" fill="none" style="stroke:var(--accent);--largo:${f1(largo)}" stroke-width="3" stroke-dasharray="${f1(largo)}"/>`;
   const xLim = (aceptable * carga) / pct;
   if (xLim <= xmax) {
     const derecha = X(xLim) > m.l + pw * 0.62;
-    s += linea(X(xLim), Y(0), X(xLim), Y(aceptable), "var(--warning)", 1.4, "5 4");
-    s += texto(X(xLim) + (derecha ? -6 : 6), Y(aceptable) + 30, `${aceptable} % con ${numEje(xLim)} ${unidad}`, { color: "var(--warning)", ancla: derecha ? "end" : "start", peso: 600, tam: 12 });
+    s += linea(X(xLim), Y(0), X(xLim), Y(aceptable), "var(--text)", 1.4, "5 4");
+    s += texto(X(xLim) + (derecha ? -6 : 6), Y(aceptable) + 30, `${aceptable} % con ${numEje(xLim)} ${unidad}`, { color: "var(--text)", ancla: derecha ? "end" : "start", peso: 700, tam: 12 });
   } else {
     // el 3 % queda fuera del eje: la nota va DEBAJO del nombre «Elevado», sin taparlo
-    s += texto(zx, Y(ymax) + 32, `${aceptable} % con ${numEje(xLim)} ${unidad}`, { color: "var(--warning)", ancla: "end", peso: 600, tam: 12 });
+    s += texto(zx, Y(ymax) + 32, `${aceptable} % con ${numEje(xLim)} ${unidad}`, { color: "var(--text)", ancla: "end", peso: 700, tam: 12 });
   }
   s += `<circle class="oc-aparece" cx="${f1(X(carga))}" cy="${f1(Y(pct))}" r="6.5" style="fill:var(--accent);stroke:var(--bg)" stroke-width="2.5"/>`;
   s += texto(X(carga) - 10, Y(pct) - 12, `Hoy: ${numEje(carga)} ${unidad} · ${pct.toFixed(2)} %`, { color: "var(--text)", ancla: "end", peso: 700, tam: 12.5 });
@@ -241,14 +244,15 @@ export function perfilTensionSvg({ tramos, optimo, aceptable }) {
   for (let v = 100; v >= ymin - 1e-9; v -= yPaso) s += linea(m.l, Y(v), m.l + pw, Y(v), "var(--border)") + texto(m.l - 7, Y(v) + 4.5, `${numEje(v)} %`, { ancla: "end", tam: 12 });
   for (let v = 0; v <= xmax + 1e-9; v += xPaso) s += linea(X(v), m.t + ph, X(v), m.t + ph + 5, "var(--text-muted)") + texto(X(v), m.t + ph + 20, numEje(v), { ancla: "middle", tam: 12 });
   s += texto(m.l + pw / 2, H - 12, "Distancia desde el inicio de la línea (km)", { ancla: "middle", tam: 12.5 });
-  s += linea(m.l, Y(100 - optimo), m.l + pw, Y(100 - optimo), "var(--success)", 1.2, "5 4") + texto(m.l + 6, Y(100 - optimo) + 15, `${optimo} %`, { color: "var(--success)", tam: 11.5 });
-  s += linea(m.l, Y(100 - aceptable), m.l + pw, Y(100 - aceptable), "var(--warning)", 1.2, "5 4") + texto(m.l + 6, Y(100 - aceptable) + 15, `${aceptable} %`, { color: "var(--warning)", tam: 11.5 });
+  s += linea(m.l, Y(100 - optimo), m.l + pw, Y(100 - optimo), "var(--success)", 1.2, "5 4") + texto(m.l + 6, Y(100 - optimo) + 15, `${optimo} %`, { color: "var(--text)", peso: 600, tam: 11.5 });
+  s += linea(m.l, Y(100 - aceptable), m.l + pw, Y(100 - aceptable), "var(--warning)", 1.2, "5 4") + texto(m.l + 6, Y(100 - aceptable) + 15, `${aceptable} %`, { color: "var(--text)", peso: 600, tam: 11.5 });
   if (!(L > 0) || !Number.isFinite(caida)) return envolver(W, H, "Perfil de tensión", s);
   let x = 0, v = 100, puntos = "";
   const varios = tramos.length > 1;
   tramos.forEach((t, i) => {
     const x2 = x + t.longitudKm, v2 = v - t.caidaPct, color = i % 2 ? "var(--accent-strong)" : "var(--accent)";
     const largo = Math.hypot(X(x2) - X(x), Y(v2) - Y(v));
+    s += `<line class="oc-trazo" x1="${f1(X(x))}" y1="${f1(Y(v))}" x2="${f1(X(x2))}" y2="${f1(Y(v2))}" style="stroke:var(--bg);--largo:${f1(largo)};animation-delay:${i * 0.25}s" stroke-width="8" stroke-linecap="round" stroke-dasharray="${f1(largo)}"/>`;
     s += `<line class="oc-trazo" x1="${f1(X(x))}" y1="${f1(Y(v))}" x2="${f1(X(x2))}" y2="${f1(Y(v2))}" style="stroke:${color};--largo:${f1(largo)};animation-delay:${i * 0.25}s" stroke-width="4" stroke-linecap="round" stroke-dasharray="${f1(largo)}"/>`;
     if (varios) s += texto((X(x) + X(x2)) / 2, (Y(v) + Y(v2)) / 2 - 12, t.nombre, { ancla: "middle", color, peso: 700, tam: 12 });
     puntos += `<circle class="oc-aparece" cx="${f1(X(x2))}" cy="${f1(Y(v2))}" r="${i === tramos.length - 1 ? 6.5 : 4.5}" style="fill:${color};stroke:var(--bg)" stroke-width="2"/>`;
@@ -336,7 +340,7 @@ export function termometroFallaSvg({ tOperacion, tMaxima, tAlcanza = null }) {
     .sort((a, b) => a.y - b.y);
   for (let i = 1; i < marcas.length; i++) if (marcas[i].y - marcas[i - 1].y < 34) marcas[i].y = marcas[i - 1].y + 34;
   for (const { mk: [t, t1, t2, color, guiones], y } of marcas) s += linea(x + ancho + 2, Y(t), x + ancho + 20, Y(t), color, 2.2, guiones) + linea(x + ancho + 20, Y(t), x + ancho + 24, y, color, 1) + texto(x + ancho + 26, y + 1, t1, { color, peso: 700, tam: 14 }) + texto(x + ancho + 26, y + 16, t2, { tam: 11.5 });
-  s += texto(W / 2, H - 4, tAlcanza == null ? "Indica la corriente de falla para ver la temperatura" : excede ? `Excede el máximo en ${(tAlcanza - tMaxima).toFixed(1)} °C` : `Margen: ${(tMaxima - tAlcanza).toFixed(1)} °C`, { ancla: "middle", tam: 12.5, peso: 700, color: tAlcanza == null ? "var(--text-muted)" : excede ? "var(--danger)" : "var(--success)" });
+  s += texto(W / 2, H - 4, tAlcanza == null ? "Sin corriente de falla indicada" : excede ? `Excede el máximo en ${(tAlcanza - tMaxima).toFixed(1)} °C` : `Margen: ${(tMaxima - tAlcanza).toFixed(1)} °C`, { ancla: "middle", tam: 12.5, peso: 700, color: tAlcanza == null ? "var(--text-muted)" : excede ? "var(--danger)" : "var(--success)" });
   return envolver(W, H, `Temperatura del conductor en la falla: operación ${tOperacion} °C${tAlcanza != null ? `, alcanza ${tAlcanza.toFixed(1)} °C` : ""}, máximo ${tMaxima} °C`, s);
 }
 

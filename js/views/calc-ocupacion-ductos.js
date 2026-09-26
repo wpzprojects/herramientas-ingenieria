@@ -7,7 +7,7 @@
 import { fmt, fmtPercent, loadData, distinct, escapeHtml } from "../util/format.js";
 import { icon } from "../icons.js";
 import { calcularOcupacionGrupos } from "../calc/ocupacion-grupos.js";
-import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas, pestanaGraficosHtml } from "../util/resultados-ui.js";
+import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
 import { revelar, mostrar } from "../util/revelar.js";
@@ -549,16 +549,6 @@ export async function render(container) {
       resultado,
       reporte: reporteHtml(reporteTexto(data, ctx), ETIQUETAS_REPORTE),
       formulasPlano: FORMULAS_TEXTO,
-      // pestaña «Gráficos» (2026-09-26): el corte y la dona, más grandes
-      graficos: pestanaGraficosHtml([
-        {
-          titulo: "Corte transversal del ducto y ocupación",
-          graficos: [
-            { svg: corteDuctoSvg({ diametroTuboMm: ctx.diametroTuboMm, tipos: ctx.estados.map((e) => ({ cantidad: e.cantidad, diametroMm: e.diametroMm })) }), ancho: 380 },
-            { svg: donaOcupacionSvg({ pct: data.ocupacionPct, limite: data.limitePct, cumple: data.cumple, total: data.totalConductores }), ancho: 380 },
-          ],
-        },
-      ]),
     });
     activarPestanas(wrap, { grupos: FORMULAS_TEX, etiquetas: FORMULAS_ETIQUETAS, nota: FORMULAS_NOTA });
 

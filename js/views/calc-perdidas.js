@@ -14,7 +14,7 @@ import {
   UMBRAL_OPTIMO_PCT,
   UMBRAL_ACEPTABLE_PCT,
 } from "../calc/perdidas-tramos.js";
-import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas, resumenConGraficosHtml, pestanaGraficosHtml } from "../util/resultados-ui.js";
+import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas, resumenConGraficosHtml } from "../util/resultados-ui.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
 import { curvaCargaSvg } from "../util/graficos.js";
@@ -613,6 +613,27 @@ export async function render(container) {
    * Memoria de cálculo (pestaña Reportes → LaTeX, PDF y Word): cada paso con la fórmula, los valores reemplazados y el
    * resultado, con las MISMAS fórmulas del motor (js/calc/perdidas.js). `tex` para KaTeX y `texto` para Word.
    */
+  /** Parámetros de entrada con su símbolo (tabla inicial de la memoria en LaTeX). */
+  function simbolosPerdidas(base, estados, dato) {
+    const n = (v, d = 4) => String(Number(Number(v).toFixed(d)));
+    const s = [];
+    if (dato.modo === "aparente") s.push({ tex: "S", nombre: "Potencia aparente", valor: n(dato.datoPartida), unidad: String.raw`\text{MVA}` });
+    else if (dato.modo === "corriente") s.push({ tex: "I", nombre: "Corriente", valor: n(dato.datoPartida), unidad: String.raw`\text{A}` });
+    else s.push({ tex: "P", nombre: "Potencia activa", valor: n(base.potenciaActivaMw), unidad: String.raw`\text{MW}` });
+    s.push({ tex: "V", nombre: "Tensión de línea", valor: n(base.tensionLineaKv), unidad: String.raw`\text{kV}` });
+    s.push({ tex: String.raw`\cos\varphi`, nombre: "Factor de potencia", valor: n(base.factorPotencia) });
+    s.push({ tex: "F_c", nombre: "Factor de carga", valor: n(base.factorCarga) });
+    const varios = estados.length > 1;
+    estados.forEach((e, i) => {
+      const sub = varios ? `_{${i + 1}}` : "";
+      const de = varios ? ` del tramo ${i + 1}` : "";
+      s.push({ tex: `L${sub}`, nombre: `Longitud${de}`, valor: n(e.longitudKm), unidad: String.raw`\text{km}` });
+      s.push({ tex: `R${sub}`, nombre: `Resistencia del conductor${de}`, valor: n(e.resistenciaOhmKm), unidad: String.raw`\Omega/\text{km}` });
+      s.push({ tex: `N${sub}`, nombre: `Conductores por fase${de}`, valor: String(e.numConductoresPorFase ?? 1) });
+    });
+    return s;
+  }
+
   function memoriaPerdidas(r, base, estados, dato) {
     const n = (v, d = 4) => String(Number(Number(v).toFixed(d)));
     const P = base.potenciaActivaMw, V = base.tensionLineaKv, fp = base.factorPotencia, Fc = base.factorCarga, Fp = r.factorPerdidas, I = r.corriente;
@@ -701,13 +722,13 @@ export async function render(container) {
       conDocumentos: true,
       reporte: reporteHtml(textoReporte, ETIQUETAS_REPORTE),
       formulasPlano: FORMULAS_TEXTO,
-      graficos: conGraficos ? pestanaGraficosHtml([{ titulo: "Pérdidas frente a la carga", graficos }]) : "",
     });
     activarPestanas(wrap, { grupos: FORMULAS_TEX, etiquetas: FORMULAS_ETIQUETAS, nota: FORMULAS_NOTA });
     activarReportes(wrap, {
       titulo: "Cálculo de pérdidas",
       texto: textoReporte,
       pasos: memoriaPerdidas(r, base, estados, dato),
+      simbolos: simbolosPerdidas(base, estados, dato),
       graficos: graficos.map((g) => ({ titulo: "Pérdidas frente a la carga", svg: g.svg })),
     });
 

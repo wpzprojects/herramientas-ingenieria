@@ -940,12 +940,14 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .ia-chip:disabled:hover { border-color: var(--border-strong); color: var(--text-muted); }
 .ia-chip[aria-pressed="true"]:disabled:hover { border-color: var(--accent); color: var(--accent-strong); }
 /* Ocupacion de ductos: resultado en TRES columnas (corte transversal a escala | dona | cifras); en pantalla angosta pasan a una columna */
-.oc-resumen { display: grid; grid-template-columns: minmax(220px, 320px) 230px 230px; justify-content: start; column-gap: 40px; align-items: start; } /* primero las cifras y después el corte y la dona, del mismo tamaño (2026-09-26) */
+.oc-resumen { display: grid; grid-template-columns: fit-content(320px) minmax(0, 300px) minmax(0, 300px); justify-content: space-between; column-gap: 40px; align-items: start; } /* cifras, corte y dona repartidos de forma pareja (2026-09-26) */
 .oc-grafico svg { display: block; width: 100%; height: auto; overflow: visible; }
 /* Resultado con gráficos (Pérdidas, Regulación, Ocupación, Cortocircuito y Ampacidades; 2026-09-26): PRIMERO las cifras (dos
    columnas angostas, con la nota debajo) y DESPUÉS los gráficos lado a lado, del mismo alto (columnas en la proporción de sus
    viewBox). Pantalla media y celular: las cifras arriba y los gráficos debajo. Pestaña «Gráficos»: cada uno en su recuadro. */
-.graf-resumen { display: grid; grid-template-columns: minmax(240px, 340px) minmax(0, 1fr); column-gap: 36px; row-gap: var(--space-5); align-items: start; } /* arriba: las cifras no quedan más abajo que el gráfico */
+.graf-resumen { display: grid; grid-template-columns: fit-content(340px) minmax(0, 1fr); column-gap: 40px; row-gap: var(--space-5); align-items: start; } /* la columna de cifras mide lo que su contenido (sin espacio sobrante) */
+.graf-resumen .graf-metricas { padding-top: 18px; } /* arranca a la altura del área del gráfico, no por encima */
+.graf-fila { margin-top: var(--space-5); max-width: 1196px; } /* segunda fila de gráficos (Ampacidad aérea) */
 .graf-par { display: grid; column-gap: 18px; align-items: start; }
 .graf-par .graf-item svg { display: block; width: 100%; height: auto; overflow: visible; }
 .graf-metricas .grid-2 { column-gap: var(--space-4); }
@@ -1029,19 +1031,27 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .rep-cab label { margin: 0; font-size: 0.88rem; color: var(--text-muted); }
 .rep-cab select { width: auto; min-width: 240px; }
 .rep-hoja { max-height: 75vh; overflow: auto; padding: 28px 32px; background: #fff; color: #111; border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-md); color-scheme: light; }
-.rep-hoja[hidden] { display: none; }
+.rep-hoja[hidden], .rep-vista[hidden] { display: none; }
 .rep-hoja .report-block { background: none; border: 0; padding: 0; color: #111; font-size: 0.82rem; }
 .rep-hoja .report-block strong { color: #111; }
 .rep-hoja .text-muted { color: #666; }
-.memoria-caja { font: 10.5pt/1.5 system-ui, "Segoe UI", Arial, sans-serif; color: #111; }
+/* texto plano y LaTeX con el fondo del tema, como antes (pedido del usuario); solo PDF y Word van en hoja blanca */
+.memoria-caja { font: 10.5pt/1.5 system-ui, "Segoe UI", Arial, sans-serif; color: var(--text); background: var(--bg-sunken); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-4); overflow-x: auto; }
 .memoria-paso + .memoria-paso { margin-top: 3mm; }
-.memoria-titulo { font-size: 9pt; font-weight: 600; color: #444; }
+.memoria-seccion { margin: 6mm 0 2mm; font-size: 10.5pt; font-weight: 700; color: var(--text); padding-bottom: 1mm; border-bottom: 1px solid var(--border); }
+.memoria-seccion:first-child { margin-top: 0; }
+.memoria-tabla { border-collapse: collapse; font-size: 9.5pt; margin-bottom: 2mm; }
+.memoria-tabla th { text-align: left; font-weight: 600; color: var(--text-muted); padding: 1mm 6mm 1mm 0; border-bottom: 1px solid var(--border); }
+.memoria-tabla td { padding: 1mm 6mm 1mm 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent); vertical-align: top; }
+.memoria-tabla .memoria-sub td { font-weight: 700; padding-top: 2.5mm; }
+.memoria-tabla .katex { font-size: 1em; }
+.memoria-titulo { font-size: 9pt; font-weight: 600; color: var(--text-muted); }
 .memoria-ecuacion .katex { font-size: 1em; }
 .memoria-ecuacion .katex-display { margin: 0.2em 0; text-align: left; }
 .memoria-ecuacion .katex-display > .katex { text-align: left; }
 .memoria-texto { margin: 0; font-family: "Cambria Math", serif; font-size: 0.9rem; }
 .rep-previa .doc-impresion { display: block; }
-.rep-previa .doc-calculo .doc-figura svg { width: 100%; max-width: 520px; }
+.rep-previa .doc-calculo .doc-figura svg { width: 100%; }
 .rep-previa .doc-calculo img { max-width: 100%; height: auto; }
 @media (max-width: 560px) { .rep-hoja { padding: 16px; } .rep-cab select { min-width: 0; flex: 1 1 200px; } }
 
@@ -1062,9 +1072,10 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .doc-calculo .doc-ecuacion .katex { font-size: 1em; }
 .doc-calculo .doc-ecuacion .katex-display { margin: 0.6mm 0; text-align: left; }
 .doc-calculo .doc-ecuacion .katex-display > .katex { text-align: left; }
-.doc-calculo .doc-figura { break-inside: avoid; margin: 3mm 0 5mm; background: #fff; }
+.doc-calculo h3 { font-size: 13pt; margin: 10mm 0 3mm; padding-bottom: 1mm; border-bottom: .5pt solid #999; color: #111; break-after: avoid; } /* aire entre secciones */
+.doc-calculo .doc-figura { break-inside: avoid; margin: 3mm 0 6mm; background: #fff; width: auto; max-width: none; border: 0; border-radius: 0; overflow: visible; font-size: inherit; } /* anula el tamaño de .vista-tema */
 .doc-calculo .doc-figura figcaption { font-size: 9.5pt; font-weight: 600; margin-bottom: 2mm; }
-.doc-calculo .doc-figura svg { display: block; width: 130mm; max-width: 100%; height: auto; }
+.doc-calculo .doc-figura svg { display: block; width: 100%; height: auto; } /* al ancho de la hoja */
 
 /* ---- Documento de impresion del reporte: Carta vertical, SIEMPRE en claro (no depende del tema de la pantalla) ---- */
 @page reporte {

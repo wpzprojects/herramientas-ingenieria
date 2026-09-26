@@ -6,7 +6,8 @@
 // imágenes PNG dibujadas en tema claro.
 //
 // Uso: tarjetaResultadosHtml({…, conDocumentos: true}) y, después de pintar, activarReportes(wrap, { titulo, texto, pasos,
-// graficos }). `pasos` = [{ titulo, tex, texto }] (tex = LaTeX para KaTeX; texto = la misma ecuación en texto plano Unicode
+// graficos, simbolos }). `simbolos` (opcional) = [{ tex, nombre, valor, unidad }] (unidad en LaTeX): los parámetros de
+// entrada con su símbolo, para la memoria en LaTeX. `pasos` = [{ titulo, tex, texto }] (tex = LaTeX para KaTeX; texto = la misma ecuación en texto plano Unicode
 // para Word); `graficos` = [{ titulo, svg }] (cadenas <svg>); `texto` = el reporte de texto (de él salen los datos de
 // entrada y los resultados: líneas «Etiqueta: valor» de sus secciones PARÁMETROS DE ENTRADA y RESULTADOS).
 
@@ -27,15 +28,15 @@ export function selectorReportesHtml(reporteHtmlTexto, conDocumentos) {
             <label for="rep-tipo">Tipo de reporte</label>
             <select id="rep-tipo" class="rep-tipo">
               <option value="txt">Texto (TXT)</option>
-              <option value="latex">Memoria de cálculo (LaTeX)</option>
+              <option value="latex">Cálculo (LaTeX)</option>
               <option value="pdf">PDF</option>
               <option value="docx">Word (.docx)</option>
             </select>
             <button type="button" class="btn btn-primary rep-accion" data-rep-accion="copiar-txt">Copiar</button>
             <span class="text-muted text-sm" data-rep-msg></span>
           </div>
-          <div class="rep-vista rep-hoja" data-rep="txt"><div class="report-block">${reporteHtmlTexto}</div></div>
-          <div class="rep-vista rep-hoja" data-rep="latex" hidden><div class="memoria-caja" data-memoria><p class="text-muted text-sm">Cargando la memoria de cálculo…</p></div></div>
+          <div class="rep-vista" data-rep="txt"><div class="report-block">${reporteHtmlTexto}</div></div>
+          <div class="rep-vista" data-rep="latex" hidden><div class="memoria-caja" data-memoria><p class="text-muted text-sm">Cargando la memoria de cálculo…</p></div></div>
           <div class="rep-vista rep-hoja" data-rep="pdf" hidden><div class="rep-previa" data-previa="pdf"></div></div>
           <div class="rep-vista rep-hoja" data-rep="docx" hidden><div class="rep-previa" data-previa="docx"></div></div>`;
 }
@@ -57,13 +58,45 @@ export function seccionDelReporte(texto, titulo) {
   return filas;
 }
 
-/** LaTeX para copiar y pegar en un documento: un párrafo por paso con su ecuación. */
-export function memoriaLatex(titulo, pasos) {
-  return [`\\section*{Memoria de cálculo: ${titulo}}`, "", ...pasos.flatMap((p) => [`\\paragraph{${p.titulo}}`, `\\[ ${p.tex} \\]`, ""])].join("\n");
+/** Texto normal escapado para LaTeX (los símbolos de las unidades pasan a modo matemático). */
+const MAPA_TEX = { "\\": "\\textbackslash{}", "%": "\\%", "&": "\\&", _: "\\_", "#": "\\#", $: "\\$", "{": "\\{", "}": "\\}", "~": "\\textasciitilde{}", "^": "\\textasciicircum{}", "Ω": "$\\Omega$", "²": "$^2$", "°": "$^\\circ$", "·": "$\\cdot$", "√": "$\\surd$", "φ": "$\\varphi$" };
+const texEsc = (t) => String(t).replace(/[\\%&_#${}~^Ω²°·√φ]/g, (c) => MAPA_TEX[c]);
+const valorTex = (s) => `${s.valor}${s.unidad ? `\\ ${s.unidad}` : ""}`;
+
+/** Filas «Parámetro | Valor» de una sección del reporte de texto como tabla LaTeX (los subtítulos, en negrita). */
+function tablaLatex(filas) {
+  return [
+    "\\begin{tabular}{ll}",
+    "\\hline",
+    "\\textbf{Parámetro} & \\textbf{Valor} \\\\",
+    "\\hline",
+    ...filas.map(([k, v, sangria, sub]) => (sub ? `\\multicolumn{2}{l}{\\textbf{${texEsc(k)}}} \\\\` : `${sangria ? "\\quad " : ""}${texEsc(k)} & ${texEsc(v)} \\\\`)),
+    "\\hline",
+    "\\end{tabular}",
+  ];
+}
+
+/**
+ * Memoria de cálculo en LaTeX para copiar y pegar (2026-09-26, pedido del usuario: «más precisa»): parámetros de entrada
+ * (con su símbolo si la calculadora los da), desarrollo paso a paso (fórmula, valores reemplazados y resultado) y resultados.
+ */
+export function memoriaLatex(datos) {
+  const { titulo, pasos, simbolos, texto = "" } = datos;
+  const l = [`\\section*{Memoria de cálculo: ${texEsc(titulo)}}`, "", "\\subsection*{Parámetros de entrada}"];
+  if (simbolos?.length) {
+    l.push("\\begin{tabular}{lll}", "\\hline", "\\textbf{Símbolo} & \\textbf{Descripción} & \\textbf{Valor} \\\\", "\\hline");
+    for (const s of simbolos) l.push(`$${s.tex}$ & ${texEsc(s.nombre)} & $${valorTex(s)}$ \\\\`);
+    l.push("\\hline", "\\end{tabular}");
+  } else l.push(...tablaLatex(seccionDelReporte(texto, "PARÁMETROS DE ENTRADA:")));
+  l.push("", "\\subsection*{Desarrollo del cálculo}", "");
+  for (const p of pasos) l.push(`\\paragraph{${texEsc(p.titulo)}}`, `\\[ ${p.tex} \\]`, "");
+  const res = seccionDelReporte(texto, "RESULTADOS:");
+  if (res.length) l.push("\\subsection*{Resultados}", ...tablaLatex(res));
+  return l.join("\n");
 }
 
 /** Convierte un <svg> (con las variables de color del tema) en PNG, en TEMA CLARO, para el Word. */
-export async function svgAPng(svgTexto, escala = 2) {
+export async function svgAPng(svgTexto, escala = 3) {
   const caja = document.createElement("div");
   caja.className = "vista-tema";
   caja.dataset.vista = "light";
@@ -179,7 +212,22 @@ export function activarReportes(wrap, datos) {
     const caja = wrap.querySelector("[data-memoria]");
     try {
       const katex = await cargarKatex();
-      caja.innerHTML = datos.pasos.map((p) => `<div class="memoria-paso"><div class="memoria-titulo">${escapeHtml(p.titulo)}</div><div class="memoria-ecuacion">${ecuacionHtml(katex, p.tex)}</div></div>`).join("");
+      const enLinea = (tex) => katex.renderToString(tex, { throwOnError: false });
+      const tabla = (filas) =>
+        `<table class="memoria-tabla"><thead><tr><th>Parámetro</th><th>Valor</th></tr></thead><tbody>${filas
+          .map(([k, v, sangria, sub]) => (sub ? `<tr class="memoria-sub"><td colspan="2">${escapeHtml(k)}</td></tr>` : `<tr><td>${sangria ? "&nbsp;&nbsp;" : ""}${escapeHtml(k)}</td><td>${escapeHtml(v)}</td></tr>`))
+          .join("")}</tbody></table>`;
+      const entrada = datos.simbolos?.length
+        ? `<table class="memoria-tabla"><thead><tr><th>Símbolo</th><th>Descripción</th><th>Valor</th></tr></thead><tbody>${datos.simbolos
+            .map((s) => `<tr><td>${enLinea(s.tex)}</td><td>${escapeHtml(s.nombre)}</td><td>${enLinea(valorTex(s))}</td></tr>`)
+            .join("")}</tbody></table>`
+        : tabla(seccionDelReporte(datos.texto, "PARÁMETROS DE ENTRADA:"));
+      const res = seccionDelReporte(datos.texto, "RESULTADOS:");
+      caja.innerHTML =
+        `<h4 class="memoria-seccion">Parámetros de entrada</h4>${entrada}` +
+        `<h4 class="memoria-seccion">Desarrollo del cálculo</h4>` +
+        datos.pasos.map((p) => `<div class="memoria-paso"><div class="memoria-titulo">${escapeHtml(p.titulo)}</div><div class="memoria-ecuacion">${ecuacionHtml(katex, p.tex)}</div></div>`).join("") +
+        (res.length ? `<h4 class="memoria-seccion">Resultados</h4>${tabla(res)}` : "");
     } catch {
       caja.innerHTML = datos.pasos.map((p) => `<div class="memoria-paso"><div class="memoria-titulo">${escapeHtml(p.titulo)}</div><p class="memoria-texto">${escapeHtml(p.texto)}</p></div>`).join("");
     }
@@ -217,7 +265,7 @@ export function activarReportes(wrap, datos) {
     if (accion === "copiar-latex" || accion === "copiar-txt") {
       const msg = wrap.querySelector("[data-rep-msg]");
       try {
-        await navigator.clipboard.writeText(accion === "copiar-txt" ? datos.texto : memoriaLatex(datos.titulo, datos.pasos));
+        await navigator.clipboard.writeText(accion === "copiar-txt" ? datos.texto : memoriaLatex(datos));
         msg.textContent = "¡Copiado!";
       } catch {
         msg.textContent = "No se pudo copiar.";

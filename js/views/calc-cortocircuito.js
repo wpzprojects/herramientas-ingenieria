@@ -8,7 +8,7 @@ import { fmt, loadData, distinct, escapeHtml } from "../util/format.js";
 import { icon } from "../icons.js";
 import { calcularCortocircuito } from "../calc/cortocircuito.js";
 import { compararCalibres } from "../calc/cortocircuito-calibre.js";
-import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas, resumenConGraficosHtml, pestanaGraficosHtml } from "../util/resultados-ui.js";
+import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas, resumenConGraficosHtml } from "../util/resultados-ui.js";
 import { soportabilidadSvg, termometroFallaSvg } from "../util/graficos.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
@@ -518,7 +518,6 @@ export async function render(container) {
       resultado,
       reporte: reporteHtml(reporteTexto(data, p, ctx), ETIQUETAS_REPORTE),
       formulasPlano: FORMULAS_TEXTO,
-      graficos: graficos.length ? pestanaGraficosHtml([{ titulo: "Soportabilidad de cortocircuito y temperatura en la falla", graficos }]) : "",
     });
     activarPestanas(wrap, { grupos: FORMULAS_TEX, etiquetas: FORMULAS_ETIQUETAS, nota: FORMULAS_NOTA });
 

@@ -411,7 +411,14 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   `corteConductorSvg` (esquemático, hilos iguales, construcción del paréntesis de la referencia); Ampacidad subterránea:
   `corteZanjaSvg` (Kennelly, terreno homogéneo, con `clipPath`) + ampacidad vs resistividad (re-ejecuta el motor; punto
   rojo con suelo al doble de resistividad, máx. 3). Los motores NO se tocaron. PENDIENTE: proponer gráficos para
-  Conductor económico y Valoración integral (solo en la pestaña «Gráficos»).
+  Conductor económico y Valoración integral (preguntar DÓNDE van: ya no hay pestaña «Gráficos»).
+  **3.41.0 (2026-09-26, pedido del usuario)**: la pestaña «Gráficos» se QUITÓ («no me gusta la idea»): todos los gráficos
+  van en «Resultado» (`pestanaGraficosHtml` queda sin uso). Ampacidad aérea suma una segunda fila `.graf-par.graf-fila`
+  con temperatura vs corriente y el corte del conductor (4 gráficos). `.graf-resumen` = `fit-content(340px) 1fr` con
+  `padding-top: 18px` en las cifras (alineadas con el borde superior del gráfico); `.oc-resumen` = `fit-content(320px)
+  minmax(0,300px) minmax(0,300px)` con `space-between`. Zonas: `solido()` al **80 %** del color (el usuario pidió
+  «solo 20 % de transparencia»); por eso los nombres de zona y la etiqueta del límite van en `var(--text)` y la línea de
+  la curva y del perfil lleva debajo un borde `var(--bg)` más ancho (si no, se perdían sobre la franja).
 - **Pestaña «Reportes» (2026-09-26, 3.40.0; PILOTO en Pérdidas)**: orden de pestañas en TODAS: Resultado · Fórmulas ·
   Gráficos · Reportes (antes «Reporte»; `data-tab` sigue siendo «reporte»). `tarjetaResultadosHtml({…, conDocumentos: true})`
   pone el selector «Tipo de reporte» (`js/util/reportes.js`): Texto (TXT) · Memoria de cálculo (LaTeX: `pasos` = [{titulo,
@@ -423,6 +430,15 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   calculados). Uso: `activarReportes(wrap, {titulo, texto, pasos, graficos})`; Pérdidas arma sus pasos en
   `memoriaPerdidas` con las mismas fórmulas del motor. PENDIENTE (tras aprobar el piloto): replicar en Regulación,
   Cortocircuito, Ocupación y las Ampacidades.
+  Ajustes 3.41.0 (pedidos del usuario): la opción se llama «Cálculo (LaTeX)» y la memoria tiene tres secciones:
+  Parámetros de entrada (con `simbolos` = [{tex, nombre, valor, unidad}] de la calculadora: tabla Símbolo | Descripción |
+  Valor; sin ellos, la sección del reporte de texto), Desarrollo del cálculo (los `pasos`) y Resultados (sección
+  RESULTADOS del texto); lo mismo en el LaTeX copiado (`memoriaLatex(datos)`, tablas `tabular`, `texEsc` escapa y pasa Ω,
+  ², °, ·, φ a modo matemático). Pérdidas los arma en `simbolosPerdidas`. Texto y LaTeX YA NO van en hoja blanca: fondo
+  del tema (`.report-block` y `.memoria-caja` con `--bg-sunken`); solo PDF y Word se ven como hoja (`.rep-hoja`). PDF:
+  `.doc-calculo h3` con 10 mm arriba y figuras al 100 % del ancho (la figura lleva `.vista-tema`, cuyo `width: 300px` de
+  Apariencia hay que anular). Word: el h3 del documento con `antes: 480` y las imágenes siempre al 85 % del ancho útil
+  (antes solo se achicaban), PNG a escala 3.
 - **Valores por defecto (2026-09-26, pedido del usuario: calcular de una)**: `porDefecto(sel, valor)` en cada vista
   (dispara «change» para la cascada): AAAC 246.9 + primera referencia en Pérdidas y Regulación (cada tramo aéreo nuevo),
   Cortocircuito y Ampacidad aérea; Ocupación: PVC Tipo TDP de 4". Lo guardado en la sesión sigue ganando.
