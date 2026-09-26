@@ -9,6 +9,7 @@ import { potenciaActivaMw } from "../calc/circuito.js";
 import { compararOpciones, sensibilidad, sensibilidadInstalacion } from "../calc/conductor-economico.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 import { costoTotalApiladoSvg, costoAcumuladoSvg } from "../util/graficos.js";
+import { activarMiles, leerMiles, reformatear, PATRON_MILES } from "../util/campo-miles.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
 import { revelar } from "../util/revelar.js";
@@ -212,7 +213,7 @@ export async function render(container) {
         <div class="grid-2 ultima">
           <div class="field">
             <label for="f-precio" data-info="Lo que cuesta la energía que se pierde en la línea (compra o costo reconocido), no la tarifa de venta. Es el valor del año 1.">Precio de la energía perdida ($/kWh)</label>
-            <input type="number" id="f-precio" min="0" step="any" required>
+            <input type="text" inputmode="decimal" id="f-precio" pattern="${PATRON_MILES}" autocomplete="off" required>
           </div>
           <div class="field">
             <label for="f-escalada" data-info="Porcentualmente cuánto sube cada año el precio de la energía. Con 0 el precio se mantiene en el tiempo. Referencia orientativa: 2-5 % anual (cercano a la inflación esperada).">Aumento anual del precio (%)</label>
@@ -249,6 +250,9 @@ export async function render(container) {
   const fAnios = q("#f-anios");
   const fTasa = q("#f-tasa");
   const fPrecio = q("#f-precio");
+  // campos de dinero con separador de miles al escribir (como en Valoración integral; pedido del usuario, 2026-09-26)
+  activarMiles(fPrecio);
+  reformatear(fPrecio); // por si Perfil > Calculadoras puso un precio por defecto
   const fEscalada = q("#f-escalada");
   const campoPorModo = {
     potencia: { wrap: q("#wrap-potencia"), input: fPotencia },
@@ -324,11 +328,11 @@ export async function render(container) {
         <div class="grid-2 ultima">
           <div class="field">
             <label for="f-costo-cond-${id}" data-info="Precio de un solo conductor (un hilo); internamente se multiplica por las 3 fases, por el número de conductores por fase (si hay haz) y por la longitud de la línea para obtener la inversión total.">Costo del conductor ($/km)</label>
-            <input type="number" id="f-costo-cond-${id}" min="0" step="any" required>
+            <input type="text" inputmode="decimal" id="f-costo-cond-${id}" pattern="${PATRON_MILES}" autocomplete="off" required>
           </div>
           <div class="field">
             <label for="f-costo-inst-${id}" data-info="Costo de la instalación (sin el suministro del conductor que ya se cuenta por separado): postes, aisladores, herrajes, mano de obra, transporte y demás. Suele ser similar entre calibres cercanos, salvo que el proyecto exija elementos de mayor capacidad o el salto de calibre sea grande, en ese caso escríbelo distinto por opción. Si se deja vacío el cálculo considerará únicamente el costo del conductor.">Costo de instalación ($/km)</label>
-            <input type="number" id="f-costo-inst-${id}" min="0" step="any">
+            <input type="text" inputmode="decimal" id="f-costo-inst-${id}" pattern="${PATRON_MILES}" autocomplete="off">
           </div>
         </div>
       </div>`;
@@ -345,6 +349,8 @@ export async function render(container) {
     const fN = c(`#f-n-${id}`);
     const fCostoCond = c(`#f-costo-cond-${id}`);
     const fCostoInst = c(`#f-costo-inst-${id}`);
+    activarMiles(fCostoCond);
+    activarMiles(fCostoInst);
 
     let fila = null;
 
@@ -425,8 +431,8 @@ export async function render(container) {
         referencia: selReferencia.value,
         resistenciaOhmKm: parseFloat(fResistencia.value),
         numConductoresPorFase: parseInt(fN.value, 10) || 1,
-        costoConductorKm: parseFloat(fCostoCond.value),
-        costoInstalacionKm: parseFloat(fCostoInst.value) || 0,
+        costoConductorKm: leerMiles(fCostoCond.value),
+        costoInstalacionKm: leerMiles(fCostoInst.value) || 0,
         instalacionIndicada: fCostoInst.value.trim() !== "",
         ampacidadA: selRed.value === "Aerea" && fila ? fila.corriente_75c_a ?? null : null,
         masaKgKm: fila ? fila.masa_kg_km ?? fila.masa_total_kg_km ?? null : null, // por conductor (catálogo)
@@ -462,6 +468,8 @@ export async function render(container) {
         fN.value = d.n;
         fCostoCond.value = d.costoCond;
         fCostoInst.value = d.costoInst;
+        reformatear(fCostoCond);
+        reformatear(fCostoInst);
       },
     };
   }
@@ -520,6 +528,7 @@ export async function render(container) {
     fAnios.value = guardado.anios;
     fTasa.value = guardado.tasa;
     fPrecio.value = guardado.precio;
+    reformatear(fPrecio);
     fEscalada.value = guardado.escalada;
     for (let i = opciones.length; i < guardado.opciones.length; i++) agregarOpcion();
     opciones.forEach((o, i) => o.aplicarBruto(guardado.opciones[i]));
@@ -571,7 +580,7 @@ export async function render(container) {
       crecimientoDemandaPct: parseFloat(fCrecimiento.value),
       anios: parseInt(fAnios.value, 10),
       tasaDescuentoPct: parseFloat(fTasa.value),
-      precioKwh: parseFloat(fPrecio.value),
+      precioKwh: leerMiles(fPrecio.value),
       escaladaEnergiaPct: parseFloat(fEscalada.value),
     };
     const estados = opciones.map((o) => o.estado());

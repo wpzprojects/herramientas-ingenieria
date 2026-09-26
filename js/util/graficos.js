@@ -246,6 +246,73 @@ export function costoAcumuladoSvg({ series, equilibrio = null }) {
   return envolver(W, H, `Costo acumulado de ${series.length} opciones en ${anios} años`, s);
 }
 
+// ---------------------------------------------------------------- valoración integral: uso de cada límite y costo total
+
+/**
+ * Uso de cada límite por alternativa (VI1 revisado, elegido por el usuario): barras horizontales con el % usado de ampacidad
+ * (corriente / ampacidad), pérdidas (/ 3 %), regulación (/ 10 %) y cortocircuito (falla / capacidad), cada criterio con su
+ * color de serie; lo que pasa el 100 % conserva su color y lleva borde y cifra en rojo. A la derecha, si hay precios, el
+ * costo total de cada alternativa en su propia escala. `alternativas` = [{ nombre, sub, usos: [4 números o null],
+ * estado: "recomendada"|"cumple"|"no", costo (pesos) o null }].
+ */
+export function usoLimitesSvg({ alternativas }) {
+  const conCosto = alternativas.some((a) => Number.isFinite(a.costo));
+  const W = conCosto ? 820 : 640, m = { l: 132, t: 44, b: 62 }, bw = conCosto ? 470 : 470, cx0 = m.l + bw + 70, cw = 140;
+  const crit = [["Ampacidad", "var(--serie-1)"], ["Pérdidas", "var(--serie-2)"], ["Regulación", "var(--serie-3)"], ["Cortocircuito", "var(--serie-4)"]];
+  const alto = 104, bh = 17, gap = 4, altoTot = alternativas.length * alto, H = m.t + altoTot + m.b;
+  const maxUso = Math.max(120, ...alternativas.flatMap((a) => a.usos.filter(Number.isFinite)));
+  const tope = Math.ceil((maxUso * 1.08) / 20) * 20;
+  const X = (v) => m.l + (Math.min(v, tope) / tope) * bw;
+  let s = fondo(m.l, m.t, bw, altoTot, 0);
+  for (let v = 10; v < tope; v += 20) s += linea(X(v), m.t, X(v), m.t + altoTot, "var(--border)", 1, "2 4");
+  for (let v = 0; v <= tope; v += 20) s += linea(X(v), m.t, X(v), m.t + altoTot, "var(--border)") + texto(X(v), m.t + altoTot + 18, `${v} %`, { ancla: "middle", tam: 11 });
+  s += texto(m.l + bw / 2, m.t - 24, "Uso de cada límite", { ancla: "middle", color: "var(--text)", peso: 700, tam: 12.5 });
+  let cmax = 0, CX = null;
+  if (conCosto) {
+    const M = (v) => v / 1e6;
+    const maxC = Math.max(...alternativas.map((a) => (Number.isFinite(a.costo) ? M(a.costo) : 0)));
+    const paso = pasoRedondo(maxC * 1.05 || 1, 2);
+    cmax = Math.ceil((maxC * 1.05) / paso) * paso || 1;
+    CX = (v) => cx0 + (M(v) / cmax) * cw;
+    s += fondo(cx0, m.t, cw, altoTot, 0);
+    for (let v = 0; v <= cmax + 1e-9; v += paso) s += linea(cx0 + (v / cmax) * cw, m.t, cx0 + (v / cmax) * cw, m.t + altoTot, "var(--border)") + texto(cx0 + (v / cmax) * cw, m.t + altoTot + 18, numEje(v), { ancla: "middle", tam: 11 });
+    s += texto(cx0 + cw / 2, m.t - 24, "Costo total", { ancla: "middle", color: "var(--text)", peso: 700, tam: 12.5 });
+    s += texto(cx0 + cw / 2, m.t + altoTot + 34, "millones de pesos (VP)", { ancla: "middle", tam: 11 });
+  }
+  alternativas.forEach((a, k) => {
+    const y0 = m.t + 8 + k * alto;
+    s += texto(m.l - 10, y0 + 30, a.nombre, { ancla: "end", color: "var(--text)", peso: 700, tam: 12.5 }) + texto(m.l - 10, y0 + 46, a.sub, { ancla: "end", tam: 11 });
+    const [et, col] = a.estado === "no" ? ["No cumple", "var(--danger)"] : a.estado === "recomendada" ? ["Recomendada", "var(--success)"] : ["Cumple", "var(--success)"];
+    s += texto(m.l - 10, y0 + 62, et, { ancla: "end", tam: 11, color: col, peso: 700 });
+    a.usos.forEach((v, j) => {
+      const y = y0 + j * (bh + gap);
+      if (!Number.isFinite(v)) {
+        s += texto(m.l + 6, y + 13, j === 3 ? "sin corriente de falla indicada" : "no calculable", { tam: 10.5, color: "var(--text-faint)" });
+        return;
+      }
+      const pasa = v > 100;
+      s += `<rect class="oc-aparece" x="${m.l}" y="${f1(y)}" width="${f1(Math.max(1, X(v) - m.l))}" height="${bh}" style="fill:${crit[j][1]}${pasa ? ";stroke:var(--danger)" : ""}"${pasa ? ' stroke-width="2.5"' : ""}/>`;
+      s += texto(X(v) + 5, y + 13, `${numEje(Math.round(v))} %${v > tope ? " ▸" : ""}`, { tam: pasa ? 11.5 : 10.5, color: pasa ? "var(--danger)" : "var(--text-muted)", peso: pasa ? 800 : 400 });
+    });
+    if (conCosto) {
+      const yc = y0 + (4 * (bh + gap) - gap) / 2 - 12;
+      if (Number.isFinite(a.costo)) {
+        const xf = CX(a.costo), cerca = xf + 64 > cx0 + cw;
+        s += `<rect class="oc-aparece" x="${cx0}" y="${f1(yc)}" width="${f1(Math.max(1, xf - cx0))}" height="24" style="fill:var(--text-faint)${a.estado === "recomendada" ? ";stroke:var(--success)" : ""}"${a.estado === "recomendada" ? ' stroke-width="2.5"' : ""}/>`; /* gris para todas (el verde es de Cortocircuito); la recomendada, con borde verde */
+        s += texto(cerca ? xf - 6 : xf + 6, yc + 16, `$ ${numEje(Math.round(a.costo / 1e6))} M`, { tam: 11.5, color: cerca ? "var(--bg)" : "var(--text)", peso: 700, ancla: cerca ? "end" : "start" });
+      } else s += texto(cx0 + 6, yc + 16, "sin costos", { tam: 11, color: "var(--text-faint)" });
+    }
+  });
+  s += linea(X(100), m.t - 6, X(100), m.t + altoTot, "var(--danger)", 1.8, "5 4") + texto(X(100) + 4, m.t - 6, "Límite", { color: "var(--danger)", peso: 700, tam: 11 });
+  let lx = m.l;
+  for (const [n, c] of crit) {
+    s += `<rect x="${f1(lx)}" y="${H - 20}" width="12" height="12" rx="2" style="fill:${c}"/>` + texto(lx + 17, H - 10, n, { tam: 11.5 });
+    lx += n.length * 6.6 + 34;
+  }
+  s += `<rect x="${f1(lx + 6)}" y="${H - 20}" width="12" height="12" style="fill:var(--bg);stroke:var(--danger)" stroke-width="2.5"/>` + texto(lx + 24, H - 10, "Pasa el límite", { tam: 11.5, color: "var(--danger)", peso: 700 });
+  return envolver(W, H, `Uso de cada límite${conCosto ? " y costo total" : ""} de ${alternativas.length} alternativas`, s);
+}
+
 // ---------------------------------------------------------------- barra de referencia vertical
 
 /**

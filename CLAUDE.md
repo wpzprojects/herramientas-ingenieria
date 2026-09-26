@@ -489,6 +489,12 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   total a la derecha): PENDIENTE de su decisión. Ampacidad subterránea: primero la curva (suelo) y luego el corte (en
   pantalla y en los reportes). KaTeX: dentro de `\text{}` NO poner «·» ni «°» (salen en rojo como `\cdotp`): escribir
   `\text{K}\cdot\text{m/W}`. Celular: `#resultado-wrap` con 10 px de relleno en la tarjeta y 12 px en el panel.
+  **3.44.0**: Valoración integral, gráfico «Uso de cada límite y costo total» (`usoLimitesSvg`, VI1 revisado aprobado
+  por el usuario) al FINAL del resultado (`.graf-ancho`, hasta 820 px): barras por alternativa con el % usado de
+  ampacidad (I/Iadm), pérdidas (/3 %), regulación (/10 %) y cortocircuito (falla/capacidad; «sin corriente de falla
+  indicada» si no hay), colores de serie; lo que pasa el 100 % conserva su color con borde y cifra en rojo; columna de
+  costo total (gris; la recomendada con borde verde) solo si hay precios. Conductor económico: precio y costos con
+  separador de miles al escribir (`campo-miles.js`, igual que Valoración integral; antes eran `type=number`).
 - **Valores por defecto (2026-09-26, pedido del usuario: calcular de una)**: `porDefecto(sel, valor)` en cada vista
   (dispara «change» para la cascada): AAAC 246.9 + primera referencia en Pérdidas y Regulación (cada tramo aéreo nuevo),
   Cortocircuito y Ampacidad aérea; Ocupación: PVC Tipo TDP de 4". Lo guardado en la sesión sigue ganando.

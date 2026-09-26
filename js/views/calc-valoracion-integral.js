@@ -29,6 +29,7 @@ import {
 import { UMBRAL_OPTIMO_PCT as OPTIMO_PERDIDAS } from "../calc/perdidas-tramos.js";
 import { UMBRAL_OPTIMO_PCT as OPTIMO_REGULACION } from "../calc/regulacion-tramos.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
+import { usoLimitesSvg } from "../util/graficos.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables, plegarTarjeta } from "../util/tarjetas-plegables.js";
 import { revelar, mostrar } from "../util/revelar.js";
@@ -1834,6 +1835,34 @@ export async function render(container) {
   /** Tono (verde / amarillo / rojo) de una celda para el Excel: el propio de la celda o el de su clasificación. */
   const tonoDe = (c) => c.tono ?? (c.estado ? { "badge-success": "bueno", "": "neutral", "badge-warning": "malo", "badge-danger": "malo" }[c.estado.clase] ?? null : null);
 
+  /**
+   * Gráfico al FINAL del resultado (2026-09-26, VI1 revisado, elegido por el usuario): el % usado de cada límite por
+   * alternativa y, si hay precios, su costo total al lado.
+   */
+  function graficoLimitesHtml(r) {
+    const uso = (a, b) => (Number.isFinite(a) && Number.isFinite(b) && b > 0 ? (a / b) * 100 : null);
+    const alternativas = r.escenarios.map((x, i) => {
+      const t0 = x.tramos[0];
+      const sub = t0 && t0.eleccion ? `${t0.eleccion.material} ${t0.eleccion.calibre}${x.tramos.length > 1 ? ` + ${x.tramos.length - 1} tramo${x.tramos.length > 2 ? "s" : ""}` : ""}` : "";
+      return {
+        nombre: `Alternativa ${i + 1}`,
+        sub,
+        usos: [
+          x.ampacidad.error ? null : uso(x.corrienteA, x.ampacidad.totalA),
+          uso(x.perdidas.pct, LIMITE_PERDIDAS),
+          uso(x.regulacion.pct, LIMITE_REGULACION),
+          x.cortocircuito.corrienteFallaKa === null ? null : uso(x.cortocircuito.corrienteFallaKa, x.cortocircuito.totalKa),
+        ],
+        estado: !r.cumplen.includes(i) ? "no" : i === r.recomendado ? "recomendada" : "cumple",
+        costo: x.economia ? x.economia.costoTotal : null,
+      };
+    });
+    const conCosto = alternativas.some((a) => Number.isFinite(a.costo));
+    return `
+        <h4 class="result-subhead">Uso de cada límite${conCosto ? " y costo total" : ""}</h4>
+        <div class="graf-ancho">${usoLimitesSvg({ alternativas })}</div>`;
+  }
+
   function renderResultado(r, comun, estados, dato) {
     const wrap = q("#resultado-wrap");
     comunActual = comun;
@@ -1853,6 +1882,7 @@ export async function render(container) {
         ${modelo.hayVarios ? detalleTramosHtml(tramos) : ""}
         <p class="text-muted text-sm" style="margin: var(--space-3) 0 0;">${escapeHtml(REFERENCIAS)}</p>
         ${avisosHtml(r, comun, estados)}
+        ${graficoLimitesHtml(r)}
       </div>`;
     wrap.innerHTML = tarjetaResultadosHtml({ resultado, reporte: reporteHtml(reporte, ETIQUETAS_REPORTE), formulasPlano: "" });
     // La pestaña de fórmulas (ya están en cada calculadora) pasa a ser el «Análisis»: margen, capacidad máxima y
