@@ -244,6 +244,18 @@ await seccion("motor: escenario con varios tramos (aéreo + subterráneo a 34.5 
   ok(!rf.cumpleTodo && rf.incumple.includes("ampacidad") && rf.ampacidad.tramo === 1, "un tramo sobrecargado basta para que el escenario no cumpla");
 });
 
+await seccion("motor: márgenes y capacidad máxima", async () => {
+  const x = V.evaluarEscenario(COMUN, escAereo(HAWK, 34.5, 1, { corrienteFallaKa: 5 }));
+  const a = V.analizarAlternativa(x, COMUN.potenciaActivaMw);
+  cerca(a.perd.rel, 1 - x.perdidas.pct / V.LIMITE_PERDIDAS, 1e-12, "margen relativo de pérdidas");
+  cerca(a.amp.margen, x.ampacidad.totalA - x.corrienteA, 1e-9, "margen de ampacidad en A");
+  ok(["ampacidad", "perdidas", "regulacion", "cortocircuito"].includes(a.limita), `criterio que limita: ${a.limita}`);
+  const pMax = Math.min(a.potencias.ampacidad, a.potencias.regulacion, a.potencias.perdidas);
+  cerca(a.pMax[1], pMax, 1e-9, "potencia máxima = la menor de las tres");
+  const conPMax = V.evaluarEscenario({ ...COMUN, potenciaActivaMw: a.pMax[1] * 0.999 }, escAereo(HAWK, 34.5, 1));
+  ok(conPMax.ampacidad.cumple && conPMax.perdidas.cumple && conPMax.regulacion.cumple, "justo por debajo de la potencia máxima sigue cumpliendo");
+});
+
 await seccion("motor: calibre mínimo que cumple", async () => {
   // AAAC 246.9 a 34.5 kV se sobrecarga: el mínimo es un AAAC más grande, y el anterior de la lista no cumple
   const e = escAereo(ALLIANCE, 34.5, 1);
@@ -328,6 +340,10 @@ await seccion("vista: tarjetas y alternativas", async () => {
   ok($$("details.vi-avanzado").every((d) => !d.open), "«Parámetros avanzados» nacen plegados");
   const dup = $(".vi-escenario .btn-tramo-duplicar");
   ok(dup && dup.closest(".form-section-title") && dup.nextElementSibling.classList.contains("btn-tramo-quitar"), "«Duplicar» en la barra de título de la alternativa, junto a «Quitar»");
+  const quitarAlt = dup.nextElementSibling;
+  ok(dup.querySelector(".vi-texto-btn")?.textContent === "Duplicar" && quitarAlt.querySelector(".vi-texto-btn")?.textContent === "Quitar" && quitarAlt.querySelector("svg"), "«Duplicar» y «Quitar» llevan icono y el texto aparte (en el celular solo queda el icono)");
+  const cssVista = await (await fetch("../css/app.css")).text();
+  ok(/@media \(max-width: 480px\) \{ \.vi-escenario \.form-section-title \.vi-texto-btn \{ display: none; \} \}/.test(cssVista), "en ≤480 px se ocultan los textos de «Duplicar» y «Quitar» (solo en las alternativas)");
   ok(potenciaInicial === "9.9" && $("#f-aparente").value === "11", "potencia por defecto: 9.9 MW (11 MVA con FP 0.9)");
   ok(!$("#f-modo").innerHTML.includes("corriente"), "el dato de partida no ofrece corriente (depende de la tensión de cada escenario)");
 });

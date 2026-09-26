@@ -230,8 +230,8 @@ const ACSR_4_0 = desnudos.find((c) => c.tipo === "ACSR" && c.calibre_awg_kcmil =
 
 await seccion("tools: esquema para Gemini", async () => {
   const decl = tools.declaraciones();
-  ok(decl.length === 16, `sin lista se declaran las 16 herramientas (${decl.length})`);
-  ok(tools.declaraciones(tools.HERRAMIENTAS_ESTANDAR).length === 10, "con las del estándar se declaran 10");
+  ok(decl.length === 17, `sin lista se declaran las 17 herramientas (${decl.length})`);
+  ok(tools.declaraciones(tools.HERRAMIENTAS_ESTANDAR).length === 11, "con las del estándar se declaran 11");
   ok(decl.every((d) => d.name && d.description && d.parameters.type === "object" && Object.keys(d.parameters.properties).length > 0), "todas con descripcion y propiedades no vacias");
   ok(decl.every((d) => (d.parameters.required || []).every((r) => r in d.parameters.properties)), "required subconjunto de properties");
   const barrido = decl.find((d) => d.name === "barrer_parametro").parameters.properties;
@@ -267,6 +267,99 @@ await seccion("openai/anthropic: envuelven el mismo esquema de tools.js sin perd
   ok(wAnthropic.input_schema.properties.herramienta.enum.length === 6 && (wAnthropic.input_schema.required || []).every((r) => r in wAnthropic.input_schema.properties), "conserva enum del barrido y required valido");
   ok(cuerpoAnthropic.tool_choice.type === "none", "Anthropic: modoHerramientas NONE -> tool_choice {type:'none'}");
   anthropic.usarMock(null);
+});
+
+await seccion("tools: valoración integral (valorar_alternativas)", async () => {
+  const VI = await import("../js/calc/valoracion-integral.js");
+  const { loadData } = await import("../js/util/format.js");
+  const cat = { desnudos: await loadData("conductores-desnudos"), xlpe: await loadData("conductores-xlpe"), cables: await loadData("construccion-cable-subterraneo") };
+  ok(tools.HERRAMIENTAS_ESTANDAR.includes("valorar_alternativas") && tools.HERRAMIENTAS_TODAS.includes("valorar_alternativas"), "entra al agente estándar y al riguroso (no es opcional)");
+  ok(tools.catalogoHerramientas().find((h) => h.nombre === "valorar_alternativas")?.grupo === "Calculadoras", "va en el grupo Calculadoras");
+  const decl = tools.declaraciones().find((d) => d.name === "valorar_alternativas");
+  ok(decl && decl.parameters.required.includes("factor_potencia") && decl.parameters.required.includes("alternativas"), "esquema: exige factor de potencia y alternativas");
+  const itemAlt = decl.parameters.properties.alternativas.items;
+  ok(itemAlt.properties.tramos?.items?.properties?.calibre && itemAlt.properties.red.enum.includes("Subterranea"), "esquema: cada alternativa tiene su conductor y una lista opcional de tramos");
+  ok(!("barrer_parametro" in {}) && !tools.declaraciones().find((d) => d.name === "barrer_parametro").parameters.properties.herramienta.enum.includes("valorar_alternativas"), "no entra al barrido (su resultado es una comparación)");
+  ok(/valorar_alternativas/.test(analisis.SISTEMA_ANALISIS) && /valorar_alternativas/.test(analisis.SISTEMA_RIGUROSO), "los dos agentes saben cuándo usarla");
+
+  // Dos alternativas: AAAC 246.9 a 34.5 kV (se sobrecarga) y ACSR 477 Hawk a 34.5 kV; iguales a la pantalla
+  const ctx = ctxNuevo();
+  const args = {
+    factor_potencia: 0.9,
+    potencia_mw: 30,
+    tension_kv: 34.5,
+    longitud_km: 5,
+    alternativas: [
+      { red: "Aerea", material: "AAAC", calibre: "246.9", corriente_falla_ka: 5 },
+      { red: "Aerea", material: "ACSR", calibre: "477", referencia: "Hawk (26/7)", corriente_falla_ka: 5 },
+    ],
+  };
+  const r = await tools.ejecutarLlamada("valorar_alternativas", args, ctx);
+  ok(r.ok, `se ejecuta (${r.error || "ok"})`);
+  const valor = (nombre) => r.resultados.find((x) => x.nombre.startsWith(nombre))?.valor;
+  // lo mismo con el motor, como lo arma la pantalla (valores por defecto de la pantalla)
+  const fila = (tipo, calibre, ref) => cat.desnudos.find((f) => f.tipo === tipo && f.calibre_awg_kcmil === calibre && (!ref || f.nombre_clave === ref));
+  const tramo = (f) => {
+    const eleccion = { red: "Aerea", material: f.tipo, calibre: f.calibre_awg_kcmil, referencia: f.nombre_clave };
+    return { eleccion, red: "Aerea", n: 1, longitudKm: 5, conductor: VI.datosConductor(eleccion, cat), dabM: 2, dacM: 2.84, dbcM: 0.84, separacionHazM: 0, costos: null };
+  };
+  const comun = {
+    potenciaActivaMw: 30, factorPotencia: 0.9, factorCarga: 0.4,
+    aerea: { taC: 25, tcC: 75, vwMs: 0.61, anguloVientoDeg: 90, elevacionM: 0, epsilon: 0.5, alfa: 0.5, qseWm2: 1000, thetaDeg: 90 },
+    subterranea: null, tempFallaC: 250, economia: null,
+  };
+  const escs = [fila("AAAC", "246.9"), fila("ACSR", "477", "Hawk (26/7)")].map((f) => ({ tensionKv: 34.5, corrienteFallaKa: 5, tiempoDespejeS: 0.3, tramos: [tramo(f)] }));
+  const m = VI.compararEscenarios(comun, escs);
+  cerca(valor("Alternativa 1 — Pérdidas ("), m.escenarios[0].perdidas.pct, 1e-5 * m.escenarios[0].perdidas.pct, "pérdidas de la alternativa 1 = motor de la pantalla");
+  cerca(valor("Alternativa 2 — Caída de tensión"), m.escenarios[1].regulacion.pct, 1e-5 * m.escenarios[1].regulacion.pct, "caída de tensión de la alternativa 2 = motor");
+  cerca(valor("Alternativa 2 — Ampacidad total"), m.escenarios[1].ampacidad.totalA, 1e-5 * m.escenarios[1].ampacidad.totalA, "ampacidad de la alternativa 2 = motor (IEEE 738 con los valores de la pantalla)");
+  cerca(valor("Alternativa 1 — Capacidad de cortocircuito"), m.escenarios[0].cortocircuito.totalKa, 1e-5 * m.escenarios[0].cortocircuito.totalKa, "capacidad de cortocircuito = motor");
+  ok(valor("Alternativa 1 — Veredicto") === (m.escenarios[0].cumpleTodo ? "Cumple todos los criterios" : `No cumple: ${m.escenarios[0].incumple.join(", ")}`), `veredicto de la alternativa 1 («${valor("Alternativa 1 — Veredicto")}»)`);
+  ok(valor("Alternativa recomendada").startsWith(`Alternativa ${m.recomendado + 1}`), `recomendada igual que la pantalla («${valor("Alternativa recomendada")}»)`);
+  const an = VI.analizarAlternativa(m.escenarios[1], 30);
+  cerca(valor("Alternativa 2 — Potencia máxima"), an.pMax[1], 1e-5 * an.pMax[1], "potencia máxima = la del análisis de la pantalla");
+  const cm = VI.calibreMinimo(comun, escs[0], cat);
+  ok(valor("Alternativa 1 — Calibre mínimo").startsWith(`AAAC ${cm.calibre}`), `calibre mínimo = el de la pantalla («${valor("Alternativa 1 — Calibre mínimo")}»)`);
+  ok(r.supuestos.some((s) => /Velocidad del viento: 0.61 m\/s/.test(s)) && !r.supuestos.some((s) => /terreno/i.test(s)), "supuestos: solo los valores por defecto que se usaron (los de aérea, no los del terreno)");
+  ok(!r.resultados.some((x) => /Costo total/.test(x.nombre)), "sin precio no hay costos");
+  const corrida = ctx.log.at(-1);
+  ok(corrida.herramienta === "valorar_alternativas" && corrida.entradas.some((e) => e.etiqueta === "Alternativa 2" && /Hawk/.test(e.valor)), "la corrida queda en el registro con el conductor de cada alternativa");
+
+  // Subterránea, varios tramos, MVA y costos
+  const r2 = await tools.ejecutarLlamada(
+    "valorar_alternativas",
+    {
+      factor_potencia: 0.9,
+      potencia_mva: 11,
+      precio_kwh: 400,
+      alternativas: [
+        { tension_kv: 34.5, red: "Subterranea", material: "Cobre", calibre: "500", longitud_km: 2, costo_conductor_km: 90000000 },
+        { tension_kv: 13.2, red: "Aerea", material: "ACSR", calibre: "477", conductores_por_fase: 2, costo_conductor_km: 20000000,
+          tramos: [{ longitud_km: 1.5 }, { red: "Subterranea", material: "Cobre", calibre: "500 kcmil", longitud_km: 0.5, costo_conductor_km: 90000000 }] },
+      ],
+    },
+    ctxNuevo()
+  );
+  ok(r2.ok, `subterránea + varios tramos + costos: se ejecuta (${r2.error || "ok"})`);
+  const v2 = (nombre) => r2.resultados?.find((x) => x.nombre.startsWith(nombre))?.valor;
+  cerca(v2("Potencia activa"), 9.9, 1e-9, "con MVA informa la potencia activa (S·cos φ)");
+  ok(Number.isFinite(v2("Alternativa 1 — Costo total")) && Number.isFinite(v2("Alternativa 2 — Costo total")), "con precio y costos en todos los tramos hay costo total");
+  ok(r2.entradas_usadas.some((e) => /tramo 2: subterránea Cobre 500 kcmil/.test(String(e.valor))), "el segundo tramo toma su propio conductor y hereda los conductores por fase de la alternativa");
+  ok(r2.supuestos.some((s) => /Temperatura del terreno: 25/.test(s)) && r2.supuestos.some((s) => /Tasa de descuento: 10/.test(s)), "supuestos del terreno y de la evaluación económica");
+
+  // Una sola alternativa: sin recomendada
+  const r3 = await tools.ejecutarLlamada("valorar_alternativas", { factor_potencia: 0.9, potencia_mw: 9.9, tension_kv: 34.5, longitud_km: 5, alternativas: [{ red: "Aerea", material: "ACSR", calibre: "4/0" }] }, ctxNuevo());
+  ok(r3.ok && !r3.resultados.some((x) => x.nombre === "Alternativa recomendada") && r3.notas.some((n) => /referencias/.test(n) || /Límites/.test(n)), "con una sola alternativa la valida sin elegir recomendada");
+
+  // Errores que el modelo puede corregir
+  const err = async (a) => (await tools.ejecutarLlamada("valorar_alternativas", a, ctxNuevo())).error || "";
+  ok(/dato de partida/.test(await err({ factor_potencia: 0.9, tension_kv: 34.5, longitud_km: 5, alternativas: [{ red: "Aerea", material: "ACSR", calibre: "4/0" }] })), "sin potencia: pide el dato de partida");
+  ok(/falta la tensión/.test(await err({ factor_potencia: 0.9, potencia_mw: 5, longitud_km: 5, alternativas: [{ red: "Aerea", material: "ACSR", calibre: "4/0" }] })), "sin tensión: la pide");
+  ok(/falta la longitud/.test(await err({ factor_potencia: 0.9, potencia_mw: 5, tension_kv: 13.2, alternativas: [{ red: "Aerea", material: "ACSR", calibre: "4/0" }] })), "sin longitud: la pide");
+  ok(/Opciones: 1\/0 AWG/.test(await err({ factor_potencia: 0.9, potencia_mw: 5, tension_kv: 13.2, longitud_km: 1, alternativas: [{ red: "Subterranea", material: "Cobre", calibre: "2" }] })), "calibre subterráneo inexistente: dice los disponibles");
+  ok(/46 kV/.test(await err({ factor_potencia: 0.9, potencia_mw: 5, tension_kv: 115, longitud_km: 1, alternativas: [{ red: "Subterranea", material: "Cobre", calibre: "500" }] })), "subterráneo a más de 46 kV: explica que no hay cables");
+  ok(/de 1 a 6/.test(await err({ factor_potencia: 0.9, potencia_mw: 5, tension_kv: 13.2, longitud_km: 1, alternativas: [] })), "sin alternativas: pide de 1 a 6");
+  ok(/hasta 6 circuitos/.test(await err({ factor_potencia: 0.9, potencia_mw: 5, tension_kv: 13.2, longitud_km: 1, alternativas: [{ red: "Subterranea", material: "Cobre", calibre: "500", conductores_por_fase: 4, otros_circuitos: 3 }] })), "más de 6 circuitos en el banco: lo rechaza");
 });
 
 await seccion("tools: Varios (conversión de unidades y de coordenadas)", async () => {
@@ -436,9 +529,9 @@ await seccion("tools: conversión de coordenadas con códigos EPSG, varios punto
 });
 
 await seccion("tools: herramientas permitidas por agente", async () => {
-  ok(tools.HERRAMIENTAS_ESTANDAR.length === 10 && Object.isFrozen(tools.HERRAMIENTAS_ESTANDAR), "el estándar habilita las 10 herramientas actuales");
+  ok(tools.HERRAMIENTAS_ESTANDAR.length === 11 && Object.isFrozen(tools.HERRAMIENTAS_ESTANDAR), "el estándar habilita las 11 herramientas actuales");
   const cat = tools.catalogoHerramientas();
-  ok(cat.length === 16 && cat.every((h) => h.nombre && h.titulo && h.grupo && h.descripcion), "catálogo: 16 herramientas con título, grupo y descripción");
+  ok(cat.length === 17 && cat.every((h) => h.nombre && h.titulo && h.grupo && h.descripcion), "catálogo: 17 herramientas con título, grupo y descripción");
   ok([...new Set(cat.map((h) => h.grupo))].join() === "Calculadoras,Catálogos,Análisis,Varios", "cuatro grupos: Calculadoras, Catálogos, Análisis y Varios");
   ok(!tools.HERRAMIENTAS_ESTANDAR.includes("convertir_unidades") && !tools.HERRAMIENTAS_ESTANDAR.includes("convertir_coordenadas"), "las de Varios son opcionales: no están en el estándar");
   ok(tools.declaraciones(["calcular_perdidas", "buscar_tuberia"]).map((d) => d.name).join() === "calcular_perdidas,buscar_tuberia", "declaraciones(permitidas) solo declara esas");
@@ -827,8 +920,8 @@ await seccion("herramientas de diseño: dimensionar, verificar y buscar valor l�
   const NUEVAS = ["dimensionar_conductor", "verificar_conductor", "resolver_valor_limite"];
   const cat = tools.catalogoHerramientas();
   ok(NUEVAS.every((n) => cat.find((h) => h.nombre === n)?.grupo === "Análisis"), "las tres aparecen en el catálogo de herramientas, en el grupo «Análisis»");
-  ok(NUEVAS.every((n) => !tools.HERRAMIENTAS_ESTANDAR.includes(n)) && tools.HERRAMIENTAS_ESTANDAR.length === 10, "son opcionales: NO están en el agente estándar (siguen sus 10 herramientas)");
-  ok(tools.declaraciones(tools.HERRAMIENTAS_ESTANDAR).length === 10 && NUEVAS.every((n) => tools.declaraciones().some((d) => d.name === n)), "el estándar no las declara; con todas habilitadas sí");
+  ok(NUEVAS.every((n) => !tools.HERRAMIENTAS_ESTANDAR.includes(n)) && tools.HERRAMIENTAS_ESTANDAR.length === 11, "son opcionales: NO están en el agente estándar (siguen sus 11 herramientas)");
+  ok(tools.declaraciones(tools.HERRAMIENTAS_ESTANDAR).length === 11 && NUEVAS.every((n) => tools.declaraciones().some((d) => d.name === n)), "el estándar no las declara; con todas habilitadas sí");
   const soloNuevas = tools.declaraciones(NUEVAS);
   ok(soloNuevas.length === 0, "sin calculadoras habilitadas no se ofrecen (necesitan las calculadoras que usan)");
   const conCalc = tools.declaraciones([...NUEVAS, "calcular_perdidas", "calcular_regulacion"]);
@@ -1143,7 +1236,7 @@ await seccion("analisis: bucle con herramientas (Gemini simulado)", async () => 
   gemini.usarMock(async ({ cuerpo }) => {
     n++;
     if (n === 1) {
-      ok(cuerpo.tools[0].functionDeclarations.length === 10 && cuerpo.toolConfig.functionCallingConfig.mode === "AUTO" && !!cuerpo.systemInstruction, "1ª llamada: envía herramientas, modo AUTO e instrucciones de sistema");
+      ok(cuerpo.tools[0].functionDeclarations.length === 11 && cuerpo.toolConfig.functionCallingConfig.mode === "AUTO" && !!cuerpo.systemInstruction, "1ª llamada: envía herramientas, modo AUTO e instrucciones de sistema");
       return { candidates: [{ content: { role: "model", parts: [
         { functionCall: { name: "calcular_perdidas", args: { ...LINEA, factor_carga: 0.5, resistencia_ohm_km: 0.3 } } },
         { functionCall: { name: "calcular_perdidas", args: { ...LINEA, factor_carga: 0.9, resistencia_ohm_km: 0.3 } } },
@@ -1234,9 +1327,9 @@ await seccion("analisis: bucle con herramientas (Gemini simulado)", async () => 
     return { respuesta, nDecl, r };
   };
   const porDefecto = await pedirConversion({});
-  ok(porDefecto.nDecl === 10 && porDefecto.respuesta.ok === false && porDefecto.respuesta.error.includes("no está habilitada"), "por defecto (agente estándar) la IA no tiene las herramientas de Varios: se declaran 10 y una llamada a convertir_unidades se rechaza");
+  ok(porDefecto.nDecl === 11 && porDefecto.respuesta.ok === false && porDefecto.respuesta.error.includes("no está habilitada"), "por defecto (agente estándar) la IA no tiene las herramientas de Varios: se declaran 11 y una llamada a convertir_unidades se rechaza");
   const conVarios = await pedirConversion({ permitidas: [...tools.HERRAMIENTAS_ESTANDAR, "convertir_unidades"] });
-  ok(conVarios.nDecl === 11 && conVarios.respuesta.ok === true && Math.abs(conVarios.respuesta.resultados[0].valor - 100 / 0.3048) < 1e-6 && conVarios.r.herramientas[0].titulo === "Conversión de unidades", "un agente que la activa la recibe y la usa (100 m = 328.0840 ft)");
+  ok(conVarios.nDecl === 12 && conVarios.respuesta.ok === true && Math.abs(conVarios.respuesta.resultados[0].valor - 100 / 0.3048) < 1e-6 && conVarios.r.herramientas[0].titulo === "Conversión de unidades", "un agente que la activa la recibe y la usa (100 m = 328.0840 ft)");
   gemini.usarMock(null);
 });
 
@@ -1250,7 +1343,7 @@ await seccion("analisis: bucle con herramientas (OpenAI simulado)", async () => 
   openai.usarMock(async ({ cuerpo }) => {
     n++;
     if (n === 1) {
-      ok(cuerpo.tools.length === 10 && cuerpo.tool_choice === "auto", "1ª llamada: envía las 10 herramientas del agente estándar, tool_choice auto");
+      ok(cuerpo.tools.length === 11 && cuerpo.tool_choice === "auto", "1ª llamada: envía las 11 herramientas del agente estándar, tool_choice auto");
       return {
         choices: [{ finish_reason: "tool_calls", message: { content: null, tool_calls: [
           { id: "a", type: "function", function: { name: "calcular_perdidas", arguments: JSON.stringify({ ...LINEA, factor_carga: 0.5, resistencia_ohm_km: 0.3 }) } },
@@ -1279,7 +1372,7 @@ await seccion("analisis: bucle con herramientas (Anthropic simulado)", async () 
   anthropic.usarMock(async ({ cuerpo }) => {
     n++;
     if (n === 1) {
-      ok(cuerpo.tools.length === 10 && cuerpo.max_tokens === 4096, "1ª llamada: envía las 10 herramientas y respeta maxTokens de los ajustes");
+      ok(cuerpo.tools.length === 11 && cuerpo.max_tokens === 4096, "1ª llamada: envía las 11 herramientas y respeta maxTokens de los ajustes");
       return {
         stop_reason: "tool_use",
         content: [
@@ -1350,14 +1443,14 @@ await seccion("agentes de análisis", async () => {
   ok(agAn.temperaturaDe(lista[3], 0.3) === 0.9 && agAn.temperaturaDe(lista[2], 0.3) === 0.3, "temperatura del agente o la general");
 
   // herramientas por agente
-  ok(agAn.herramientasDe(def).length === 10 && def.herramientas === tools.HERRAMIENTAS_ESTANDAR, "el predeterminado habilita las herramientas estándar");
-  ok(copia.herramientas.length === 10 && !Object.isFrozen(copia.herramientas) && nuevo.herramientas.length === 10, "duplicar y crear agentes parten de las estándar (lista editable)");
+  ok(agAn.herramientasDe(def).length === 11 && def.herramientas === tools.HERRAMIENTAS_ESTANDAR, "el predeterminado habilita las herramientas estándar");
+  ok(copia.herramientas.length === 11 && !Object.isFrozen(copia.herramientas) && nuevo.herramientas.length === 11, "duplicar y crear agentes parten de las estándar (lista editable)");
   const soloDos = { ...agAn.nuevoAgente(), nombre: "Dos", instrucciones: "x", herramientas: ["buscar_tuberia", "calcular_perdidas"] };
   agAn.guardarPropios([soloDos]);
   ok(agAn.cargarAgentes()[2].herramientas.join() === "calcular_perdidas,buscar_tuberia", "la lista de herramientas se guarda y se carga");
   window.localStorage.setItem("ia.agentesAnalisis", JSON.stringify([{ id: "v", nombre: "viejo", instrucciones: "a" }, { id: "w", nombre: "raro", instrucciones: "a", herramientas: ["inventada", "calcular_perdidas"] }, { id: "z", nombre: "vacio", instrucciones: "a", herramientas: [] }]));
   const cargados = agAn.cargarAgentes();
-  ok(cargados[2].herramientas.length === 10, "un agente guardado sin lista usa las herramientas estándar");
+  ok(cargados[2].herramientas.length === 11, "un agente guardado sin lista usa las herramientas estándar");
   ok(cargados[3].herramientas.join() === "calcular_perdidas" && cargados[4].herramientas.length === 0, "nombres desconocidos se descartan; una lista vacía se respeta");
 
   // almacenamiento manipulado: no puede suplantar ni romper los predeterminados

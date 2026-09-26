@@ -25,6 +25,19 @@ import {
   sensibilidad as sensibilidadEconomico,
   sensibilidadInstalacion as sensibilidadInstalacionEconomico,
 } from "../calc/conductor-economico.js";
+import {
+  compararEscenarios as compararEscenariosVI,
+  datosConductor as datosConductorVI,
+  calibreMinimo as calibreMinimoVI,
+  analizarAlternativa as analizarAlternativaVI,
+  MIN_ESCENARIOS,
+  MAX_ESCENARIOS,
+  MAX_TRAMOS as MAX_TRAMOS_VI,
+  MAX_CIRCUITOS_BANCO as MAX_CIRCUITOS_BANCO_VI,
+  CALIBRES_SUBTERRANEOS as CALIBRES_SUBTERRANEOS_VI,
+  LIMITE_PERDIDAS as LIMITE_PERDIDAS_VI,
+  LIMITE_REGULACION as LIMITE_REGULACION_VI,
+} from "../calc/valoracion-integral.js";
 import { convertirBase, datosCalibre, calibrePorArea, CALIBRES } from "../calc/unidades-extendido.js";
 import { SISTEMAS, convertirCoordenadas } from "../calc/coordenadas.js";
 import { parseCodigoEpsg, infoSistema, convertirEntreSistemas, avisosArea } from "../calc/coordenadas-epsg.js";
@@ -902,6 +915,351 @@ const T_CONDUCTOR_ECONOMICO = {
   },
 };
 
+// ---------------------------------------------------------------- valoracion integral (mismo motor de la pantalla; no entra al barrido: su resultado es una comparacion)
+
+// Valores por defecto: los mismos de la pantalla de Valoración integral. Van en la descripción de cada campo (no como
+// `defecto`) para anotar como supuesto solo los que se usaron de verdad (los de aérea solo si hay tramos aéreos, etc.).
+const DEF_VI = {
+  factor_carga: 0.4,
+  temperatura_ambiente_c: 25,
+  temperatura_max_aerea_c: 75,
+  viento_ms: 0.61,
+  angulo_viento_deg: 90,
+  elevacion_m: 0,
+  emisividad: 0.5,
+  absortividad: 0.5,
+  radiacion_solar_wm2: 1000,
+  angulo_incidencia_solar_deg: 90,
+  temperatura_max_subterranea_c: 90,
+  temperatura_terreno_c: 25,
+  resistividad_suelo_kmw: 1,
+  resistencia_ducto_kmw: 0.3,
+  profundidad_banco_m: 1,
+  frecuencia_hz: 60,
+  temperatura_falla_c: 250,
+  escalada_energia_pct: 2.5,
+  tasa_descuento_pct: 10,
+  anios: 25,
+  crecimiento_demanda_pct: 0,
+  tiempo_despeje_s: 0.3,
+  conductores_por_fase: 1,
+  dab_m: 2,
+  dac_m: 2.84,
+  dbc_m: 0.84,
+  separacion_haz_m: 0.4,
+  tipo_pantalla: "Hilos",
+  aislamiento_pct: 100,
+  puesta_tierra: "Unipuntual",
+  separacion_fases_m: 0.04,
+  otros_circuitos: 0,
+  separacion_ductos_m: 0.2,
+};
+const ETIQUETAS_VI = {
+  factor_carga: "Factor de carga",
+  temperatura_ambiente_c: "Temperatura ambiente (aérea)",
+  temperatura_max_aerea_c: "Temperatura máxima del conductor aéreo",
+  viento_ms: "Velocidad del viento",
+  angulo_viento_deg: "Ángulo del viento",
+  elevacion_m: "Elevación",
+  emisividad: "Emisividad ε",
+  absortividad: "Absortividad α",
+  radiacion_solar_wm2: "Radiación solar Qse",
+  angulo_incidencia_solar_deg: "Ángulo de incidencia solar θ",
+  temperatura_max_subterranea_c: "Temperatura máxima del cable subterráneo",
+  temperatura_terreno_c: "Temperatura del terreno",
+  resistividad_suelo_kmw: "Resistividad térmica del suelo",
+  resistencia_ducto_kmw: "Resistencia térmica del ducto",
+  profundidad_banco_m: "Profundidad del banco de ductos",
+  frecuencia_hz: "Frecuencia",
+  temperatura_falla_c: "Temperatura máxima admisible en falla",
+  escalada_energia_pct: "Aumento anual del precio de la energía",
+  tasa_descuento_pct: "Tasa de descuento",
+  anios: "Años de análisis",
+  crecimiento_demanda_pct: "Crecimiento anual de la demanda",
+  tiempo_despeje_s: "Tiempo de despeje de la falla",
+  conductores_por_fase: "Conductores por fase",
+  dab_m: "Distancia entre fases A-B",
+  dac_m: "Distancia entre fases A-C",
+  dbc_m: "Distancia entre fases B-C",
+  separacion_haz_m: "Separación entre subconductores del haz",
+  tipo_pantalla: "Pantalla del cable",
+  aislamiento_pct: "Nivel de aislamiento (%)",
+  puesta_tierra: "Puesta a tierra de las pantallas",
+  separacion_fases_m: "Separación entre fases del cable",
+  otros_circuitos: "Otros circuitos en el banco",
+  separacion_ductos_m: "Separación entre ductos",
+};
+const UNIDADES_VI = {
+  temperatura_ambiente_c: "°C", temperatura_max_aerea_c: "°C", viento_ms: "m/s", angulo_viento_deg: "°", elevacion_m: "m", radiacion_solar_wm2: "W/m²",
+  angulo_incidencia_solar_deg: "°", temperatura_max_subterranea_c: "°C", temperatura_terreno_c: "°C", resistividad_suelo_kmw: "K·m/W", resistencia_ducto_kmw: "K·m/W",
+  profundidad_banco_m: "m", frecuencia_hz: "Hz", temperatura_falla_c: "°C", escalada_energia_pct: "%", tasa_descuento_pct: "%", crecimiento_demanda_pct: "%",
+  tiempo_despeje_s: "s", dab_m: "m", dac_m: "m", dbc_m: "m", separacion_haz_m: "m", separacion_fases_m: "m", separacion_ductos_m: "m",
+};
+const conDef = (texto, k, u = "") => `${texto} (por defecto ${DEF_VI[k]}${u ? ` ${u}` : ""})`;
+
+const CAMPOS_TRAMO_VI = [
+  S("red", "'Aerea' (conductor desnudo del catálogo) o 'Subterranea' (cable monopolar XLPE en trébol, en banco de ductos)", { enum: ["Aerea", "Subterranea"], oculto: true }),
+  S("material", "Aerea: familia del conductor (ACSR, AAAC, ACAR, AAC o ACSS). Subterranea: Cobre o Aluminio", { oculto: true }),
+  S("calibre", "Calibre, p. ej. '477', '4/0' o '500 kcmil'. En Subterranea solo hay 1/0, 2/0, 3/0, 4/0 AWG y 250, 350, 500, 750, 1000 kcmil", { oculto: true }),
+  S("referencia", "Solo Aerea (opcional): nombre clave de la referencia (p. ej. 'Hawk (26/7)') cuando el calibre tiene varias; sin ella se usa la primera del catálogo", { oculto: true }),
+  I("conductores_por_fase", conDef("Conductores por fase. Aerea: haz de N conductores. Subterranea: N ternas en paralelo en el mismo banco de ductos", "conductores_por_fase"), { min: 1, max: 8, oculto: true }),
+  N("longitud_km", "Longitud del tramo", { u: "km", min: 0, minExcl: true, oculto: true }),
+  N("dab_m", conDef("Solo Aerea: distancia entre las fases A y B", "dab_m", "m"), { min: 0, minExcl: true, oculto: true }),
+  N("dac_m", conDef("Solo Aerea: distancia entre las fases A y C", "dac_m", "m"), { min: 0, minExcl: true, oculto: true }),
+  N("dbc_m", conDef("Solo Aerea: distancia entre las fases B y C", "dbc_m", "m"), { min: 0, minExcl: true, oculto: true }),
+  N("separacion_haz_m", conDef("Solo Aerea con varios conductores por fase: separación entre subconductores del haz", "separacion_haz_m", "m"), { min: 0, minExcl: true, oculto: true }),
+  S("tipo_pantalla", conDef("Solo Subterranea: pantalla del cable", "tipo_pantalla"), { enum: ["Hilos", "Cinta"], oculto: true }),
+  I("aislamiento_pct", conDef("Solo Subterranea: nivel de aislamiento 100 o 133 % (a 46 kV solo hay 100 %); el nivel en kV (15, 35 o 46) sale de la tensión", "aislamiento_pct"), { min: 100, max: 133, oculto: true }),
+  S("puesta_tierra", conDef("Solo Subterranea: puesta a tierra de las pantallas", "puesta_tierra"), { enum: ["Unipuntual", "Ambos Extremos", "Cross-bonding"], oculto: true }),
+  N("separacion_fases_m", conDef("Solo Subterranea: distancia entre centros de los cables de un circuito (trébol)", "separacion_fases_m", "m"), { min: 0, minExcl: true, max: 1, oculto: true }),
+  I("otros_circuitos", conDef("Solo Subterranea: otros circuitos ajenos en el mismo banco (calientan el terreno)", "otros_circuitos"), { min: 0, max: MAX_CIRCUITOS_BANCO_VI - 1, oculto: true }),
+  N("separacion_ductos_m", conDef("Solo Subterranea con más de un circuito en el banco: separación entre ductos", "separacion_ductos_m", "m"), { min: 0, minExcl: true, max: 1, oculto: true }),
+  N("costo_conductor_km", "Solo si hay precio_kwh: precio de UN conductor (un hilo o un cable) por km", { u: "$/km", min: 0, minExcl: true, oculto: true }),
+  N("costo_instalacion_km", "Solo si hay precio_kwh (opcional): costo de instalación por km de línea sin el conductor", { u: "$/km", min: 0, oculto: true }),
+];
+const HEREDABLES_VI = CAMPOS_TRAMO_VI.map((c) => c.n);
+
+const T_VALORAR_ALTERNATIVAS = {
+  nombre: "valorar_alternativas",
+  tipo: "calculo",
+  titulo: "Valoración integral",
+  descripcion:
+    `Evalúa de ${MIN_ESCENARIOS} a ${MAX_ESCENARIOS} ALTERNATIVAS completas para una misma conexión (misma potencia) con TODOS los criterios a la vez, igual que la pantalla «Valoración integral»: ampacidad (aérea IEEE 738 o subterránea IEC 60287), pérdidas (límite de referencia ${LIMITE_PERDIDAS_VI} %), regulación (${LIMITE_REGULACION_VI} %), cortocircuito (si se da la corriente de falla) y, con precio_kwh y costos, el costo total actualizado. ` +
+    "Úsala para comparar opciones de conexión (tensión, aérea vs. subterránea, calibre, conductores por fase) o para validar una sola alternativa de forma integral; para un solo criterio usa la calculadora de ese criterio. " +
+    "Obligatorio: factor_potencia, el dato de partida (potencia_mw o potencia_mva), la tensión (tension_kv general o de cada alternativa) y, en cada alternativa, red+material+calibre y longitud (longitud_km general o del tramo). Lo demás toma los valores por defecto de la pantalla (se informan como supuestos). " +
+    `Cada alternativa es un circuito a una sola tensión con 1 a ${MAX_TRAMOS_VI} tramos en serie: para uno basta con los campos de la alternativa; para varios usa "tramos" (lo que un tramo no indique lo toma de su alternativa). ` +
+    "Devuelve por alternativa el veredicto, los valores de cada criterio, el criterio que limita, la potencia y la longitud máximas antes de incumplir y el calibre mínimo del mismo tipo que cumple; y, con 2 o más, la recomendada (entre las que cumplen, la de menor costo total, o la de menores pérdidas si no hay costos).",
+  campos: [
+    N("factor_potencia", "Factor de potencia (cos φ)", { e: "Factor de potencia", req: true, min: 0, minExcl: true, max: 1 }),
+    N("potencia_mw", "DATO DE PARTIDA (indica solo uno): potencia activa de la conexión", { e: "Potencia activa", u: "MW", min: 0, minExcl: true }),
+    N("potencia_mva", "DATO DE PARTIDA (alternativa): potencia aparente; la activa es S·cos φ", { e: "Potencia aparente", u: "MVA", min: 0, minExcl: true }),
+    N("tension_kv", "Tensión línea-línea común a todas las alternativas (cada alternativa puede indicar la suya)", { e: "Tensión", u: "kV", min: 0, minExcl: true }),
+    N("longitud_km", "Longitud común (cada alternativa o tramo puede indicar la suya)", { e: "Longitud", u: "km", min: 0, minExcl: true }),
+    N("factor_carga", conDef("Factor de carga Fc (1 = carga constante)", "factor_carga"), { e: "Factor de carga", min: 0, max: 1, oculto: true }),
+    N("temperatura_ambiente_c", conDef("Aérea: temperatura ambiente", "temperatura_ambiente_c", "°C"), { min: -50, max: 60, oculto: true }),
+    N("temperatura_max_aerea_c", conDef("Aérea: temperatura máxima del conductor (también la de operación para el cortocircuito)", "temperatura_max_aerea_c", "°C"), { min: 0, max: 300, oculto: true }),
+    N("viento_ms", conDef("Aérea: velocidad del viento", "viento_ms", "m/s"), { min: 0, max: 100, oculto: true }),
+    N("angulo_viento_deg", conDef("Aérea: ángulo entre el viento y el conductor", "angulo_viento_deg", "°"), { min: 0, max: 360, oculto: true }),
+    N("elevacion_m", conDef("Aérea: elevación sobre el nivel del mar", "elevacion_m", "m"), { min: 0, max: 10000, oculto: true }),
+    N("emisividad", conDef("Aérea: emisividad ε (0.23 nuevo a 0.91 envejecido)", "emisividad"), { min: 0.23, max: 0.91, oculto: true }),
+    N("absortividad", conDef("Aérea: absortividad solar α (0.23 a 0.91)", "absortividad"), { min: 0.23, max: 0.91, oculto: true }),
+    N("radiacion_solar_wm2", conDef("Aérea: radiación solar total Qse", "radiacion_solar_wm2", "W/m²"), { min: 0, max: 3000, oculto: true }),
+    N("angulo_incidencia_solar_deg", conDef("Aérea: ángulo de incidencia solar θ", "angulo_incidencia_solar_deg", "°"), { min: 0, max: 90, oculto: true }),
+    N("temperatura_max_subterranea_c", conDef("Subterránea: temperatura máxima del conductor (también la de operación para el cortocircuito)", "temperatura_max_subterranea_c", "°C"), { min: 0, max: 300, oculto: true }),
+    N("temperatura_terreno_c", conDef("Subterránea: temperatura del terreno", "temperatura_terreno_c", "°C"), { min: -50, max: 100, oculto: true }),
+    N("resistividad_suelo_kmw", conDef("Subterránea: resistividad térmica del suelo", "resistividad_suelo_kmw", "K·m/W"), { min: 0, max: 1000, oculto: true }),
+    N("resistencia_ducto_kmw", conDef("Subterránea: resistencia térmica del ducto", "resistencia_ducto_kmw", "K·m/W"), { min: 0, max: 5, oculto: true }),
+    N("profundidad_banco_m", conDef("Subterránea: profundidad del banco de ductos", "profundidad_banco_m", "m"), { min: 0.1, max: 10, oculto: true }),
+    N("frecuencia_hz", conDef("Frecuencia del sistema", "frecuencia_hz", "Hz"), { min: 1, max: 300, oculto: true }),
+    N("temperatura_falla_c", conDef("Temperatura máxima admisible en falla", "temperatura_falla_c", "°C"), { min: 0, max: 500, oculto: true }),
+    N("precio_kwh", "OPCIONAL: precio de la energía perdida en el año 1; con él (y costo_conductor_km en cada tramo) se calcula el costo total actualizado", { e: "Precio de la energía perdida", u: "$/kWh", min: 0, minExcl: true }),
+    N("escalada_energia_pct", conDef("Con precio_kwh: aumento anual del precio de la energía", "escalada_energia_pct", "%"), { min: 0, max: 100, oculto: true }),
+    N("tasa_descuento_pct", conDef("Con precio_kwh: tasa de descuento nominal anual", "tasa_descuento_pct", "%"), { min: 0, max: 100, oculto: true }),
+    I("anios", conDef("Con precio_kwh: años de análisis", "anios"), { min: 1, max: 60, oculto: true }),
+    N("crecimiento_demanda_pct", conDef("Con precio_kwh: crecimiento anual de la demanda", "crecimiento_demanda_pct", "%"), { min: 0, max: 100, oculto: true }),
+    {
+      n: "alternativas",
+      t: "array",
+      d: `De ${MIN_ESCENARIOS} a ${MAX_ESCENARIOS} alternativas a evaluar, en el orden en que se quieren numerar`,
+      req: true,
+      itemCampos: [
+        N("tension_kv", "Tensión línea-línea de esta alternativa (si no, la común)", { u: "kV", min: 0, minExcl: true }),
+        N("corriente_falla_ka", "OPCIONAL: corriente de falla que debe soportar (sin ella el cortocircuito solo informa la capacidad)", { u: "kA", min: 0, minExcl: true }),
+        N("tiempo_despeje_s", conDef("Tiempo de despeje de la falla", "tiempo_despeje_s", "s"), { min: 0.01, max: 60 }),
+        ...CAMPOS_TRAMO_VI,
+        {
+          n: "tramos",
+          t: "array",
+          d: `Solo con VARIOS tramos en serie (hasta ${MAX_TRAMOS_VI}), cada uno con su conductor y su longitud; lo que un tramo no indique se toma de su alternativa`,
+          itemCampos: CAMPOS_TRAMO_VI,
+        },
+      ],
+    },
+  ],
+  async calcular(v, extra) {
+    const alternativas = v.alternativas ?? [];
+    if (alternativas.length < MIN_ESCENARIOS || alternativas.length > MAX_ESCENARIOS) {
+      throw new ErrorHerramienta(`Indica de ${MIN_ESCENARIOS} a ${MAX_ESCENARIOS} alternativas en "alternativas" (recibí ${alternativas.length}).`);
+    }
+    const dados = ["potencia_mw", "potencia_mva"].filter((k) => v[k] !== undefined);
+    if (dados.length !== 1) {
+      throw new ErrorHerramienta(dados.length ? "Indica solo UN dato de partida: potencia_mw o potencia_mva." : 'Falta el dato de partida: "potencia_mw" (potencia activa) o "potencia_mva" (aparente). La corriente no sirve aquí: depende de la tensión de cada alternativa.');
+    }
+    const potenciaMw = v.potencia_mw ?? v.potencia_mva * v.factor_potencia;
+    const cat = { desnudos: await loadData("conductores-desnudos"), xlpe: await loadData("conductores-xlpe"), cables: await loadData("construccion-cable-subterraneo") };
+
+    // Valores por defecto usados (se anotan una vez, como supuestos)
+    const usados = new Set();
+    const tomarDef = (obj, k) => {
+      if (obj[k] !== undefined) return obj[k];
+      usados.add(k);
+      return DEF_VI[k];
+    };
+    const global = (k) => tomarDef(v, k);
+
+    const escenarios = [];
+    const textos = [];
+    let hayAerea = false;
+    let haySubt = false;
+    for (const [i, a] of alternativas.entries()) {
+      const pre = `Alternativa ${i + 1}`;
+      const tensionKv = a.tension_kv ?? v.tension_kv;
+      if (tensionKv === undefined) throw new ErrorHerramienta(`${pre}: falta la tensión ("tension_kv" común o de la alternativa).`);
+      const lista = a.tramos?.length ? a.tramos : [{}];
+      if (lista.length > MAX_TRAMOS_VI) throw new ErrorHerramienta(`${pre}: hasta ${MAX_TRAMOS_VI} tramos (recibí ${lista.length}).`);
+      const tramos = [];
+      const textoTramos = [];
+      for (const [j, t0] of lista.entries()) {
+        const t = Object.fromEntries(HEREDABLES_VI.map((k) => [k, t0[k] ?? a[k]]));
+        const donde = lista.length > 1 ? `${pre}, tramo ${j + 1}` : pre;
+        if (!t.red || !t.material || !t.calibre) throw new ErrorHerramienta(`${donde}: indica "red", "material" y "calibre".`);
+        const longitudKm = t.longitud_km ?? v.longitud_km;
+        if (longitudKm === undefined) throw new ErrorHerramienta(`${donde}: falta la longitud ("longitud_km" común, de la alternativa o del tramo).`);
+        const n = tomarDef(t, "conductores_por_fase");
+        let eleccion;
+        let texto;
+        if (t.red === "Aerea") {
+          hayAerea = true;
+          const sub = subNuevo();
+          const { fila } = await resolverConductor(t, sub);
+          extra.notas.push(...sub.notas.map((x) => `${donde} — ${x}`));
+          eleccion = { red: "Aerea", material: fila.tipo, calibre: fila.calibre_awg_kcmil, referencia: fila.nombre_clave };
+          texto = `${fila.tipo} ${fila.calibre_awg_kcmil} · ${fila.nombre_clave}`;
+        } else {
+          haySubt = true;
+          const material = ["Cobre", "Aluminio"].find((m) => norm(m) === norm(t.material));
+          if (!material) throw new ErrorHerramienta(`${donde}: en subterránea el material es "Cobre" o "Aluminio" (recibí "${t.material}").`);
+          const calibre = CALIBRES_SUBTERRANEOS_VI.find((k) => normCalibre(k) === normCalibre(t.calibre));
+          if (!calibre) throw new ErrorHerramienta(`${donde}: el calibre "${t.calibre}" no está en el catálogo de cables subterráneos. Opciones: ${CALIBRES_SUBTERRANEOS_VI.join(", ")}.`);
+          eleccion = { red: "Subterranea", material, calibre, tipoPantalla: tomarDef(t, "tipo_pantalla"), nivelAislamientoPct: tomarDef(t, "aislamiento_pct") };
+          texto = `${material} ${calibre} · pantalla de ${eleccion.tipoPantalla.toLowerCase()}, ${eleccion.nivelAislamientoPct} %`;
+        }
+        const conductor = datosConductorVI({ ...eleccion, tensionKv }, cat);
+        if (!conductor.ok) throw new ErrorHerramienta(`${donde}: ${conductor.error}`);
+        const tramo = { eleccion, red: t.red, n, longitudKm, conductor };
+        if (t.red === "Aerea") {
+          Object.assign(tramo, { dabM: tomarDef(t, "dab_m"), dacM: tomarDef(t, "dac_m"), dbcM: tomarDef(t, "dbc_m"), separacionHazM: n > 1 ? tomarDef(t, "separacion_haz_m") : 0 });
+        } else {
+          const otros = tomarDef(t, "otros_circuitos");
+          if (n + otros > MAX_CIRCUITOS_BANCO_VI) throw new ErrorHerramienta(`${donde}: el banco de ductos admite hasta ${MAX_CIRCUITOS_BANCO_VI} circuitos en total (conductores por fase + otros circuitos).`);
+          Object.assign(tramo, {
+            puestaTierra: tomarDef(t, "puesta_tierra"),
+            separacionFasesM: tomarDef(t, "separacion_fases_m"),
+            otrosCircuitos: otros,
+            separacionDuctosM: n + otros > 1 ? tomarDef(t, "separacion_ductos_m") : DEF_VI.separacion_ductos_m, // con un circuito el motor no la usa
+          });
+        }
+        tramo.costos =
+          v.precio_kwh !== undefined && t.costo_conductor_km !== undefined
+            ? { costoConductorKm: t.costo_conductor_km, costoInstalacionKm: t.costo_instalacion_km ?? 0, instalacionIndicada: t.costo_instalacion_km !== undefined }
+            : null;
+        tramos.push(tramo);
+        const textoTramo = `${t.red === "Aerea" ? "aérea" : "subterránea"} ${texto}${n > 1 ? ` ×${n}` : ""}, ${redondear(longitudKm, 4)} km`;
+        textoTramos.push(lista.length > 1 ? `tramo ${j + 1}: ${textoTramo}` : textoTramo);
+      }
+      const falla = a.corriente_falla_ka ?? null;
+      const esc = { tensionKv, corrienteFallaKa: falla, tiempoDespejeS: tomarDef(a, "tiempo_despeje_s"), tramos };
+      escenarios.push(esc);
+      textos.push(`${redondear(tensionKv, 4)} kV · ${textoTramos.join(" + ")}`);
+      extra.entradas.push(ent(`alternativa${i + 1}`, pre, textos[i]));
+      if (falla !== null) extra.entradas.push(ent(`alternativa${i + 1}_falla_ka`, `${pre} — Corriente de falla a soportar`, falla, "kA"));
+    }
+
+    const economia =
+      v.precio_kwh === undefined
+        ? null
+        : { anios: global("anios"), tasaDescuentoPct: global("tasa_descuento_pct"), precioKwh: v.precio_kwh, escaladaEnergiaPct: global("escalada_energia_pct"), crecimientoDemandaPct: global("crecimiento_demanda_pct") };
+    const comun = {
+      potenciaActivaMw: potenciaMw,
+      factorPotencia: v.factor_potencia,
+      factorCarga: global("factor_carga"),
+      aerea: hayAerea
+        ? {
+            taC: global("temperatura_ambiente_c"),
+            tcC: global("temperatura_max_aerea_c"),
+            vwMs: global("viento_ms"),
+            anguloVientoDeg: global("angulo_viento_deg"),
+            elevacionM: global("elevacion_m"),
+            epsilon: global("emisividad"),
+            alfa: global("absortividad"),
+            qseWm2: global("radiacion_solar_wm2"),
+            thetaDeg: global("angulo_incidencia_solar_deg"),
+          }
+        : null,
+      subterranea: haySubt
+        ? {
+            tempMaxC: global("temperatura_max_subterranea_c"),
+            tempTerrenoC: global("temperatura_terreno_c"),
+            rhoSueloKmW: global("resistividad_suelo_kmw"),
+            uDuctoKmW: global("resistencia_ducto_kmw"),
+            profundidadBancoM: global("profundidad_banco_m"),
+            frecuenciaHz: global("frecuencia_hz"),
+          }
+        : null,
+      tempFallaC: global("temperatura_falla_c"),
+      economia,
+    };
+    const r = compararEscenariosVI(comun, escenarios);
+
+    // Supuestos: los valores por defecto usados, con la etiqueta de su campo
+    for (const k of Object.keys(DEF_VI)) if (usados.has(k)) extra.supuestos.push(`${ETIQUETAS_VI[k]}: ${DEF_VI[k]}${UNIDADES_VI[k] ? ` ${UNIDADES_VI[k]}` : ""} (valor por defecto de la pantalla)`);
+    extra.notas.push(
+      `Límites: pérdidas ≤ ${LIMITE_PERDIDAS_VI} % y regulación ≤ ${LIMITE_REGULACION_VI} % son referencias de diseño (NO límite normativo); ampacidad: la corriente no debe superarla; cortocircuito: solo si se indicó la corriente de falla. Con varios tramos, pérdidas, regulación y costos se suman y la ampacidad y el cortocircuito los fija el tramo más débil. Subterránea: cable monopolar en trébol; varios conductores por fase = ternas en paralelo en el mismo banco.`
+    );
+    if (economia && !r.costosCompletos) extra.notas.push("Hay alternativas sin costo_conductor_km en todos sus tramos: esas no tienen costo total y no compiten por costo.");
+
+    const salida = [];
+    if (v.potencia_mw === undefined) salida.push(res("potencia_activa_mw", "Potencia activa", potenciaMw, "MW"));
+    const nombreCriterio = { ampacidad: "ampacidad", perdidas: "pérdidas", regulacion: "regulación", cortocircuito: "cortocircuito" };
+    r.escenarios.forEach((x, i) => {
+      const pre = `Alternativa ${i + 1}`;
+      const k = `alternativa${i + 1}`;
+      const esc = escenarios[i];
+      const variosTramos = esc.tramos.length > 1;
+      const enTramoVI = (j) => (variosTramos ? ` (tramo ${j + 1})` : "");
+      const an = analizarAlternativaVI(x, potenciaMw);
+      salida.push(res(`${k}_veredicto`, `${pre} — Veredicto`, x.cumpleTodo ? "Cumple todos los criterios" : `No cumple: ${x.incumple.join(", ")}`));
+      salida.push(res(`${k}_corriente_a`, `${pre} — Corriente de carga`, x.corrienteA, "A", 1));
+      if (x.ampacidad.error) {
+        salida.push(res(`${k}_ampacidad`, `${pre} — Ampacidad${enTramoVI(x.ampacidad.tramo)}`, `no calculable: ${x.ampacidad.error}`));
+      } else {
+        salida.push(res(`${k}_ampacidad_a`, `${pre} — Ampacidad total${enTramoVI(x.ampacidad.tramo)}`, x.ampacidad.totalA, "A", 1));
+        salida.push(res(`${k}_uso_ampacidad_pct`, `${pre} — Uso de la ampacidad`, x.ampacidad.usoPct, "%", 1));
+      }
+      salida.push(res(`${k}_perdidas_pct`, `${pre} — Pérdidas (${x.perdidas.clase})`, x.perdidas.pct, "%"));
+      salida.push(res(`${k}_perdidas_kw`, `${pre} — Pérdidas de potencia`, x.perdidas.kw, "kW", 1));
+      salida.push(res(`${k}_regulacion_pct`, `${pre} — Caída de tensión (${x.regulacion.clase})`, x.regulacion.pct, "%"));
+      salida.push(res(`${k}_cortocircuito_ka`, `${pre} — Capacidad de cortocircuito${enTramoVI(x.cortocircuito.tramo)}`, x.cortocircuito.totalKa, "kA"));
+      if (x.cortocircuito.cumple !== null) salida.push(res(`${k}_soporta_falla`, `${pre} — Soporta la corriente de falla`, x.cortocircuito.cumple ? "Sí" : "No"));
+      if (x.economia) {
+        salida.push(res(`${k}_inversion`, `${pre} — Inversión inicial`, x.economia.inversion, "$", 0));
+        salida.push(res(`${k}_costo_total`, `${pre} — Costo total actualizado`, x.economia.costoTotal, "$", 0));
+      }
+      salida.push(res(`${k}_criterio_limita`, `${pre} — Criterio que limita (menor margen)`, nombreCriterio[an.limita]));
+      if (an.pMax) {
+        salida.push(res(`${k}_potencia_maxima_mw`, `${pre} — Potencia máxima sin incumplir (la fija ${nombreCriterio[an.pMax[0]]})`, an.pMax[1], "MW"));
+      }
+      if (Number.isFinite(an.lMax[1])) {
+        salida.push(res(`${k}_longitud_maxima_km`, `${pre} — Longitud máxima con esta potencia (la fija ${nombreCriterio[an.lMax[0]]})`, an.lMax[1], "km"));
+      }
+      const m = calibreMinimoVI(comun, esc, cat);
+      const tramoMin = variosTramos ? ` (tramo ${m.tramo + 1})` : "";
+      let textoMin;
+      if (m.ninguno) textoMin = `ninguno del mismo tipo${tramoMin}: ni el mayor del catálogo hace cumplir todos los criterios`;
+      else {
+        const nombre = `${esc.tramos[m.tramo].eleccion.material} ${m.calibre}${m.referencia ? ` · ${m.referencia}` : ""}${tramoMin}`;
+        textoMin = m.esActual ? `${nombre}: es el actual` : `${nombre}: ${m.menorQueActual ? "menor" : "mayor"} que el actual`;
+      }
+      salida.push(res(`${k}_calibre_minimo`, `${pre} — Calibre mínimo que cumple`, textoMin));
+    });
+    if (r.escenarios.length > 1) {
+      const criterio = r.criterioRecomendado === "costo" ? "menor costo total entre las que cumplen" : "menores pérdidas entre las que cumplen (sin costos para comparar)";
+      salida.push(res("recomendada", "Alternativa recomendada", r.recomendado === null ? "ninguna: ninguna cumple todos los criterios" : `Alternativa ${r.recomendado + 1} — ${textos[r.recomendado]} (${criterio})`));
+    }
+    return salida;
+  },
+};
+
 // ---------------------------------------------------------------- consultas de catalogo
 
 const T_BUSCAR_CONDUCTOR = {
@@ -1624,7 +1982,7 @@ const VARIOS = [T_CONVERTIR_UNIDADES, T_CONVERTIR_COORDENADAS];
 // ---------------------------------------------------------------- registro y ejecucion
 
 const REGISTRO = Object.fromEntries(
-  [...CALCULADORAS, T_CONDUCTOR_ECONOMICO, T_BUSCAR_CONDUCTOR, T_BUSCAR_TUBERIA, T_BARRIDO, ...DISENO, T_FICHA_PROYECTO, ...VARIOS].map((t) => [t.nombre, t])
+  [...CALCULADORAS, T_CONDUCTOR_ECONOMICO, T_VALORAR_ALTERNATIVAS, T_BUSCAR_CONDUCTOR, T_BUSCAR_TUBERIA, T_BARRIDO, ...DISENO, T_FICHA_PROYECTO, ...VARIOS].map((t) => [t.nombre, t])
 );
 
 // Cada agente elige cuales herramientas puede usar. Una herramienta con `opcional: true` no forma parte de las del

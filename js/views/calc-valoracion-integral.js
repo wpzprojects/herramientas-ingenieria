@@ -13,6 +13,7 @@ import { potenciaActivaMw } from "../calc/circuito.js";
 import {
   compararEscenarios,
   calibreMinimo,
+  analizarAlternativa,
   datosConductor,
   nivelAislamientoPara,
   CALIBRES_SUBTERRANEOS,
@@ -588,7 +589,7 @@ export async function render(container) {
         <div class="form-section-title">
           ${icon("conductorCableado")} <span class="tramo-titulo">Alternativa 1</span>
           <button type="button" class="btn btn-ghost btn-tramo-duplicar">${icon("copy")} <span class="vi-texto-btn">Duplicar</span></button>
-          <button type="button" class="btn btn-ghost btn-tramo-quitar" hidden>${icon("close")} Quitar</button>
+          <button type="button" class="btn btn-ghost btn-tramo-quitar" hidden aria-label="Quitar la alternativa">${icon("close")} <span class="vi-texto-btn">Quitar</span></button>
         </div>
         <div class="grid-2 vi-tension-alt" hidden>
           <div class="field">
@@ -1598,22 +1599,7 @@ export async function render(container) {
    * de pérdidas crecen en proporción a la potencia y a la longitud, y la ampacidad fija la corriente máxima; así que los
    * máximos salen de escalar lo ya calculado. `rel` = margen relativo (1 = sin uso, 0 = justo en el límite, < 0 = incumple).
    */
-  function analisisAlternativa(x, comun) {
-    const P = comun.potenciaActivaMw;
-    const L = x.longitudKm;
-    const amp = x.ampacidad.error ? null : { margen: x.ampacidad.totalA - x.corrienteA, rel: 1 - x.corrienteA / x.ampacidad.totalA };
-    const perd = { margen: LIMITE_PERDIDAS - x.perdidas.pct, rel: 1 - x.perdidas.pct / LIMITE_PERDIDAS };
-    const reg = { margen: LIMITE_REGULACION - x.regulacion.pct, rel: 1 - x.regulacion.pct / LIMITE_REGULACION };
-    const cc = x.cortocircuito.corrienteFallaKa === null ? null : { margen: x.cortocircuito.totalKa - x.cortocircuito.corrienteFallaKa, rel: 1 - x.cortocircuito.corrienteFallaKa / x.cortocircuito.totalKa };
-    const criterios = [["ampacidad", amp], ["perdidas", perd], ["regulacion", reg], ["cortocircuito", cc]].filter(([, v]) => v && Number.isFinite(v.rel));
-    const limita = x.ampacidad.error ? "ampacidad" : criterios.reduce((m, c) => (c[1].rel < m[1].rel ? c : m), criterios[0])[0];
-    const escala = (base, limite, pct) => (pct > 0 ? (base * limite) / pct : Infinity);
-    const potencias = { ampacidad: amp ? (P * x.ampacidad.totalA) / x.corrienteA : null, regulacion: escala(P, LIMITE_REGULACION, x.regulacion.pct), perdidas: escala(P, LIMITE_PERDIDAS, x.perdidas.pct) };
-    const pMax = x.ampacidad.error ? null : Object.entries(potencias).reduce((m, c) => (c[1] < m[1] ? c : m));
-    const longitudes = { regulacion: escala(L, LIMITE_REGULACION, x.regulacion.pct), perdidas: escala(L, LIMITE_PERDIDAS, x.perdidas.pct) };
-    const lMax = Object.entries(longitudes).reduce((m, c) => (c[1] < m[1] ? c : m));
-    return { amp, perd, reg, cc, limita, potencias, pMax, lMax, P, L };
-  }
+  const analisisAlternativa = (x, comun) => analizarAlternativa(x, comun.potenciaActivaMw); // en el motor: la usa también la IA
 
   /**
    * «Calibre mínimo que cumple»: el calibre más pequeño del mismo tipo que hace cumplir todo, cambiando solo el tramo que

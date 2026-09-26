@@ -106,11 +106,11 @@ const T_OCUPACION = {
 - Helpers en `tools.js`: `campoTramos`, `listaTramos`, `volcarTramo` (antepone «Tramo N —» a entradas y notas), `datoPartida`.
 - Los campos de nivel superior se conservan para el caso de un solo tramo/tipo/punto, de modo que las llamadas antiguas y `barrer_parametro` siguen funcionando.
 
-## 4. Herramientas actuales (16)
+## 4. Herramientas actuales (17)
 
 | Herramienta | Tipo | Grupo en Agentes | Agente estándar | Agente riguroso |
 |---|---|---|---|---|
-| `calcular_perdidas`, `calcular_regulacion`, `calcular_cortocircuito`, `calcular_ampacidad_aerea`, `calcular_ampacidad_subterranea`, `calcular_ocupacion_ductos`, `calcular_conductor_economico` | calculo | Calculadoras | Sí | Sí |
+| `calcular_perdidas`, `calcular_regulacion`, `calcular_cortocircuito`, `calcular_ampacidad_aerea`, `calcular_ampacidad_subterranea`, `calcular_ocupacion_ductos`, `calcular_conductor_economico`, `valorar_alternativas` | calculo | Calculadoras | Sí | Sí |
 | `buscar_conductor`, `buscar_tuberia` | consulta | Catálogos | Sí | Sí |
 | `barrer_parametro` | barrido | Análisis | Sí | Sí |
 | `dimensionar_conductor`, `verificar_conductor`, `resolver_valor_limite` | diseno | Análisis | **No** (opcionales) | Sí |
@@ -121,7 +121,7 @@ const T_OCUPACION = {
 `AGENTES_PREDETERMINADOS` (array, ambos de solo lectura, viven en el código):
 
 - **Agente estándar** (de siempre): usa `HERRAMIENTAS_ESTANDAR`, calcula rápido y declara los valores por defecto como *supuesto*.
-- **Agente riguroso** (nuevo): usa `HERRAMIENTAS_TODAS` (las 16, incluidas las opcionales). Pensado para una *memoria de cálculo completa y definitiva* en vez de una estimación:
+- **Agente riguroso** (nuevo): usa `HERRAMIENTAS_TODAS` (las 17, incluidas las opcionales). Pensado para una *memoria de cálculo completa y definitiva* en vez de una estimación:
   - Antes de calcular pide todos los parámetros por categoría (Sistema, Conductor, Instalación…).
   - Avisa explícitamente cada valor por defecto y pide confirmarlo o cambiarlo (nunca lo asume en silencio).
   - Si asume algo con su propio criterio (sin dato del usuario ni valor por defecto claro), lo marca como origen `estimado` y exige una `justificacion` (norma, rango típico, caso similar).
@@ -147,6 +147,16 @@ const T_OCUPACION = {
 - NO entra en `CALCULADORAS` (sigue sin ofrecer barrido: su resultado es una comparación entre opciones, no un valor único que tenga sentido barrer).
 - Devuelve por opción `opcionN_conductor/inversion/perdidas_pct/perdidas_mwh/costo_perdidas_vp/costo_total/compensa`, más `opcion_menor_costo` y `sensibilidad_robusta` (si la ganadora cambia en algún escenario de energía ±10 %, demanda ±10 % o tasa ±2 puntos).
 - Cuando el costo de instalación no se indicó en alguna opción (o en la ganadora), también agrega `opcionN_umbral_instalacion_km` por cada opción no ganadora afectada (`sensibilidadInstalacion` en `conductor-economico.js`, 2026-09-23): la DIFERENCIA de costo de instalación ($/km) que haría cambiar la conclusión — no una estimación ni una dirección (no dice cuál instalación sería más cara, porque no se sabe); una nota se lo aclara al modelo para que no invente una dirección.
+
+**`valorar_alternativas`** (2026-09-26, versión 3.30.0; en los DOS agentes, no es opcional):
+
+- Es la pantalla «Valoración integral» para la IA: evalúa de 1 a 6 alternativas completas de una misma conexión con todos los criterios a la vez (ampacidad aérea IEEE 738 o subterránea IEC 60287, pérdidas, regulación, cortocircuito y costos) en UNA sola llamada, con el mismo motor (`js/calc/valoracion-integral.js`: `compararEscenarios`, `datosConductor`, `calibreMinimo`, `analizarAlternativa`), sin tocarlo.
+- Obligatorio solo lo esencial: `factor_potencia`, `potencia_mw` o `potencia_mva` (sin corriente: depende de la tensión de cada alternativa), la tensión (`tension_kv` común o de cada alternativa) y, por alternativa, `red` + `material` + `calibre` y la longitud (común, de la alternativa o del tramo). Todo lo demás toma los valores por defecto de la pantalla (`DEF_VI`); solo se anotan como supuestos los que se usaron de verdad (los de aérea si hay tramos aéreos, los del terreno si hay subterráneos, los económicos si hay `precio_kwh`).
+- Cada alternativa puede tener hasta 4 `tramos` en serie; lo que un tramo no indique lo hereda de su alternativa. Subterránea: cable monopolar en trébol del catálogo de construcción (nivel 15/35/46 kV según la tensión, `tipo_pantalla`, `aislamiento_pct`), varios conductores por fase = ternas en paralelo en el mismo banco (máximo 6 circuitos con `otros_circuitos`).
+- Con `precio_kwh` y `costo_conductor_km` en todos los tramos de una alternativa, calcula su inversión y su costo total actualizado.
+- Devuelve por alternativa: veredicto, corriente, ampacidad total y % de uso, pérdidas (% con su clase y kW), caída de tensión, capacidad de cortocircuito (y si soporta la falla), costos, el criterio que limita, la potencia máxima y la longitud máxima antes de incumplir, y el calibre mínimo del mismo tipo que cumple. Con 2 o más, `recomendada` (igual que la pantalla: entre las que cumplen, la de menor costo total, o la de menores pérdidas sin costos).
+- NO entra en `CALCULADORAS` (sin barrido: su resultado es una comparación). Cuenta como un cálculo del presupuesto por pregunta.
+- Los prompts la mencionan: el estándar (regla 2) para comparar alternativas completas o validar una de forma integral; el riguroso (regla 9) con los datos confirmados en la ficha.
 
 Las de Varios no entran en el barrido de parámetros.
 

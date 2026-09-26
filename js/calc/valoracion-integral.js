@@ -342,3 +342,29 @@ export function calibreMinimo(comun, esc, cat) {
   }
   return { tramo: j, ninguno: true };
 }
+
+/**
+ * Márgenes de una alternativa ya evaluada frente a cada límite y su capacidad máxima (potencia y longitud) antes de
+ * incumplir. Sin fórmulas nuevas: la corriente crece en proporción a la potencia (misma tensión y FP), la caída de tensión
+ * y el % de pérdidas crecen en proporción a la potencia y a la longitud, y la ampacidad fija la corriente máxima; así que
+ * los máximos salen de escalar lo ya calculado. `rel` = margen relativo (1 = sin uso, 0 = justo en el límite, < 0 =
+ * incumple). `limita` = criterio de menor margen; `pMax`/`lMax` = [criterio, valor].
+ * @param {object} x - resultado de evaluarEscenario
+ * @param {number} potenciaMw - potencia activa de la conexión
+ */
+export function analizarAlternativa(x, potenciaMw) {
+  const P = potenciaMw;
+  const L = x.longitudKm;
+  const amp = x.ampacidad.error ? null : { margen: x.ampacidad.totalA - x.corrienteA, rel: 1 - x.corrienteA / x.ampacidad.totalA };
+  const perd = { margen: LIMITE_PERDIDAS - x.perdidas.pct, rel: 1 - x.perdidas.pct / LIMITE_PERDIDAS };
+  const reg = { margen: LIMITE_REGULACION - x.regulacion.pct, rel: 1 - x.regulacion.pct / LIMITE_REGULACION };
+  const cc = x.cortocircuito.corrienteFallaKa === null ? null : { margen: x.cortocircuito.totalKa - x.cortocircuito.corrienteFallaKa, rel: 1 - x.cortocircuito.corrienteFallaKa / x.cortocircuito.totalKa };
+  const criterios = [["ampacidad", amp], ["perdidas", perd], ["regulacion", reg], ["cortocircuito", cc]].filter(([, v]) => v && Number.isFinite(v.rel));
+  const limita = x.ampacidad.error ? "ampacidad" : criterios.reduce((m, k) => (k[1].rel < m[1].rel ? k : m), criterios[0])[0];
+  const escala = (base, limite, pct) => (pct > 0 ? (base * limite) / pct : Infinity);
+  const potencias = { ampacidad: amp ? (P * x.ampacidad.totalA) / x.corrienteA : null, regulacion: escala(P, LIMITE_REGULACION, x.regulacion.pct), perdidas: escala(P, LIMITE_PERDIDAS, x.perdidas.pct) };
+  const pMax = x.ampacidad.error ? null : Object.entries(potencias).reduce((m, k) => (k[1] < m[1] ? k : m));
+  const longitudes = { regulacion: escala(L, LIMITE_REGULACION, x.regulacion.pct), perdidas: escala(L, LIMITE_PERDIDAS, x.perdidas.pct) };
+  const lMax = Object.entries(longitudes).reduce((m, k) => (k[1] < m[1] ? k : m));
+  return { amp, perd, reg, cc, limita, potencias, pMax, lMax, P, L };
+}
