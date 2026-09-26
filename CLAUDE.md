@@ -1178,7 +1178,10 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   servidumbre y Enterramiento de ductos pasaron a ser los registros 1 y 2 (sus rutas viejas redirigen; el texto del
   numeral 3.20.6.3.g ahora va ARRIBA de las tablas); Distancias de seguridad y Corriente NTC siguen en
   `normativa-imagen.js`. Reglas: `biblioteca_imagenes` lectura pública (como los catálogos), creación/borrado solo admin,
-  data URL de imagen < 1 MB: HAY QUE PUBLICARLAS. Pruebas: `tools/verify_biblioteca.html` (42).
+  data URL de imagen < 1 MB: HAY QUE PUBLICARLAS. Pruebas: `tools/verify_biblioteca.html`.
+  3.35.1 (pedido del usuario): el botón es solo «Agregar»; cada imagen arranca al 80 % del ancho de su recuadro
+  (`ZOOM_INICIAL`) y lleva «−» / «%» / «+» a la derecha de su pie (`.bib-fig-cab`, `.bib-zoom`), con pasos `ZOOMS` de 40 a
+  300 %; el recuadro (`.bib-marco`) se desplaza si la imagen no cabe (máx. 80vh de alto). Tocarla sigue abriéndola completa.
 - **Tabla partida: encabezado fijo + cuerpo con scroll (2026-09-24, idea del usuario mirando «Corriente de conductores NTC
   2050»)**: esa imagen es una tabla ancha con muchas filas; al hacer scroll para comparar una fila de abajo, el encabezado
   (calibre/metal/área/resistencia…) ya no se ve. Como es una sola imagen plana (no HTML), no hay forma de "congelar" filas

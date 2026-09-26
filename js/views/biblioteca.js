@@ -14,6 +14,11 @@ import { obtenerBackend } from "../auth/backend.js";
 import { esAdministrador, agregarRegistro, reemplazarRegistro, quitarRegistro, guardarCatalogo } from "../util/edicion-catalogo.js";
 import { CATALOGO, fuentesDe, urlDeImagen, comprimirImagen, nuevoIdImagen, guardarEnDispositivo, limpiarDispositivo, bytesDe } from "../util/biblioteca.js";
 
+// Zoom de cada imagen (2026-09-26, pedido del usuario): arranca al 80 % del ancho del recuadro y crece o se achica
+// dentro de él (el recuadro se desplaza si la imagen no cabe). Tocar la imagen sigue abriéndola completa.
+export const ZOOMS = [40, 60, 80, 100, 125, 150, 200, 250, 300];
+export const ZOOM_INICIAL = 80;
+
 const AYUDA_TEXTO = "Opcional. Aparte de la norma, criterio o nota. Admite **negrilla** entre dos asteriscos dobles, viñetas empezando la línea con «- » y párrafos separados por una línea en blanco.";
 
 export async function render(container, params = {}, { confirmar = (t) => confirm(t) } = {}) {
@@ -36,7 +41,7 @@ export async function render(container, params = {}, { confirmar = (t) => confir
       ${
         admin
           ? `<div class="btn-row ed-acciones">
-              <button type="button" class="btn btn-con-icono" data-accion="agregar">${icon("plus")} Agregar registro</button>
+              <button type="button" class="btn btn-con-icono" data-accion="agregar">${icon("plus")} Agregar</button>
               <button type="button" class="btn btn-con-icono" data-accion="editar">${icon("pencil")} Editar</button>
               <button type="button" class="btn btn-con-icono" data-accion="eliminar">${icon("trash")} Eliminar</button>
             </div>`
@@ -88,9 +93,16 @@ export async function render(container, params = {}, { confirmar = (t) => confir
       imagenes
         .map(
           (img, i) => `
-        <figure class="bib-figura" data-i="${i}">
-          ${img.pie ? `<figcaption class="section-title">${escapeHtml(img.pie)}</figcaption>` : ""}
-          <div class="image-frame"><p class="text-muted text-sm bib-cargando">Cargando imagen…</p></div>
+        <figure class="bib-figura" data-i="${i}" data-zoom="${ZOOM_INICIAL}">
+          <div class="bib-fig-cab">
+            <figcaption class="section-title">${escapeHtml(img.pie || "")}</figcaption>
+            <div class="bib-zoom" role="group" aria-label="Zoom de la imagen ${i + 1}">
+              <button type="button" class="btn btn-sm btn-ghost btn-icono" data-zoom-paso="-1" aria-label="Alejar">${icon("minus")}</button>
+              <span class="bib-zoom-valor" aria-live="polite">${ZOOM_INICIAL} %</span>
+              <button type="button" class="btn btn-sm btn-ghost btn-icono" data-zoom-paso="1" aria-label="Acercar">${icon("plus")}</button>
+            </div>
+          </div>
+          <div class="image-frame bib-marco"><p class="text-muted text-sm bib-cargando">Cargando imagen…</p></div>
         </figure>`
         )
         .join("");
@@ -100,10 +112,25 @@ export async function render(container, params = {}, { confirmar = (t) => confir
       const marco = visor.querySelector(`.bib-figura[data-i="${i}"] .image-frame`);
       if (!marco) return;
       marco.innerHTML = url
-        ? `<img src="${escapeHtml(url)}" data-lightbox="${escapeHtml(url)}" alt="${escapeHtml(img.pie || reg.titulo)}">`
+        ? `<img src="${escapeHtml(url)}" data-lightbox="${escapeHtml(url)}" alt="${escapeHtml(img.pie || reg.titulo)}" style="width:${ZOOM_INICIAL}%">`
         : `<p class="text-muted text-sm">No se pudo cargar la imagen. Revisa la conexión a internet (una vez vista, queda guardada en este dispositivo).</p>`;
     });
   }
+
+  // Zoom: «−» y «+» sobre cada imagen cambian su ancho entre los pasos de ZOOMS
+  visor.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-zoom-paso]");
+    if (!b) return;
+    const fig = b.closest(".bib-figura");
+    const i = Math.max(0, Math.min(ZOOMS.length - 1, ZOOMS.indexOf(Number(fig.dataset.zoom)) + Number(b.dataset.zoomPaso)));
+    const z = ZOOMS[i];
+    fig.dataset.zoom = String(z);
+    fig.querySelector(".bib-zoom-valor").textContent = `${z} %`;
+    const imagen = fig.querySelector(".bib-marco img");
+    if (imagen) imagen.style.width = `${z}%`;
+    fig.querySelector('[data-zoom-paso="-1"]').disabled = i === 0;
+    fig.querySelector('[data-zoom-paso="1"]').disabled = i === ZOOMS.length - 1;
+  });
 
   function seleccionar(id) {
     actualId = id;

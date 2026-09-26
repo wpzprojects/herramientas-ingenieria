@@ -17,6 +17,7 @@ const paths = {
   menu: "M4 6h16M4 12h16M4 18h16",
   close: "m6 6 12 12M18 6 6 18",
   check: "m5 12 5 5L20 7", // Tabler check
+  minus: "M5 12h14", // Tabler minus
   fileText: "M6 2h9l5 5v15H6V2Zm9 0v5h5M8 12h8M8 16h8M8 8h3",
   image: "M4 4h16v16H4V4Zm2 14 4.5-5.5 3 3.5 2.5-3L20 17H6ZM8.5 9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z",
   externalLink: "M14 4h6v6m0-6L10 14M6 6H5a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-1",

@@ -765,7 +765,13 @@ td.wrap, th.wrap { white-space: normal; }
 .bib-texto p { margin: 0 0 var(--space-3); }
 .bib-texto ul, .bib-texto ol { margin: 0 0 var(--space-3); padding-left: var(--space-5); }
 .bib-figura { margin: var(--space-4) 0 0; }
-.bib-figura figcaption { margin: 0 0 var(--space-2); }
+.bib-fig-cab { display: flex; align-items: center; gap: var(--space-3); margin: 0 0 var(--space-2); }
+.bib-fig-cab figcaption { margin: 0; flex: 1 1 auto; min-width: 0; }
+.bib-zoom { display: flex; align-items: center; gap: 2px; flex: 0 0 auto; margin-left: auto; }
+.bib-zoom-valor { min-width: 3.2em; text-align: center; font-size: 0.8rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+/* El recuadro de la imagen se desplaza si el zoom la hace más ancha que él; la imagen va centrada mientras quepa */
+.bib-marco { overflow: auto; max-height: 80vh; }
+.bib-marco img { max-width: none; margin: 0 auto; }
 .bib-f-imagenes { list-style: none; margin: 0 0 var(--space-3); padding: 0; }
 .bib-f-imagen { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
 .bib-f-mini { flex: 0 0 96px; height: 64px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-sunken); overflow: hidden; }
