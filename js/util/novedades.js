@@ -3,6 +3,7 @@
 // La PRIMERA entrada debe coincidir con CACHE_VERSION de sw.js (lo comprueba tools/verify_perfil.html).
 // El historial anterior a 3.16.0 se reconstruyó a partir de git el 2026-09-24 (antes solo había un contador v1…v296).
 export const NOVEDADES = [
+  { version: "3.46.0", fecha: "2026-09-26", cambios: ["Conductor económico: la pestaña «Reportes» ofrece también el cálculo en LaTeX (parámetros, desarrollo paso a paso por opción y resultados), el PDF y el Word con los dos gráficos, como las demás calculadoras.", "El enlace «Plegar tarjeta» aparece desde que la tarjeta ocupa el 80 % de la pantalla (antes solo cuando era más alta que la pantalla)."] },
   { version: "3.45.1", fecha: "2026-09-26", cambios: ["Valoración integral: el gráfico técnico se llama «Criterios técnicos frente a su límite» y la sección «Criterios técnicos y costo total»."] },
   { version: "3.45.0", fecha: "2026-09-26", cambios: ["Valoración integral: el uso de cada límite y el costo total pasan a ser dos gráficos, cada uno con el nombre, el conductor y el estado de cada alternativa. En pantalla ancha van lado a lado; en el celular, uno debajo del otro y en una versión compacta (el nombre encima de las barras) para que se lean bien.", "Conductor económico: la conclusión del resultado se lee como texto corrido en el celular (antes quedaba en dos columnas)."] },
   { version: "3.44.8", fecha: "2026-09-26", cambios: ["Valoración integral: «Guardadas» y «Nueva valoración» terminan en el mismo borde derecho."] },

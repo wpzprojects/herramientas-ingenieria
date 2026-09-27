@@ -6,9 +6,10 @@
 import { fmt, fmtPercent, loadData, distinct, escapeHtml } from "../util/format.js";
 import { icon } from "../icons.js";
 import { potenciaActivaMw } from "../calc/circuito.js";
-import { compararOpciones, sensibilidad, sensibilidadInstalacion } from "../calc/conductor-economico.js";
+import { compararOpciones, sensibilidad, sensibilidadInstalacion, HORAS_ANIO } from "../calc/conductor-economico.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
 import { costoTotalApiladoSvg, costoAcumuladoSvg } from "../util/graficos.js";
+import { activarReportes, numTex } from "../util/reportes.js";
 import { activarMiles, leerMiles, reformatear, PATRON_MILES } from "../util/campo-miles.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables } from "../util/tarjetas-plegables.js";
@@ -835,16 +836,74 @@ export async function render(container) {
    * Gráficos (2026-09-26, elegidos por el usuario del mockup: CE1 y CE2), al FINAL del resultado: de qué está hecho el costo
    * total de cada opción y cómo se acumula en el tiempo, con el año en que la mejor alcanza a la de menor inversión.
    */
-  function graficosHtml(r, estados) {
+  function graficosSvg(r, estados) {
     const corto = (e) => `${e.material} ${e.calibre}${e.numConductoresPorFase > 1 ? ` ×${e.numConductoresPorFase}` : ""}`;
     const apilado = costoTotalApiladoSvg({
       opciones: r.opciones.map((o, i) => ({ nombre: `Opción ${i + 1}`, sub: corto(estados[i]), conductor: o.costoConductores, instalacion: o.costoInstalacion, perdidas: o.costoPerdidasVp, mejor: i === r.mejor })),
     });
     const eq = r.mejor !== r.indiceBase && r.opciones[r.mejor].puntoEquilibrio ? { anio: r.opciones[r.mejor].puntoEquilibrio, de: r.mejor, frente: r.indiceBase } : null;
     const acumulado = costoAcumuladoSvg({ series: r.opciones.map((o, i) => ({ nombre: `Opción ${i + 1}`, acumulado: o.acumulado, mejor: i === r.mejor })), equilibrio: eq });
+    return { apilado, acumulado };
+  }
+  function graficosHtml(r, estados) {
+    const { apilado, acumulado } = graficosSvg(r, estados);
     return `
             <h4 class="result-subhead">Costos en el tiempo</h4>
             <div class="graf-final"><div class="graf-item">${apilado}</div><div class="graf-item">${acumulado}</div></div>`;
+  }
+
+  /** Parámetros de entrada con su símbolo (memoria en LaTeX). */
+  function simbolosEconomico(base, estados, dato) {
+    const n = numTex;
+    const s = [];
+    if (dato.modo === "aparente") s.push({ tex: "S", nombre: "Potencia aparente", valor: n(dato.datoPartida), unidad: String.raw`\text{MVA}` });
+    else if (dato.modo === "corriente") s.push({ tex: "I", nombre: "Corriente", valor: n(dato.datoPartida), unidad: String.raw`\text{A}` });
+    else s.push({ tex: "P", nombre: "Potencia activa", valor: n(base.potenciaActivaMw), unidad: String.raw`\text{MW}` });
+    s.push({ tex: "V", nombre: "Tensión de línea", valor: n(base.tensionLineaKv), unidad: String.raw`\text{kV}` });
+    s.push({ tex: String.raw`\cos\varphi`, nombre: "Factor de potencia", valor: n(base.factorPotencia) });
+    s.push({ tex: "F_c", nombre: "Factor de carga", valor: n(base.factorCarga) });
+    s.push({ tex: "L", nombre: "Longitud de la línea", valor: n(base.longitudKm), unidad: String.raw`\text{km}` });
+    s.push({ tex: "p", nombre: "Precio de la energía perdida (año 1)", valor: n(base.precioKwh), unidad: String.raw`\$/\text{kWh}` });
+    s.push({ tex: "g", nombre: "Crecimiento anual de la demanda", valor: n(base.crecimientoDemandaPct), unidad: String.raw`\%` });
+    s.push({ tex: "e", nombre: "Aumento anual del precio de la energía", valor: n(base.escaladaEnergiaPct), unidad: String.raw`\%` });
+    s.push({ tex: "d", nombre: "Tasa de descuento", valor: n(base.tasaDescuentoPct), unidad: String.raw`\%` });
+    s.push({ tex: "n", nombre: "Horizonte de evaluación", valor: String(base.anios), unidad: String.raw`\text{años}` });
+    estados.forEach((e, i) => {
+      const k = i + 1;
+      s.push({ tex: `R_{${k}}`, nombre: `Resistencia del conductor, opción ${k} (${e.material} ${e.calibre})`, valor: n(e.resistenciaOhmKm), unidad: String.raw`\Omega/\text{km}` });
+      s.push({ tex: `N_{${k}}`, nombre: `Conductores por fase, opción ${k}`, valor: String(e.numConductoresPorFase ?? 1) });
+      s.push({ tex: `c_{c,${k}}`, nombre: `Costo de un conductor por km, opción ${k}`, valor: pesosTex(e.costoConductorKm), unidad: String.raw`/\text{km}` });
+      s.push({ tex: `c_{i,${k}}`, nombre: `Costo de instalación por km, opción ${k}`, valor: e.instalacionIndicada ? pesosTex(e.costoInstalacionKm) : "0", unidad: String.raw`/\text{km}` });
+    });
+    return s;
+  }
+  /** Pesos en LaTeX: $ con separador de miles (las comas entre llaves para que no abran espacio). */
+  const pesosTex = (v) => String.raw`\$\,` + Math.round(v).toLocaleString("en-US").replace(/,/g, "{,}");
+
+  /** Memoria de cálculo paso a paso, con las mismas fórmulas del motor (js/calc/conductor-economico.js y perdidas.js). */
+  function memoriaEconomico(r, base, estados, dato) {
+    const n = numTex;
+    const P = base.potenciaActivaMw, V = base.tensionLineaKv, fp = base.factorPotencia, Fc = base.factorCarga, L = base.longitudKm;
+    const Fp = 0.3 * Fc + 0.7 * Fc * Fc;
+    const I = r.opciones[0].corrienteAnio1;
+    const g = base.crecimientoDemandaPct, e = base.escaladaEnergiaPct, d = base.tasaDescuentoPct;
+    const pasos = [];
+    if (dato.modo === "aparente") pasos.push({ titulo: "Potencia activa", tex: String.raw`P = S \cos\varphi = ${n(dato.datoPartida)} \cdot ${n(fp)} = ${n(P, 3)}\ \text{MW}`, texto: `P = S·cos φ = ${n(dato.datoPartida)}·${n(fp)} = ${n(P, 3)} MW` });
+    else if (dato.modo === "corriente") pasos.push({ titulo: "Potencia activa", tex: String.raw`P = \frac{\sqrt{3}\, V\, I \cos\varphi}{1000} = ${n(P, 3)}\ \text{MW}`, texto: `P = √3·V·I·cos φ / 1000 = ${n(P, 3)} MW` });
+    pasos.push({ titulo: "Corriente (año 1)", tex: String.raw`I = \frac{P \cdot 1000}{\sqrt{3}\, V \cos\varphi} = \frac{${n(P)} \cdot 1000}{\sqrt{3} \cdot ${n(V)} \cdot ${n(fp)}} = ${n(I, 2)}\ \text{A}`, texto: `I = P·1000 / (√3·V·cos φ) = ${n(I, 2)} A` });
+    pasos.push({ titulo: "Factor de pérdidas (Buller-Woodrow)", tex: String.raw`F_p = 0.3\,F_c + 0.7\,F_c^2 = 0.3 \cdot ${n(Fc)} + 0.7 \cdot ${n(Fc)}^2 = ${n(Fp)}`, texto: `Fp = 0.3·Fc + 0.7·Fc² = ${n(Fp)}` });
+    r.opciones.forEach((o, i) => {
+      const est = estados[i], k = i + 1, N = est.numConductoresPorFase ?? 1, pre = `Opción ${k} · `;
+      if (N > 1) pasos.push({ titulo: `${pre}Resistencia efectiva`, tex: String.raw`R_{ef,${k}} = \frac{R_{${k}}}{N_{${k}}} = \frac{${n(est.resistenciaOhmKm)}}{${N}} = ${n(o.resistenciaEfectivaOhmKm)}\ \Omega/\text{km}`, texto: `Ref = R/N = ${n(o.resistenciaEfectivaOhmKm)} Ω/km` });
+      pasos.push({ titulo: `${pre}Porcentaje de pérdidas (año 1)`, tex: String.raw`\%P_{${k}} = \frac{\sqrt{3}\, I\, R_{ef}\, L\, F_p \cdot 100}{V \cdot 1000 \cos\varphi} = \frac{\sqrt{3} \cdot ${n(I, 2)} \cdot ${n(o.resistenciaEfectivaOhmKm)} \cdot ${n(L)} \cdot ${n(Fp)} \cdot 100}{${n(V)} \cdot 1000 \cdot ${n(fp)}} = ${n(o.perdidasPctAnio1, 3)}\,\%`, texto: `%P = √3·I·Ref·L·Fp·100 / (V·1000·cos φ) = ${n(o.perdidasPctAnio1, 3)} %` });
+      pasos.push({ titulo: `${pre}Pérdidas y energía perdida (año 1)`, tex: String.raw`P_{p,${k}} = \frac{\%P}{100}\, P = ${n(o.perdidasMwAnio1, 4)}\ \text{MW} \qquad E_{${k}} = P_p \cdot 1000 \cdot ${HORAS_ANIO} = ${Math.round(o.energiaKwhAnio1).toLocaleString("en-US").replace(/,/g, "{,}")}\ \text{kWh}`, texto: `Pp = %P/100·P = ${n(o.perdidasMwAnio1, 4)} MW;  E = Pp·1000·${HORAS_ANIO} = ${Math.round(o.energiaKwhAnio1).toLocaleString("en-US")} kWh` });
+      pasos.push({ titulo: `${pre}Costo de las pérdidas (año 1)`, tex: String.raw`C_{1,${k}} = E \cdot p = ${Math.round(o.energiaKwhAnio1).toLocaleString("en-US").replace(/,/g, "{,}")} \cdot ${n(base.precioKwh)} = ${pesosTex(o.anios[0].costo)}`, texto: `C1 = E·p = ${fmtPesos(o.anios[0].costo)}` });
+      pasos.push({ titulo: `${pre}Valor presente de las pérdidas en ${base.anios} años`, tex: String.raw`VP_{${k}} = \sum_{t=1}^{${base.anios}} \frac{C_1\,(1 + ${n(g / 100)})^{2(t-1)}\,(1 + ${n(e / 100)})^{t-1}}{(1 + ${n(d / 100)})^{t}} = ${pesosTex(o.costoPerdidasVp)}`, texto: `VP = Σ C1·(1+g)^(2(t−1))·(1+e)^(t−1)/(1+d)^t = ${fmtPesos(o.costoPerdidasVp)}` });
+      pasos.push({ titulo: `${pre}Inversión inicial`, tex: String.raw`I_{0,${k}} = 3\, N\, L\, c_c + L\, c_i = 3 \cdot ${N} \cdot ${n(L)} \cdot ${pesosTex(est.costoConductorKm)} + ${n(L)} \cdot ${pesosTex(est.instalacionIndicada ? est.costoInstalacionKm : 0)} = ${pesosTex(o.inversion)}`, texto: `I0 = 3·N·L·cc + L·ci = ${fmtPesos(o.inversion)}` });
+      pasos.push({ titulo: `${pre}Costo total actualizado`, tex: String.raw`CT_{${k}} = I_0 + VP = ${pesosTex(o.inversion)} + ${pesosTex(o.costoPerdidasVp)} = ${pesosTex(o.costoTotal)}`, texto: `CT = I0 + VP = ${fmtPesos(o.costoTotal)}` });
+    });
+    pasos.push({ titulo: "Opción de menor costo total", tex: String.raw`\min_k CT_k = CT_{${r.mejor + 1}} = ${pesosTex(r.opciones[r.mejor].costoTotal)} \quad (\text{Opción } ${r.mejor + 1})`, texto: `Menor costo total: Opción ${r.mejor + 1} (${fmtPesos(r.opciones[r.mejor].costoTotal)})` });
+    return pasos;
   }
 
   function renderResultado(r, s, base, estados, dato) {
@@ -879,12 +938,27 @@ export async function render(container) {
           </div>`;
     }
 
+    const textoReporte = calculable ? reporteTexto(r, s, base, estados, dato) : "";
     wrap.innerHTML = tarjetaResultadosHtml({
       resultado,
-      reporte: calculable ? reporteHtml(reporteTexto(r, s, base, estados, dato), ETIQUETAS_REPORTE) : "No hay reporte: los datos no permiten calcular.",
+      conDocumentos: calculable,
+      reporte: calculable ? reporteHtml(textoReporte, ETIQUETAS_REPORTE) : "No hay reporte: los datos no permiten calcular.",
       formulasPlano: FORMULAS_TEXTO,
     });
     activarPestanas(wrap, { grupos: FORMULAS_TEX, etiquetas: FORMULAS_ETIQUETAS, nota: FORMULAS_NOTA });
+    if (calculable) {
+      const { apilado, acumulado } = graficosSvg(r, estados);
+      activarReportes(wrap, {
+        titulo: "Cálculo de conductor económico",
+        texto: textoReporte,
+        pasos: memoriaEconomico(r, base, estados, dato),
+        simbolos: simbolosEconomico(base, estados, dato),
+        graficos: [
+          { titulo: "Costo total por opción", svg: apilado },
+          { titulo: "Costo acumulado en el tiempo", svg: acumulado },
+        ],
+      });
+    }
     wrap.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 

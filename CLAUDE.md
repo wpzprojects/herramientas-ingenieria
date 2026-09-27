@@ -514,6 +514,11 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   integral y el enlace nunca aparecía); solo se suelta la que estuvo en la página y se quitó (`_pieVisto`). «Guardadas»
   con `margin-left: auto`. Tabla de Valoración integral en ≤720px: 0.68rem, rellenos de 5 px y las insignias bajo el
   valor; sus reglas llevan `table` en el selector para ganarle a la regla de celular de `.tabla-resultado`.
+  3.46.0: Conductor económico con Reportes completos (`simbolosEconomico`, `memoriaEconomico`: I, Fp y por opción Ref,
+  %P, Pp y E del año 1, C1, VP = Σ C1·(1+g)^(2(t−1))·(1+e)^(t−1)/(1+d)^t, I0 = 3·N·L·cc + L·ci y CT; montos con
+  `pesosTex`; gráficos CE1 y CE2 vía `graficosSvg`). «Plegar tarjeta»: aparece desde el 80 % del alto visible
+  (`PIE_FRACCION`; el usuario veía que la barra de título ya se iba de la vista antes de que apareciera) y `plegarTarjeta`
+  llama `revisarPie` al plegar/desplegar sin animación.
   3.45.1: el técnico se titula «Criterios técnicos frente a su límite» (el usuario no encontró claro «Uso de cada
   límite») y la sección «Criterios técnicos y costo total».
   3.45.0: el gráfico de Valoración integral se partió en DOS (`usoLimitesSvg` 500 px y `costoAlternativasSvg` 420 px, misma

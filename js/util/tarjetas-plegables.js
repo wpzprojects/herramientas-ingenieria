@@ -94,6 +94,7 @@ export function plegarTarjeta(tarjeta, plegar, { animado = false } = {}) {
   } else {
     cortar(tarjeta);
     tarjeta.classList.toggle("plegada", plegar);
+    revisarPie(tarjeta); // el enlace del pie se evalúa de nuevo al plegar o desplegar (sin esperar al aviso de tamaño)
   }
 
   if (!boton) return;
@@ -128,7 +129,9 @@ function altoBarraApp() {
   return Number.isFinite(v) ? v : 56;
 }
 
-/** Muestra el enlace del pie solo si la tarjeta (abierta) es más alta que la pantalla visible. */
+/** Muestra el enlace del pie si la tarjeta (abierta) ocupa el 80 % o más del alto visible (pedido del usuario, 2026-09-26: con
+ * «más alta que la pantalla» a veces la barra de título ya se había ido de la vista y no aparecía el enlace). */
+export const PIE_FRACCION = 0.8;
 export function revisarPie(tarjeta) {
   const pie = tarjeta._piePlegar;
   if (!pie) return;
@@ -142,7 +145,7 @@ export function revisarPie(tarjeta) {
     return;
   }
   tarjeta._pieVisto = true;
-  const alta = !tarjeta.classList.contains("plegada") && tarjeta.getBoundingClientRect().height > window.innerHeight - altoBarraApp();
+  const alta = !tarjeta.classList.contains("plegada") && tarjeta.getBoundingClientRect().height >= (window.innerHeight - altoBarraApp()) * PIE_FRACCION;
   if (pie.hidden === alta) pie.hidden = !alta;
 }
 const revisarTodas = () => conPie.forEach(revisarPie);

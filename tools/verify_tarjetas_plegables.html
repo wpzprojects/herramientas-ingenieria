@@ -62,7 +62,7 @@ const VISTAS = [
 
 // Las pruebas de estado comprueban el resultado FINAL al instante: sin animacion (Edge sin pantalla no avanza las animaciones de forma fiable).
 // La animacion tiene su propia seccion mas abajo, donde se avanza a mano.
-const { plegado } = await import("../js/util/tarjetas-plegables.js");
+const { plegado, revisarPie } = await import("../js/util/tarjetas-plegables.js");
 plegado.animar = false;
 
 for (const [nombre, modulo] of VISTAS) {
@@ -232,6 +232,7 @@ await seccion("animación al plegar y desplegar (se avanza a mano)", async () =>
     const t = $$(".form-section")[1], b = boton(t), cuerpo = $(":scope > .plegable-cuerpo", t);
     const alto = () => cuerpo.getBoundingClientRect().height;
     const altoTarjeta = () => t.getBoundingClientRect().height;
+    revisarPie(t); // el pie «Plegar tarjeta» se evalúa antes de medir (Edge sin pantalla no dispara el ResizeObserver)
     const natural = alto(), tarjeta0 = altoTarjeta();
     ok(!!cuerpo && t.children.length === 2 && t.children[0].classList.contains("form-section-title") && t.children[1] === cuerpo, "todo lo que va bajo la barra está dentro de un solo cuerpo (.plegable-cuerpo)");
 
