@@ -133,10 +133,15 @@ export function revisarPie(tarjeta) {
   const pie = tarjeta._piePlegar;
   if (!pie) return;
   if (!tarjeta.isConnected) {
-    conPie.delete(tarjeta);
-    observador?.unobserve(tarjeta);
+    // Solo se deja de vigilar una tarjeta que YA estuvo en la página y se quitó. Las que se arman antes de insertarlas
+    // (p. ej. cada alternativa de Valoración integral) siguen vigiladas: al insertarse cambia su tamaño y se revisan.
+    if (tarjeta._pieVisto) {
+      conPie.delete(tarjeta);
+      observador?.unobserve(tarjeta);
+    }
     return;
   }
+  tarjeta._pieVisto = true;
   const alta = !tarjeta.classList.contains("plegada") && tarjeta.getBoundingClientRect().height > window.innerHeight - altoBarraApp();
   if (pie.hidden === alta) pie.hidden = !alta;
 }

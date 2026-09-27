@@ -96,9 +96,9 @@
     --warning-soft: #2e2618;
     --danger: #f2766c;
     --danger-soft: #301c1c;
-    --serie-1: #5b8fe6; /* el azul #003fa2 de Celsia, aclarado: sobre negro no se distingue */
+    --serie-1: #7d87ff; /* el azul #003fa2 de Celsia, aclarado hacia el índigo: sobre negro no se distingue y se confundía con el cian */
     --serie-2: #d5752d;
-    --serie-3: #13a2e1;
+    --serie-3: #2fc2f5;
     --serie-4: #00be91;
 
     --focus-ring: #4c9eff;
@@ -143,9 +143,9 @@
   --warning-soft: #2e2618;
   --danger: #f2766c;
   --danger-soft: #301c1c;
-  --serie-1: #5b8fe6; /* el azul #003fa2 de Celsia, aclarado: sobre negro no se distingue */
+  --serie-1: #7d87ff; /* el azul #003fa2 de Celsia, aclarado hacia el índigo: sobre negro no se distingue y se confundía con el cian */
   --serie-2: #d5752d;
-  --serie-3: #13a2e1;
+  --serie-3: #2fc2f5;
   --serie-4: #00be91;
 
   --focus-ring: #4c9eff;

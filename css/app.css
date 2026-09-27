@@ -1185,6 +1185,7 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 /* Valoraciones guardadas: botón junto al título, panel de historial y caja para guardar */
 .vi-titulo { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; }
 .vi-titulo .page-title { margin-bottom: 0; }
+.vi-titulo .vi-btn-historial { margin-left: auto; } /* a la derecha también cuando baja de línea */
 .vi-titulo { margin-bottom: var(--space-5); }
 .vi-btn-historial { color: var(--text-muted); font-weight: 500; }
 .vi-btn-historial[aria-expanded="true"] { color: var(--accent); }
@@ -1224,13 +1225,18 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 @media (max-width: 720px) {
   .vi-matriz thead .vi-cab-rec { display: block; margin-top: 4px; }
   /* Tabla compacta en el celular: letra y márgenes menores para ver la columna de criterios y dos alternativas a la vez */
-  .vi-matriz table { font-size: 0.74rem; }
-  .vi-matriz :is(th, td) { padding: 6px 7px; }
-  .vi-matriz thead th { font-size: 0.66rem; letter-spacing: 0.02em; }
-  .vi-matriz td.etiqueta-fila { width: 30%; font-size: 0.72rem; }
+  /* dos puntos menos: caben la columna de criterios y tres alternativas. Selectores con «table» para ganarle a la regla
+     de celular de .tabla-resultado (comparación de calibres), que tiene letra y rellenos más grandes */
+  .vi-matriz table { font-size: 0.68rem; }
+  .vi-matriz table :is(thead th, tbody td) { padding: 5px 5px; }
+  .vi-matriz table tbody td { font-size: 0.68rem; }
+  .vi-matriz table thead th { font-size: 0.62rem; letter-spacing: 0.01em; }
+  .vi-matriz table td.etiqueta-fila { width: 26%; font-size: 0.66rem; }
+  .vi-matriz .vi-sub { font-size: 0.66rem; }
   .vi-matriz td.vi-conductor-celda { min-width: 0; }
   .vi-matriz .vi-sub { font-size: 0.66rem; }
-  .vi-matriz .badge { font-size: 0.62rem; padding: 1px 5px; }
+  .vi-matriz .badge { font-size: 0.58rem; padding: 1px 4px; }
+  .vi-matriz table tbody td .badge { display: block; width: fit-content; margin: 2px 0 0 auto; } /* bajo el valor: columnas más angostas */
   .vi-matriz tr.vi-seccion th { padding: 10px 7px 5px; font-size: 0.66rem; }
   .vi-matriz td.etiqueta-fila { width: 28%; }
   /* menos relleno alrededor de la tabla para que quepan la columna de criterios y dos alternativas */

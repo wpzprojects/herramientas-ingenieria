@@ -559,7 +559,7 @@ export function balanceTermicoSvg({ qj, qs, qc, qr, ampacidad, tc }) {
  * Curvas de una magnitud (Y) frente a otra (X), con un punto marcado y etiquetas en recuadro para no tapar las líneas.
  * `series` = [{ nombre, puntos: [[x,y]], resaltada }]; `punto` = { x, y, texto }; `extra` = { x, y, texto } (punto rojo).
  */
-export function curvasSvg({ series, ejeX, ejeY, punto = null, extra = null, marcaY = null, yPaso: pasoFijo = null, etiquetasMenores = true }) {
+export function curvasSvg({ series, ejeX, ejeY, punto = null, extra = null, marcaY = null, yPaso: pasoFijo = null, etiquetasMenores = false }) {
   const W = 460, H = ALTO_GRAFICO, m = { l: 58, r: 70, t: 18, b: 58 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
   const xs = series.flatMap((s) => s.puntos.map((p) => p[0])), ys = series.flatMap((s) => s.puntos.map((p) => p[1])).filter(Number.isFinite).concat(marcaY ? [marcaY.y] : []);
   const x0 = Math.min(...xs), x1 = Math.max(...xs);

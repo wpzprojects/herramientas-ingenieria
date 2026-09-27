@@ -508,6 +508,12 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   la nominal)»). Cortocircuito: termómetro PRIMERO y luego las curvas (también en los reportes); sin corriente de falla,
   `soportabilidadSvg` marca con líneas guía lo que soporta el calibre elegido en el tiempo de despeje. `curvasSvg` acepta
   `yPaso` fijo y `etiquetasMenores`; Ampacidad aérea (temperatura) usa 20 °C con líneas cada 10.
+  3.44.7: las líneas guía secundarias NO llevan número (`etiquetasMenores` por defecto false; el usuario no los quiere).
+  Serie-1 en oscuro #7d87ff (índigo) y serie-3 en oscuro #2fc2f5: el azul y el cian se confundían. «Plegar tarjeta»:
+  `revisarPie` ya no deja de vigilar una tarjeta armada ANTES de insertarla (así eran las alternativas de Valoración
+  integral y el enlace nunca aparecía); solo se suelta la que estuvo en la página y se quitó (`_pieVisto`). «Guardadas»
+  con `margin-left: auto`. Tabla de Valoración integral en ≤720px: 0.68rem, rellenos de 5 px y las insignias bajo el
+  valor; sus reglas llevan `table` en el selector para ganarle a la regla de celular de `.tabla-resultado`.
 - **Valores por defecto (2026-09-26, pedido del usuario: calcular de una)**: `porDefecto(sel, valor)` en cada vista
   (dispara «change» para la cascada): AAAC 246.9 + primera referencia en Pérdidas y Regulación (cada tramo aéreo nuevo),
   Cortocircuito y Ampacidad aérea; Ocupación: PVC Tipo TDP de 4". Lo guardado en la sesión sigue ganando.
