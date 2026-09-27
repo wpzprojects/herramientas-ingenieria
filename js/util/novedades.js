@@ -3,6 +3,7 @@
 // La PRIMERA entrada debe coincidir con CACHE_VERSION de sw.js (lo comprueba tools/verify_perfil.html).
 // El historial anterior a 3.16.0 se reconstruyó a partir de git el 2026-09-24 (antes solo había un contador v1…v296).
 export const NOVEDADES = [
+  { version: "3.44.8", fecha: "2026-09-26", cambios: ["Valoración integral: «Guardadas» y «Nueva valoración» terminan en el mismo borde derecho."] },
   { version: "3.44.7", fecha: "2026-09-26", cambios: ["Valoración integral: el enlace «Plegar tarjeta» ya aparece al pie de las alternativas largas, y «Guardadas» queda siempre a la derecha.", "Valoración integral en el celular: la tabla tiene letra más pequeña y las etiquetas («Cumple», «Óptimo»…) van bajo el valor, para que quepan más alternativas.", "Modo oscuro: los dos azules de los gráficos (ampacidad y regulación) se distinguen mejor.", "Las líneas guía secundarias de los gráficos ya no llevan números."] },
   { version: "3.44.6", fecha: "2026-09-26", cambios: ["Pérdidas y Regulación: el eje vertical de los gráficos lleva su nombre.", "Cortocircuito: primero el termómetro y después las curvas; sin corriente de falla, las curvas marcan lo que soporta el calibre elegido con el tiempo de despeje indicado.", "Ampacidad aérea: el eje de temperatura va cada 20 °C, con líneas guía cada 10 °C."] },
   { version: "3.44.5", fecha: "2026-09-26", cambios: ["Reportes en PDF y Word: los gráficos van a la mitad del ancho de la hoja y alineados a la izquierda."] },

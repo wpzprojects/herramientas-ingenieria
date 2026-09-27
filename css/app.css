@@ -1185,7 +1185,7 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 /* Valoraciones guardadas: botón junto al título, panel de historial y caja para guardar */
 .vi-titulo { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; }
 .vi-titulo .page-title { margin-bottom: 0; }
-.vi-titulo .vi-btn-historial { margin-left: auto; } /* a la derecha también cuando baja de línea */
+.vi-titulo .vi-btn-historial { margin-left: auto; margin-right: -13px; } /* a la derecha también cuando baja de línea; -13 px = relleno (12) + borde (1) del botón: su texto termina al mismo borde que «Nueva valoración» */
 .vi-titulo { margin-bottom: var(--space-5); }
 .vi-btn-historial { color: var(--text-muted); font-weight: 500; }
 .vi-btn-historial[aria-expanded="true"] { color: var(--accent); }
