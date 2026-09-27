@@ -514,6 +514,8 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   integral y el enlace nunca aparecía); solo se suelta la que estuvo en la página y se quitó (`_pieVisto`). «Guardadas»
   con `margin-left: auto`. Tabla de Valoración integral en ≤720px: 0.68rem, rellenos de 5 px y las insignias bajo el
   valor; sus reglas llevan `table` en el selector para ganarle a la regla de celular de `.tabla-resultado`.
+  3.45.1: el técnico se titula «Criterios técnicos frente a su límite» (el usuario no encontró claro «Uso de cada
+  límite») y la sección «Criterios técnicos y costo total».
   3.45.0: el gráfico de Valoración integral se partió en DOS (`usoLimitesSvg` 500 px y `costoAlternativasSvg` 420 px, misma
   geometría de filas `VI_FILA` y rótulo `viRotulo` con nombre · conductor · estado), lado a lado en `.graf-vi` (una columna
   en ≤900px). En ≤600px se muestran versiones COMPACTAS (`usoLimitesCompactoSvg`, `costoAlternativasCompactoSvg`, 340 px:

@@ -1859,7 +1859,7 @@ export async function render(container) {
     });
     const conCosto = alternativas.some((a) => Number.isFinite(a.costo));
     return `
-        <h4 class="result-subhead">Uso de cada límite${conCosto ? " y costo total" : ""}</h4>
+        <h4 class="result-subhead">Criterios técnicos${conCosto ? " y costo total" : ""}</h4>
         <div class="graf-vi graf-vi--ancho${conCosto ? "" : " graf-vi--solo"}"><div class="graf-item">${usoLimitesSvg({ alternativas })}</div>${conCosto ? `<div class="graf-item">${costoAlternativasSvg({ alternativas })}</div>` : ""}</div>
         <div class="graf-vi graf-vi--celular"><div class="graf-item">${usoLimitesCompactoSvg({ alternativas })}</div>${conCosto ? `<div class="graf-item">${costoAlternativasCompactoSvg({ alternativas })}</div>` : ""}</div>`;
   }

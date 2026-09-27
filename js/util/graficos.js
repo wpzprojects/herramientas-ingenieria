@@ -274,7 +274,7 @@ export function usoLimitesSvg({ alternativas }) {
   let s = fondo(m.l, t, bw, altoTot, 0);
   for (let v = 10; v < tope; v += 20) s += linea(X(v), t, X(v), t + altoTot, "var(--border)", 1, "2 4");
   for (let v = 0; v <= tope; v += 20) s += linea(X(v), t, X(v), t + altoTot, "var(--border)") + (v % 40 === 0 ? texto(X(v), t + altoTot + 18, `${v} %`, { ancla: "middle", tam: 13 }) : "");
-  s += texto(m.l + bw / 2, t - 24, "Uso de cada límite", { ancla: "middle", color: "var(--text)", peso: 700, tam: 15 });
+  s += texto(m.l + bw / 2, t - 24, "Criterios técnicos frente a su límite", { ancla: "middle", color: "var(--text)", peso: 700, tam: 15 });
   alternativas.forEach((a, k) => {
     const y0 = t + 8 + k * alto;
     s += viRotulo(a, m.l - 10, y0);
@@ -296,7 +296,7 @@ export function usoLimitesSvg({ alternativas }) {
     lx += n.length * 6.9 + 24;
   }
   s += `<rect x="${f1(lx + 4)}" y="${H - 20}" width="12" height="12" style="fill:var(--bg);stroke:var(--danger)" stroke-width="2.5"/>` + texto(lx + 22, H - 10, "Pasa el límite", { tam: 12.5, color: "var(--danger)", peso: 700 });
-  return envolver(W, H, `Uso de cada límite de ${alternativas.length} alternativas`, s);
+  return envolver(W, H, `Criterios técnicos frente a su límite de ${alternativas.length} alternativas`, s);
 }
 
 /**
@@ -350,7 +350,7 @@ export function usoLimitesCompactoSvg({ alternativas }) {
   let s = fondo(m.l, t, bw, altoTot, 0);
   for (let v = 10; v < tope; v += 20) s += linea(X(v), t, X(v), t + altoTot, "var(--border)", 1, "2 4");
   for (let v = 0; v <= tope; v += 20) s += linea(X(v), t, X(v), t + altoTot, "var(--border)") + (v % 40 === 0 ? texto(X(v), t + altoTot + 18, `${v} %`, { ancla: "middle", tam: 13 }) : "");
-  s += texto(W / 2, t - 24, "Uso de cada límite", { ancla: "middle", color: "var(--text)", peso: 700, tam: 15 });
+  s += texto(W / 2, t - 24, "Criterios técnicos frente a su límite", { ancla: "middle", color: "var(--text)", peso: 700, tam: 15 });
   alternativas.forEach((a, k) => {
     const y0 = t + k * alto;
     if (k) s += linea(m.l, y0, m.l + bw, y0, "var(--border-strong)");
@@ -376,7 +376,7 @@ export function usoLimitesCompactoSvg({ alternativas }) {
   }
   s += `<rect x="${m.l}" y="${y2 - 10}" width="12" height="12" rx="2" style="fill:${crit[3][1]}"/>` + texto(m.l + 17, y2, crit[3][0], { tam: 12.5 });
   s += `<rect x="${m.l + 130}" y="${y2 - 10}" width="12" height="12" style="fill:var(--bg);stroke:var(--danger)" stroke-width="2.5"/>` + texto(m.l + 148, y2, "Pasa el límite", { tam: 12.5, color: "var(--danger)", peso: 700 });
-  return envolver(W, H, `Uso de cada límite de ${alternativas.length} alternativas`, s);
+  return envolver(W, H, `Criterios técnicos frente a su límite de ${alternativas.length} alternativas`, s);
 }
 
 /** Costo total, versión compacta para el celular (ver `costoAlternativasSvg`). */
