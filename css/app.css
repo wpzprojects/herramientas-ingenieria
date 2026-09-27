@@ -554,6 +554,7 @@ input:disabled, select:disabled { opacity: 0.55; }
   .tabla-resultado thead th { white-space: normal; font-size: 0.68rem; padding: 8px 8px; vertical-align: bottom; line-height: 1.25; }
   .tabla-resultado tbody td { white-space: normal; padding: 10px 8px; font-size: 0.84rem; vertical-align: middle; }
   .tabla-resultado td .badge { display: inline-block; margin: 3px 0 0; }
+  .ce-conclusion { font-size: 0.82rem; } /* Conductor económico: la conclusión, un punto más pequeña en el celular */
   .tabla-resultado th .badge { font-size: 0.6rem; padding: 1px 5px; display: inline-block; margin-top: 3px; } /* «Menor costo» en el encabezado */
   /* los gráficos van uno debajo del otro; el angosto (termómetro) a la mitad del ancho: queda del mismo alto que el ancho */
   .graf-resumen .graf-par:not(.graf-cuadricula) { grid-template-columns: minmax(0, 1fr) !important; row-gap: var(--space-5); }
@@ -970,8 +971,15 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .graf-tres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 28px; row-gap: var(--space-5); align-items: start; margin-top: var(--space-5); }
 .graf-tres .graf-item svg { display: block; width: 100%; height: auto; overflow: visible; }
 @media (max-width: 900px) { .graf-tres { grid-template-columns: minmax(0, 1fr); } }
-.graf-ancho { max-width: 820px; } /* un solo gráfico ancho al final del resultado (Valoración integral) */
-.graf-ancho svg { display: block; width: 100%; height: auto; overflow: visible; }
+/* Valoración integral: uso de cada límite y costo total en DOS gráficos (pedido del usuario: juntos se veían muy pequeños
+   en el celular). Lado a lado en la proporción de sus anchos (mismo alto); uno debajo del otro en pantalla angosta. */
+.graf-vi { display: grid; grid-template-columns: minmax(0, 500fr) minmax(0, 420fr); column-gap: 28px; row-gap: var(--space-5); align-items: start; max-width: 1000px; }
+.graf-vi--solo { grid-template-columns: minmax(0, 1fr); max-width: 560px; }
+.graf-vi .graf-item svg { display: block; width: 100%; height: auto; overflow: visible; }
+@media (max-width: 900px) { .graf-vi { grid-template-columns: minmax(0, 1fr); } }
+/* en el celular se muestran las versiones compactas (nombre de la alternativa encima de sus barras) */
+.graf-vi.graf-vi--celular { display: none; }
+@media (max-width: 600px) { .graf-vi.graf-vi--ancho { display: none; } .graf-vi.graf-vi--celular { display: grid; } }
 /* cifras una debajo de la otra; en el celular, una al lado de la otra (Ampacidad subterránea) */
 .graf-cifras-apiladas { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: var(--space-4); max-width: 240px; }
 @media (max-width: 1180px) { .graf-cifras-apiladas { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-4); max-width: none; } }

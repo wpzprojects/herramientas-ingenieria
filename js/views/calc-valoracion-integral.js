@@ -29,7 +29,7 @@ import {
 import { UMBRAL_OPTIMO_PCT as OPTIMO_PERDIDAS } from "../calc/perdidas-tramos.js";
 import { UMBRAL_OPTIMO_PCT as OPTIMO_REGULACION } from "../calc/regulacion-tramos.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
-import { usoLimitesSvg } from "../util/graficos.js";
+import { usoLimitesSvg, costoAlternativasSvg, usoLimitesCompactoSvg, costoAlternativasCompactoSvg } from "../util/graficos.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables, plegarTarjeta } from "../util/tarjetas-plegables.js";
 import { revelar, mostrar } from "../util/revelar.js";
@@ -1839,11 +1839,11 @@ export async function render(container) {
    * Gráfico al FINAL del resultado (2026-09-26, VI1 revisado, elegido por el usuario): el % usado de cada límite por
    * alternativa y, si hay precios, su costo total al lado.
    */
-  function graficoLimitesHtml(r) {
+  function graficoLimitesHtml(r, estados) {
     const uso = (a, b) => (Number.isFinite(a) && Number.isFinite(b) && b > 0 ? (a / b) * 100 : null);
     const alternativas = r.escenarios.map((x, i) => {
-      const t0 = x.tramos[0];
-      const sub = t0 && t0.eleccion ? `${t0.eleccion.material} ${t0.eleccion.calibre}${x.tramos.length > 1 ? ` + ${x.tramos.length - 1} tramo${x.tramos.length > 2 ? "s" : ""}` : ""}` : "";
+      const e = estados[i], t0 = e && e.tramos[0]; // el conductor está en los datos de entrada, no en el resultado
+      const sub = t0 && t0.eleccion ? `${t0.eleccion.material} ${t0.eleccion.calibre}${e.tramos.length > 1 ? ` + ${e.tramos.length - 1} tramo${e.tramos.length > 2 ? "s" : ""}` : ""}` : "";
       return {
         nombre: `Alternativa ${i + 1}`,
         sub,
@@ -1860,7 +1860,8 @@ export async function render(container) {
     const conCosto = alternativas.some((a) => Number.isFinite(a.costo));
     return `
         <h4 class="result-subhead">Uso de cada límite${conCosto ? " y costo total" : ""}</h4>
-        <div class="graf-ancho">${usoLimitesSvg({ alternativas })}</div>`;
+        <div class="graf-vi graf-vi--ancho${conCosto ? "" : " graf-vi--solo"}"><div class="graf-item">${usoLimitesSvg({ alternativas })}</div>${conCosto ? `<div class="graf-item">${costoAlternativasSvg({ alternativas })}</div>` : ""}</div>
+        <div class="graf-vi graf-vi--celular"><div class="graf-item">${usoLimitesCompactoSvg({ alternativas })}</div>${conCosto ? `<div class="graf-item">${costoAlternativasCompactoSvg({ alternativas })}</div>` : ""}</div>`;
   }
 
   function renderResultado(r, comun, estados, dato) {
@@ -1882,7 +1883,7 @@ export async function render(container) {
         ${modelo.hayVarios ? detalleTramosHtml(tramos) : ""}
         <p class="text-muted text-sm" style="margin: var(--space-3) 0 0;">${escapeHtml(REFERENCIAS)}</p>
         ${avisosHtml(r, comun, estados)}
-        ${graficoLimitesHtml(r)}
+        ${graficoLimitesHtml(r, estados)}
       </div>`;
     wrap.innerHTML = tarjetaResultadosHtml({ resultado, reporte: reporteHtml(reporte, ETIQUETAS_REPORTE), formulasPlano: "" });
     // La pestaña de fórmulas (ya están en cada calculadora) pasa a ser el «Análisis»: margen, capacidad máxima y

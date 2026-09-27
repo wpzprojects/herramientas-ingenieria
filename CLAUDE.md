@@ -514,6 +514,12 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   integral y el enlace nunca aparecía); solo se suelta la que estuvo en la página y se quitó (`_pieVisto`). «Guardadas»
   con `margin-left: auto`. Tabla de Valoración integral en ≤720px: 0.68rem, rellenos de 5 px y las insignias bajo el
   valor; sus reglas llevan `table` en el selector para ganarle a la regla de celular de `.tabla-resultado`.
+  3.45.0: el gráfico de Valoración integral se partió en DOS (`usoLimitesSvg` 500 px y `costoAlternativasSvg` 420 px, misma
+  geometría de filas `VI_FILA` y rótulo `viRotulo` con nombre · conductor · estado), lado a lado en `.graf-vi` (una columna
+  en ≤900px). En ≤600px se muestran versiones COMPACTAS (`usoLimitesCompactoSvg`, `costoAlternativasCompactoSvg`, 340 px:
+  nombre encima de las barras, leyenda en dos filas): un SVG de ancho fijo se reduce demasiado en el teléfono. El conductor
+  sale de los datos de entrada (`estados[i].tramos[0].eleccion`), no del resultado. OJO: `.callout` es flex: su contenido
+  va en UN `<div>` (si no, la negrilla y el resto quedan en dos columnas; pasó en la conclusión de Conductor económico).
 - **Valores por defecto (2026-09-26, pedido del usuario: calcular de una)**: `porDefecto(sel, valor)` en cada vista
   (dispara «change» para la cascada): AAAC 246.9 + primera referencia en Pérdidas y Regulación (cada tramo aéreo nuevo),
   Cortocircuito y Ampacidad aérea; Ocupación: PVC Tipo TDP de 4". Lo guardado en la sesión sigue ganando.

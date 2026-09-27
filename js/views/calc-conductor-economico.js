@@ -868,7 +868,7 @@ export async function render(container) {
       const avisos = avisosAmpacidad(r, estados, base);
       resultado = `
           <div class="result-panel">
-            <div class="callout callout-success" style="margin: 0 0 var(--space-4);"><strong>Menor costo total en ${base.anios} años: Opción ${r.mejor + 1}</strong> — ${escapeHtml(conductorTexto(estados[r.mejor]))}, con ${fmtPesos(mejor.costoTotal)}.</div>
+            <div class="callout callout-success ce-conclusion" style="margin: 0 0 var(--space-4);"><div><strong>Menor costo total en ${base.anios} años: Opción ${r.mejor + 1}</strong> — ${escapeHtml(conductorTexto(estados[r.mejor]))}, con ${fmtPesos(mejor.costoTotal).replace("$ ", () => "$\u00a0")}.</div></div>
             <div class="grid-2">${metricas}</div>
             <p class="text-muted text-sm" style="margin: var(--space-3) 0 0;">Costo total actualizado = inversión inicial + valor presente del costo de las pérdidas.</p>
             ${avisos.length ? `<div class="callout callout-warning" style="margin-top: var(--space-4);">${avisos.map(escapeHtml).join("<br>")}</div>` : ""}
