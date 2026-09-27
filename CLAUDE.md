@@ -514,6 +514,8 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   integral y el enlace nunca aparecía); solo se suelta la que estuvo en la página y se quitó (`_pieVisto`). «Guardadas»
   con `margin-left: auto`. Tabla de Valoración integral en ≤720px: 0.68rem, rellenos de 5 px y las insignias bajo el
   valor; sus reglas llevan `table` en el selector para ganarle a la regla de celular de `.tabla-resultado`.
+  DESCARTADO por el usuario (2026-09-26): abreviar en el celular («Alt. 1», montos en millones) para que quepan tres
+  alternativas; la tercera queda a un desplazamiento lateral y así está bien. No volver a proponerlo.
   3.46.0: Conductor económico con Reportes completos (`simbolosEconomico`, `memoriaEconomico`: I, Fp y por opción Ref,
   %P, Pp y E del año 1, C1, VP = Σ C1·(1+g)^(2(t−1))·(1+e)^(t−1)/(1+d)^t, I0 = 3·N·L·cc + L·ci y CT; montos con
   `pesosTex`; gráficos CE1 y CE2 vía `graficosSvg`). «Plegar tarjeta»: aparece desde el 80 % del alto visible
