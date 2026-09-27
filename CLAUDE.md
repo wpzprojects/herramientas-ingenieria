@@ -642,6 +642,10 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
 
 ## Catálogos desde el servidor (fase 1 implementada 2026-09-24, versión 3.18.0; fase 2 PENDIENTE)
 
+- **Reglas de Firestore al día (confirmado por el usuario el 2026-09-26)**: están publicadas en la consola de Firebase
+  todas las reglas hasta esa fecha (catálogos, codificación, Biblioteca técnica y sus imágenes, valoraciones guardadas).
+  Los «HAY QUE PUBLICARLAS» de este archivo anteriores a esa fecha ya están cumplidos; solo recordarlo si cambian de nuevo.
+
 - Decidido con el usuario: los catálogos editables viven en **Firestore** (no en Railway: la app ya usa Firebase, las reglas
   de «solo admin» ya existían, y Railway sería un servidor más que mantener y un punto de falla más; Railway/Pages solo
   sirven la app). La app trae los de fábrica (`data/*.json`) y **gana SIEMPRE el servidor** (decisión del usuario: lo
