@@ -3,6 +3,7 @@
 // La PRIMERA entrada debe coincidir con CACHE_VERSION de sw.js (lo comprueba tools/verify_perfil.html).
 // El historial anterior a 3.16.0 se reconstruyó a partir de git el 2026-09-24 (antes solo había un contador v1…v296).
 export const NOVEDADES = [
+  { version: "3.44.6", fecha: "2026-09-26", cambios: ["Pérdidas y Regulación: el eje vertical de los gráficos lleva su nombre.", "Cortocircuito: primero el termómetro y después las curvas; sin corriente de falla, las curvas marcan lo que soporta el calibre elegido con el tiempo de despeje indicado.", "Ampacidad aérea: el eje de temperatura va cada 20 °C, con líneas guía cada 10 °C."] },
   { version: "3.44.5", fecha: "2026-09-26", cambios: ["Reportes en PDF y Word: los gráficos van a la mitad del ancho de la hoja y alineados a la izquierda."] },
   { version: "3.44.4", fecha: "2026-09-26", cambios: ["Ampacidad aérea: la ampacidad arriba y debajo los tres gráficos en una sola fila, repartidos a lo ancho.", "Conductor económico: la opción 1 arranca con AAAC 246.9 (Alliance) y la opción 2 con AAAC 312.8 (Butte); los precios siguen vacíos.", "Celular: la etiqueta «Menor costo» del encabezado de las tablas es más pequeña."] },
   { version: "3.44.3", fecha: "2026-09-26", cambios: ["Ampacidad aérea: el dibujo del corte del conductor ya no va en el resultado; sigue en los reportes (PDF y Word)."] },

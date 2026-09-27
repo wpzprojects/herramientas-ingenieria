@@ -347,7 +347,7 @@ export function barraReferenciaSvg({ valor, optimo, aceptable, etiqueta = "" }) 
  * origen que pasa por el punto de hoy. Marca dónde se llega al límite aceptable.
  */
 export function curvaCargaSvg({ pct, carga, unidad, nombreEje, optimo, aceptable }) {
-  const W = 460, H = ALTO_GRAFICO, m = { l: 52, r: 18, t: 22, b: 58 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
+  const W = 460, H = ALTO_GRAFICO, m = { l: 64, r: 18, t: 22, b: 58 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
   const xPaso = pasoRedondo(carga * 2, 4), xmax = Math.ceil((carga * 2) / xPaso) * xPaso;
   const yTope = Math.max(aceptable * 4 / 3, (pct * xmax) / carga);
   const yPaso = pasoRedondo(yTope, 4), ymax = Math.ceil(yTope / yPaso) * yPaso;
@@ -357,6 +357,7 @@ export function curvaCargaSvg({ pct, carga, unidad, nombreEje, optimo, aceptable
   for (let v = 0; v <= ymax + 1e-9; v += yPaso) s += linea(m.l, Y(v), m.l + pw, Y(v), "var(--border)") + texto(m.l - 7, Y(v) + 4.5, `${numEje(v)} %`, { ancla: "end", tam: 12 });
   for (let v = 0; v <= xmax + 1e-9; v += xPaso) s += linea(X(v), m.t + ph, X(v), m.t + ph + 5, "var(--text-muted)") + texto(X(v), m.t + ph + 20, numEje(v), { ancla: "middle", tam: 12 });
   s += texto(m.l + pw / 2, H - 12, `${nombreEje} (${unidad})`, { ancla: "middle", tam: 12.5 });
+  s += `<text x="14" y="${m.t + ph / 2}" font-size="12.5" text-anchor="middle" transform="rotate(-90 14 ${m.t + ph / 2})" style="fill:var(--text-muted)">Porcentaje de pérdidas (%)</text>`;
   // nombres de las zonas a la DERECHA (a la izquierda chocan con la etiqueta del punto de hoy)
   const zx = m.l + pw - 6;
   // en el borde INFERIOR de cada franja: así no chocan con la etiqueta del límite, que va bajo la línea del 3 %
@@ -382,7 +383,7 @@ export function curvaCargaSvg({ pct, carga, unidad, nombreEje, optimo, aceptable
  * distancia desde el inicio, tramo por tramo, con las referencias de diseño. `tramos` = [{ nombre, longitudKm, caidaPct }].
  */
 export function perfilTensionSvg({ tramos, optimo, aceptable }) {
-  const W = 460, H = ALTO_GRAFICO, m = { l: 56, r: 22, t: 22, b: 58 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
+  const W = 460, H = ALTO_GRAFICO, m = { l: 68, r: 22, t: 22, b: 58 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
   const L = tramos.reduce((s, t) => s + t.longitudKm, 0);
   const caida = tramos.reduce((s, t) => s + t.caidaPct, 0);
   const bajada = Math.max(aceptable * 1.2, caida * 1.15);
@@ -395,6 +396,7 @@ export function perfilTensionSvg({ tramos, optimo, aceptable }) {
   for (let v = 100; v >= ymin - 1e-9; v -= yPaso) s += linea(m.l, Y(v), m.l + pw, Y(v), "var(--border)") + texto(m.l - 7, Y(v) + 4.5, `${numEje(v)} %`, { ancla: "end", tam: 12 });
   for (let v = 0; v <= xmax + 1e-9; v += xPaso) s += linea(X(v), m.t + ph, X(v), m.t + ph + 5, "var(--text-muted)") + texto(X(v), m.t + ph + 20, numEje(v), { ancla: "middle", tam: 12 });
   s += texto(m.l + pw / 2, H - 12, "Distancia desde el inicio de la línea (km)", { ancla: "middle", tam: 12.5 });
+  s += `<text x="14" y="${m.t + ph / 2}" font-size="12.5" text-anchor="middle" transform="rotate(-90 14 ${m.t + ph / 2})" style="fill:var(--text-muted)">Tensión (% de la nominal)</text>`;
   s += linea(m.l, Y(100 - optimo), m.l + pw, Y(100 - optimo), "var(--success)", 1.2, "5 4") + texto(m.l + 6, Y(100 - optimo) + 15, `${optimo} %`, { color: "var(--text)", peso: 600, tam: 11.5 });
   s += linea(m.l, Y(100 - aceptable), m.l + pw, Y(100 - aceptable), "var(--warning)", 1.2, "5 4") + texto(m.l + 6, Y(100 - aceptable) + 15, `${aceptable} %`, { color: "var(--text)", peso: 600, tam: 11.5 });
   if (!(L > 0) || !Number.isFinite(caida)) return envolver(W, H, "Perfil de tensión", s);
@@ -477,6 +479,20 @@ export function soportabilidadSvg({ calibres, capacidad, falla, tiempoS }) {
       { t: `${ok ? "Soporta" : "No soporta"}: el ${actual.nombre} aguanta ${soporta.toFixed(1)} kA`, color: ok ? "var(--success)" : "var(--danger)", tam: 12 },
     ], { ancla: "end" });
   }
+  // sin corriente de falla (pedido del usuario: el gráfico no decía nada): lo que soporta el calibre elegido con el tiempo
+  // de despeje indicado, con líneas guía a los dos ejes para leerlo
+  if (!(falla && falla.ka > 0) && tiempoS > 0 && tiempoS >= tmin && tiempoS <= tmax) {
+    const soporta = capacidad(actual.area, tiempoS);
+    const px = X(tiempoS), py = Y(Math.min(Math.max(soporta, imin), imax));
+    s += linea(px, py, px, m.t + ph, "var(--text)", 1.2, "4 4") + linea(m.l, py, px, py, "var(--text)", 1.2, "4 4");
+    s += `<circle class="oc-aparece" cx="${f1(px)}" cy="${f1(py)}" r="6.5" style="fill:var(--accent);stroke:var(--bg)" stroke-width="2.5"/>`;
+    const bx = m.l + pw - 6, by = m.t + 6;
+    s += linea(px, py, bx - 120, by + 44, "var(--text-muted)", 1, "3 3");
+    s += recuadro(bx, by, [
+      { t: `Despeje en ${numEje(tiempoS)} s`, peso: 700 },
+      { t: `el ${actual.nombre} soporta ${soporta.toFixed(1)} kA`, color: "var(--accent)", tam: 12 },
+    ], { ancla: "end" });
+  }
   return envolver(W, H, `Curvas de soportabilidad de cortocircuito; ${actual.nombre} resaltado${falla ? `; falla de ${falla.ka} kA en ${tiempoS} s` : ""}`, s);
 }
 
@@ -543,11 +559,11 @@ export function balanceTermicoSvg({ qj, qs, qc, qr, ampacidad, tc }) {
  * Curvas de una magnitud (Y) frente a otra (X), con un punto marcado y etiquetas en recuadro para no tapar las líneas.
  * `series` = [{ nombre, puntos: [[x,y]], resaltada }]; `punto` = { x, y, texto }; `extra` = { x, y, texto } (punto rojo).
  */
-export function curvasSvg({ series, ejeX, ejeY, punto = null, extra = null, marcaY = null }) {
+export function curvasSvg({ series, ejeX, ejeY, punto = null, extra = null, marcaY = null, yPaso: pasoFijo = null, etiquetasMenores = true }) {
   const W = 460, H = ALTO_GRAFICO, m = { l: 58, r: 70, t: 18, b: 58 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
   const xs = series.flatMap((s) => s.puntos.map((p) => p[0])), ys = series.flatMap((s) => s.puntos.map((p) => p[1])).filter(Number.isFinite).concat(marcaY ? [marcaY.y] : []);
   const x0 = Math.min(...xs), x1 = Math.max(...xs);
-  const yPaso = pasoRedondo(Math.max(...ys) - Math.min(...ys) || 1, 4);
+  const yPaso = pasoFijo || pasoRedondo(Math.max(...ys) - Math.min(...ys) || 1, 4);
   const y0 = Math.floor(Math.min(...ys) / yPaso) * yPaso, y1 = Math.ceil(Math.max(...ys) / yPaso) * yPaso;
   const xPaso = pasoRedondo(x1 - x0, 5);
   const X = (v) => m.l + ((v - x0) / (x1 - x0)) * pw, Y = (v) => m.t + ph - ((v - y0) / (y1 - y0)) * ph;
@@ -556,7 +572,7 @@ export function curvasSvg({ series, ejeX, ejeY, punto = null, extra = null, marc
   // más suaves; con su valor, en letra pequeña y tenue, solo si es un número entero
   for (let v = y0 + yPaso / 2; v < y1; v += yPaso) {
     s += linea(m.l, Y(v), m.l + pw, Y(v), "var(--border)", 1, "2 4");
-    if (Number.isInteger(Math.round(v * 1e6) / 1e6)) s += texto(m.l - 7, Y(v) + 4, numEje(v), { ancla: "end", tam: 10, color: "var(--text-faint)" });
+    if (etiquetasMenores && Number.isInteger(Math.round(v * 1e6) / 1e6)) s += texto(m.l - 7, Y(v) + 4, numEje(v), { ancla: "end", tam: 10, color: "var(--text-faint)" });
   }
   for (let v = y0; v <= y1 + 1e-9; v += yPaso) s += linea(m.l, Y(v), m.l + pw, Y(v), "var(--border)") + texto(m.l - 7, Y(v) + 4.5, numEje(v), { ancla: "end", tam: 12 });
   // líneas verticales (pedido del usuario: para cruzar los datos en los dos ejes): principales en cada división y

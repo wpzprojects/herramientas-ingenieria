@@ -479,8 +479,9 @@ export async function render(container) {
     const { tempRes0: lam, k1 } = data.intermedios;
     const tAlcanza = falla ? (p.tempOperacionC + lam) * Math.pow(10, ((falla.ka * 1000) / (p.areaMm2 * k1)) ** 2 * p.tiempoS) - lam : null;
     return [
-      { svg: soportabilidadSvg({ calibres, capacidad, falla, tiempoS: p.tiempoS }), ancho: 460 },
+      // primero el termómetro y después las curvas (pedido del usuario)
       { svg: termometroFallaSvg({ tOperacion: p.tempOperacionC, tMaxima: p.tempFallaC, tAlcanza: Number.isFinite(tAlcanza) ? tAlcanza : null }), ancho: 230 },
+      { svg: soportabilidadSvg({ calibres, capacidad, falla, tiempoS: p.tiempoS }), ancho: 460 },
     ];
   }
 
@@ -555,7 +556,7 @@ export async function render(container) {
       formulasPlano: FORMULAS_TEXTO,
     });
     activarPestanas(wrap, { grupos: FORMULAS_TEX, etiquetas: FORMULAS_ETIQUETAS, nota: FORMULAS_NOTA });
-    const titulosGraf = ["Soportabilidad corriente–tiempo", "Temperatura del conductor en la falla"];
+    const titulosGraf = ["Temperatura del conductor en la falla", "Soportabilidad corriente–tiempo"];
     activarReportes(wrap, {
       titulo: "Cálculo de cortocircuito",
       texto: textoReporte,

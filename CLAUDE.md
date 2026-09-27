@@ -504,6 +504,10 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   (`.graf-tres`, 3 columnas iguales con 28 px entre ellas; una columna en ≤900px). Conductor económico: opción 1 = AAAC
   246.9 Alliance (7) y opción 2 = AAAC 312.8 Butte (19) por defecto (`conductorPorDefecto`; precios vacíos; lo guardado en
   la sesión gana). Celular: `.tabla-resultado th .badge` (p. ej. «Menor costo») a 0.6rem.
+  3.44.6: nombres de eje vertical en `curvaCargaSvg` («Porcentaje de pérdidas (%)») y `perfilTensionSvg» («Tensión (% de
+  la nominal)»). Cortocircuito: termómetro PRIMERO y luego las curvas (también en los reportes); sin corriente de falla,
+  `soportabilidadSvg` marca con líneas guía lo que soporta el calibre elegido en el tiempo de despeje. `curvasSvg` acepta
+  `yPaso` fijo y `etiquetasMenores`; Ampacidad aérea (temperatura) usa 20 °C con líneas cada 10.
 - **Valores por defecto (2026-09-26, pedido del usuario: calcular de una)**: `porDefecto(sel, valor)` en cada vista
   (dispara «change» para la cascada): AAAC 246.9 + primera referencia en Pérdidas y Regulación (cada tramo aéreo nuevo),
   Cortocircuito y Ampacidad aérea; Ocupación: PVC Tipo TDP de 4". Lo guardado en la sesión sigue ganando.

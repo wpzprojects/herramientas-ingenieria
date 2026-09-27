@@ -712,6 +712,8 @@ export async function render(container) {
       series: [{ nombre: "", puntos: puntosT, resaltada: true }],
       ejeX: "Corriente (A)",
       ejeY: "Temperatura del conductor (°C)",
+      yPaso: 20, // números cada 20 °C y líneas cada 10 (pedido del usuario); el máximo ya lo marca la línea roja
+      etiquetasMenores: false,
       marcaY: { y: p.tcC, texto: `máximo ${numEje(p.tcC)} °C` },
       punto: { x: data.ampacidad, y: p.tcC, texto: [`${Math.round(data.ampacidad)} A`, `ampacidad a ${numEje(p.tcC)} °C`], lado: "izquierda" },
     });
