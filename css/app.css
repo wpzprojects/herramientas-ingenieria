@@ -1122,6 +1122,11 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .doc-calculo .doc-figura figcaption { font-size: 9.5pt; font-weight: 600; margin-bottom: 2mm; }
 .doc-calculo .doc-figura svg { display: block; width: 50%; height: auto; } /* mitad del ancho, a la izquierda (pedido del usuario; vectorial: nítido a cualquier tamaño) */
 .doc-calculo .doc-nota-figura { margin: -3mm 0 6mm; max-width: 50%; font-size: 8.5pt; line-height: 1.4; } /* nota al pie del gráfico (p. ej. la sigla PRD), del ancho del gráfico */
+/* Valoración integral: gráficos del PDF, como en los reportes de las calculadoras (mitad del ancho, a la izquierda) */
+.vi-doc .doc-figura { break-inside: avoid; margin: 3mm 0 6mm; background: #fff; width: auto; max-width: none; border: 0; border-radius: 0; overflow: visible; font-size: inherit; }
+.vi-doc .doc-figura figcaption { font-size: 9.5pt; font-weight: 600; margin-bottom: 2mm; }
+.vi-doc .doc-figura svg { display: block; width: 50%; height: auto; }
+.vi-doc .vi-doc-nota-figura { margin: -3mm 0 6mm; max-width: 50%; font-size: 8.5pt; line-height: 1.4; }
 
 /* ---- Documento de impresion del reporte: Carta vertical, SIEMPRE en claro (no depende del tema de la pantalla) ---- */
 @page reporte {

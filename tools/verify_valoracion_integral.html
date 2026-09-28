@@ -625,6 +625,10 @@ await seccion("vista: exportar a Excel y a PDF", async () => {
   ok(filaFc && filaFc.children[1].textContent === "0.40", `el factor de carga sale con 2 decimales (${filaFc?.children[1].textContent})`);
   const filaFcXlsx = textos.indexOf("Factor de carga (Fc)");
   ok(filaFcXlsx >= 0 && textos[filaFcXlsx + 1] === "0.40", `…también en el Excel (${textos[filaFcXlsx + 1]})`);
+  const figs = [...pdf.querySelectorAll("figure.doc-figura")];
+  ok(figs.map((f) => f.querySelector("svg")?.getAttribute("aria-label") ?? "").join(" | ").match(/Criterios|Costo/g)?.length === 3 && figs.every((f) => f.querySelector("svg")), "el PDF trae la sección «Gráficos» con los tres gráficos (vectoriales)");
+  ok(figs.map((f) => f.querySelector("figcaption")?.textContent ?? "").join(" | ") === " |  | Costo acumulado en el tiempo", "…sin repetir el título de los que ya lo traen dentro");
+  ok(pdf.body.textContent.indexOf("Gráficos") < pdf.body.textContent.indexOf("Supuestos del cálculo"), "…antes de los supuestos");
   ok(/Precio de la energía perdida/.test(pdf.querySelector(".vi-doc-nota-fila")?.textContent ?? "") && pdf.querySelector(".vi-doc-nota-fila").previousElementSibling.textContent.startsWith("Costos a"), "los supuestos económicos van en la sección de costos del PDF");
   window.dispatchEvent(new Event("afterprint"));
   ok(!document.getElementById("doc-impresion") && !document.body.classList.contains("imprimiendo-reporte"), "al terminar de imprimir se quita el documento");
@@ -641,6 +645,7 @@ await seccion("vista: exportar a Excel y a PDF", async () => {
   ok(/<w:gridSpan w:val="4"\/>/.test(cuerpo), "Word: los títulos de sección de la tabla ocupan todas las columnas");
   ok(/w:fill="(C6EFCE|FFC7CE)"/.test(cuerpo), "Word: las celdas llevan los colores verde/rojo del PDF");
   ok(!cuerpo.includes('w:orient="landscape"'), "Word: con 2 alternativas la hoja va vertical");
+  ok(cuerpo.includes("Gráficos") && cuerpo.includes("Costo acumulado en el tiempo") && Object.keys(z).filter((n) => /^word\/media\/.+\.png$/.test(n)).length === 3, "Word: sección «Gráficos» con los tres gráficos como imágenes");
   ok((z["word/footer1.xml"] ?? "").includes("Valoración integral de conductores") && (z["docProps/core.xml"] ?? "").includes("<dc:title>Valoración integral de conductores</dc:title>"), "Word: el pie y el título del archivo son los de la valoración");
 });
 
@@ -653,6 +658,8 @@ async function descargaDe(menu, formato) {
   HTMLAnchorElement.prototype.click = function () { res.nombre = this.download; };
   menu.open = true;
   menu.querySelector(`[data-exportar="${formato}"]`).click();
+  // el Word se arma después de convertir los gráficos a PNG (asíncrono): se espera la descarga
+  for (let i = 0; i < 200 && !res.blob; i++) await espera(25);
   URL.createObjectURL = crear;
   HTMLAnchorElement.prototype.click = clickA;
   return res;

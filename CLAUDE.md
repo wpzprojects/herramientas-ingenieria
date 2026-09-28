@@ -324,6 +324,11 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   de la recomendada frente a la de menor inversión (solo con `criterioRecomendado === "costo"`). El motor suma
   `economia.acumulado` de los tramos. Solo en pantalla (no en PDF/Word/Excel, como los otros dos gráficos). El recuadro
   «se paga sola» ahora queda SIEMPRE dentro del área del gráfico (antes tapaba los nombres de las curvas).
+  **3.48.0 (2026-09-28, pedido del usuario)**: el PDF y el Word de «Exportar» llevan la sección «Gráficos» (antes de los
+  supuestos) con las versiones ANCHAS de los gráficos del resultado (`graficosDoc`, que comparte datos con la pantalla vía
+  `datosLimites`/`datosAcumulado`). PDF: SVG con `figurasPdf` (síncrono: la impresión no puede esperar); Word: PNG con
+  `figurasWord` (async, `svgAPng`). Los que traen su título dentro (`conTitulo`) no repiten la leyenda. El Excel no lleva
+  gráficos. Mitad del ancho, a la izquierda (`.vi-doc .doc-figura`), como en los reportes de las calculadoras.
   **3.47.1 (2026-09-28, pedido del usuario)**: el recuadro «Año N: se paga sola» se reemplazó por la etiqueta «PRD N años»
   junto al punto (texto con borde del fondo) y una nota al pie `.graf-nota` bajo el gráfico (`notaRecuperacion`; el año
   sale de `recuperacionDescontada`, ambas en `graficos.js`). PRD = período de recuperación descontado (sigla elegida por

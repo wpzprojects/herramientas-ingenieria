@@ -29,6 +29,7 @@ import {
 import { UMBRAL_OPTIMO_PCT as OPTIMO_PERDIDAS } from "../calc/perdidas-tramos.js";
 import { UMBRAL_OPTIMO_PCT as OPTIMO_REGULACION } from "../calc/regulacion-tramos.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
+import { svgAPng } from "../util/reportes.js";
 import { usoLimitesSvg, costoAlternativasSvg, usoLimitesCompactoSvg, costoAlternativasCompactoSvg, costoAcumuladoSvg, notaRecuperacion } from "../util/graficos.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables, plegarTarjeta } from "../util/tarjetas-plegables.js";
@@ -1430,7 +1431,7 @@ export async function render(container) {
   }
 
   /** Documento de impresión (PDF): Carta, vertical hasta 3 alternativas y horizontal con más; siempre en claro. */
-  function documentoPdf(modelo, modeloA, conc, entrada, tramos, inst) {
+  function documentoPdf(modelo, modeloA, conc, entrada, tramos, inst, figuras = "") {
     const doc = document.createElement("div");
     doc.id = "doc-impresion";
     doc.className = `doc-impresion vi-doc${modelo.columnas.length > 3 ? " vi-doc-apaisado" : ""}`;
@@ -1453,14 +1454,15 @@ export async function render(container) {
       detalle +
       `<h3>Análisis: margen y capacidad máxima</h3>${tablaDoc(modeloA)}` +
       instalacionHtml(inst, { doc: true }) +
+      figuras +
       `<h3>Supuestos del cálculo</h3><ul class="vi-doc-supuestos">${SUPUESTOS.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ul>` +
       `<p class="vi-doc-nota">${escapeHtml(REFERENCIAS)} Los datos de entrada de cada alternativa están en la pestaña «Reporte» de la calculadora.</p>`;
     return doc;
   }
 
-  function exportarPdf(modelo, modeloA, conc, entrada, tramos, inst) {
+  function exportarPdf(modelo, modeloA, conc, entrada, tramos, inst, figuras) {
     document.getElementById("doc-impresion")?.remove();
-    document.body.append(documentoPdf(modelo, modeloA, conc, entrada, tramos, inst));
+    document.body.append(documentoPdf(modelo, modeloA, conc, entrada, tramos, inst, figuras));
     document.body.classList.add("imprimiendo-reporte");
     document.documentElement.classList.add("imprimiendo-reporte");
     window.addEventListener(
@@ -1843,7 +1845,7 @@ export async function render(container) {
    * Gráfico al FINAL del resultado (2026-09-26, VI1 revisado, elegido por el usuario): el % usado de cada límite por
    * alternativa y, si hay precios, su costo total al lado.
    */
-  function graficoLimitesHtml(r, estados) {
+  function datosLimites(r, estados) {
     const uso = (a, b) => (Number.isFinite(a) && Number.isFinite(b) && b > 0 ? (a / b) * 100 : null);
     const alternativas = r.escenarios.map((x, i) => {
       const e = estados[i], t0 = e && e.tramos[0]; // el conductor está en los datos de entrada, no en el resultado
@@ -1861,7 +1863,11 @@ export async function render(container) {
         costo: x.economia ? x.economia.costoTotal : null,
       };
     });
-    const conCosto = alternativas.some((a) => Number.isFinite(a.costo));
+    return { alternativas, conCosto: alternativas.some((a) => Number.isFinite(a.costo)) };
+  }
+
+  function graficoLimitesHtml(r, estados) {
+    const { alternativas, conCosto } = datosLimites(r, estados);
     return `
         <h4 class="result-subhead">Criterios técnicos${conCosto ? " y costo total" : ""}</h4>
         <div class="graf-vi graf-vi--ancho${conCosto ? "" : " graf-vi--solo"}"><div class="graf-item">${usoLimitesSvg({ alternativas })}</div>${conCosto ? `<div class="graf-item">${costoAlternativasSvg({ alternativas })}</div>` : ""}</div>
@@ -1873,9 +1879,9 @@ export async function render(container) {
    * Costo acumulado año a año (el de Conductor económico), con 2 o más alternativas con costo. Las que no cumplen van con el
    * nombre en gris; «se paga sola» = la recomendada frente a la de menor inversión, si invierte más y la alcanza.
    */
-  function graficoAcumuladoHtml(r) {
+  function datosAcumulado(r) {
     const conCosto = r.escenarios.map((x, i) => (x.economia ? i : -1)).filter((i) => i >= 0);
-    if (conCosto.length < 2) return "";
+    if (conCosto.length < 2) return null;
     const series = conCosto.map((i) => ({ nombre: `Alternativa ${i + 1}`, acumulado: r.escenarios[i].economia.acumulado, mejor: i === r.recomendado, tenue: !r.cumplen.includes(i) }));
     let equilibrio = null;
     const de = conCosto.indexOf(r.recomendado);
@@ -1887,10 +1893,50 @@ export async function render(container) {
         if (anio > 0) equilibrio = { anio, de, frente };
       }
     }
-    const nota = notaRecuperacion(series, equilibrio);
+    return { svg: costoAcumuladoSvg({ series, equilibrio, plural: "alternativas" }), nota: notaRecuperacion(series, equilibrio) };
+  }
+
+  function graficoAcumuladoHtml(r) {
+    const d = datosAcumulado(r);
+    if (!d) return "";
     return `
         <h4 class="result-subhead">Costos en el tiempo</h4>
-        <div class="graf-vi graf-vi--solo"><div class="graf-item">${costoAcumuladoSvg({ series, equilibrio, plural: "alternativas" })}${nota ? `<p class="graf-nota">${escapeHtml(nota)}</p>` : ""}</div></div>`;
+        <div class="graf-vi graf-vi--solo"><div class="graf-item">${d.svg}${d.nota ? `<p class="graf-nota">${escapeHtml(d.nota)}</p>` : ""}</div></div>`;
+  }
+
+  /**
+   * Los gráficos del resultado para el PDF y el Word (2026-09-28, pedido del usuario): las versiones anchas, en el mismo
+   * orden que en pantalla. [{ titulo, svg, nota?, conTitulo? }]; `conTitulo`: el gráfico ya trae su título dentro (no se
+   * repite como leyenda).
+   */
+  function graficosDoc(r, estados) {
+    const { alternativas, conCosto } = datosLimites(r, estados);
+    const acum = datosAcumulado(r);
+    return [
+      { titulo: "Criterios técnicos frente a su límite", svg: usoLimitesSvg({ alternativas }), conTitulo: true },
+      ...(conCosto ? [{ titulo: "Costo total por alternativa", svg: costoAlternativasSvg({ alternativas }), conTitulo: true }] : []),
+      ...(acum ? [{ titulo: "Costo acumulado en el tiempo", svg: acum.svg, nota: acum.nota }] : []),
+    ];
+  }
+
+  /** Sección «Gráficos» del documento. PDF: SVG (vectorial). */
+  const notaFigura = (g) => (g.nota ? `<p class="vi-doc-nota-figura">${escapeHtml(g.nota)}</p>` : "");
+  const seccionGraficos = (html) => (html ? `<h3>Gráficos</h3>${html}` : "");
+  function figurasPdf(graficos) {
+    return seccionGraficos(graficos.map((g) => `<figure class="doc-figura vista-tema" data-vista="light">${g.conTitulo ? "" : `<figcaption>${escapeHtml(g.titulo)}</figcaption>`}${g.svg}</figure>${notaFigura(g)}`).join(""));
+  }
+  /** Word: PNG en tema claro (`svgAPng`); un gráfico que no se pudo convertir no impide el documento. */
+  async function figurasWord(graficos) {
+    let html = "";
+    for (const g of graficos) {
+      try {
+        const im = await svgAPng(g.svg);
+        html += `${g.conTitulo ? "" : `<h4>${escapeHtml(g.titulo)}</h4>`}<div><img src="${im.png}" data-ancho="${im.ancho}" data-alto="${im.alto}" alt="${escapeHtml(g.titulo)}"></div>${notaFigura(g)}`;
+      } catch {
+        /* sigue con los demás */
+      }
+    }
+    return seccionGraficos(html);
   }
 
   function renderResultado(r, comun, estados, dato) {
@@ -1931,12 +1977,17 @@ export async function render(container) {
     // «Exportar» abre un menú con tres formatos; se cierra al elegir uno o al pulsar fuera
     const menu = wrap.querySelector(".vi-exportar");
     const entrada = datosEntrada(comun, estados, dato);
+    const graficos = graficosDoc(r, estados);
     menu.addEventListener("click", (e) => {
       const boton = e.target.closest("[data-exportar]");
       if (!boton) return;
       menu.open = false;
-      if (boton.dataset.exportar === "pdf") exportarPdf(modelo, modeloA, conc, entrada, tramos, inst);
-      else if (boton.dataset.exportar === "docx") descargar(`valoracion-integral-${fechaArchivo()}.docx`, crearDocxDocumento(documentoPdf(modelo, modeloA, conc, entrada, tramos, inst), { titulo: "Valoración integral de conductores", apaisado: modelo.columnas.length > 3 }), MIME_DOCX);
+      if (boton.dataset.exportar === "pdf") exportarPdf(modelo, modeloA, conc, entrada, tramos, inst, figurasPdf(graficos));
+      else if (boton.dataset.exportar === "docx")
+        figurasWord(graficos).then((figuras) => {
+          const doc = documentoPdf(modelo, modeloA, conc, entrada, tramos, inst, figuras);
+          descargar(`valoracion-integral-${fechaArchivo()}.docx`, crearDocxDocumento(doc, { titulo: "Valoración integral de conductores", apaisado: modelo.columnas.length > 3 }), MIME_DOCX);
+        });
       else descargar(`valoracion-integral-${fechaArchivo()}.xlsx`, libroExcel(modelo, modeloA, conc, entrada, tramos, reporte, inst), MIME_XLSX);
     });
     const cerrarFuera = (e) => {
