@@ -29,7 +29,7 @@ import {
 import { UMBRAL_OPTIMO_PCT as OPTIMO_PERDIDAS } from "../calc/perdidas-tramos.js";
 import { UMBRAL_OPTIMO_PCT as OPTIMO_REGULACION } from "../calc/regulacion-tramos.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
-import { usoLimitesSvg, costoAlternativasSvg, usoLimitesCompactoSvg, costoAlternativasCompactoSvg } from "../util/graficos.js";
+import { usoLimitesSvg, costoAlternativasSvg, usoLimitesCompactoSvg, costoAlternativasCompactoSvg, costoAcumuladoSvg } from "../util/graficos.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables, plegarTarjeta } from "../util/tarjetas-plegables.js";
 import { revelar, mostrar } from "../util/revelar.js";
@@ -1865,7 +1865,31 @@ export async function render(container) {
     return `
         <h4 class="result-subhead">Criterios técnicos${conCosto ? " y costo total" : ""}</h4>
         <div class="graf-vi graf-vi--ancho${conCosto ? "" : " graf-vi--solo"}"><div class="graf-item">${usoLimitesSvg({ alternativas })}</div>${conCosto ? `<div class="graf-item">${costoAlternativasSvg({ alternativas })}</div>` : ""}</div>
-        <div class="graf-vi graf-vi--celular"><div class="graf-item">${usoLimitesCompactoSvg({ alternativas })}</div>${conCosto ? `<div class="graf-item">${costoAlternativasCompactoSvg({ alternativas })}</div>` : ""}</div>`;
+        <div class="graf-vi graf-vi--celular"><div class="graf-item">${usoLimitesCompactoSvg({ alternativas })}</div>${conCosto ? `<div class="graf-item">${costoAlternativasCompactoSvg({ alternativas })}</div>` : ""}</div>
+        ${graficoAcumuladoHtml(r)}`;
+  }
+
+  /**
+   * Costo acumulado año a año (el de Conductor económico), con 2 o más alternativas con costo. Las que no cumplen van con el
+   * nombre en gris; «se paga sola» = la recomendada frente a la de menor inversión, si invierte más y la alcanza.
+   */
+  function graficoAcumuladoHtml(r) {
+    const conCosto = r.escenarios.map((x, i) => (x.economia ? i : -1)).filter((i) => i >= 0);
+    if (conCosto.length < 2) return "";
+    const series = conCosto.map((i) => ({ nombre: `Alternativa ${i + 1}`, acumulado: r.escenarios[i].economia.acumulado, mejor: i === r.recomendado, tenue: !r.cumplen.includes(i) }));
+    let equilibrio = null;
+    const de = conCosto.indexOf(r.recomendado);
+    if (r.criterioRecomendado === "costo" && de >= 0) {
+      const frente = series.reduce((m, s, k) => (s.acumulado[0] < series[m].acumulado[0] ? k : m), 0);
+      const a = series[de].acumulado, b = series[frente].acumulado;
+      if (frente !== de && a[0] > b[0]) {
+        const anio = a.findIndex((v, t) => t > 0 && v <= b[t]);
+        if (anio > 0) equilibrio = { anio, de, frente };
+      }
+    }
+    return `
+        <h4 class="result-subhead">Costos en el tiempo</h4>
+        <div class="graf-vi graf-vi--solo"><div class="graf-item">${costoAcumuladoSvg({ series, equilibrio, plural: "alternativas" })}</div></div>`;
   }
 
   function renderResultado(r, comun, estados, dato) {

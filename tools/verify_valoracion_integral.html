@@ -269,6 +269,10 @@ await seccion("motor: escenario con varios tramos (aéreo + subterráneo a 34.5 
   ok(r.cortocircuito.cumple === Math.min(...caps) >= 30, "la falla del escenario se compara con el tramo más débil");
   cerca(r.economia.costoTotal, ra.economia.costoTotal + rs.economia.costoTotal, 1e-12, "costo total = suma de los tramos");
   cerca(r.economia.inversion, 3 * 3 * 1 * 12e6 + 2 * 3 * 2 * 60e6, 1e-12, "inversión = Σ L·3·N·c_cond de cada tramo");
+  const ac = r.economia.acumulado;
+  ok(ac.length === ra.economia.acumulado.length && ac.every((v, t) => Math.abs(v - ra.economia.acumulado[t] - rs.economia.acumulado[t]) < 1e-6), "costo acumulado año a año = suma de los tramos");
+  cerca(ac[0], r.economia.inversion, 1e-12, "…arranca en la inversión");
+  cerca(ac[ac.length - 1], r.economia.costoTotal, 1e-12, "…y termina en el costo total actualizado");
   const sin = V.evaluarEscenario(comun, escenario(34.5, [a, { ...s, costos: null }]));
   ok(sin.economia === null, "si a un tramo le falta el costo, el escenario queda fuera de la comparación de costos");
   const flojo = tramoAereo(cat.desnudos.find((c) => c.tipo === "ACSR" && c.calibre_awg_kcmil === "4/0"), 1, { longitudKm: 1 });
@@ -497,9 +501,15 @@ await seccion("vista: con costos", async () => {
   const etiquetas = $$("#resultado-wrap [data-panel=resultado] .vi-matriz td.etiqueta-fila").map((t) => t.textContent);
   ok(etiquetas.includes("Costo total actualizado"), "con precio y al menos un costo aparecen las filas de costos");
   ok($$("#resultado-wrap .callout-warning").some((c) => c.textContent.includes("no entra en la comparación de costos: Alternativa 2")), "avisa qué escenario queda fuera de la comparación de costos");
+  const subAcum = () => $$("#resultado-wrap [data-panel=resultado] h4.result-subhead").find((h) => h.textContent === "Costos en el tiempo");
+  ok(!subAcum(), "con una sola alternativa con costo no hay gráfico de costo acumulado");
   poner(T("costo-cond", ids[1]), "14000000", "input");
   $("#form-calc").requestSubmit();
   await espera(30);
+  const acum = subAcum()?.nextElementSibling?.querySelector("svg");
+  ok(acum && /Costo acumulado de 2 alternativas/.test(acum.outerHTML), "con dos alternativas con costo aparece «Costos en el tiempo» con el costo acumulado de las dos");
+  const nombres = acum ? [...acum.querySelectorAll("text")].filter((t) => /^Alternativa \d$/.test(t.textContent)) : [];
+  ok(nombres.length === 2 && nombres.find((t) => t.textContent === "Alternativa 1")?.getAttribute("style")?.includes("--text-muted"), "…y la alternativa que no cumple lleva el nombre en gris");
   const rep = $("#resultado-wrap .report-block").textContent;
   ok(rep.includes("Evaluación económica: energía $ 350/kWh") && rep.includes("Costo total actualizado $") && rep.includes("conductor $ 8,000,000/km"), "el reporte trae los supuestos, el costo de cada tramo y el costo total");
   const cumplen = $("#resultado-wrap .vi-cabecera > .callout").textContent;

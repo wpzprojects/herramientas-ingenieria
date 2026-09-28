@@ -236,7 +236,9 @@ export function evaluarEscenario(comun, esc) {
 
   // Costos: solo si TODOS los tramos tienen su costo; el valor presente de las pérdidas es lineal, así que se suma
   const economia = tramos.every((t) => t.economia)
-    ? { inversion: suma((t) => t.economia.inversion), costoConductores: suma((t) => t.economia.costoConductores), costoPerdidasVp: suma((t) => t.economia.costoPerdidasVp), costoTotal: suma((t) => t.economia.costoTotal) }
+    ? { inversion: suma((t) => t.economia.inversion), costoConductores: suma((t) => t.economia.costoConductores), costoPerdidasVp: suma((t) => t.economia.costoPerdidasVp), costoTotal: suma((t) => t.economia.costoTotal),
+        // costo acumulado año a año (VP; índice = año, el 0 es la inversión): el de cada tramo, sumado
+        acumulado: tramos[0].economia.acumulado.map((_, a) => suma((t) => t.economia.acumulado[a])) }
     : null;
 
   const incumple = [

@@ -318,6 +318,12 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   datos, despuesDe)` crea la copia justo después con `bruto()` de la original. Potencia por defecto 9.9 MW (11 MVA); las
   pruebas de la vista fijan 30 MW al arrancar. Asistente técnico (`ia-analisis.js`): «Imprimir / PDF» ya no es un botón
   aparte, es la PRIMERA opción del menú «Descargar» («PDF (imprimir o guardar)», mismo id `#btn-imprimir`).
+  **3.47.0 (2026-09-28, pedido del usuario)**: «Costos en el tiempo» al final de «Resultado» (tras los dos gráficos de
+  criterios/costo; `graficoAcumuladoHtml`): `costoAcumuladoSvg` de Conductor económico con TODAS las alternativas con costo
+  (mínimo 2; `serie.tenue` = no cumple → nombre gris; `plural: "alternativas"`), gruesa la recomendada y «se paga sola»
+  de la recomendada frente a la de menor inversión (solo con `criterioRecomendado === "costo"`). El motor suma
+  `economia.acumulado` de los tramos. Solo en pantalla (no en PDF/Word/Excel, como los otros dos gráficos). El recuadro
+  «se paga sola» ahora queda SIEMPRE dentro del área del gráfico (antes tapaba los nombres de las curvas).
   **3.46.1 (2026-09-28, pedido del usuario)**: con varios tramos, TODAS las filas de la tabla que tienen valor por tramo lo
   muestran debajo en gris con «T1 = … · T2 = …» (también Conductor y Longitud, que antes decía «2 tramos»; pérdidas, kW,
   MWh y caída se SUMAN, ampacidad y cortocircuito se evalúan con el menor). Pantalla, PDF y Word (mismo `modeloMatriz`);

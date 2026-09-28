@@ -203,7 +203,7 @@ const num1 = (v) => v.toLocaleString("en-US", { minimumFractionDigits: 1, maximu
  * que la de menor costo total alcanza a la de menor inversión (su punto de equilibrio), si lo hay.
  * `series` = [{ nombre, acumulado: [pesos por año, índice 0 = inversión], mejor }]; `equilibrio` = { anio, de, frente } o null.
  */
-export function costoAcumuladoSvg({ series, equilibrio = null }) {
+export function costoAcumuladoSvg({ series, equilibrio = null, plural = "opciones" }) {
   const W = 460, H = ALTO_GRAFICO, m = { l: 72, r: 84, t: 20, b: 58 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
   const M = (v) => v / 1e6;
   const anios = series[0].acumulado.length - 1;
@@ -229,7 +229,8 @@ export function costoAcumuladoSvg({ series, equilibrio = null }) {
   });
   finales.sort((a, b) => a.y - b.y);
   for (let i = 1; i < finales.length; i++) if (finales[i].y - finales[i - 1].y < 14) finales[i].y = finales[i - 1].y + 14;
-  for (const f of finales) s += texto(m.l + pw + 6, f.y + 4, f.serie.nombre, { tam: 11.5, color: f.color, peso: f.serie.mejor ? 700 : 400 });
+  // `tenue`: la alternativa no cumple los criterios técnicos (Valoración integral): su nombre va en gris
+  for (const f of finales) s += texto(m.l + pw + 6, f.y + 4, f.serie.nombre, { tam: 11.5, color: f.serie.tenue ? "var(--text-muted)" : f.color, peso: f.serie.mejor ? 700 : 400 });
   if (equilibrio) {
     // año exacto del cruce, interpolando entre el año anterior y el del equilibrio
     const a = series[equilibrio.de].acumulado, b = series[equilibrio.frente].acumulado, t = equilibrio.anio;
@@ -240,10 +241,13 @@ export function costoAcumuladoSvg({ series, equilibrio = null }) {
     s += linea(px, py, px, m.t + ph, "var(--text)", 1.2, "4 4");
     s += `<circle class="oc-aparece" cx="${f1(px)}" cy="${f1(py)}" r="6" style="fill:${SERIES[equilibrio.de % SERIES.length]};stroke:var(--bg)" stroke-width="2.5"/>`;
     const lineas = [{ t: `Año ${num1(tc)}: se paga sola`, peso: 700 }, { t: `${series[equilibrio.de].nombre} alcanza a ${series[equilibrio.frente].nombre}`, color: "var(--text-muted)", tam: 11.5 }];
-    const izq = px > m.l + pw * 0.55;
-    s += recuadro(izq ? px - 12 : px + 12, Math.max(m.t + 4, py - 64), lineas, { ancla: izq ? "end" : "start" });
+    // del lado con más espacio y SIEMPRE dentro del área del gráfico: fuera de ella tapaba los nombres de las curvas
+    const ancho = Math.max(...lineas.map((l) => l.t.length)) * 12.5 * 0.56 + 16;
+    const izq = px - m.l > m.l + pw - px;
+    const x0 = Math.min(Math.max(izq ? px - 12 - ancho : px + 12, m.l + 4), m.l + pw - ancho - 4);
+    s += recuadro(x0, Math.max(m.t + 4, py - 64), lineas);
   }
-  return envolver(W, H, `Costo acumulado de ${series.length} opciones en ${anios} años`, s);
+  return envolver(W, H, `Costo acumulado de ${series.length} ${plural} en ${anios} años`, s);
 }
 
 // ---------------------------------------------------------------- valoración integral: uso de cada límite y costo total
