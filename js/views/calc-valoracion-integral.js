@@ -1190,7 +1190,7 @@ export async function render(container) {
     const fila = (etiqueta, unidad, celda, extra = {}) => ({ etiqueta, unidad, celdas: X.map((x, i) => celda(x, estados[i], i)), ...extra });
     const conN = (t) => (t.n > 1 ? `${t.n} ${t.red === "Aerea" ? "conductores" : "circuitos"} por fase` : null);
     const unir = (...partes) => partes.filter(Boolean).join(" · ") || null;
-    const porTramo = (x, texto) => x.tramos.map((t, j) => `T${j + 1} ${texto(t)}`).join(" · ");
+    const porTramo = (x, texto) => x.tramos.map((t, j) => `T${j + 1} = ${texto(t)}`).join(" · ");
     const conElMenor = (s, j) => (varios(s) ? `Con T${j + 1}, el de menor capacidad` : null);
     const hayVarios = estados.some(varios);
     const hayN = estados.some((s) => s.tramos.some((t) => t.n > 1));
@@ -1199,9 +1199,9 @@ export async function render(container) {
       {
         titulo: null,
         filas: [
-          fila("Conductor", "", (x, s) => ({ v: varios(s) ? s.tramos.map((t, j) => `T${j + 1} · ${tramoTexto(t)} · ${fmt(t.longitudKm)} km`).join("\n") : tramoTexto(s.tramos[0]), texto: true })),
+          fila("Conductor", "", (x, s) => ({ v: varios(s) ? s.tramos.map((t, j) => `T${j + 1} = ${tramoTexto(t)} · ${fmt(t.longitudKm)} km`).join("\n") : tramoTexto(s.tramos[0]), texto: true })),
           fila("Tensión de línea", "kV", (x, s) => ({ v: s.tensionKv, dec: 1 })),
-          fila("Longitud", "km", (x, s) => ({ v: x.longitudKm, dec: 2, sub: varios(s) ? `${s.tramos.length} tramos` : null })),
+          fila("Longitud", "km", (x, s) => ({ v: x.longitudKm, dec: 2, sub: varios(s) ? s.tramos.map((t, j) => `T${j + 1} = ${fmt(t.longitudKm)} km`).join(" · ") : null })),
           fila("Corriente de operación", "A", (x) => ({ v: x.corrienteA, dec: 1 })),
         ],
       },
@@ -1210,7 +1210,7 @@ export async function render(container) {
         filas: [
           fila("Ampacidad por conductor", "A", (x, s) =>
             x.ampacidad.error
-              ? { v: null, estado: { texto: "No calculable", clase: "badge-danger" }, sub: varios(s) ? `T${x.ampacidad.tramo + 1}` : null }
+              ? { v: null, estado: { texto: "No calculable", clase: "badge-danger" }, sub: varios(s) ? `T${x.ampacidad.tramo + 1} = no calculable` : null }
               : { v: x.ampacidad.porConductorA, dec: 0, sub: varios(s) ? porTramo(x, (t) => (t.ampacidad.error ? "no calculable" : `${num(t.ampacidad.porConductorA, 0, 0)} A`)) : null }
           ),
           ...(hayN
@@ -1226,14 +1226,14 @@ export async function render(container) {
       {
         titulo: "Pérdidas",
         filas: [
-          fila("Pérdidas", "%", (x) => ({ v: x.perdidas.pct, dec: 2, estado: { texto: x.perdidas.clase.etiqueta, clase: x.perdidas.clase.clase } }), { etiquetaEstado: "Pérdidas: clasificación" }),
-          fila("Pérdidas de potencia", "kW", (x) => ({ v: x.perdidas.kw, dec: 1 })),
-          fila("Energía perdida al año", "MWh", (x) => ({ v: x.perdidas.energiaMwhAnio, dec: 1 })),
+          fila("Pérdidas", "%", (x, s) => ({ v: x.perdidas.pct, dec: 2, estado: { texto: x.perdidas.clase.etiqueta, clase: x.perdidas.clase.clase }, sub: varios(s) ? porTramo(x, (t) => `${num(t.perdidas.pct, 2, 2)} %`) : null }), { etiquetaEstado: "Pérdidas: clasificación" }),
+          fila("Pérdidas de potencia", "kW", (x, s) => ({ v: x.perdidas.kw, dec: 1, sub: varios(s) ? porTramo(x, (t) => `${num(t.perdidas.kw, 1, 1)} kW`) : null })),
+          fila("Energía perdida al año", "MWh", (x, s) => ({ v: x.perdidas.energiaMwhAnio, dec: 1, sub: varios(s) ? porTramo(x, (t) => `${num(t.perdidas.energiaMwhAnio, 1, 1)} MWh`) : null })),
         ],
       },
       {
         titulo: "Regulación",
-        filas: [fila("Caída de tensión", "%", (x) => ({ v: x.regulacion.pct, dec: 2, estado: { texto: x.regulacion.clase.etiqueta, clase: x.regulacion.clase.clase } }), { etiquetaEstado: "Regulación: clasificación" })],
+        filas: [fila("Caída de tensión", "%", (x, s) => ({ v: x.regulacion.pct, dec: 2, estado: { texto: x.regulacion.clase.etiqueta, clase: x.regulacion.clase.clase }, sub: varios(s) ? porTramo(x, (t) => `${num(t.regulacion.pct, 2, 2)} %`) : null }), { etiquetaEstado: "Regulación: clasificación" })],
       },
       {
         titulo: "Cortocircuito",
@@ -1289,6 +1289,8 @@ export async function render(container) {
           ampacidadA: t.ampacidad.error ? null : t.ampacidad.totalA,
           usoPct: t.ampacidad.error ? null : t.ampacidad.usoPct,
           perdidasPct: t.perdidas.pct,
+          perdidasKw: t.perdidas.kw,
+          energiaMwh: t.perdidas.energiaMwhAnio,
           caidaPct: t.regulacion.pct,
           capacidadKa: t.cortocircuito.totalKa,
           costoTotal: t.economia ? t.economia.costoTotal : null,
@@ -1549,7 +1551,7 @@ export async function render(container) {
 
     const numero = (v, dec) => (v === null ? { v: "—", estilo: "celda" } : { v, dec, estilo: "celda" });
     const hojaTramos = [
-      ["Alternativa", "Tramo", "Conductor", "Longitud (km)", "Ampacidad total (A)", "Uso de la ampacidad (%)", "Pérdidas (%)", "Caída de tensión (%)", "Capacidad de cortocircuito (kA)", "Costo total actualizado ($)"].map((v) => ({ v, estilo: "cabecera" })),
+      ["Alternativa", "Tramo", "Conductor", "Longitud (km)", "Ampacidad total (A)", "Uso de la ampacidad (%)", "Pérdidas (%)", "Pérdidas de potencia (kW)", "Energía perdida al año (MWh)", "Caída de tensión (%)", "Capacidad de cortocircuito (kA)", "Costo total actualizado ($)"].map((v) => ({ v, estilo: "cabecera" })),
       ...tramos.map((f) => [
         { v: f.alternativa, estilo: "celda" },
         { v: f.tramo, dec: 0, estilo: "celda" },
@@ -1558,6 +1560,8 @@ export async function render(container) {
         numero(f.ampacidadA, 0),
         f.usoPct === null ? { v: "No calculable", estilo: "malo" } : { v: f.usoPct, dec: 1, estilo: f.ampacidadCumple ? "bueno" : "malo" },
         numero(f.perdidasPct, 2),
+        numero(f.perdidasKw, 1),
+        numero(f.energiaMwh, 1),
         numero(f.caidaPct, 2),
         numero(f.capacidadKa, 2),
         numero(f.costoTotal, 0),
@@ -1566,7 +1570,7 @@ export async function render(container) {
     return crearXlsx([
       { nombre: "Comparación", anchos: [38, 9, ...modelo.columnas.map(() => 34)], combinar, filas },
       { nombre: "Análisis", anchos: [38, 9, ...modelo.columnas.map(() => 30)], combinar: combinarA, filas: filasA },
-      { nombre: "Tramos", anchos: [14, 8, 44, 13, 15, 15, 12, 14, 18, 20], filas: hojaTramos },
+      { nombre: "Tramos", anchos: [14, 8, 44, 13, 15, 15, 12, 16, 18, 14, 18, 20], filas: hojaTramos },
       { nombre: "Reporte", anchos: [120], filas: reporte.split("\n").map((l) => [l]) },
     ]);
   }

@@ -318,6 +318,10 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   datos, despuesDe)` crea la copia justo después con `bruto()` de la original. Potencia por defecto 9.9 MW (11 MVA); las
   pruebas de la vista fijan 30 MW al arrancar. Asistente técnico (`ia-analisis.js`): «Imprimir / PDF» ya no es un botón
   aparte, es la PRIMERA opción del menú «Descargar» («PDF (imprimir o guardar)», mismo id `#btn-imprimir`).
+  **3.46.1 (2026-09-28, pedido del usuario)**: con varios tramos, TODAS las filas de la tabla que tienen valor por tramo lo
+  muestran debajo en gris con «T1 = … · T2 = …» (también Conductor y Longitud, que antes decía «2 tramos»; pérdidas, kW,
+  MWh y caída se SUMAN, ampacidad y cortocircuito se evalúan con el menor). Pantalla, PDF y Word (mismo `modeloMatriz`);
+  el Excel no lleva esas líneas: la hoja «Tramos» suma las columnas kW y MWh.
   **3.30.0 (2026-09-26)**: herramienta de la IA `valorar_alternativas` (`js/ai/tools.js`, `T_VALORAR_ALTERNATIVAS`) en
   los DOS agentes (no opcional; 11 estándar / 17 en total; no entra al barrido), con el mismo motor de la pantalla. Solo
   exige FP, potencia MW o MVA, tensión (común o por alternativa) y red+material+calibre+longitud por alternativa; lo demás

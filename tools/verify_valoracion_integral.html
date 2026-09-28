@@ -805,13 +805,17 @@ await seccion("vista: tramos dentro de un escenario", async () => {
   await espera(30);
   const fila = (nombre) => $$("#resultado-wrap [data-panel=resultado] .vi-matriz tr").find((tr) => tr.querySelector(":scope > td.etiqueta-fila")?.textContent === nombre);
   const conductor = fila("Conductor").children[col];
-  ok(conductor.innerHTML.includes("<br>") && conductor.textContent.includes("T1 · Aérea") && conductor.textContent.includes("T2 · Subterránea"), "la celda del conductor lista los tramos, uno por línea");
+  ok(conductor.innerHTML.includes("<br>") && conductor.textContent.includes("T1 = Aérea") && conductor.textContent.includes("T2 = Subterránea"), "la celda del conductor lista los tramos, uno por línea");
   const longitud = fila("Longitud").children[col].textContent;
-  ok(longitud.startsWith("5.50 km") && longitud.includes("2 tramos"), `longitud total del escenario y cuántos tramos («${longitud}»)`);
+  ok(longitud.startsWith("5.50 km") && /T1 = [\d.]+ km · T2 = [\d.]+ km/.test(longitud), `longitud total del escenario y la de cada tramo («${longitud}»)`);
   const amp = (fila("Ampacidad total") ?? fila("Ampacidad por conductor")).children[col].textContent;
-  ok(/T1 [\d,]+ A · T2 [\d,]+ A/.test(amp), `la ampacidad muestra la de cada tramo («${amp}»)`);
+  ok(/T1 = [\d,]+ A · T2 = [\d,]+ A/.test(amp), `la ampacidad muestra la de cada tramo («${amp}»)`);
   ok(/Con T\d, el de menor capacidad/.test(fila("Uso de la ampacidad").children[col].textContent), "el uso se evalúa con el tramo de menor capacidad");
-  ok(/T1 [\d.]+ kA · T2 [\d.]+ kA/.test(fila("Capacidad de cortocircuito").children[col].textContent), "el cortocircuito muestra la capacidad de cada tramo");
+  ok(/T1 = [\d.]+ kA · T2 = [\d.]+ kA/.test(fila("Capacidad de cortocircuito").children[col].textContent), "el cortocircuito muestra la capacidad de cada tramo");
+  for (const [nombre, re] of [["Pérdidas", /T1 = [\d.]+ % · T2 = [\d.]+ %/], ["Pérdidas de potencia", /T1 = [\d,.]+ kW · T2 = [\d,.]+ kW/], ["Energía perdida al año", /T1 = [\d,.]+ MWh · T2 = [\d,.]+ MWh/], ["Caída de tensión", /T1 = [\d.]+ % · T2 = [\d.]+ %/]]) {
+    const txt = fila(nombre).children[col].textContent;
+    ok(re.test(txt), `«${nombre}» muestra el valor de cada tramo («${txt}»)`);
+  }
   const det = $("#resultado-wrap .vi-detalle-tramos");
   ok(det && !det.open && det.querySelectorAll("tbody tr").length === $$(".vi-tramo").length, "«Detalle por tramo» plegado, con una fila por tramo de todos los escenarios");
   ok($$("#resultado-wrap .callout-warning").some((c) => c.textContent.includes("no tienen la misma longitud total")), "avisa que las alternativas no suman la misma longitud");
