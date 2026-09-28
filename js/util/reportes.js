@@ -6,7 +6,8 @@
 // imágenes PNG dibujadas en tema claro.
 //
 // Uso: tarjetaResultadosHtml({…, conDocumentos: true}) y, después de pintar, activarReportes(wrap, { titulo, texto, pasos,
-// graficos, simbolos }). `simbolos` (opcional) = [{ tex, nombre, valor, unidad }] (unidad en LaTeX): los parámetros de
+// graficos, simbolos }). Cada gráfico puede traer `nota` (nota al pie, p. ej. la sigla PRD).
+// `simbolos` (opcional) = [{ tex, nombre, valor, unidad }] (unidad en LaTeX): los parámetros de
 // entrada con su símbolo, para la memoria en LaTeX. `pasos` = [{ titulo, tex, texto }] (tex = LaTeX para KaTeX; texto = la misma ecuación en texto plano Unicode
 // para Word); `graficos` = [{ titulo, svg }] (cadenas <svg>); `texto` = el reporte de texto (de él salen los datos de
 // entrada y los resultados: líneas «Etiqueta: valor» de sus secciones PARÁMETROS DE ENTRADA y RESULTADOS).
@@ -180,11 +181,11 @@ export async function documento({ titulo, texto, pasos, graficos }, { paraWord =
     if (paraWord) {
       try {
         const im = await svgAPng(g.svg);
-        figuras += `<h4>${escapeHtml(g.titulo)}</h4><div><img src="${im.png}" data-ancho="${im.ancho}" data-alto="${im.alto}" alt="${escapeHtml(g.titulo)}"></div>`;
+        figuras += `<h4>${escapeHtml(g.titulo)}</h4><div><img src="${im.png}" data-ancho="${im.ancho}" data-alto="${im.alto}" alt="${escapeHtml(g.titulo)}"></div>${g.nota ? `<p>${escapeHtml(g.nota)}</p>` : ""}`;
       } catch {
         /* un gráfico que no se pudo convertir no impide el documento */
       }
-    } else figuras += `<figure class="doc-figura vista-tema" data-vista="light"><figcaption>${escapeHtml(g.titulo)}</figcaption>${g.svg}</figure>`;
+    } else figuras += `<figure class="doc-figura vista-tema" data-vista="light"><figcaption>${escapeHtml(g.titulo)}</figcaption>${g.svg}</figure>${g.nota ? `<p class="doc-nota-figura">${escapeHtml(g.nota)}</p>` : ""}`;
   }
   doc.innerHTML =
     `<header class="doc-cab"><div class="doc-app">Herramientas de Ingeniería</div><h1>${escapeHtml(titulo)}</h1><p class="doc-meta">${escapeHtml(fechaLarga())}</p></header>` +

@@ -976,6 +976,8 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .graf-vi { display: grid; grid-template-columns: minmax(0, 500fr) minmax(0, 420fr); column-gap: 28px; row-gap: var(--space-5); align-items: start; max-width: 1000px; }
 .graf-vi--solo { grid-template-columns: minmax(0, 1fr); max-width: 560px; }
 .graf-vi .graf-item svg { display: block; width: 100%; height: auto; overflow: visible; }
+/* nota al pie de un gráfico (p. ej. la sigla PRD del costo acumulado) */
+.graf-nota { margin: var(--space-2) 0 0; font-size: 0.8rem; line-height: 1.45; color: var(--text-muted); }
 @media (max-width: 900px) { .graf-vi { grid-template-columns: minmax(0, 1fr); } }
 /* en el celular se muestran las versiones compactas (nombre de la alternativa encima de sus barras) */
 .graf-vi.graf-vi--celular { display: none; }
@@ -1119,6 +1121,7 @@ code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-su
 .doc-calculo .doc-figura { break-inside: avoid; margin: 3mm 0 6mm; background: #fff; width: auto; max-width: none; border: 0; border-radius: 0; overflow: visible; font-size: inherit; } /* anula el tamaño de .vista-tema */
 .doc-calculo .doc-figura figcaption { font-size: 9.5pt; font-weight: 600; margin-bottom: 2mm; }
 .doc-calculo .doc-figura svg { display: block; width: 50%; height: auto; } /* mitad del ancho, a la izquierda (pedido del usuario; vectorial: nítido a cualquier tamaño) */
+.doc-calculo .doc-nota-figura { margin: -3mm 0 6mm; max-width: 50%; font-size: 8.5pt; line-height: 1.4; } /* nota al pie del gráfico (p. ej. la sigla PRD), del ancho del gráfico */
 
 /* ---- Documento de impresion del reporte: Carta vertical, SIEMPRE en claro (no depende del tema de la pantalla) ---- */
 @page reporte {

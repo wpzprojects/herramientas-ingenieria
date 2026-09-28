@@ -29,7 +29,7 @@ import {
 import { UMBRAL_OPTIMO_PCT as OPTIMO_PERDIDAS } from "../calc/perdidas-tramos.js";
 import { UMBRAL_OPTIMO_PCT as OPTIMO_REGULACION } from "../calc/regulacion-tramos.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
-import { usoLimitesSvg, costoAlternativasSvg, usoLimitesCompactoSvg, costoAlternativasCompactoSvg, costoAcumuladoSvg } from "../util/graficos.js";
+import { usoLimitesSvg, costoAlternativasSvg, usoLimitesCompactoSvg, costoAlternativasCompactoSvg, costoAcumuladoSvg, notaRecuperacion } from "../util/graficos.js";
 import { activarInfos } from "../util/info-campo.js";
 import { activarPlegables, plegarTarjeta } from "../util/tarjetas-plegables.js";
 import { revelar, mostrar } from "../util/revelar.js";
@@ -1887,9 +1887,10 @@ export async function render(container) {
         if (anio > 0) equilibrio = { anio, de, frente };
       }
     }
+    const nota = notaRecuperacion(series, equilibrio);
     return `
         <h4 class="result-subhead">Costos en el tiempo</h4>
-        <div class="graf-vi graf-vi--solo"><div class="graf-item">${costoAcumuladoSvg({ series, equilibrio, plural: "alternativas" })}</div></div>`;
+        <div class="graf-vi graf-vi--solo"><div class="graf-item">${costoAcumuladoSvg({ series, equilibrio, plural: "alternativas" })}${nota ? `<p class="graf-nota">${escapeHtml(nota)}</p>` : ""}</div></div>`;
   }
 
   function renderResultado(r, comun, estados, dato) {

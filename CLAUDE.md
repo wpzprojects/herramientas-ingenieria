@@ -324,6 +324,10 @@ para líneas y redes de distribución eléctrica. Migración de la app Power App
   de la recomendada frente a la de menor inversión (solo con `criterioRecomendado === "costo"`). El motor suma
   `economia.acumulado` de los tramos. Solo en pantalla (no en PDF/Word/Excel, como los otros dos gráficos). El recuadro
   «se paga sola» ahora queda SIEMPRE dentro del área del gráfico (antes tapaba los nombres de las curvas).
+  **3.47.1 (2026-09-28, pedido del usuario)**: el recuadro «Año N: se paga sola» se reemplazó por la etiqueta «PRD N años»
+  junto al punto (texto con borde del fondo) y una nota al pie `.graf-nota` bajo el gráfico (`notaRecuperacion`; el año
+  sale de `recuperacionDescontada`, ambas en `graficos.js`). PRD = período de recuperación descontado (sigla elegida por
+  el usuario). En los reportes, cada gráfico puede traer `nota` (`.doc-nota-figura` en PDF, párrafo en Word).
   **3.46.1 (2026-09-28, pedido del usuario)**: con varios tramos, TODAS las filas de la tabla que tienen valor por tramo lo
   muestran debajo en gris con «T1 = … · T2 = …» (también Conductor y Longitud, que antes decía «2 tramos»; pérdidas, kW,
   MWh y caída se SUMAN, ampacidad y cortocircuito se evalúan con el menor). Pantalla, PDF y Word (mismo `modeloMatriz`);

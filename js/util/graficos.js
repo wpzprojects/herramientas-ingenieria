@@ -199,6 +199,25 @@ export function costoTotalApiladoSvg({ opciones }) {
 const num1 = (v) => v.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
 /**
+ * Período de recuperación descontado (PRD): año exacto en que la serie `equilibrio.de` alcanza a `equilibrio.frente`,
+ * interpolando entre el año anterior y `equilibrio.anio` (el primero en que ya la alcanzó). {anio, valor} o null.
+ */
+export function recuperacionDescontada(series, equilibrio) {
+  if (!equilibrio) return null;
+  const a = series[equilibrio.de].acumulado, b = series[equilibrio.frente].acumulado, t = equilibrio.anio;
+  const d0 = a[t - 1] - b[t - 1], d1 = a[t] - b[t];
+  const tc = t - 1 + (d0 > 0 && d0 !== d1 ? d0 / (d0 - d1) : 1);
+  return { anio: tc, valor: a[t - 1] + (a[t] - a[t - 1]) * (tc - (t - 1)) };
+}
+
+/** Nota al pie del gráfico de costo acumulado que explica la sigla PRD, o "" si no hay punto de equilibrio. */
+export function notaRecuperacion(series, equilibrio) {
+  const prd = recuperacionDescontada(series, equilibrio);
+  if (!prd) return "";
+  return `PRD: período de recuperación descontado. A los ${num1(prd.anio)} años, el ahorro en pérdidas de la ${series[equilibrio.de].nombre} compensa su mayor inversión frente a la ${series[equilibrio.frente].nombre} (en valor presente).`;
+}
+
+/**
  * Costo acumulado (valor presente) año a año: cada opción arranca en su inversión y sube con sus pérdidas. Marca el año en
  * que la de menor costo total alcanza a la de menor inversión (su punto de equilibrio), si lo hay.
  * `series` = [{ nombre, acumulado: [pesos por año, índice 0 = inversión], mejor }]; `equilibrio` = { anio, de, frente } o null.
@@ -231,21 +250,16 @@ export function costoAcumuladoSvg({ series, equilibrio = null, plural = "opcione
   for (let i = 1; i < finales.length; i++) if (finales[i].y - finales[i - 1].y < 14) finales[i].y = finales[i - 1].y + 14;
   // `tenue`: la alternativa no cumple los criterios técnicos (Valoración integral): su nombre va en gris
   for (const f of finales) s += texto(m.l + pw + 6, f.y + 4, f.serie.nombre, { tam: 11.5, color: f.serie.tenue ? "var(--text-muted)" : f.color, peso: f.serie.mejor ? 700 : 400 });
-  if (equilibrio) {
-    // año exacto del cruce, interpolando entre el año anterior y el del equilibrio
-    const a = series[equilibrio.de].acumulado, b = series[equilibrio.frente].acumulado, t = equilibrio.anio;
-    const d0 = a[t - 1] - b[t - 1], d1 = a[t] - b[t];
-    const tc = t - 1 + (d0 > 0 && d0 !== d1 ? d0 / (d0 - d1) : 1);
-    const vc = M(a[t - 1] + (a[t] - a[t - 1]) * (tc - (t - 1)));
+  const prd = recuperacionDescontada(series, equilibrio);
+  if (prd) {
+    const tc = prd.anio, vc = M(prd.valor);
     const px = X(tc), py = Y(vc);
     s += linea(px, py, px, m.t + ph, "var(--text)", 1.2, "4 4");
     s += `<circle class="oc-aparece" cx="${f1(px)}" cy="${f1(py)}" r="6" style="fill:${SERIES[equilibrio.de % SERIES.length]};stroke:var(--bg)" stroke-width="2.5"/>`;
-    const lineas = [{ t: `Año ${num1(tc)}: se paga sola`, peso: 700 }, { t: `${series[equilibrio.de].nombre} alcanza a ${series[equilibrio.frente].nombre}`, color: "var(--text-muted)", tam: 11.5 }];
-    // del lado con más espacio y SIEMPRE dentro del área del gráfico: fuera de ella tapaba los nombres de las curvas
-    const ancho = Math.max(...lineas.map((l) => l.t.length)) * 12.5 * 0.56 + 16;
+    // etiqueta corta (pedido del usuario); la explicación va en la nota al pie (`notaRecuperacion`). Del lado con más
+    // espacio, con un borde del color del fondo para leerse sobre las curvas.
     const izq = px - m.l > m.l + pw - px;
-    const x0 = Math.min(Math.max(izq ? px - 12 - ancho : px + 12, m.l + 4), m.l + pw - ancho - 4);
-    s += recuadro(x0, Math.max(m.t + 4, py - 64), lineas);
+    s += `<text x="${f1(izq ? px - 10 : px + 10)}" y="${f1(Math.max(m.t + 14, py - 12))}" font-size="12.5" font-weight="700" text-anchor="${izq ? "end" : "start"}" paint-order="stroke" stroke-width="4" stroke-linejoin="round" style="fill:var(--text);stroke:var(--bg)">PRD ${esc(num1(tc))} años</text>`;
   }
   return envolver(W, H, `Costo acumulado de ${series.length} ${plural} en ${anios} años`, s);
 }

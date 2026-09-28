@@ -138,6 +138,18 @@ await seccion("conductor-economico: logica", async () => {
   // horizonte largo: el grueso gana
   const largo = eco.compararOpciones({ ...BASE, anios: 40, precioKwh: 900 }, [OP_A, OP_C]);
   ok(largo.mejor === 1 && largo.opciones[1].puntoEquilibrio > 0, `con energía cara y 40 años gana el conductor grueso (equilibrio en el año ${largo.opciones[1].puntoEquilibrio})`);
+  // gráfico: etiqueta corta «PRD» en el punto y la explicación en la nota al pie
+  const graf = await import("../js/util/graficos.js");
+  const series = largo.opciones.map((o, i) => ({ nombre: `Opción ${i + 1}`, acumulado: o.acumulado, mejor: i === 1 }));
+  const eq = { anio: largo.opciones[1].puntoEquilibrio, de: 1, frente: 0 };
+  const prd = graf.recuperacionDescontada(series, eq);
+  const a1 = series[1].acumulado, a0 = series[0].acumulado;
+  ok(prd.anio > eq.anio - 1 && prd.anio <= eq.anio && Math.abs(a1[eq.anio - 1] - a0[eq.anio - 1] + (prd.anio - eq.anio + 1) * (a1[eq.anio] - a0[eq.anio] - a1[eq.anio - 1] + a0[eq.anio - 1])) < 1, `PRD interpolado donde las dos curvas se cruzan (${prd.anio.toFixed(2)} años)`);
+  const svgPrd = graf.costoAcumuladoSvg({ series, equilibrio: eq });
+  ok(svgPrd.includes(`PRD ${prd.anio.toFixed(1)} años`) && !svgPrd.includes("se paga sola"), "el punto del gráfico dice solo «PRD N años»");
+  const nota = graf.notaRecuperacion(series, eq);
+  ok(nota.startsWith("PRD: período de recuperación descontado.") && nota.includes("la Opción 2 compensa su mayor inversión frente a la Opción 1"), "la nota al pie explica la sigla");
+  ok(graf.notaRecuperacion(series, null) === "", "sin punto de equilibrio no hay nota");
   // entradas invalidas dan NaN (la vista lo avisa)
   ok(!Number.isFinite(eco.calcularOpcion({ ...BASE, factorPotencia: 0 }, OP_A).costoTotal), "factor de potencia 0: no da un número válido");
 });

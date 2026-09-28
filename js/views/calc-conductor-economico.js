@@ -8,7 +8,7 @@ import { icon } from "../icons.js";
 import { potenciaActivaMw } from "../calc/circuito.js";
 import { compararOpciones, sensibilidad, sensibilidadInstalacion, HORAS_ANIO } from "../calc/conductor-economico.js";
 import { LINEA_REPORTE, reporteHtml, tarjetaResultadosHtml, activarPestanas } from "../util/resultados-ui.js";
-import { costoTotalApiladoSvg, costoAcumuladoSvg } from "../util/graficos.js";
+import { costoTotalApiladoSvg, costoAcumuladoSvg, notaRecuperacion } from "../util/graficos.js";
 import { activarReportes, numTex } from "../util/reportes.js";
 import { activarMiles, leerMiles, reformatear, PATRON_MILES } from "../util/campo-miles.js";
 import { activarInfos } from "../util/info-campo.js";
@@ -842,14 +842,15 @@ export async function render(container) {
       opciones: r.opciones.map((o, i) => ({ nombre: `Opción ${i + 1}`, sub: corto(estados[i]), conductor: o.costoConductores, instalacion: o.costoInstalacion, perdidas: o.costoPerdidasVp, mejor: i === r.mejor })),
     });
     const eq = r.mejor !== r.indiceBase && r.opciones[r.mejor].puntoEquilibrio ? { anio: r.opciones[r.mejor].puntoEquilibrio, de: r.mejor, frente: r.indiceBase } : null;
-    const acumulado = costoAcumuladoSvg({ series: r.opciones.map((o, i) => ({ nombre: `Opción ${i + 1}`, acumulado: o.acumulado, mejor: i === r.mejor })), equilibrio: eq });
-    return { apilado, acumulado };
+    const series = r.opciones.map((o, i) => ({ nombre: `Opción ${i + 1}`, acumulado: o.acumulado, mejor: i === r.mejor }));
+    const acumulado = costoAcumuladoSvg({ series, equilibrio: eq });
+    return { apilado, acumulado, nota: notaRecuperacion(series, eq) };
   }
   function graficosHtml(r, estados) {
-    const { apilado, acumulado } = graficosSvg(r, estados);
+    const { apilado, acumulado, nota } = graficosSvg(r, estados);
     return `
             <h4 class="result-subhead">Costos en el tiempo</h4>
-            <div class="graf-final"><div class="graf-item">${apilado}</div><div class="graf-item">${acumulado}</div></div>`;
+            <div class="graf-final"><div class="graf-item">${apilado}</div><div class="graf-item">${acumulado}${nota ? `<p class="graf-nota">${escapeHtml(nota)}</p>` : ""}</div></div>`;
   }
 
   /** Parámetros de entrada con su símbolo (memoria en LaTeX). */
@@ -947,7 +948,7 @@ export async function render(container) {
     });
     activarPestanas(wrap, { grupos: FORMULAS_TEX, etiquetas: FORMULAS_ETIQUETAS, nota: FORMULAS_NOTA });
     if (calculable) {
-      const { apilado, acumulado } = graficosSvg(r, estados);
+      const { apilado, acumulado, nota } = graficosSvg(r, estados);
       activarReportes(wrap, {
         titulo: "Cálculo de conductor económico",
         texto: textoReporte,
@@ -955,7 +956,7 @@ export async function render(container) {
         simbolos: simbolosEconomico(base, estados, dato),
         graficos: [
           { titulo: "Costo total por opción", svg: apilado },
-          { titulo: "Costo acumulado en el tiempo", svg: acumulado },
+          { titulo: "Costo acumulado en el tiempo", svg: acumulado, nota },
         ],
       });
     }
